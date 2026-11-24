@@ -30,7 +30,7 @@ export async function action({ request }: Route.ActionArgs) {
         return data({ error: "Type “delete my account” to confirm.", intent }, 400);
       }
       await api(request, "/me", { method: "DELETE" });
-      return redirect("/", { headers: { "set-cookie": clearSessionCookie(request) } });
+      return redirect("/?account=deleted", { headers: { "set-cookie": clearSessionCookie(request) } });
     }
   } catch (err) {
     return data({ ...formError(err), intent }, 400);

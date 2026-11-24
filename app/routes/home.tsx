@@ -12,7 +12,8 @@ import type { FeedEntry, Page } from "~/lib/types";
 export async function loader({ request }: Route.LoaderArgs) {
   const cursor = new URL(request.url).searchParams.get("cursor");
   const feed = await api<Page<FeedEntry>>(request, "/feed", { anonymous: true, query: { cursor } }).catch(() => ({ data: [], next_cursor: null }));
-  return { feed, cursor, origin: siteOrigin(request) };
+  const accountDeleted = new URL(request.url).searchParams.get("account") === "deleted";
+  return { feed, cursor, accountDeleted, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -34,7 +35,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/` },
     { name: "twitter:card", content: "summary" },
-    ...(loaderData?.cursor ? [{ name: "robots", content: "noindex, follow" }] : []),
+    ...(loaderData?.cursor || loaderData?.accountDeleted ? [{ name: "robots", content: "noindex, follow" }] : []),
     {
       "script:ld+json": {
         "@context": "https://schema.org",
@@ -60,12 +61,17 @@ function heroSample(rows: FeedEntry[]) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { feed, cursor } = loaderData;
+  const { feed, cursor, accountDeleted } = loaderData;
   const { mcpUrl, user } = useRootData();
   const sample = heroSample(feed.data);
 
   return (
     <div>
+      {accountDeleted && (
+        <div role="status" className="border-b border-line bg-deal-soft">
+          <p className="wrap py-3 text-[0.92rem] text-deal">Your account and its lists have been deleted. Thanks for trying The Want MCP.</p>
+        </div>
+      )}
       <section className="relative overflow-hidden border-b border-line">
         <div aria-hidden="true" className="pointer-events-none absolute -right-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-want-soft blur-3xl" />
         <div className="wrap relative grid grid-cols-1 gap-10 py-12 sm:py-20 lg:grid-cols-[1.15fr_1fr] lg:items-center">

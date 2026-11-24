@@ -67,7 +67,7 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
     <article
       id={entry.id}
       aria-labelledby={titleId}
-      className={`card relative grid scroll-mt-24 grid-cols-[6.5rem_1fr] content-start gap-3 p-3 sm:grid-cols-1 sm:grid-rows-[auto_1fr] sm:gap-0 sm:p-0 ${
+      className={`card relative grid scroll-mt-24 grid-cols-[6.5rem_1fr] content-start gap-3 p-3 sm:grid-cols-1 sm:grid-rows-[auto_1fr_auto] sm:gap-0 sm:p-0 ${
         boughtThis ? "outline-2 outline-deal" : ""
       } ${isLowest && !itemPurchased ? "ring-2 ring-want" : ""}`}
     >
@@ -133,8 +133,10 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
           </span>
         </div>
 
+      </div>
+
         {(entry.price_count > 1 || comments.length > 0 || canWrite) && (
-          <div className="grid gap-1">
+          <div className="col-span-2 grid gap-1 border-t border-line pt-2 sm:col-span-1 sm:mx-4 sm:mb-4">
             {canWrite && (
               <details id={`${entry.id}-price`} className="group">
                 <summary className="textlink-btn text-[0.8rem]">
@@ -183,7 +185,6 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
             )}
           </div>
         )}
-      </div>
     </article>
   );
 }

@@ -167,9 +167,9 @@ export function PostPrice({ entry }: { entry: Entry }) {
     <fetcher.Form method="post" ref={ref} className="mt-2 grid gap-2">
       <input type="hidden" name="intent" value="post-price" />
       <input type="hidden" name="entry_id" value={entry.id} />
-      <div className="grid grid-cols-[1fr_1fr_4.5rem] gap-2">
+      <div className="grid grid-cols-[1fr_1fr_5rem] gap-2">
         <label className="field" htmlFor={`${uid}-p`}>
-          <span className="hint">Price now</span>
+          <span className="hint">Now</span>
           <input id={`${uid}-p`} name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" placeholder={cur?.price ?? "0.00"} className="input" />
         </label>
         <label className="field" htmlFor={`${uid}-o`}>

@@ -59,6 +59,15 @@ When the API is a local development server that echoes sign-in codes and invite 
 - **Session**: `POST /auth/verify` returns a token, which is stored in an `httpOnly`, `Secure`,
   `SameSite=Lax` cookie on the web origin. Loaders and actions forward it to the API as
   `Authorization: Bearer`. The token never reaches client-side JavaScript.
+- **Client IP**: every API call carries `x-forwarded-for` (the visitor's `cf-connecting-ip`) and
+  `x-wantmcp-proxy-secret`. The API only trusts the forwarded address when the secret matches. Set it with
+  `pnpm wrangler secret put WEB_PROXY_SECRET`, or in `.dev.vars` locally.
+- **Content-Security-Policy**: production HTML gets a per-response script nonce (`app/entry.server.tsx`).
+  `img-src` allows any `https:` host because product images are hotlinked from retailers. The dev server skips
+  the policy because Vite injects un-nonced scripts for hot reload.
+- **People write too**: everything an agent can do from MCP, a person can do on the list page: add and edit
+  products, post prices, mark bought, comment, review suggestions. Members change only what they or their agents
+  posted; the owner can change anything.
 - **Untrusted content**: suggestions from outside agents are rendered as plain text (no links, no images) and
   only ever for list writers. Links in entries and comments open in a new tab with
   `rel="nofollow ugc noopener noreferrer"`. Product images are hotlinked (never proxied), lazy-loaded, sent
@@ -85,7 +94,8 @@ Agents connect to `MCP_URL` (`https://mcp.wantmcp.com/mcp`). Clients that only s
 ## Deploying
 
 The production Worker is named `wantmcp-web`. Set `API_BASE_URL`, `SITE_ORIGIN` and `MCP_URL` in
-`wrangler.jsonc` (or as Worker variables), then `pnpm build && pnpm wrangler deploy`.
+`wrangler.jsonc` (or as Worker variables), add the `WEB_PROXY_SECRET` secret, then
+`pnpm build && pnpm wrangler deploy`.
 
 ## Licence
 

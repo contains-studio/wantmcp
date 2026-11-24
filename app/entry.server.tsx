@@ -23,7 +23,7 @@ function contentSecurityPolicy(nonce: string, secure: boolean): string {
     "style-src 'self'",
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' https: data:",
-    "font-src 'self'",
+    "font-src 'self' data:", // Vite inlines small font subsets as data: URIs
     "connect-src 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
