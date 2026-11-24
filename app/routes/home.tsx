@@ -68,7 +68,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
     <div>
       <section className="relative overflow-hidden border-b border-line">
         <div aria-hidden="true" className="pointer-events-none absolute -right-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-want-soft blur-3xl" />
-        <div className="wrap relative grid gap-10 py-12 sm:py-20 lg:grid-cols-[1.15fr_1fr] lg:items-center">
+        <div className="wrap relative grid grid-cols-1 gap-10 py-12 sm:py-20 lg:grid-cols-[1.15fr_1fr] lg:items-center">
           <div>
             <p className="eyebrow">An MCP server for wanting things</p>
             <h1 className="mt-4 text-[2.7rem] font-extrabold leading-[0.98] sm:text-7xl">
@@ -144,7 +144,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           ))}
         </ol>
 
-        <div className="card mt-6 grid gap-4 p-5 sm:p-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
+        <div className="card mt-6 grid grid-cols-1 gap-4 p-5 sm:p-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
           <div>
             <h3 className="text-xl font-bold">The MCP server</h3>
             <p className="mt-1 text-[0.95rem] text-ink-2">
@@ -157,7 +157,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <CopyButton text={mcpUrl} label="Copy URL" className="btn btn-sm" />
             </div>
             <p className="text-[0.85rem] text-ink-3">
-              Claude Code: <code className="text-ink-2">claude mcp add --transport http wantmcp {mcpUrl}</code> ·{" "}
+              Claude Code: <code className="break-all text-ink-2">claude mcp add --transport http wantmcp {mcpUrl}</code> ·{" "}
               <Link to="/connect" className="link">
                 Steps for every client
               </Link>

@@ -325,7 +325,7 @@ route("POST", "/auth/code", ({ body }) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("That doesn't look like an email address");
   store.codes.set(email, { code: MOCK_LOGIN_CODE, attempts: 0, expires: Date.now() + 10 * 60_000 });
   console.log(`[mock api] login code for ${email}: ${MOCK_LOGIN_CODE}`);
-  return NO_CONTENT;
+  return new Response(null, { status: 204, headers: { "x-dev-login-code": MOCK_LOGIN_CODE } });
 });
 
 route("POST", "/auth/verify", ({ body }) => {
@@ -496,7 +496,7 @@ route("POST", "/lists/{id}/members", ({ caller, params, body }) => {
   const m = { id: newId("mem"), list_id: params[0], user_id: null, invited_email: email, role: "member" as const, status: "invited" as const, token: "inv_" + randomToken(24), created_at: nowIso() };
   store.members.push(m);
   console.log(`[mock api] invite link for ${email}: /invite/${m.token}`);
-  return created(memberOut(m, true));
+  return new Response(JSON.stringify(memberOut(m, true)), { status: 201, headers: { "content-type": "application/json", "x-dev-invite-token": m.token } });
 });
 
 route("DELETE", "/lists/{id}/members/{member_id}", ({ caller, params }) => {
@@ -836,6 +836,7 @@ export async function handleMockRequest(req: Request): Promise<Response> {
       if (!m) continue;
       const result = await handler({ req, url, caller, params: m.slice(1).map(decodeURIComponent), body });
       if (result === NO_CONTENT) return new Response(null, { status: 204 });
+      if (result instanceof Response) return result;
       if (result instanceof Created) return json(result.value, 201);
       return json(result);
     }

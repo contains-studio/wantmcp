@@ -23,6 +23,8 @@ interface ApiInit {
   token?: string | null;
   /** Send no credential even if signed in. */
   anonymous?: boolean;
+  /** Read response headers (e.g. local-dev-only headers). */
+  onHeaders?: (headers: Headers) => void;
 }
 
 let mockModule: Promise<typeof import("../../mock/api")> | null = null;
@@ -66,6 +68,7 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
     console.error("API unreachable", url.pathname, err);
     throw new ApiError(503, "network", "We couldn't reach the Want MCP API. Try again in a moment.");
   }
+  init.onHeaders?.(res.headers);
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   let data: unknown = null;

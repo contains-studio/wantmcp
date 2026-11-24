@@ -229,7 +229,7 @@ export default function ListPage({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
-      <div className="wrap grid gap-12 py-10">
+      <div className="wrap grid grid-cols-1 gap-12 py-10">
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
         {isWriter && <AddItem listId={list.id} empty={items.length === 0} />}
 
@@ -303,6 +303,10 @@ function ItemSection({
   const itemComments = commentsFor("item", item.id);
   const p = item.purchase;
   const cheapest = entries.find((e) => e.current_price)?.current_price;
+  // Older purchases may only record the entry; fall back to its price and retailer.
+  const boughtEntry = p?.entry_id ? entries.find((e) => e.id === p.entry_id) : undefined;
+  const boughtPrice = p?.price ? { price: p.price, currency: p.currency } : boughtEntry?.current_price ?? null;
+  const boughtRetailer = p?.retailer ?? boughtEntry?.retailer ?? null;
   const headingId = `${item.id}-h`;
 
   return (
@@ -333,8 +337,8 @@ function ItemSection({
           <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-deal/40 bg-deal-soft px-4 py-3 text-[0.9rem] sm:ml-11">
             <span className="stamp">Bought</span>
             <span className="text-ink">
-              {p.price ? <strong>{formatMoney(p.price, p.currency)}</strong> : "Bought"}
-              {p.retailer ? ` at ${p.retailer}` : ""} by{" "}
+              {boughtPrice ? <strong>{formatMoney(boughtPrice.price, boughtPrice.currency)}</strong> : "Bought"}
+              {boughtRetailer ? ` at ${boughtRetailer}` : ""} by{" "}
               {p.purchased_by.kind === "user" ? p.purchased_by.handle : p.purchased_by.kind === "agent" ? p.purchased_by.name : "someone"},{" "}
               <Time ts={p.purchased_at} />
             </span>

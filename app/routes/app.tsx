@@ -1,4 +1,4 @@
-import { data, Form, Link, redirect, useFetcher, useNavigation } from "react-router";
+import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import type { Route } from "./+types/app";
 import { CommentForm } from "~/components/Comments";
 import { MarkBought } from "~/components/EntryCard";
@@ -51,7 +51,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
   const current = lists.find((l) => l.id === listId) ?? null;
 
   return (
-    <div className="wrap grid gap-8 py-8 lg:grid-cols-[19rem_1fr] lg:gap-10">
+    <div className="wrap grid grid-cols-1 gap-8 py-8 lg:grid-cols-[19rem_1fr] lg:gap-10">
       <aside className="grid content-start gap-6 lg:sticky lg:top-24">
         <div>
           <p className="eyebrow">Signed in as</p>
@@ -119,7 +119,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
                 <FeedCard row={row}>
                   {row.entry.status === "listed" && (
                     <div className="mt-1 flex flex-wrap items-start gap-2">
-                      {!row.item.purchase && <MarkBought itemId={row.item.id} entryId={row.entry.id} />}
+                      {!row.item.purchase && <MarkBought itemId={row.item.id} entryId={row.entry.id} entry={row.entry} />}
                       <details className="min-w-0 flex-1">
                         <summary className="btn btn-ghost btn-xs w-fit">Comment</summary>
                         <div className="mt-2">
@@ -218,9 +218,10 @@ function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string 
 
 function CreateList({ first }: { first: boolean }) {
   const nav = useNavigation();
+  const result = useActionData<typeof action>() as { error?: string } | undefined;
   const busy = nav.state === "submitting" && nav.formData?.get("intent") === "create-list";
   return (
-    <details open={first} className="card p-4">
+    <details open={first || undefined} className="card p-4">
       <summary className="flex items-center justify-between font-display text-lg font-bold">
         New list <span aria-hidden="true" className="text-want">+</span>
       </summary>
@@ -234,6 +235,7 @@ function CreateList({ first }: { first: boolean }) {
           <span className="label">Description (optional)</span>
           <textarea name="description" maxLength={500} className="textarea" placeholder="Budget, sizes, where you can get deliveries…" />
         </label>
+        {result?.error && <p className="form-error" role="alert">{result.error}</p>}
         <p className="hint">Lists are public once they have an item. Anyone can read them; only you and people you invite can write.</p>
         <button className="btn" disabled={busy}>
           {busy ? "Creating…" : "Create list"}

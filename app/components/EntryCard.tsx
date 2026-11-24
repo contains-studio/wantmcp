@@ -124,7 +124,7 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
               Buy<span className="sr-only"> {entry.title} (new tab)</span> ↗
             </ExtLink>
           )}
-          {canWrite && !itemPurchased && <MarkBought itemId={entry.item_id} entryId={entry.id} />}
+          {canWrite && !itemPurchased && <MarkBought itemId={entry.item_id} entryId={entry.id} entry={entry} />}
           <span className="ml-auto">
             <ReportLink type="entry" id={entry.id} />
           </span>
@@ -161,13 +161,20 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
   );
 }
 
-export function MarkBought({ itemId, entryId }: { itemId: string; entryId?: string }) {
+export function MarkBought({ itemId, entryId, entry }: { itemId: string; entryId?: string; entry?: Pick<Entry, "retailer" | "current_price"> }) {
   const fetcher = useFetcher();
   return (
     <fetcher.Form method="post">
       <input type="hidden" name="intent" value="purchase" />
       <input type="hidden" name="item_id" value={itemId} />
       {entryId && <input type="hidden" name="entry_id" value={entryId} />}
+      {entry?.retailer && <input type="hidden" name="retailer" value={entry.retailer} />}
+      {entry?.current_price && (
+        <>
+          <input type="hidden" name="price" value={entry.current_price.price} />
+          <input type="hidden" name="currency" value={entry.current_price.currency} />
+        </>
+      )}
       <button className="btn btn-ghost btn-xs" disabled={fetcher.state !== "idle"}>
         {fetcher.state !== "idle" ? "Saving…" : entryId ? "Bought this" : "Mark bought"}
       </button>

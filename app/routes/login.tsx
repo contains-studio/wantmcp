@@ -20,7 +20,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return null;
 }
 
-type ActionResult = { step: "code"; email: string; optIn: boolean; error?: string } | { step: "email"; email?: string; error: string };
+type ActionResult = { step: "code"; email: string; optIn: boolean; error?: string; devCode?: string } | { step: "email"; email?: string; error: string };
 
 export async function action({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
@@ -46,13 +46,22 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, error: "Enter a valid email address." }, 400);
+  let devCode: string | undefined;
   try {
-    await api(request, "/auth/code", { method: "POST", anonymous: true, body: { email } });
+    await api(request, "/auth/code", {
+      method: "POST",
+      anonymous: true,
+      body: { email },
+      // A local API server echoes the code in a header. Only surfaced in development builds.
+      onHeaders: (h) => {
+        if (import.meta.env.DEV) devCode = h.get("x-dev-login-code") ?? undefined;
+      },
+    });
   } catch (err) {
     if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, error: err.message }, err.status);
     throw err;
   }
-  return { step: "code", email, optIn } satisfies ActionResult;
+  return { step: "code", email, optIn, devCode } satisfies ActionResult;
 }
 
 export default function Login() {
@@ -74,6 +83,11 @@ export default function Login() {
             <p className="text-ink-2">
               We sent a 6-digit code to <strong className="break-all text-ink">{result.email}</strong>. It works for 10 minutes.
             </p>
+            {result.devCode && (
+              <p className="chip chip-warn w-fit">
+                Local dev: your code is <code className="font-bold">{result.devCode}</code>
+              </p>
+            )}
             <input type="hidden" name="intent" value="verify" />
             <input type="hidden" name="email" value={result.email} />
             <input type="hidden" name="next" value={next} />

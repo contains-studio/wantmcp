@@ -148,6 +148,8 @@
     text-wrap: balance;
   }
   p { text-wrap: pretty; }
+  /* Grid and flex children may shrink below their content width (long URLs, codes). */
+  .grid > *, .flex > * { min-width: 0; }
   a { color: inherit; }
   :focus-visible {
     outline: 3px solid var(--focus);

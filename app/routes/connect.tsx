@@ -226,7 +226,7 @@ const STATUS = {
 export default function Connect() {
   const { mcpUrl } = useRootData();
   return (
-    <div className="wrap grid gap-10 py-10 lg:grid-cols-[14rem_1fr]">
+    <div className="wrap grid grid-cols-1 gap-10 py-10 lg:grid-cols-[14rem_1fr]">
       <nav aria-label="Clients" className="hidden lg:block">
         <ul className="sticky top-24 grid gap-1 text-[0.92rem]">
           {CLIENTS.map((c) => (

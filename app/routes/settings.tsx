@@ -30,7 +30,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return data({ list: summary, role: list.my_role, members, agents }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
-type ActionData = { ok?: boolean; error?: string; intent?: string; key?: string; agent?: AgentInfo };
+type ActionData = { ok?: boolean; error?: string; intent?: string; key?: string; agent?: AgentInfo; devInvite?: string };
 
 export async function action({ request, params }: Route.ActionArgs) {
   assertSameOrigin(request);
@@ -46,9 +46,18 @@ export async function action({ request, params }: Route.ActionArgs) {
       case "outside":
         await api(request, `/lists/${id}`, { method: "PATCH", body: { allow_outside_suggestions: s("allow") === "true" } });
         return { ok: true, intent } satisfies ActionData;
-      case "invite":
-        await api(request, `/lists/${id}/members`, { method: "POST", body: { email: s("email") } });
-        return { ok: true, intent } satisfies ActionData;
+      case "invite": {
+        let devInvite: string | undefined;
+        await api(request, `/lists/${id}/members`, {
+          method: "POST",
+          body: { email: s("email") },
+          // A local API server echoes the invite token. Only surfaced in development builds.
+          onHeaders: (h) => {
+            if (import.meta.env.DEV) devInvite = h.get("x-dev-invite-token") ?? undefined;
+          },
+        });
+        return { ok: true, intent, devInvite } satisfies ActionData;
+      }
       case "revoke-member":
         await api(request, `/lists/${id}/members/${encodeURIComponent(s("member_id"))}`, { method: "DELETE" });
         return { ok: true, intent } satisfies ActionData;
@@ -94,7 +103,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
   const err = (intent: string) => (result?.intent === intent && result.error ? <p className="form-error" role="alert">{result.error}</p> : null);
 
   return (
-    <div className="wrap grid max-w-3xl gap-6 py-8">
+    <div className="wrap grid max-w-3xl grid-cols-1 gap-6 py-8">
       <div>
         <Link to={`/l/${list.id}`} className="link text-[0.88rem] text-ink-3">
           ← Back to the list
@@ -176,7 +185,16 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
             </button>
             <div className="sm:col-span-2" aria-live="polite">
               {err("invite")}
-              {result?.intent === "invite" && result.ok && <p className="form-ok">Invite sent.</p>}
+              {result?.intent === "invite" && result.ok && (
+                <p className="form-ok">
+                  Invite sent.
+                  {result.devInvite && (
+                    <>
+                      {" "}Local dev: <Link to={`/invite/${result.devInvite}`} className="link">/invite/{result.devInvite}</Link>
+                    </>
+                  )}
+                </p>
+              )}
             </div>
           </Form>
         )}
@@ -303,7 +321,7 @@ function NewKey({ keyValue, agentName }: { keyValue: string; agentName: string }
           Copy it now. It's shown once and we only keep a hash. Anyone with this key can post to this list as {agentName}.
         </p>
       </div>
-      <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-card p-2 pl-3">
+      <div className="flex flex-col items-stretch gap-2 rounded-xl border border-line-strong bg-card p-3 sm:flex-row sm:items-center sm:p-2 sm:pl-3">
         <code className="min-w-0 flex-1 break-all text-[0.9rem] font-semibold" aria-label="Write key">
           {keyValue}
         </code>
