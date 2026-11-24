@@ -15,6 +15,10 @@
 		"SITE_ORIGIN": "https://wantmcp.com",
 		"MCP_URL": "https://mcp.wantmcp.com/mcp"
 	},
+	"routes": [
+		{ "pattern": "wantmcp.com", "custom_domain": true },
+		{ "pattern": "www.wantmcp.com", "custom_domain": true }
+	],
 	"observability": {
 		"enabled": true
 	},
