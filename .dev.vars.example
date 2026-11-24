@@ -1,0 +1,8 @@
+# Copied to .dev.vars by `pnpm dev` if you don't have one. .dev.vars is gitignored.
+#
+# API_BASE_URL options:
+#   mock                          the in-process mock API (default, no backend needed)
+#   http://localhost:8788/v1      the standalone mock (`pnpm mock`)
+#   http://localhost:8787/v1      a local copy of the real API server
+API_BASE_URL=mock
+SITE_ORIGIN=http://localhost:5173

@@ -1,0 +1,22 @@
+/**
+ * Wrangler configuration for the wantmcp.com web app.
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "wantmcp-web",
+	"compatibility_date": "2026-11-23",
+	"compatibility_flags": ["nodejs_compat"],
+	"main": "./workers/app.ts",
+	"vars": {
+		// The REST API. For local development, .dev.vars overrides this (see .dev.vars.example).
+		// Set it to the literal "mock" to use the in-process mock API in ./mock.
+		"API_BASE_URL": "https://api.wantmcp.com/v1",
+		"SITE_ORIGIN": "https://wantmcp.com",
+		"MCP_URL": "https://mcp.wantmcp.com/mcp"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true
+}
