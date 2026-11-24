@@ -139,14 +139,30 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           </Form>
         )}
 
-        <h3 className="eyebrow mt-2">Your connected agents for this list</h3>
-        {agents.length === 0 ? (
-          <p className="text-[0.9rem] text-ink-3">None yet.</p>
+        <h3 className="eyebrow mt-2">Connected clients</h3>
+        {agents.filter((a) => a.kind === "oauth").length === 0 ? (
+          <p className="text-[0.9rem] text-ink-3">
+            None yet. When you add the MCP server to ChatGPT, Claude or another app and sign in, it appears here.
+          </p>
         ) : (
           <ul className="grid gap-2">
-            {agents.map((a) => (
-              <AgentRow key={a.id} agent={a} />
-            ))}
+            {agents
+              .filter((a) => a.kind === "oauth")
+              .map((a) => (
+                <AgentRow key={a.id} agent={a} />
+              ))}
+          </ul>
+        )}
+        <h3 className="eyebrow mt-2">Write keys</h3>
+        {agents.filter((a) => a.kind === "key").length === 0 ? (
+          <p className="text-[0.9rem] text-ink-3">No write keys for this list.</p>
+        ) : (
+          <ul className="grid gap-2">
+            {agents
+              .filter((a) => a.kind === "key")
+              .map((a) => (
+                <AgentRow key={a.id} agent={a} />
+              ))}
           </ul>
         )}
         {err("revoke-agent")}
@@ -277,16 +293,17 @@ function AgentRow({ agent: a }: { agent: AgentInfo }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{a.name}</p>
         <p className="text-[0.78rem] text-ink-3">
-          {a.kind === "oauth" ? "Signed in with OAuth" : <>Write key <code>{a.key_prefix}…</code></>} · added <Time ts={a.created_at} /> ·{" "}
+          {a.kind === "oauth" ? "Signed in" : <>Key <code>{a.key_prefix}…</code></>} · added <Time ts={a.created_at} /> ·{" "}
           {a.last_used_at ? <>last used <Time ts={a.last_used_at} /></> : "never used"}
           {a.list_ids.length > 1 && ` · can write ${a.list_ids.length} lists`}
         </p>
       </div>
-      <fetcher.Form method="post" onSubmit={(e) => !confirm(`Disconnect ${a.name}? It loses access to ${a.list_ids.length > 1 ? "all its lists" : "this list"}.`) && e.preventDefault()}>
+      <fetcher.Form method="post" onSubmit={(e) => !confirm(`${a.kind === "key" ? "Revoke the key for" : "Disconnect"} ${a.name}? It loses access to ${a.list_ids.length > 1 ? "all its lists" : "this list"}.`) && e.preventDefault()}>
         <input type="hidden" name="intent" value="revoke-agent" />
         <input type="hidden" name="agent_id" value={a.id} />
         <button className="btn btn-danger btn-xs" disabled={fetcher.state !== "idle"}>
-          Disconnect
+          {a.kind === "key" ? "Revoke" : "Disconnect"}
+          <span className="sr-only"> {a.name}</span>
         </button>
       </fetcher.Form>
     </li>

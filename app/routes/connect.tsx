@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import type { Route } from "./+types/connect";
 import { CopyButton } from "~/components/CopyButton";
 import { siteOrigin } from "~/lib/config.server";
-import { useRootData } from "~/lib/hooks";
+import { signinUrl, useRootData } from "~/lib/hooks";
 
 export function loader({ request }: Route.LoaderArgs) {
   return { origin: siteOrigin(request) };
@@ -210,11 +210,21 @@ const CLIENTS: Client[] = [
             <code>Authorization: Bearer wk_…</code> with a write key from your <Link to="/app" className="link">list settings</Link>.
           </li>
           <li>Reading public lists needs no sign-in at all.</li>
+          <li>
+            Sign-in normally starts the first time the agent tries to post. If your client never asks you to sign in, connect to{" "}
+            <code>{signinUrl(mcp)}</code> instead.
+          </li>
         </Steps>
         <p className="hint">This covers Muse, msgblast and anything else that speaks MCP. If your client only supports local servers, use an MCP proxy that bridges stdio to HTTP.</p>
       </>
     ),
   },
+];
+
+const TOOLS: Array<[string, string[]]> = [
+  ["Read, no sign-in", ["search_lists", "get_list", "get_item_entries", "get_price_history", "get_comments", "suggest_entry"]],
+  ["Write to your lists", ["my_lists", "create_list", "add_item", "add_entry", "post_price", "add_comment", "mark_purchased"]],
+  ["Review suggestions", ["list_pending_suggestions", "promote_suggestion", "reject_suggestion"]],
 ];
 
 const STATUS = {
@@ -246,9 +256,21 @@ export default function Connect() {
             One server URL works in every client. Reading lists needs no sign-in. To post products, prices and comments, the agent signs in to your
             account (OAuth) and you pick which lists it may write to, or you give it a write key for one list.
           </p>
-          <div className="mt-5 flex max-w-xl items-center gap-2 rounded-xl border border-line-strong bg-card p-2 pl-4">
-            <code className="min-w-0 flex-1 truncate font-semibold">{mcpUrl}</code>
-            <CopyButton text={mcpUrl} label="Copy URL" className="btn btn-sm" />
+          <div className="mt-5 grid max-w-xl gap-3">
+            <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-card p-2 pl-4">
+              <code className="min-w-0 flex-1 break-all font-semibold">{mcpUrl}</code>
+              <CopyButton text={mcpUrl} label="Copy URL" className="btn btn-sm" />
+            </div>
+            <p className="text-[0.92rem] text-ink-2">
+              If your client never asks you to sign in, use this address instead:
+            </p>
+            <div className="flex items-center gap-2 rounded-xl border border-line bg-sunk p-2 pl-4">
+              <code className="min-w-0 flex-1 break-all text-[0.92rem]">{signinUrl(mcpUrl)}</code>
+              <CopyButton text={signinUrl(mcpUrl)} label="Copy" />
+            </div>
+            <p className="text-[0.85rem] text-ink-3">
+              With a write key instead of sign-in, use the first address and send the header <code>Authorization: Bearer wk_…</code>.
+            </p>
           </div>
           <nav aria-label="Clients" className="mt-5 flex flex-wrap gap-2 lg:hidden">
             {CLIENTS.map((c) => (
@@ -281,6 +303,25 @@ export default function Connect() {
             )}
           </section>
         ))}
+
+        <section aria-labelledby="tools-h" className="card grid gap-4 p-5 sm:p-6">
+          <div>
+            <h2 id="tools-h" className="text-xl font-extrabold">What your agent can do</h2>
+            <p className="mt-1 text-[0.92rem] text-ink-3">The tools the server offers. Reading needs no sign-in; the rest need access to the list.</p>
+          </div>
+          <dl className="grid gap-4 sm:grid-cols-3">
+            {TOOLS.map(([group, tools]) => (
+              <div key={group} className="grid content-start gap-1.5">
+                <dt className="eyebrow">{group}</dt>
+                {tools.map((t) => (
+                  <dd key={t}>
+                    <code className="rounded bg-sunk px-1.5 py-0.5 text-[0.8rem]">{t}</code>
+                  </dd>
+                ))}
+              </div>
+            ))}
+          </dl>
+        </section>
 
         <section className="card p-5 sm:p-6">
           <h2 className="text-xl font-extrabold">Then ask it to shop</h2>

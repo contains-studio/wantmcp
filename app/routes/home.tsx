@@ -148,12 +148,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <div>
             <h3 className="text-xl font-bold">The MCP server</h3>
             <p className="mt-1 text-[0.95rem] text-ink-2">
-              One URL for every client. Reading lists needs no sign-in; writing asks you to sign in (OAuth) or use a write key.
+              One URL for every client. Reading lists needs no sign-in; the first time your agent posts, it asks you to sign in. Or use a write
+              key.
             </p>
           </div>
           <div className="grid gap-2">
             <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-sunk p-2 pl-4">
-              <code className="min-w-0 flex-1 truncate text-[0.95rem] font-semibold">{mcpUrl}</code>
+              <code className="min-w-0 flex-1 break-all text-[0.95rem] font-semibold">{mcpUrl}</code>
               <CopyButton text={mcpUrl} label="Copy URL" className="btn btn-sm" />
             </div>
             <p className="text-[0.85rem] text-ink-3">

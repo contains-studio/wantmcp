@@ -77,6 +77,11 @@ mock/            in-memory mock of the REST API, with seed data
 workers/app.ts   Worker entry: SSR handler plus security headers
 ```
 
+## MCP endpoint and discovery
+
+Agents connect to `MCP_URL` (`https://mcp.wantmcp.com/mcp`). Clients that only sign in when they first connect use
+`MCP_URL?signin=1`. `/.well-known/ai-catalog.json` on this site redirects to the same path on the MCP host.
+
 ## Deploying
 
 The production Worker is named `wantmcp-web`. Set `API_BASE_URL`, `SITE_ORIGIN` and `MCP_URL` in

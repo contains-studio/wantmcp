@@ -12,3 +12,8 @@ export function useRootData(): RootData {
 export function useNow(): number {
   return useRootData().now;
 }
+
+/** The MCP URL that asks for sign-in at connect time, for clients that never prompt on first write. */
+export function signinUrl(mcpUrl: string): string {
+  return `${mcpUrl}${mcpUrl.includes("?") ? "&" : "?"}signin=1`;
+}
