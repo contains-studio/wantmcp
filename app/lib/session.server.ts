@@ -41,11 +41,7 @@ export function clearSessionCookie(request: Request): string {
   return `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureFlag(request)}`;
 }
 
-/** Only allow same-site relative redirect targets. */
-export function safeNext(value: string | null | undefined, fallback = "/app"): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return fallback;
-  return value;
-}
+export { safeNext } from "./url";
 
 /**
  * Reject cross-site form posts. SameSite=Lax already keeps the cookie off them;

@@ -2,7 +2,8 @@ import { data, Form, Link, redirect, useActionData, useNavigation, useSearchPara
 import type { Route } from "./+types/login";
 import { api, ApiError } from "~/lib/api.server";
 import { getUser } from "~/lib/auth.server";
-import { assertSameOrigin, safeNext, sessionCookie } from "~/lib/session.server";
+import { assertSameOrigin, sessionCookie } from "~/lib/session.server";
+import { safeNext } from "~/lib/url";
 import type { UserSelf } from "~/lib/types";
 
 export function meta() {

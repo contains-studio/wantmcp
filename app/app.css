@@ -307,7 +307,7 @@
 
   .codeblock {
     position: relative; background: var(--sunk); border: 1px solid var(--line); border-radius: 0.8rem; padding: 0.85rem 1rem;
-    font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; overflow-x: auto; white-space: pre; color: var(--ink);
+    font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink);
   }
 
   details > summary { cursor: pointer; list-style: none; }
