@@ -229,3 +229,14 @@ export interface PurchaseInput {
 
 
 export type ReportTargetType = "list" | "item" | "entry" | "comment";
+
+// ---------- Pending: announced by the API workstream, not yet in the contract ----------
+
+/** GET /me/invites: invites waiting for the signed-in user. */
+export interface PendingInvite {
+  list: Pick<ListSummary, "id" | "title" | "owner_handle">;
+  invited_at: Timestamp;
+}
+
+/** Items are getting a `url` ending `#itm_...`. Optional until every API server sends it. */
+export type ItemWithUrl = Item & { url?: string };

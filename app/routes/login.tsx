@@ -20,6 +20,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   return null;
 }
 
+/** The API's own message is user-facing; for email delivery problems it says what went wrong. */
+function loginError(err: ApiError): string {
+  if (err.code === "email_unavailable") return err.message || "We couldn't send the sign-in email just now. Please try again in a few minutes.";
+  if (err.code === "network") return "We couldn't reach the sign-in service. Please try again in a moment.";
+  return err.message;
+}
+
 type ActionResult = { step: "code"; email: string; optIn: boolean; error?: string; devCode?: string } | { step: "email"; email?: string; error: string };
 
 export async function action({ request }: Route.ActionArgs) {
@@ -58,7 +65,7 @@ export async function action({ request }: Route.ActionArgs) {
       },
     });
   } catch (err) {
-    if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, error: err.message }, err.status);
+    if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, error: loginError(err) }, err.status);
     throw err;
   }
   return { step: "code", email, optIn, devCode } satisfies ActionResult;

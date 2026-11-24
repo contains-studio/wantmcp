@@ -16,7 +16,13 @@ export function ReportLink({ type, id, label = "Report" }: { type: ReportTargetT
       <div className="card fixed inset-x-4 bottom-4 z-40 p-4 text-left sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:mt-2 sm:w-72 sm:p-3">
         {done ? (
           <div className="flex items-center justify-between gap-2">
-            <p role="status" className="text-sm">Thanks. We'll take a look.</p>
+            <p role="status" className="text-sm">
+              Thanks. We'll take a look. Urgent? Email{" "}
+              <a href="mailto:hello@wantmcp.com" className="link">
+                hello@wantmcp.com
+              </a>
+              .
+            </p>
             <button type="button" className="btn btn-ghost btn-xs" onClick={(e) => e.currentTarget.closest("details")?.removeAttribute("open")}>
               Close
             </button>

@@ -23,3 +23,9 @@ export function mcpUrl(): string {
 export function proxySecret(): string | null {
   return (env as unknown as Record<string, string | undefined>).WEB_PROXY_SECRET || null;
 }
+
+/** Public source repository, shown in the footer. Unset (the default) hides the link. */
+export function sourceUrl(): string | null {
+  const v = (env as unknown as Record<string, string | undefined>).SOURCE_URL;
+  return v && /^https:\/\//.test(v) ? v : null;
+}

@@ -34,7 +34,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:title", content: title },
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/` },
-    { name: "twitter:card", content: "summary" },
+    // Bump v when the home card design changes.
+    { property: "og:image", content: `${origin}/og/home.png?v=2` },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    { property: "og:image:alt", content: "The Want MCP: write down what you want, your agents go shopping." },
+    { name: "twitter:card", content: "summary_large_image" },
     ...(loaderData?.cursor || loaderData?.accountDeleted ? [{ name: "robots", content: "noindex, follow" }] : []),
     {
       "script:ld+json": {
@@ -124,7 +129,28 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                 See the full list →
               </Link>
             </figure>
-          ) : null}
+          ) : (
+            <div className="card relative grid gap-4 p-5 sm:p-6" aria-label="Connect an agent">
+              <p className="eyebrow">Works with any MCP agent</p>
+              <ul className="flex flex-wrap gap-2">
+                {["ChatGPT", "Claude", "Claude Code", "Codex", "Cursor", "Grok", "OpenClaw"].map((n) => (
+                  <li key={n} className="chip">
+                    {n}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-sunk p-2 pl-4">
+                <code className="min-w-0 flex-1 break-all text-[0.92rem] font-semibold">{mcpUrl}</code>
+                <CopyButton text={mcpUrl} label="Copy" className="btn btn-sm" />
+              </div>
+              <p className="text-[0.9rem] text-ink-2">
+                Add this server to your agent, sign in once, and pick which of your lists it may write to.{" "}
+                <Link to="/connect" className="link">
+                  Step-by-step guides
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -187,7 +213,23 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             ))}
           </div>
         ) : (
-          <p className="mt-6 text-ink-3">Nothing yet. Be the first: start a list and connect an agent.</p>
+          <div className="mt-6 grid gap-4 rounded-2xl border border-dashed border-line-strong p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
+            <div>
+              <p className="font-display text-xl font-bold">The first finds will appear here</p>
+              <p className="mt-2 max-w-xl text-ink-2">
+                Whenever an agent adds a product to a public list, it shows up here: what it is, the price and any discount, who it's for, and
+                which agent found it. Start a list and connect an agent to see your own finds land.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link to={user ? "/app" : "/login"} className="btn btn-want">
+                {user ? "Go to my lists" : "Start a list"}
+              </Link>
+              <Link to="/connect" className="btn btn-ghost">
+                Connect an agent
+              </Link>
+            </div>
+          </div>
         )}
         <div className="mt-6 flex gap-3">
           {cursor && (

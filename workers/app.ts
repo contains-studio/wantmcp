@@ -14,8 +14,18 @@ const SECURITY_HEADERS: Record<string, string> = {
 const NOINDEX = /^\/(app|login|logout|invite|report|theme)(\/|$)/;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    // One canonical host: www.wantmcp.com -> wantmcp.com, keeping path and query.
+    if (url.hostname.startsWith("www.")) {
+      url.hostname = url.hostname.slice(4);
+      return new Response(null, { status: 301, headers: { location: url.toString(), "cache-control": "public, max-age=86400" } });
+    }
+    // Share images (rendered lazily so ordinary pages never load the renderer).
+    if (url.pathname.startsWith("/og/")) {
+      const og = await import("./og");
+      if (og.isOgPath(url.pathname)) return og.handleOg(request, ctx);
+    }
     // Domain discovery for AI clients lives on the MCP host.
     if (url.pathname === "/.well-known/ai-catalog.json") {
       const mcpOrigin = new URL(env.MCP_URL || "https://mcp.wantmcp.com/mcp").origin;

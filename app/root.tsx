@@ -17,7 +17,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { Wordmark } from "./components/Logo";
 import { getUser } from "./lib/auth.server";
-import { mcpUrl, siteOrigin } from "./lib/config.server";
+import { mcpUrl, siteOrigin, sourceUrl } from "./lib/config.server";
 import { useRootData } from "./lib/hooks";
 import { readCookie } from "./lib/session.server";
 
@@ -29,7 +29,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const user = await getUser(request);
   const t = readCookie(request, "wm_theme");
   const theme = t === "light" || t === "dark" ? t : "system";
-  return data({ user, now: Date.now(), theme, mcpUrl: mcpUrl(), origin: siteOrigin(request) });
+  return data({ user, now: Date.now(), theme, mcpUrl: mcpUrl(), origin: siteOrigin(request), sourceUrl: sourceUrl() });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -134,6 +134,7 @@ function Header() {
 }
 
 function Footer() {
+  const { sourceUrl } = useRootData();
   return (
     <footer className="mt-24 border-t border-line">
       <div className="wrap grid gap-6 py-10 text-[0.88rem] text-ink-3 sm:grid-cols-[1fr_auto]">
@@ -148,7 +149,11 @@ function Footer() {
           <Link to="/connect" className="link">Connect an agent</Link>
           <Link to="/privacy" className="link">Privacy</Link>
           <Link to="/terms" className="link">Terms</Link>
-          <a href="https://github.com/contains-studio/wantmcp-web" className="link">Source (MIT)</a>
+          {sourceUrl && (
+            <a href={sourceUrl} className="link">
+              Source (MIT)
+            </a>
+          )}
         </nav>
       </div>
     </footer>

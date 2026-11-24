@@ -10,7 +10,7 @@
  * Sign-in: any email, code 123456.
  */
 import type {
-  ActorRef, AgentInfo, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ListDetail, ListSummary,
+  ActorRef, AgentInfo, Comment, Entry, EntryInput, EventType, FeedEntry, ItemWithUrl, ListDetail, ListSummary,
   Member, Page, PriceInput, PriceObservation, PurchaseInput, UserSelf, WantEvent,
 } from "../app/lib/types.ts";
 import { seedStore } from "./seed.ts";
@@ -246,12 +246,13 @@ function entryOut(e: EntryRow): Entry {
   };
 }
 
-function itemOut(i: ItemRow, c: Caller): Item {
+function itemOut(i: ItemRow, c: Caller): ItemWithUrl {
   const entries = store.entries.filter((e) => e.item_id === i.id);
   const writer = canWrite(c, i.list_id);
   return {
     id: i.id,
     list_id: i.list_id,
+    url: `${WEB}/l/${i.list_id}#${i.id}`,
     text: i.text,
     created_by: i.created_by,
     created_at: i.created_at,
@@ -340,6 +341,10 @@ const NO_CONTENT = Symbol("no content");
 route("POST", "/auth/code", ({ body }) => {
   const email = text("email", body.email, 254, true).toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("That doesn't look like an email address");
+  // Lets contributors see the "email could not be sent" state.
+  if (email === "fail@example.com") {
+    throw new HttpError(503, "email_unavailable", "We couldn't send your sign-in email right now. Please try again in a few minutes.");
+  }
   store.codes.set(email, { code: MOCK_LOGIN_CODE, attempts: 0, expires: Date.now() + 10 * 60_000 });
   console.log(`[mock api] login code for ${email}: ${MOCK_LOGIN_CODE}`);
   return new Response(null, { status: 204, headers: { "x-dev-login-code": MOCK_LOGIN_CODE } });
@@ -391,6 +396,31 @@ route("DELETE", "/me", ({ caller }) => {
   store.users = store.users.filter((u) => u.id !== user.id);
   for (const [t, uid] of store.sessions) if (uid === user.id) store.sessions.delete(t);
   return userSelf(user);
+});
+
+route("GET", "/whoami", ({ caller }) => {
+  if (!caller) throw unauthorized();
+  return actorRef(caller);
+});
+
+route("GET", "/me/invites", ({ caller }) => {
+  const c = requireSession(caller);
+  return store.members
+    .filter((m) => m.status === "invited" && m.invited_email === c.user.email)
+    .filter((m) => !store.members.some((x) => x.list_id === m.list_id && x.user_id === c.user.id && x.status === "active"))
+    .map((m) => {
+      const l = getList(m.list_id);
+      return { list: { id: l.id, title: l.title, owner_handle: userById(l.owner_id).handle }, invited_at: m.created_at };
+    });
+});
+
+route("POST", "/me/invites/{list_id}/accept", ({ caller, params }) => {
+  const c = requireSession(caller);
+  const m = store.members.find((x) => x.list_id === params[0] && x.status === "invited" && x.invited_email === c.user.email);
+  if (!m) throw notFound("No pending invite for this list");
+  m.user_id = c.user.id;
+  m.status = "active";
+  return listSummary(getList(m.list_id), c);
 });
 
 route("GET", "/me/lists", ({ caller }) => {

@@ -4,12 +4,13 @@ import { CommentForm } from "~/components/Comments";
 import { MarkBought } from "~/components/EntryCard";
 import { FeedCard } from "~/components/FeedCard";
 import { Time } from "~/components/Time";
-import { api, formError } from "~/lib/api.server";
+import { api, apiOptional, formError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { plural } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin } from "~/lib/session.server";
-import type { FeedEntry, ListSummary, Page } from "~/lib/types";
+import { LiveUpdates } from "~/components/LiveUpdates";
+import type { AgentInfo, FeedEntry, ListSummary, Page, PendingInvite } from "~/lib/types";
 
 export function meta() {
   return [{ title: "My lists · The Want MCP" }, { name: "robots", content: "noindex" }];
@@ -20,11 +21,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const listId = url.searchParams.get("list") || null;
   const cursor = url.searchParams.get("cursor");
-  const [lists, feed] = await Promise.all([
+  const [lists, feed, invites] = await Promise.all([
     api<ListSummary[]>(request, "/me/lists"),
     api<Page<FeedEntry>>(request, "/me/feed", { query: { list_id: listId, cursor } }),
+    // Older API servers don't have pending invites yet: show none.
+    apiOptional<PendingInvite[]>(request, "/me/invites").then((r) => r ?? []),
   ]);
-  return data({ user, lists, feed, listId, cursor }, { headers: { "Cache-Control": "private, no-store" } });
+  // First run: work out which getting-started steps are done.
+  const firstRun = !listId && !cursor && feed.data.length === 0;
+  const agentCount = firstRun ? (await api<AgentInfo[]>(request, "/me/agents").catch(() => [])).length : 0;
+  return data({ user, lists, feed, listId, cursor, invites, firstRun, agentCount }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -43,11 +49,20 @@ export async function action({ request }: Route.ActionArgs) {
       return data(formError(err), 400);
     }
   }
+  if (form.get("intent") === "accept-invite") {
+    const id = String(form.get("list_id") ?? "");
+    try {
+      const list = await api<ListSummary>(request, `/me/invites/${encodeURIComponent(id)}/accept`, { method: "POST" });
+      return redirect(`/l/${list.id}`);
+    } catch (err) {
+      return data({ ...formError(err), intent: "accept-invite" }, 400);
+    }
+  }
   return handleWriterIntent(request, form);
 }
 
 export default function AppHome({ loaderData }: Route.ComponentProps) {
-  const { user, lists, feed, listId, cursor } = loaderData;
+  const { user, lists, feed, listId, cursor, invites, firstRun, agentCount } = loaderData;
   const current = lists.find((l) => l.id === listId) ?? null;
 
   return (
@@ -102,7 +117,12 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
 
         {lists.length > 0 && <QuickAddItem lists={lists} listId={listId} />}
 
-        {feed.data.length === 0 ? (
+        <LiveUpdates query="scope=me" />
+        {invites.length > 0 && <PendingInvites invites={invites} />}
+
+        {firstRun ? (
+          <GettingStarted lists={lists} agentCount={agentCount} />
+        ) : feed.data.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line-strong p-8 text-center">
             <p className="font-display text-xl font-bold">Nothing found yet</p>
             <p className="mx-auto mt-2 max-w-md text-ink-3">
@@ -242,5 +262,127 @@ function CreateList({ first }: { first: boolean }) {
         </button>
       </Form>
     </details>
+  );
+}
+
+function PendingInvites({ invites }: { invites: PendingInvite[] }) {
+  const nav = useNavigation();
+  const result = useActionData<typeof action>() as { error?: string; intent?: string } | undefined;
+  return (
+    <section aria-labelledby="invites-h" className="card grid gap-3 border-want p-4 sm:p-5">
+      <h2 id="invites-h" className="text-lg font-extrabold">
+        {invites.length === 1 ? "You're invited to a list" : `You're invited to ${invites.length} lists`}
+      </h2>
+      <ul className="grid gap-2">
+        {invites.map((inv) => (
+          <li key={inv.list.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line p-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{inv.list.title}</p>
+              <p className="text-[0.8rem] text-ink-3">
+                by {inv.list.owner_handle} · invited <Time ts={inv.invited_at} />
+              </p>
+            </div>
+            <Form method="post">
+              <input type="hidden" name="intent" value="accept-invite" />
+              <input type="hidden" name="list_id" value={inv.list.id} />
+              <button className="btn btn-want btn-sm" disabled={nav.state !== "idle"}>
+                Accept<span className="sr-only"> invite to {inv.list.title}</span>
+              </button>
+            </Form>
+          </li>
+        ))}
+      </ul>
+      {result?.intent === "accept-invite" && result.error && (
+        <p className="form-error" role="alert">
+          {result.error}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** First run: what will appear here, and the three steps to get there. */
+function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCount: number }) {
+  const hasList = lists.length > 0;
+  const hasItem = lists.some((l) => l.item_count > 0);
+  const hasAgent = agentCount > 0;
+  const firstList = lists[0];
+  const steps: Array<{ done: boolean; title: string; body: React.ReactNode }> = [
+    {
+      done: hasList,
+      title: "Make a list",
+      body: hasList ? (
+        <>
+          You have {lists.length === 1 ? "a list" : `${lists.length} lists`}.{" "}
+          <Link to={`/l/${firstList.id}`} className="link">Open {firstList.title}</Link>
+        </>
+      ) : (
+        <>Give it a title like “Black Friday 2026” or “Things for the new flat”. Use the New list form on this page.</>
+      ),
+    },
+    {
+      done: hasItem,
+      title: "Add things you want",
+      body: hasItem ? (
+        <>Your agents can see what you want.</>
+      ) : (
+        <>Describe each thing in your own words, with any budget, size or must-haves. Lists go public once they have an item.</>
+      ),
+    },
+    {
+      done: hasAgent,
+      title: "Connect an agent",
+      body: hasAgent ? (
+        <>An agent is connected. Ask it to shop your list.</>
+      ) : (
+        <>
+          Add the MCP server to ChatGPT, Claude, Codex, Cursor or any MCP client, or create a write key in your list settings.{" "}
+          <Link to="/connect" className="link">Setup guides</Link>
+        </>
+      ),
+    },
+  ];
+  const next = steps.findIndex((st) => !st.done);
+  return (
+    <section aria-labelledby="start-h" className="card grid gap-5 p-5 sm:p-7">
+      <div>
+        <p className="eyebrow">Getting started</p>
+        <h2 id="start-h" className="mt-1 text-2xl font-extrabold sm:text-3xl">
+          {next === -1 ? "Waiting for your first find" : "Three steps to your first find"}
+        </h2>
+        <p className="mt-2 max-w-2xl text-ink-2">
+          This is your feed. When your agents find products for your lists, or other agents suggest some, they appear here newest first, with
+          prices you can compare.
+        </p>
+      </div>
+      <ol className="grid gap-3 sm:grid-cols-3">
+        {steps.map((st, i) => (
+          <li
+            key={st.title}
+            className={`grid content-start gap-2 rounded-2xl border p-4 ${i === next ? "border-want bg-want-soft" : "border-line"}`}
+            aria-current={i === next ? "step" : undefined}
+          >
+            <span
+              className={`grid h-9 w-9 place-items-center rounded-full font-display text-lg font-extrabold ${
+                st.done ? "bg-deal text-paper" : i === next ? "bg-want text-want-ink" : "bg-sunk text-ink-3"
+              }`}
+              aria-hidden="true"
+            >
+              {st.done ? "✓" : i + 1}
+            </span>
+            <h3 className="font-sans text-[1.02rem] font-bold tracking-normal">
+              {st.title}
+              {st.done && <span className="sr-only"> (done)</span>}
+            </h3>
+            <p className="text-[0.9rem] text-ink-2">{st.body}</p>
+          </li>
+        ))}
+      </ol>
+      {next === -1 && (
+        <p className="rounded-xl bg-sunk px-4 py-3 text-[0.9rem] text-ink-2">
+          Try asking your agent: “Look at my Want MCP list, check what's already there, and find two good options for each item.”
+        </p>
+      )}
+    </section>
   );
 }

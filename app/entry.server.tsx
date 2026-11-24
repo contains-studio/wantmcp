@@ -43,6 +43,11 @@ export default async function handleRequest(
 ) {
   // https://httpwg.org/specs/rfc9110.html#HEAD
   if (request.method.toUpperCase() === "HEAD") {
+    // Same headers as GET. No body means no scripts, so the nonce is never used.
+    if (!import.meta.env.DEV) {
+      responseHeaders.set("Content-Security-Policy", contentSecurityPolicy(makeNonce(), new URL(request.url).protocol === "https:"));
+    }
+    responseHeaders.set("Content-Type", "text/html; charset=utf-8");
     return new Response(null, {
       status: responseStatusCode,
       headers: responseHeaders,

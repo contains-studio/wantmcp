@@ -14,6 +14,7 @@
 		"API_BASE_URL": "https://api.wantmcp.com/v1",
 		"SITE_ORIGIN": "https://wantmcp.com",
 		"MCP_URL": "https://mcp.wantmcp.com/mcp"
+		// Optional: "SOURCE_URL": "https://github.com/contains-studio/wantmcp-web" shows the footer source link.
 	},
 	"routes": [
 		{ "pattern": "wantmcp.com", "custom_domain": true },

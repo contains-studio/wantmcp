@@ -1,7 +1,7 @@
 import { useRouteLoaderData } from "react-router";
 import type { UserSelf } from "./types";
 
-type RootData = { user: UserSelf | null; now: number; theme: "light" | "dark" | "system"; mcpUrl: string; origin: string };
+type RootData = { user: UserSelf | null; now: number; theme: "light" | "dark" | "system"; mcpUrl: string; origin: string; sourceUrl?: string | null };
 
 export function useRootData(): RootData {
   const data = useRouteLoaderData("root") as RootData | undefined;

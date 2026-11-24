@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { data, Link, useFetcher } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { data, Link, useFetcher, useLocation } from "react-router";
+import { LiveUpdates } from "~/components/LiveUpdates";
 import type { Route } from "./+types/list";
 import { ActorTag } from "~/components/ActorTag";
 import { CommentForm, CommentList } from "~/components/Comments";
@@ -19,7 +20,7 @@ import type { Comment, Entry, Item, ListDetail, ListPrices, Page, PriceObservati
 type ItemWithEntries = Item & { entries: Entry[] };
 
 /** Comments for the whole list, a few pages deep. */
-async function loadComments(request: Request, listId: string): Promise<Comment[]> {
+async function loadComments(request: Request, listId: string): Promise<{ comments: Comment[]; cursor: string | null }> {
   const comments: Comment[] = [];
   let cursor: string | null = null;
   for (let i = 0; i < 5; i++) {
@@ -28,7 +29,8 @@ async function loadComments(request: Request, listId: string): Promise<Comment[]
     cursor = page.next_cursor;
     if (!cursor) break;
   }
-  return comments;
+  // A non-null cursor means there are more; the page offers "Show more comments".
+  return { comments, cursor };
 }
 
 /**
@@ -75,14 +77,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   });
 
   const listedIds = new Set(items.flatMap((it) => it.entries.map((e) => e.id)));
-  const [comments, prices] = await Promise.all([loadComments(request, id), loadPrices(request, id, items)]);
+  const [{ comments, cursor: commentsCursor }, prices] = await Promise.all([loadComments(request, id), loadPrices(request, id, items)]);
   // Only listed entries' histories reach the page.
   for (const key of Object.keys(prices)) if (!listedIds.has(key)) delete prices[key];
 
   const { items: _drop, ...summary } = list;
   const signedIn = Boolean(getSessionToken(request));
   return data(
-    { list: summary, items, suggestions, comments, prices, isWriter, role, origin: siteOrigin(request) },
+    { list: summary, items, suggestions, comments, commentsCursor, prices, isWriter, role, origin: siteOrigin(request) },
     {
       headers: {
         "Cache-Control": signedIn ? "private, no-store" : "public, max-age=30, s-maxage=60",
@@ -113,7 +115,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
         .join("; ")}`,
   );
   const title = `${list.title} · a want list by ${list.owner_handle}`;
-  const firstImage = listed.find((e) => e.image_url?.startsWith("https://"))?.image_url;
+  // Designed share card; ?v changes whenever the list does, so caches never serve a stale card.
+  const ogImage = `${origin}/og/l/${encodeURIComponent(list.id)}.png?v=${Date.parse(list.updated_at) || 0}`;
 
   const ld = {
     "@context": "https://schema.org",
@@ -171,8 +174,11 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:title", content: list.title },
     { property: "og:description", content: description },
     { property: "og:url", content: url },
-    ...(firstImage ? [{ property: "og:image", content: firstImage }] : []),
-    { name: "twitter:card", content: firstImage ? "summary_large_image" : "summary" },
+    { property: "og:image", content: ogImage },
+    { property: "og:image:width", content: "1200" },
+    { property: "og:image:height", content: "630" },
+    { property: "og:image:alt", content: `${list.title}, a want list by ${list.owner_handle}` },
+    { name: "twitter:card", content: "summary_large_image" },
     ...(items.length === 0 ? [{ name: "robots", content: "noindex" }] : []),
     { "script:ld+json": ld },
   ];
@@ -195,9 +201,15 @@ function sortByPrice(entries: Entry[]): Entry[] {
 }
 
 export default function ListPage({ loaderData }: Route.ComponentProps) {
-  const { list, items, suggestions, comments, prices, isWriter, role, origin } = loaderData;
+  const { list, items, suggestions, comments: firstComments, commentsCursor, prices, isWriter, role, origin } = loaderData;
   const { user } = useRootData();
   const listUrl = `${origin}/l/${list.id}`;
+  const more = useMoreComments(list.id, commentsCursor);
+  const comments = useMemo(() => {
+    const seen = new Set(firstComments.map((c) => c.id));
+    return [...firstComments, ...more.comments.filter((c) => !seen.has(c.id))];
+  }, [firstComments, more.comments]);
+  useDeepLinks();
 
   const commentsFor = (type: "item" | "entry", id: string) => comments.filter((c) => c.target_type === type && c.target_id === id);
   const canDeleteComment = (c: Comment) => canManage(c.author, user, role);
@@ -246,7 +258,16 @@ export default function ListPage({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
+      <LiveUpdates query={`list=${encodeURIComponent(list.id)}`} />
       <div className="wrap grid grid-cols-1 gap-12 py-10">
+        {more.hasMore && (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-sunk px-4 py-3 text-[0.9rem]" role="status">
+            <span className="text-ink-2">This list has more comments than we loaded at first.</span>
+            <button type="button" className="btn btn-ghost btn-xs" onClick={more.loadMore} disabled={more.loading}>
+              {more.loading ? "Loading…" : "Show more comments"}
+            </button>
+          </div>
+        )}
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
         {isWriter && <AddItem listId={list.id} empty={items.length === 0} />}
 
@@ -579,4 +600,57 @@ function SuggestionCard({ entry: e, itemText }: { entry: Entry; itemText: string
       {fetcher.data?.error && <p className="form-error" role="alert">{fetcher.data.error}</p>}
     </li>
   );
+}
+
+/** "Show more comments": loads further pages of the list's comments on demand. */
+function useMoreComments(listId: string, initialCursor: string | null) {
+  const fetcher = useFetcher<Page<Comment>>();
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [cursor, setCursor] = useState<string | null>(initialCursor);
+
+  // A fresh loader result (navigation or live revalidation) restarts from its cursor.
+  useEffect(() => {
+    setComments([]);
+    setCursor(initialCursor);
+  }, [listId, initialCursor]);
+
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      const page = fetcher.data;
+      setComments((prev) => [...prev, ...page.data]);
+      setCursor(page.next_cursor);
+    }
+  }, [fetcher.state, fetcher.data]);
+
+  const loadMore = useCallback(() => {
+    if (cursor) fetcher.load(`/l/${encodeURIComponent(listId)}/comments?cursor=${encodeURIComponent(cursor)}`);
+  }, [cursor, listId, fetcher]);
+
+  return { comments, hasMore: Boolean(cursor), loading: fetcher.state !== "idle", loadMore };
+}
+
+/**
+ * Deep links from agents and msgblast (#itm_…, #ent_…, #cmt_…): open any collapsed section
+ * holding the target, scroll it below the sticky header and flash it briefly.
+ */
+function useDeepLinks() {
+  const location = useLocation();
+  useEffect(() => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (!/^(itm|ent|cmt)_[A-Za-z0-9_-]+$/.test(id)) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      if (p instanceof HTMLDetailsElement && !p.open) p.open = true;
+    }
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+      el.classList.remove("deep-target");
+      void el.offsetWidth; // restart the animation on repeat visits
+      el.classList.add("deep-target");
+    });
+    const t = setTimeout(() => el.classList.remove("deep-target"), 2400);
+    return () => clearTimeout(t);
+  }, [location.hash, location.key]);
 }

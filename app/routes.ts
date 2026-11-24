@@ -14,6 +14,8 @@ export default [
   route("terms", "routes/terms.tsx"),
   route("report", "routes/report.tsx"),
   route("theme", "routes/theme.tsx"),
+  route("live", "routes/live.ts"),
+  route("l/:id/comments", "routes/list-comments.ts"),
   route("sitemap.xml", "routes/sitemap.ts"),
   route("robots.txt", "routes/robots.ts"),
   route("*", "routes/not-found.tsx"),

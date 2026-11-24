@@ -5,7 +5,8 @@ import type { ApiError as ApiErrorBody, ErrorCode } from "./types";
 
 export class ApiError extends Error {
   status: number;
-  code: ErrorCode | "network" | "internal";
+  /** An ErrorCode, or a newer code such as `email_unavailable`, or `network` / `internal`. */
+  code: ErrorCode | "network" | "internal" | (string & {});
   details?: unknown;
   constructor(status: number, code: ApiError["code"], message: string, details?: unknown) {
     super(message);
@@ -87,7 +88,7 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
   }
   if (!res.ok) {
     const err = (data as ApiErrorBody | null)?.error;
-    throw new ApiError(res.status, err?.code ?? "internal", err?.message ?? `API error ${res.status}`, err?.details);
+    throw new ApiError(res.status, (err?.code as string | undefined) ?? "internal", err?.message ?? `API error ${res.status}`, err?.details);
   }
   return data as T;
 }
