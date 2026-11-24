@@ -1,20 +1,55 @@
+import { useState } from "react";
 import { data, Link, useFetcher } from "react-router";
 import type { Route } from "./+types/list";
 import { ActorTag } from "~/components/ActorTag";
 import { CommentForm, CommentList } from "~/components/Comments";
 import { CopyButton } from "~/components/CopyButton";
-import { EntryCard, MarkBought } from "~/components/EntryCard";
+import { EntryCard } from "~/components/EntryCard";
+import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, RemoveButton } from "~/components/WriteTools";
 import { ReportLink } from "~/components/Report";
 import { Time } from "~/components/Time";
-import { api, toRouteError } from "~/lib/api.server";
+import { api, apiOptional, toRouteError } from "~/lib/api.server";
 import { siteOrigin } from "~/lib/config.server";
 import { clip, formatMoney, plural } from "~/lib/format";
 import { useRootData } from "~/lib/hooks";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { getSessionToken } from "~/lib/session.server";
-import type { Comment, Entry, Item, ListDetail, Page, PriceObservation } from "~/lib/types";
+import type { Comment, Entry, Item, ListDetail, ListPrices, Page, PriceObservation, UserSelf } from "~/lib/types";
 
 type ItemWithEntries = Item & { entries: Entry[] };
+
+/** Comments for the whole list, a few pages deep. */
+async function loadComments(request: Request, listId: string): Promise<Comment[]> {
+  const comments: Comment[] = [];
+  let cursor: string | null = null;
+  for (let i = 0; i < 5; i++) {
+    const page: Page<Comment> = await api<Page<Comment>>(request, `/lists/${encodeURIComponent(listId)}/comments`, { query: { cursor } });
+    comments.push(...page.data);
+    cursor = page.next_cursor;
+    if (!cursor) break;
+  }
+  return comments;
+}
+
+/**
+ * Price history for every entry in one call. Requested anonymously so it can never include
+ * suggestions. Falls back to one call per entry on an API without `/lists/{id}/prices`.
+ */
+async function loadPrices(request: Request, listId: string, items: ItemWithEntries[]): Promise<Record<string, PriceObservation[]>> {
+  const all = await apiOptional<ListPrices>(request, `/lists/${encodeURIComponent(listId)}/prices`, {
+    anonymous: true,
+  });
+  if (all) return all.prices ?? {};
+  const need = items.flatMap((it) => it.entries).filter((e) => e.price_count > 1).slice(0, 60);
+  const histories = await Promise.all(
+    need.map((e) => api<PriceObservation[]>(request, `/entries/${encodeURIComponent(e.id)}/prices`, { anonymous: true }).catch(() => null)),
+  );
+  const prices: Record<string, PriceObservation[]> = {};
+  need.forEach((e, i) => {
+    if (histories[i]) prices[e.id] = histories[i]!;
+  });
+  return prices;
+}
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const id = params.id;
@@ -39,27 +74,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     return { ...it, entries: listed };
   });
 
-  // Comments for the whole list, a few pages deep.
-  const comments: Comment[] = [];
-  let cursor: string | null = null;
-  for (let i = 0; i < 5; i++) {
-    const page: Page<Comment> = await api<Page<Comment>>(request, `/lists/${encodeURIComponent(id)}/comments`, { query: { cursor } });
-    comments.push(...page.data);
-    cursor = page.next_cursor;
-    if (!cursor) break;
-  }
-
-  // Price history for entries with more than one observation.
-  const needHistory = items.flatMap((it) => it.entries).filter((e) => e.price_count > 1).slice(0, 60);
-  const histories = await Promise.all(
-    needHistory.map((e) =>
-      api<PriceObservation[]>(request, `/entries/${encodeURIComponent(e.id)}/prices`, { anonymous: true }).catch(() => null),
-    ),
-  );
-  const prices: Record<string, PriceObservation[]> = {};
-  needHistory.forEach((e, i) => {
-    if (histories[i]) prices[e.id] = histories[i]!;
-  });
+  const listedIds = new Set(items.flatMap((it) => it.entries.map((e) => e.id)));
+  const [comments, prices] = await Promise.all([loadComments(request, id), loadPrices(request, id, items)]);
+  // Only listed entries' histories reach the page.
+  for (const key of Object.keys(prices)) if (!listedIds.has(key)) delete prices[key];
 
   const { items: _drop, ...summary } = list;
   const signedIn = Boolean(getSessionToken(request));
@@ -182,8 +200,7 @@ export default function ListPage({ loaderData }: Route.ComponentProps) {
   const listUrl = `${origin}/l/${list.id}`;
 
   const commentsFor = (type: "item" | "entry", id: string) => comments.filter((c) => c.target_type === type && c.target_id === id);
-  const canDeleteComment = (c: Comment) =>
-    role === "owner" || (!!user && c.author.kind === "user" && c.author.handle === user.handle);
+  const canDeleteComment = (c: Comment) => canManage(c.author, user, role);
 
   const wanted = items.filter((i) => !i.purchase);
   const bought = items.filter((i) => i.purchase);
@@ -241,6 +258,8 @@ export default function ListPage({ loaderData }: Route.ComponentProps) {
             prices={prices}
             commentsFor={commentsFor}
             isWriter={isWriter}
+            role={role}
+            user={user}
             canDeleteComment={canDeleteComment}
             eager={i === 0}
           />
@@ -259,6 +278,8 @@ export default function ListPage({ loaderData }: Route.ComponentProps) {
                 prices={prices}
                 commentsFor={commentsFor}
                 isWriter={isWriter}
+                role={role}
+                user={user}
                 canDeleteComment={canDeleteComment}
               />
             ))}
@@ -287,6 +308,8 @@ function ItemSection({
   prices,
   commentsFor,
   isWriter,
+  role,
+  user,
   canDeleteComment,
   eager,
 }: {
@@ -295,9 +318,13 @@ function ItemSection({
   prices: Record<string, PriceObservation[]>;
   commentsFor: (t: "item" | "entry", id: string) => Comment[];
   isWriter: boolean;
+  role: "owner" | "member" | null;
+  user: UserSelf | null;
   canDeleteComment: (c: Comment) => boolean;
   eager?: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
+  const canEditItem = canManage(item.created_by, user, role);
   const entries = sortByPrice(item.entries);
   const lowest = lowestEntryId(entries);
   const itemComments = commentsFor("item", item.id);
@@ -318,9 +345,18 @@ function ItemSection({
               {n}
             </span>
           )}
-          <h2 id={headingId} className={`text-[1.25rem] font-bold sm:text-[1.7rem] ${p ? "text-ink-2" : ""}`}>
-            {item.text}
-          </h2>
+          {editing ? (
+            <div className="flex-1">
+              <h2 id={headingId} className="sr-only">
+                Editing: {item.text}
+              </h2>
+              <EditItem item={item} onDone={() => setEditing(false)} />
+            </div>
+          ) : (
+            <h2 id={headingId} className={`text-[1.25rem] font-bold sm:text-[1.7rem] ${p ? "text-ink-2" : ""}`}>
+              {item.text}
+            </h2>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem] text-ink-3 sm:pl-11">
           <span className="inline-flex items-center gap-1.5">
@@ -332,6 +368,19 @@ function ItemSection({
               : `${plural(entries.length, "option")}${cheapest && entries.length > 1 ? ` from ${formatMoney(cheapest.price, cheapest.currency)}` : ""}`}
           </span>
           <ReportLink type="item" id={item.id} />
+          {canEditItem && !editing && (
+            <>
+              <button type="button" className="textlink-btn text-[0.8rem]" onClick={() => setEditing(true)}>
+                Edit<span className="sr-only"> item</span>
+              </button>
+              <RemoveButton
+                intent="delete-item"
+                fields={{ item_id: item.id }}
+                label="Remove item"
+                confirmText={`Remove “${item.text.slice(0, 80)}” and all its products, prices and comments?`}
+              />
+            </>
+          )}
         </div>
         {p && (
           <div className="mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-deal/40 bg-deal-soft px-4 py-3 text-[0.9rem] sm:ml-11">
@@ -359,6 +408,7 @@ function ItemSection({
               boughtThis={p?.entry_id === e.id}
               itemPurchased={!!p}
               canWrite={isWriter}
+              canEdit={canManage(e.author, user, role)}
               canDeleteComment={canDeleteComment}
               eagerImage={eager && i < 3}
             />
@@ -380,7 +430,7 @@ function ItemSection({
 
       {isWriter && (
         <div className="flex flex-wrap gap-2 sm:pl-11">
-          {!p && <MarkBought itemId={item.id} />}
+          {!p && <MarkBoughtElsewhere itemId={item.id} />}
           <AddEntry itemId={item.id} />
         </div>
       )}
@@ -435,59 +485,12 @@ function AddItem({ listId, empty }: { listId: string; empty: boolean }) {
 }
 
 function AddEntry({ itemId }: { itemId: string }) {
-  const fetcher = useFetcher<{ ok?: boolean; error?: string; intent?: string }>();
-  const done = fetcher.state === "idle" && fetcher.data?.ok;
   return (
     <details className="w-full">
       <summary className="btn btn-ghost btn-xs w-fit">Add a product yourself</summary>
-      {done ? (
-        <p className="form-ok mt-3" role="status">Added.</p>
-      ) : (
-        <fetcher.Form method="post" className="card mt-3 grid gap-3 p-4 sm:grid-cols-2">
-          <input type="hidden" name="intent" value="add-entry" />
-          <input type="hidden" name="item_id" value={itemId} />
-          <label className="field sm:col-span-2">
-            <span className="label">Product name</span>
-            <input name="title" required maxLength={140} className="input" />
-          </label>
-          <label className="field sm:col-span-2">
-            <span className="label">Product link</span>
-            <input name="product_url" type="url" required pattern="https://.*" placeholder="https://" className="input" />
-          </label>
-          <label className="field">
-            <span className="label">Retailer</span>
-            <input name="retailer" maxLength={80} className="input" />
-          </label>
-          <label className="field">
-            <span className="label">Image link (optional)</span>
-            <input name="image_url" type="url" pattern="https://.*" placeholder="https://" className="input" />
-          </label>
-          <div className="grid grid-cols-[1fr_1fr_5.5rem] gap-2 sm:col-span-2">
-            <label className="field">
-              <span className="label">Price</span>
-              <input name="price" inputMode="decimal" pattern="\d+(\.\d{1,2})?" placeholder="429.00" className="input" />
-            </label>
-            <label className="field">
-              <span className="label">Was</span>
-              <input name="original_price" inputMode="decimal" pattern="\d+(\.\d{1,2})?" placeholder="549.00" className="input" />
-            </label>
-            <label className="field">
-              <span className="label">Currency</span>
-              <input name="currency" defaultValue="GBP" maxLength={3} className="input uppercase" />
-            </label>
-          </div>
-          <label className="field">
-            <span className="label">Coupon code</span>
-            <input name="coupon_code" maxLength={40} className="input font-mono" />
-          </label>
-          <div className="flex items-end">
-            <button className="btn w-full" disabled={fetcher.state !== "idle"}>
-              {fetcher.state !== "idle" ? "Adding…" : "Add product"}
-            </button>
-          </div>
-          {fetcher.data?.error && <p className="form-error sm:col-span-2" role="alert">{fetcher.data.error}</p>}
-        </fetcher.Form>
-      )}
+      <div className="card mt-3 p-4">
+        <EntryForm itemId={itemId} />
+      </div>
     </details>
   );
 }

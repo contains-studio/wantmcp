@@ -2,7 +2,7 @@ import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } 
 import type { Route } from "./+types/settings";
 import { CopyButton } from "~/components/CopyButton";
 import { Time } from "~/components/Time";
-import { api, formError, toRouteError } from "~/lib/api.server";
+import { api, apiOptional, formError, toRouteError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { useRootData } from "~/lib/hooks";
 import { assertSameOrigin } from "~/lib/session.server";
@@ -24,7 +24,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!list.my_role) throw new Response("Not found", { status: 404 });
   const [members, agents] = await Promise.all([
     api<Member[]>(request, `/lists/${id}/members`).catch(() => [] as Member[]),
-    api<AgentInfo[]>(request, "/me/agents", { query: { list_id: params.id } }),
+    // The owner sees every agent on the list, a member only their own. Older API servers
+    // only have /me/agents, which lists the caller's own.
+    apiOptional<AgentInfo[]>(request, `/lists/${id}/agents`).then(
+      (all) => all ?? api<AgentInfo[]>(request, "/me/agents", { query: { list_id: params.id } }),
+    ),
   ]);
   const { items: _items, ...summary } = list;
   return data({ list: summary, role: list.my_role, members, agents }, { headers: { "Cache-Control": "private, no-store" } });
@@ -66,7 +70,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         return data({ ok: true, intent, key: res.key, agent: res.agent } satisfies ActionData, { headers: { "Cache-Control": "no-store" } });
       }
       case "revoke-agent":
-        await api(request, `/agents/${encodeURIComponent(s("agent_id"))}`, { method: "DELETE" });
+        // scope=list removes this list from the agent; otherwise the agent is revoked everywhere.
+        await api(request, `/agents/${encodeURIComponent(s("agent_id"))}`, {
+          method: "DELETE",
+          query: s("scope") === "list" ? { list_id: params.id } : undefined,
+        });
         return { ok: true, intent } satisfies ActionData;
       case "delete-list": {
         const list = await api<ListDetail>(request, `/lists/${id}`);
@@ -97,6 +105,9 @@ function Section({ id, title, desc, children }: { id: string; title: string; des
 export default function Settings({ loaderData }: Route.ComponentProps) {
   const { list, role, members, agents } = loaderData;
   const isOwner = role === "owner";
+  const { user } = useRootData();
+  const mine = agents.filter((a) => a.owner_handle === user?.handle);
+  const others = agents.filter((a) => a.owner_handle !== user?.handle);
   const result = useActionData<typeof action>() as ActionData | undefined;
   const nav = useNavigation();
   const busy = (intent: string) => nav.state === "submitting" && nav.formData?.get("intent") === intent;
@@ -139,31 +150,41 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           </Form>
         )}
 
-        <h3 className="eyebrow mt-2">Connected clients</h3>
-        {agents.filter((a) => a.kind === "oauth").length === 0 ? (
+        <h3 className="eyebrow mt-2">Your connected clients</h3>
+        {mine.filter((a) => a.kind === "oauth").length === 0 ? (
           <p className="text-[0.9rem] text-ink-3">
             None yet. When you add the MCP server to ChatGPT, Claude or another app and sign in, it appears here.
           </p>
         ) : (
           <ul className="grid gap-2">
-            {agents
+            {mine
               .filter((a) => a.kind === "oauth")
               .map((a) => (
-                <AgentRow key={a.id} agent={a} />
+                <AgentRow key={a.id} agent={a} own />
               ))}
           </ul>
         )}
-        <h3 className="eyebrow mt-2">Write keys</h3>
-        {agents.filter((a) => a.kind === "key").length === 0 ? (
+        <h3 className="eyebrow mt-2">Your write keys</h3>
+        {mine.filter((a) => a.kind === "key").length === 0 ? (
           <p className="text-[0.9rem] text-ink-3">No write keys for this list.</p>
         ) : (
           <ul className="grid gap-2">
-            {agents
+            {mine
               .filter((a) => a.kind === "key")
               .map((a) => (
-                <AgentRow key={a.id} agent={a} />
+                <AgentRow key={a.id} agent={a} own />
               ))}
           </ul>
+        )}
+        {isOwner && others.length > 0 && (
+          <>
+            <h3 className="eyebrow mt-2">Members' agents</h3>
+            <ul className="grid gap-2">
+              {others.map((a) => (
+                <AgentRow key={a.id} agent={a} own={false} />
+              ))}
+            </ul>
+          </>
         )}
         {err("revoke-agent")}
       </Section>
@@ -285,27 +306,42 @@ function OutsideToggle({ allow }: { allow: boolean }) {
   );
 }
 
-function AgentRow({ agent: a }: { agent: AgentInfo }) {
+function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
   const fetcher = useFetcher<ActionData>();
   if (fetcher.state === "idle" && fetcher.data?.ok) return null;
+  // Your own single-list agent is revoked outright. Otherwise only this list is removed from it.
+  const listOnly = !own || a.list_ids.length > 1;
+  const action = listOnly ? "Remove from list" : a.kind === "key" ? "Revoke" : "Disconnect";
+  const question = !own
+    ? `Remove ${a.name} (connected by ${a.owner_handle}) from this list?`
+    : listOnly
+      ? `Remove ${a.name} from this list? It keeps access to your other lists.`
+      : `${a.kind === "key" ? "Revoke the key for" : "Disconnect"} ${a.name}?`;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line p-3">
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{a.name}</p>
         <p className="text-[0.78rem] text-ink-3">
-          {a.kind === "oauth" ? "Signed in" : <>Key <code>{a.key_prefix}…</code></>} · added <Time ts={a.created_at} /> ·{" "}
+          {a.kind === "oauth" ? "Signed in" : <>Key <code>{a.key_prefix}…</code></>}
+          {!own && <> · connected by {a.owner_handle}</>} · added <Time ts={a.created_at} /> ·{" "}
           {a.last_used_at ? <>last used <Time ts={a.last_used_at} /></> : "never used"}
-          {a.list_ids.length > 1 && ` · can write ${a.list_ids.length} lists`}
+          {own && a.list_ids.length > 1 && ` · can write ${a.list_ids.length} lists`}
         </p>
       </div>
-      <fetcher.Form method="post" onSubmit={(e) => !confirm(`${a.kind === "key" ? "Revoke the key for" : "Disconnect"} ${a.name}? It loses access to ${a.list_ids.length > 1 ? "all its lists" : "this list"}.`) && e.preventDefault()}>
+      <fetcher.Form method="post" onSubmit={(e) => !confirm(question) && e.preventDefault()}>
         <input type="hidden" name="intent" value="revoke-agent" />
         <input type="hidden" name="agent_id" value={a.id} />
+        {listOnly && <input type="hidden" name="scope" value="list" />}
         <button className="btn btn-danger btn-xs" disabled={fetcher.state !== "idle"}>
-          {a.kind === "key" ? "Revoke" : "Disconnect"}
+          {fetcher.state !== "idle" ? "Removing…" : action}
           <span className="sr-only"> {a.name}</span>
         </button>
       </fetcher.Form>
+      {fetcher.data?.error && (
+        <p className="form-error w-full" role="alert">
+          {fetcher.data.error}
+        </p>
+      )}
     </li>
   );
 }

@@ -18,3 +18,8 @@ export function siteOrigin(request?: Request): string {
 export function mcpUrl(): string {
   return (env as unknown as Record<string, string | undefined>).MCP_URL || "https://mcp.wantmcp.com/mcp";
 }
+
+/** Shared secret that lets the API trust our x-forwarded-for. Set with `wrangler secret put WEB_PROXY_SECRET`. */
+export function proxySecret(): string | null {
+  return (env as unknown as Record<string, string | undefined>).WEB_PROXY_SECRET || null;
+}

@@ -36,14 +36,20 @@ export function CommentList({
 }
 
 function DeleteComment({ id }: { id: string }) {
-  const fetcher = useFetcher();
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   return (
-    <fetcher.Form method="post">
+    <fetcher.Form method="post" onSubmit={(e) => !confirm("Delete this comment?") && e.preventDefault()}>
       <input type="hidden" name="intent" value="delete-comment" />
       <input type="hidden" name="comment_id" value={id} />
       <button className="textlink-btn text-[0.78rem]" disabled={fetcher.state !== "idle"}>
-        Delete<span className="sr-only"> comment</span>
+        {fetcher.state !== "idle" ? "Deleting…" : "Delete"}
+        <span className="sr-only"> comment</span>
       </button>
+      {fetcher.data?.error && (
+        <span className="ml-2 text-[0.78rem] text-danger" role="alert">
+          {fetcher.data.error}
+        </span>
+      )}
     </fetcher.Form>
   );
 }

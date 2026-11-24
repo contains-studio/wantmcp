@@ -59,17 +59,39 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
         return { ok: true, intent };
       case "add-entry": {
         const price = optional(form, "price");
-        await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}/entries`, {
+        const body: Record<string, unknown> = { ...entryFields(form, false) };
+        if (price) {
+          body.price = price;
+          body.original_price = optional(form, "original_price");
+          body.currency = (str(form, "currency") || "GBP").toUpperCase();
+        }
+        await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}/entries`, { method: "POST", body });
+        return { ok: true, intent };
+      }
+      case "edit-entry":
+        await api(request, `/entries/${encodeURIComponent(str(form, "entry_id"))}`, { method: "PATCH", body: entryFields(form, true) });
+        return { ok: true, intent };
+      case "delete-entry":
+        await api(request, `/entries/${encodeURIComponent(str(form, "entry_id"))}`, { method: "DELETE" });
+        return { ok: true, intent };
+      case "post-price": {
+        const price = str(form, "price");
+        if (!price) return data({ error: "Enter the price", intent }, 400);
+        await api(request, `/entries/${encodeURIComponent(str(form, "entry_id"))}/prices`, {
           method: "POST",
           body: {
-            title: str(form, "title"),
-            product_url: str(form, "product_url"),
-            image_url: optional(form, "image_url"),
-            retailer: str(form, "retailer"),
-            coupon_code: optional(form, "coupon_code"),
-            ...(price ? { price, original_price: optional(form, "original_price"), currency: str(form, "currency") || "GBP" } : {}),
+            price,
+            currency: (str(form, "currency") || "GBP").toUpperCase(),
+            original_price: optional(form, "original_price"),
+            note: optional(form, "note"),
           },
         });
+        return { ok: true, intent };
+      }
+      case "edit-item": {
+        const text = str(form, "text");
+        if (!text) return data({ error: "Describe what you want", intent }, 400);
+        await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}`, { method: "PATCH", body: { text } });
         return { ok: true, intent };
       }
       case "delete-item":
@@ -79,6 +101,36 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
         return data({ error: "Unknown action" }, 400);
     }
   } catch (err) {
-    return data(formError(err), 400);
+    return data({ ...formError(err), intent }, 400);
   }
+}
+
+/** A date input (YYYY-MM-DD) as an ISO timestamp: start of day for a start, end of day for an end. */
+function dealDate(value: string, end: boolean): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return `${value}T${end ? "23:59:59" : "00:00:00"}Z`;
+}
+
+/**
+ * Entry fields from the add/edit form. When editing, empty optional fields are sent as
+ * null so they can be cleared; when adding they are left out.
+ */
+function entryFields(form: FormData, editing: boolean): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    title: str(form, "title"),
+    product_url: str(form, "product_url"),
+    description: str(form, "description"),
+  };
+  const opt = (key: string, value: unknown) => {
+    if (value !== null && value !== "") out[key] = value;
+    else if (editing) out[key] = null;
+  };
+  opt("buy_url", optional(form, "buy_url"));
+  opt("image_url", optional(form, "image_url"));
+  opt("coupon_code", optional(form, "coupon_code"));
+  opt("deal_starts_at", dealDate(str(form, "deal_starts_at"), false));
+  opt("deal_ends_at", dealDate(str(form, "deal_ends_at"), true));
+  const retailer = str(form, "retailer");
+  if (retailer || editing) out.retailer = retailer;
+  return out;
 }

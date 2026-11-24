@@ -119,7 +119,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
                 <FeedCard row={row}>
                   {row.entry.status === "listed" && (
                     <div className="mt-1 flex flex-wrap items-start gap-2">
-                      {!row.item.purchase && <MarkBought itemId={row.item.id} entryId={row.entry.id} entry={row.entry} />}
+                      {!row.item.purchase && <MarkBought itemId={row.item.id} entryId={row.entry.id} />}
                       <details className="min-w-0 flex-1">
                         <summary className="btn btn-ghost btn-xs w-fit">Comment</summary>
                         <div className="mt-2">

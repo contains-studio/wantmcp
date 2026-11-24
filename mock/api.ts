@@ -92,6 +92,16 @@ function sameActor(a: ActorRef, c: NonNullable<Caller>): boolean {
   return a.kind === "user" && a.handle === c.user.handle;
 }
 
+/** Content counts as the caller's own if they posted it, or one of their agents did. */
+function ownsContent(a: ActorRef, c: NonNullable<Caller>): boolean {
+  if (sameActor(a, c)) return true;
+  return c.kind === "user" && a.kind === "agent" && a.owner_handle === c.user.handle;
+}
+
+function requireAuthorOrOwner(a: ActorRef, c: NonNullable<Caller>, listId: string, what: string) {
+  if (!ownsContent(a, c) && roleOf(c, listId) !== "owner") throw forbidden(`Only whoever posted this ${what}, or the list owner, can change it`);
+}
+
 function getList(id: string): ListRow {
   const l = store.lists.find((x) => x.id === id);
   if (!l) throw notFound("List not found");
@@ -166,6 +176,13 @@ function text(field: string, v: unknown, max: number, required = false): string 
   if (required && !s) throw invalid(`${field} is required`);
   if (s.length > max) throw invalid(`${field} is too long (max ${max})`);
   return s;
+}
+
+function timestamp(field: string, v: unknown): string | null {
+  if (v == null || v === "") return null;
+  const t = Date.parse(String(v));
+  if (!Number.isFinite(t)) throw invalid(`${field} must be an ISO 8601 timestamp`);
+  return new Date(t).toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
 function decimal(field: string, v: unknown, required = false): string | null {
@@ -403,12 +420,28 @@ route("GET", "/me/agents", ({ caller, url }) => {
     .map(agentOut);
 });
 
-route("DELETE", "/agents/{id}", ({ caller, params }) => {
+route("DELETE", "/agents/{id}", ({ caller, params, url }) => {
   const c = requireSession(caller);
   const a = store.agents.find((x) => x.id === params[0]);
+  const listId = url.searchParams.get("list_id");
+  if (a && a.owner_id !== c.user.id && listId && a.list_ids.includes(listId) && roleOf(c, listId) === "owner") {
+    // The list owner removes someone else's agent from this list only.
+    a.list_ids = a.list_ids.filter((id) => id !== listId);
+    return store.agents.filter((x) => x.list_ids.includes(listId)).map(agentOut);
+  }
   if (!a || a.owner_id !== c.user.id) throw notFound("Agent not found");
   store.agents = store.agents.filter((x) => x !== a);
   return store.agents.filter((x) => x.owner_id === c.user.id).map(agentOut);
+});
+
+route("GET", "/lists/{id}/agents", ({ caller, params }) => {
+  const c = requireSession(caller);
+  const l = getList(params[0]);
+  const role = roleOf(c, l.id);
+  if (!role) throw forbidden();
+  return store.agents
+    .filter((a) => a.list_ids.includes(l.id) && (role === "owner" || a.owner_id === c.user.id))
+    .map(agentOut);
 });
 
 // public feed + lists
@@ -511,16 +544,25 @@ route("DELETE", "/lists/{id}/members/{member_id}", ({ caller, params }) => {
   return store.members.filter((x) => x.list_id === params[0]).map((x) => memberOut(x, true));
 });
 
+route("GET", "/invites/{token}", ({ params }) => {
+  const m = store.members.find((x) => x.token === params[0]);
+  if (!m) throw notFound("This invite has expired or was revoked");
+  const l = getList(m.list_id);
+  return { list: { id: l.id, title: l.title, owner_handle: userById(l.owner_id).handle }, status: m.status };
+});
+
 route("POST", "/invites/{token}/accept", ({ caller, params }) => {
   const c = requireSession(caller);
   const m = store.members.find((x) => x.token === params[0]);
   if (!m) throw notFound("This invite has expired or was revoked");
-  if (store.members.some((x) => x.list_id === m.list_id && x.user_id === c.user.id && x.status === "active")) {
+  if (m.status === "active") {
+    if (m.user_id !== c.user.id) throw new HttpError(409, "conflict", "This invite has already been used");
+  } else if (store.members.some((x) => x.list_id === m.list_id && x.user_id === c.user.id && x.status === "active")) {
     store.members = store.members.filter((x) => x !== m);
   } else {
+    // The token stays on the row so GET /invites/{token} can report "active".
     m.user_id = c.user.id;
     m.status = "active";
-    m.token = null;
   }
   return listSummary(getList(m.list_id), c);
 });
@@ -556,6 +598,7 @@ route("POST", "/lists/{id}/items", ({ caller, params, body }) => {
 route("PATCH", "/items/{id}", ({ caller, params, body }) => {
   const i = getItem(params[0]);
   const c = requireWriter(caller, i.list_id);
+  requireAuthorOrOwner(i.created_by, c, i.list_id, "item");
   i.text = text("text", body.text, 500, true);
   touch(i.list_id);
   return itemOut(i, c);
@@ -564,6 +607,7 @@ route("PATCH", "/items/{id}", ({ caller, params, body }) => {
 route("DELETE", "/items/{id}", ({ caller, params }) => {
   const i = getItem(params[0]);
   const c = requireWriter(caller, i.list_id);
+  requireAuthorOrOwner(i.created_by, c, i.list_id, "item");
   const out = itemOut(i, c);
   store.items = store.items.filter((x) => x !== i);
   store.entries = store.entries.filter((e) => e.item_id !== i.id);
@@ -640,8 +684,8 @@ route("POST", "/items/{id}/entries", ({ caller, params, body }) => {
     image_url: checkUrl("image_url", input.image_url),
     retailer: text("retailer", input.retailer, 80) || new URL(productUrl).hostname.replace(/^www\./, ""),
     coupon_code: text("coupon_code", input.coupon_code, 40) || null,
-    deal_starts_at: input.deal_starts_at ?? null,
-    deal_ends_at: input.deal_ends_at ?? null,
+    deal_starts_at: timestamp("deal_starts_at", input.deal_starts_at),
+    deal_ends_at: timestamp("deal_ends_at", input.deal_ends_at),
     created_at: t, updated_at: t, promoted_by: null, promoted_at: null,
   };
   store.entries.push(e);
@@ -656,13 +700,17 @@ route("POST", "/items/{id}/entries", ({ caller, params, body }) => {
 route("PATCH", "/entries/{id}", ({ caller, params, body }) => {
   const e = getEntry(params[0]);
   const c = requireWriter(caller, e.list_id);
-  if (!sameActor(e.author, c) && roleOf(c, e.list_id) !== "owner") throw forbidden("Only the author or list owner can edit this");
+  requireAuthorOrOwner(e.author, c, e.list_id, "product");
   const input = body as Partial<EntryInput>;
   if (input.title !== undefined) e.title = text("title", input.title, 140, true);
   if (input.description !== undefined) e.description = text("description", input.description, 500);
   if (input.product_url !== undefined) e.product_url = checkUrl("product_url", input.product_url, true)!;
+  if (input.buy_url !== undefined) e.buy_url = checkUrl("buy_url", input.buy_url);
   if (input.image_url !== undefined) e.image_url = checkUrl("image_url", input.image_url);
-  if (input.coupon_code !== undefined) e.coupon_code = input.coupon_code || null;
+  if (input.retailer !== undefined) e.retailer = text("retailer", input.retailer, 80) || new URL(e.product_url).hostname.replace(/^www\./, "");
+  if (input.coupon_code !== undefined) e.coupon_code = text("coupon_code", input.coupon_code, 40) || null;
+  if (input.deal_starts_at !== undefined) e.deal_starts_at = timestamp("deal_starts_at", input.deal_starts_at);
+  if (input.deal_ends_at !== undefined) e.deal_ends_at = timestamp("deal_ends_at", input.deal_ends_at);
   e.updated_at = nowIso();
   return entryOut(e);
 });
@@ -670,7 +718,7 @@ route("PATCH", "/entries/{id}", ({ caller, params, body }) => {
 route("DELETE", "/entries/{id}", ({ caller, params }) => {
   const e = getEntry(params[0]);
   const c = requireWriter(caller, e.list_id);
-  if (!sameActor(e.author, c) && roleOf(c, e.list_id) !== "owner") throw forbidden("Only the author or list owner can remove this");
+  requireAuthorOrOwner(e.author, c, e.list_id, "product");
   store.entries = store.entries.filter((x) => x !== e);
   return entryOut(e);
 });
@@ -695,6 +743,17 @@ route("POST", "/entries/{id}/reject", ({ caller, params }) => {
   const out = entryOut(e);
   e.status = "rejected";
   return out;
+});
+
+route("GET", "/lists/{id}/prices", ({ caller, params }) => {
+  const l = getList(params[0]);
+  const writer = canWrite(caller, l.id);
+  const prices: Record<string, PriceObservation[]> = {};
+  for (const e of store.entries) {
+    if (e.list_id !== l.id || e.status === "rejected" || (e.status === "suggested" && !writer)) continue;
+    prices[e.id] = pricesFor(e.id);
+  }
+  return { prices };
 });
 
 route("GET", "/lists/{id}/suggestions", ({ caller, params, url }) => {
@@ -764,7 +823,7 @@ route("DELETE", "/comments/{id}", ({ caller, params }) => {
   const cm = store.comments.find((x) => x.id === params[0]);
   if (!cm) throw notFound("Comment not found");
   const c = requireWriter(caller, cm.list_id);
-  if (!sameActor(cm.author, c) && roleOf(c, cm.list_id) !== "owner") throw forbidden("Only the author or list owner can delete this");
+  requireAuthorOrOwner(cm.author, c, cm.list_id, "comment");
   store.comments = store.comments.filter((x) => x !== cm);
   return cm;
 });

@@ -6,3 +6,7 @@
 #   http://localhost:8787/v1      a local copy of the real API server
 API_BASE_URL=mock
 SITE_ORIGIN=http://localhost:5173
+
+# Optional. Must match the API server's WEB_PROXY_SECRET for it to trust x-forwarded-for.
+# In production set it with: pnpm wrangler secret put WEB_PROXY_SECRET
+WEB_PROXY_SECRET=

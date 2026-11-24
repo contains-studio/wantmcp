@@ -10,6 +10,7 @@ import { PriceSparkline, PriceTable } from "./PriceHistory";
 import { ProductImage } from "./ProductImage";
 import { ReportLink } from "./Report";
 import { Time } from "./Time";
+import { EntryForm, PostPrice, RemoveButton } from "./WriteTools";
 
 export function PriceBlock({ price, size = "lg" }: { price: PriceObservation | null; size?: "lg" | "md" }) {
   if (!price) return <p className="text-sm text-ink-3">No price yet</p>;
@@ -51,12 +52,14 @@ export interface EntryCardProps {
   boughtThis: boolean;
   itemPurchased: boolean;
   canWrite: boolean;
+  /** May edit or remove this entry (its author, their own person, or the list owner). */
+  canEdit?: boolean;
   canDeleteComment: (c: Comment) => boolean;
   eagerImage?: boolean;
 }
 
 /** One product found for an item. Price first, then deal details, then who found it. */
-export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemPurchased, canWrite, canDeleteComment, eagerImage }: EntryCardProps) {
+export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemPurchased, canWrite, canEdit, canDeleteComment, eagerImage }: EntryCardProps) {
   const now = useNow();
   const cur = entry.current_price;
   const titleId = `${entry.id}-title`;
@@ -124,7 +127,7 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
               Buy<span className="sr-only"> {entry.title} (new tab)</span> ↗
             </ExtLink>
           )}
-          {canWrite && !itemPurchased && <MarkBought itemId={entry.item_id} entryId={entry.id} entry={entry} />}
+          {canWrite && !itemPurchased && <MarkBought itemId={entry.item_id} entryId={entry.id} />}
           <span className="ml-auto">
             <ReportLink type="entry" id={entry.id} />
           </span>
@@ -132,6 +135,14 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
 
         {(entry.price_count > 1 || comments.length > 0 || canWrite) && (
           <div className="grid gap-1">
+            {canWrite && (
+              <details id={`${entry.id}-price`} className="group">
+                <summary className="textlink-btn text-[0.8rem]">
+                  Post a new price <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+                </summary>
+                <PostPrice entry={entry} />
+              </details>
+            )}
             {prices && prices.length > 1 && (
               <details className="group">
                 <summary className="textlink-btn text-[0.8rem]">
@@ -154,6 +165,22 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
                 </div>
               </details>
             )}
+            {canEdit && (
+              <div className="flex flex-wrap items-start gap-x-4 gap-y-1">
+                <details className="group w-full">
+                  <summary className="textlink-btn text-[0.8rem]">
+                    Edit product <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+                  </summary>
+                  <EntryForm itemId={entry.item_id} entry={entry} />
+                </details>
+                <RemoveButton
+                  intent="delete-entry"
+                  fields={{ entry_id: entry.id }}
+                  label="Remove product"
+                  confirmText={`Remove “${entry.title}” from this item? Its price history and comments go too.`}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -161,20 +188,14 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
   );
 }
 
-export function MarkBought({ itemId, entryId, entry }: { itemId: string; entryId?: string; entry?: Pick<Entry, "retailer" | "current_price"> }) {
+/** "Bought this": the API copies the price and retailer from the entry. */
+export function MarkBought({ itemId, entryId }: { itemId: string; entryId?: string }) {
   const fetcher = useFetcher();
   return (
     <fetcher.Form method="post">
       <input type="hidden" name="intent" value="purchase" />
       <input type="hidden" name="item_id" value={itemId} />
       {entryId && <input type="hidden" name="entry_id" value={entryId} />}
-      {entry?.retailer && <input type="hidden" name="retailer" value={entry.retailer} />}
-      {entry?.current_price && (
-        <>
-          <input type="hidden" name="price" value={entry.current_price.price} />
-          <input type="hidden" name="currency" value={entry.current_price.currency} />
-        </>
-      )}
       <button className="btn btn-ghost btn-xs" disabled={fetcher.state !== "idle"}>
         {fetcher.state !== "idle" ? "Saving…" : entryId ? "Bought this" : "Mark bought"}
       </button>

@@ -168,6 +168,27 @@ export interface Page<T> {
   next_cursor: string | null;
 }
 
+/** Error codes in the `{ error: { code, message } }` envelope. HTTP status in comments. */
+export type ErrorCode =
+  | "unauthorized" // no or bad credential: HTTP 401, MCP auth challenge
+  | "forbidden" // credential lacks access to this list: HTTP 403
+  | "not_found"
+  | "invalid" // validation failed, including link checks
+  | "conflict"
+  | "rate_limited"
+  | "not_implemented";
+
+/** GET /lists/{id}/prices: price history for every entry the caller can see on the list, oldest first. */
+export interface ListPrices {
+  prices: Record<string, PriceObservation[]>;
+}
+
+/** GET /invites/{token}: what an invite link points at. Never includes the invited email. */
+export interface InvitePreview {
+  list: Pick<ListSummary, "id" | "title" | "owner_handle">;
+  status: "invited" | "active" | "revoked";
+}
+
 export interface ApiError {
   error: { code: ErrorCode; message: string; details?: unknown };
 }
@@ -206,14 +227,5 @@ export interface PurchaseInput {
   entry_id?: string | null;
 }
 
-/** Error codes in `ApiError.error.code`. */
-export type ErrorCode =
-  | "unauthorized" // no or bad credential: HTTP 401
-  | "forbidden" // credential lacks access to this list: HTTP 403
-  | "not_found"
-  | "invalid" // validation failed, including link checks
-  | "conflict"
-  | "rate_limited"
-  | "not_implemented";
 
 export type ReportTargetType = "list" | "item" | "entry" | "comment";

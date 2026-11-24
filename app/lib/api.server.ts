@@ -1,15 +1,17 @@
 import { redirect } from "react-router";
-import { apiBaseUrl } from "./config.server";
+import { apiBaseUrl, proxySecret } from "./config.server";
 import { getSessionToken } from "./session.server";
 import type { ApiError as ApiErrorBody, ErrorCode } from "./types";
 
 export class ApiError extends Error {
   status: number;
   code: ErrorCode | "network" | "internal";
-  constructor(status: number, code: ApiError["code"], message: string) {
+  details?: unknown;
+  constructor(status: number, code: ApiError["code"], message: string, details?: unknown) {
     super(message);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -52,8 +54,14 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
   const token = init.anonymous ? null : init.token !== undefined ? init.token : getSessionToken(request);
   if (token) headers.set("authorization", `Bearer ${token}`);
   if (init.body !== undefined) headers.set("content-type", "application/json");
+  // The API trusts the forwarded client address (for rate limits) only alongside the
+  // proxy secret, which is a Worker secret and never reaches the browser.
   const ip = request.headers.get("cf-connecting-ip");
-  if (ip) headers.set("x-forwarded-for", ip);
+  const secret = proxySecret();
+  if (ip && secret) {
+    headers.set("x-forwarded-for", ip);
+    headers.set("x-wantmcp-proxy-secret", secret);
+  }
 
   let res: Response;
   try {
@@ -79,16 +87,29 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
   }
   if (!res.ok) {
     const err = (data as ApiErrorBody | null)?.error;
-    throw new ApiError(res.status, err?.code ?? "internal", err?.message ?? `API error ${res.status}`);
+    throw new ApiError(res.status, err?.code ?? "internal", err?.message ?? `API error ${res.status}`, err?.details);
   }
   return data as T;
 }
 
+/**
+ * Call an endpoint that an older API server may not have yet. Returns `null` on 404
+ * (or 405/501) so the caller can fall back; other errors still throw.
+ */
+export async function apiOptional<T>(request: Request, path: string, init: ApiInit = {}): Promise<T | null> {
+  try {
+    return await api<T>(request, path, init);
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 405 || err.status === 501)) return null;
+    throw err;
+  }
+}
+
 /** Turn an ApiError into something a form can show; rethrow anything else. */
-export function formError(err: unknown): { error: string; code?: string } {
+export function formError(err: unknown): { error: string; code?: string; details?: unknown } {
   if (err instanceof ApiError) {
     if (err.status === 401) throw redirect("/login");
-    return { error: err.message, code: err.code };
+    return { error: err.message, code: err.code, details: err.details };
   }
   throw err;
 }
