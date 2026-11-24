@@ -13,9 +13,14 @@ export function ReportLink({ type, id, label = "Report" }: { type: ReportTargetT
         {label}
         <span className="sr-only"> this {type}</span>
       </summary>
-      <div className="card absolute right-0 z-20 mt-2 w-[min(18rem,80vw)] p-3 text-left">
+      <div className="card fixed inset-x-4 bottom-4 z-40 p-4 text-left sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:mt-2 sm:w-72 sm:p-3">
         {done ? (
-          <p role="status" className="text-sm">Thanks. We'll take a look.</p>
+          <div className="flex items-center justify-between gap-2">
+            <p role="status" className="text-sm">Thanks. We'll take a look.</p>
+            <button type="button" className="btn btn-ghost btn-xs" onClick={(e) => e.currentTarget.closest("details")?.removeAttribute("open")}>
+              Close
+            </button>
+          </div>
         ) : (
           <fetcher.Form method="post" action="/report" className="grid gap-2">
             <input type="hidden" name="target_type" value={type} />
@@ -34,9 +39,14 @@ export function ReportLink({ type, id, label = "Report" }: { type: ReportTargetT
               <textarea name="details" maxLength={800} className="textarea min-h-14 text-sm" />
             </label>
             {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
-            <button className="btn btn-sm" disabled={fetcher.state !== "idle"}>
-              {fetcher.state !== "idle" ? "Sending…" : "Send report"}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => e.currentTarget.closest("details")?.removeAttribute("open")}>
+                Cancel
+              </button>
+              <button className="btn btn-sm" disabled={fetcher.state !== "idle"}>
+                {fetcher.state !== "idle" ? "Sending…" : "Send report"}
+              </button>
+            </div>
           </fetcher.Form>
         )}
       </div>

@@ -102,18 +102,18 @@ function Header() {
   const { user } = useRootData();
   const nav = useNavigation();
   const navCls = ({ isActive }: { isActive: boolean }) =>
-    `rounded-full px-3 py-2 text-[0.92rem] font-semibold ${isActive ? "bg-sunk text-ink" : "text-ink-2 hover:text-ink"}`;
+    `whitespace-nowrap rounded-full px-2.5 py-2 text-[0.9rem] font-semibold sm:px-3 ${isActive ? "bg-sunk text-ink" : "text-ink-2 hover:text-ink"}`;
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-md supports-[backdrop-filter]:bg-paper/75">
       <div
         aria-hidden="true"
         className={`absolute inset-x-0 top-0 h-0.5 origin-left bg-want transition-transform duration-500 ${nav.state === "idle" ? "scale-x-0" : "scale-x-75"}`}
       />
-      <div className="wrap flex h-16 items-center gap-2">
+      <div className="wrap flex h-16 items-center gap-1 sm:gap-2">
         <Link to="/" className="mr-auto rounded-md py-1" aria-label="The Want MCP, home">
           <Wordmark />
         </Link>
-        <nav aria-label="Main" className="flex items-center gap-1">
+        <nav aria-label="Main" className="flex items-center gap-0.5 sm:gap-1">
           <NavLink to="/connect" className={navCls}>
             Connect
           </NavLink>

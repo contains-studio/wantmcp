@@ -314,7 +314,7 @@ function ItemSection({
               {n}
             </span>
           )}
-          <h2 id={headingId} className={`text-[1.45rem] font-bold sm:text-[1.7rem] ${p ? "text-ink-2" : ""}`}>
+          <h2 id={headingId} className={`text-[1.25rem] font-bold sm:text-[1.7rem] ${p ? "text-ink-2" : ""}`}>
             {item.text}
           </h2>
         </div>
