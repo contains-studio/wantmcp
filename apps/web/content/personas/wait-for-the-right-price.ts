@@ -4,10 +4,10 @@ export default {
   slug: "wait-for-the-right-price",
   order: 2,
   group: "deals",
-  title: "Wait for your price, with every check on record",
+  title: "Set a target price and keep every check on record",
   description:
     "Write down the exact model and the price you'll pay. Each time your agent re-checks, the new price joins the history, so you can see when it's time to buy.",
-  h1: "Buy when it reaches your price",
+  h1: "Your target price, and every check on record",
   intro: "Name the model and your number. Ask your agent to re-check, or set up a schedule in your assistant, and every price it posts lands in the item's history.",
   label: "Waiting for a target price",
   index: true,

@@ -1,4 +1,5 @@
 import { data, Form, Link, redirect } from "react-router";
+import { cleanRef, RefField } from "~/lib/ref";
 import type { Route } from "./+types/start";
 import { api } from "~/lib/api.server";
 import { SEASON } from "~/lib/season";
@@ -35,9 +36,9 @@ export async function action({ request }: Route.ActionArgs) {
   if (!getSessionToken(request)) throw redirect(`/login?next=${encodeURIComponent(`/start?occasion=${occasion}`)}`);
   try {
     // A gift list is private: it must never appear publicly (or on the home page) by default.
-    const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: SEASON.listTitle[occasion], format: "shopping", visibility: "private" } });
+    const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: SEASON.listTitle[occasion], format: "shopping", visibility: "private" }, ref: cleanRef(form.get("ref")) });
     await api(request, `/lists/${list.id}`, { method: "PATCH", body: { theme: resolveLook(`sheet--${occasion}`, "shopping").slug } }).catch(() => null);
-    return redirect(`/l/${list.id}`);
+    return redirect(`/l/${list.id}?new=1`);
   } catch {
     return data({ error: "That didn't work. Try again in a moment." }, 502);
   }
@@ -50,6 +51,7 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
       <p className="text-ink-2">A private shopping list in the {loaderData.look} look: only you and people you invite can see it. You can rename it and change the look later.</p>
       <Form method="post">
         <input type="hidden" name="occasion" value={loaderData.occasion} />
+        <RefField />
         <button className="btn btn-want">Start the list</button>
       </Form>
       {actionData && "error" in actionData && <p className="form-error">{actionData.error}</p>}

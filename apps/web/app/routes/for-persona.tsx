@@ -1,11 +1,12 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
+import { cleanRef, RefField } from "~/lib/ref";
 import type { Route } from "./+types/for-persona";
 import { ListView } from "~/components/ListView";
 import { HeadingBase } from "~/components/preview";
 import { api } from "~/lib/api.server";
 import { siteOrigin } from "~/lib/config.server";
 import { PERSONA_GROUPS } from "~/lib/personas";
-import { personaBySlug } from "~/lib/personas.server";
+import { PERSONAS, personaBySlug } from "~/lib/personas.server";
 import { buildSample, DEFAULT_LOOK } from "~/lib/samples";
 import { useRootData } from "~/lib/hooks";
 import { assertSameOrigin, getSessionToken } from "~/lib/session.server";
@@ -26,7 +27,12 @@ export function loader({ request, params }: Route.LoaderArgs) {
     return { format, theme, sample: buildSample(spec, { id: `s-${format}`, now, url: `${origin}/for/${persona.slug}` }) };
   });
   const { lists: _specs, ...page } = persona;
-  return { persona: page, lists, origin };
+  // Three related pages: the same group first, then neighbours, indexed pages only.
+  const others = PERSONAS.filter((p) => p.slug !== persona.slug && p.index);
+  const related = [...others.filter((p) => p.group === persona.group), ...others.filter((p) => p.group !== persona.group)]
+    .slice(0, 3)
+    .map((p) => ({ slug: p.slug, title: p.title }));
+  return { persona: page, lists, origin, related };
 }
 
 export function headers() {
@@ -63,20 +69,20 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (!getSessionToken(request)) throw redirect(`/login?next=${encodeURIComponent(`/for/${persona.slug}#start-${format}`)}`);
   const spec = persona.lists[format];
   try {
-    const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: spec.title, format, visibility: "private" } });
+    const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: spec.title, format, visibility: "private" }, ref: cleanRef(form.get("ref")) });
     const look = resolveLook(spec.look ?? DEFAULT_LOOK[format], format).slug;
     if (look !== resolveLook(DEFAULT_LOOK[format], format).slug) await api(request, `/lists/${list.id}`, { method: "PATCH", body: { theme: look } }).catch(() => null);
     for (const item of spec.items) {
       await api(request, `/lists/${encodeURIComponent(list.id)}/items`, { method: "POST", body: { text: item.want, ...(item.details ? { details: item.details } : {}) } });
     }
-    return redirect(`/l/${list.id}`);
+    return redirect(`/l/${list.id}?new=1`);
   } catch {
     return data({ error: "That didn't work. Try again in a moment." }, 502);
   }
 }
 
 export default function ForPersona({ loaderData, actionData }: Route.ComponentProps) {
-  const { persona: p, lists, origin } = loaderData;
+  const { persona: p, lists, origin, related } = loaderData;
   const nav = useNavigation();
   const { user } = useRootData();
   const starting = nav.state !== "idle" ? nav.formData?.get("format") : null;
@@ -99,6 +105,7 @@ export default function ForPersona({ loaderData, actionData }: Route.ComponentPr
               </h2>
               <Form method="post" className="flex items-center gap-2">
                 <input type="hidden" name="format" value={format} />
+                <RefField />
                 <button className="btn btn-sm" disabled={starting === format}>
                   {starting === format ? "Creating…" : "Start with this list"}
                 </button>
@@ -139,10 +146,30 @@ export default function ForPersona({ loaderData, actionData }: Route.ComponentPr
             Connect an agent
           </Link>
         </div>
-        <Link to="/for" className="link text-[0.9rem] text-ink-3">
-          More lists for other jobs
-        </Link>
       </section>
+
+      <nav aria-labelledby="related-h" className="wrap grid gap-3 border-t border-line py-10">
+        <h2 id="related-h" className="text-[1rem] font-semibold">
+          Related
+        </h2>
+        <ul className="grid gap-2 sm:grid-cols-3 sm:gap-6">
+          {related.map((r) => (
+            <li key={r.slug}>
+              <Link to={`/for/${r.slug}`} className="link">
+                {r.title}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <p className="flex flex-wrap gap-x-6 gap-y-2 text-[0.9rem]">
+          <Link to="/connect" className="link">
+            Connect your AI app
+          </Link>
+          <Link to="/for" className="link text-ink-3">
+            Lists for other jobs
+          </Link>
+        </p>
+      </nav>
     </div>
   );
 }

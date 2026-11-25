@@ -10,22 +10,21 @@ test("the top bar has no appearance control; the page follows the device", async
   expect(bg).toBe("rgb(0, 0, 0)");
 });
 
-test("appearance is set on the account page, saved for this browser", async ({ page }) => {
+test("appearance is set on the account page the moment it's picked, saved for this browser", async ({ page }) => {
   await signIn(page, freshEmail("appearance"));
   await page.goto("/app/account");
   const section = page.locator("section[aria-labelledby='appearance-h']");
   await expect(section.getByRole("radio", { name: "Match device" })).toBeChecked();
+  await expect(section.getByRole("button", { name: "Save" })).toHaveCount(0);
   await section.getByRole("radio", { name: "Dark" }).check();
-  await section.getByRole("button", { name: "Save" }).click();
-  await expect(section.getByText("Saved.")).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(section.getByText("Appearance saved.")).toBeAttached();
   // A cookie, read on the server: the next page renders dark with no flash, signed in or out.
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.goto("/app/account");
   await section.getByRole("radio", { name: "Match device" }).check();
-  await section.getByRole("button", { name: "Save" }).click();
-  await expect(section.getByText("Saved.")).toBeVisible();
+  await expect(section.getByText("Appearance saved.")).toBeAttached();
   await page.reload();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
 });

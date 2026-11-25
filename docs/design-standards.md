@@ -185,6 +185,32 @@ on Escape or a click outside, and sit above clipped containers. On phones they o
 the bottom of the screen. Quiet controls look light but keep the full touch target (44px on
 touch screens).
 
+## Home for signed-in people
+
+`/app` answers two questions in this order: what needs me, then how my lists are doing. One
+column, at most 760px wide, cards on the grey band, the same on every screen.
+
+- **Top bar** when signed in: Connect, Lists, Account. Nothing else; counts live on the page.
+- **Heading:** h1 "Your lists" with "+ New list" (the one primary action), then a two-link switch,
+  Lists | Activity (real links, the current one marked with `aria-current`).
+- **Waiting on you** comes first, with its count on the heading: one card per question, each
+  option answers in one tap, plus "Something else…". Three shown, then "Show all (n)". An answer
+  is confirmed in a live region.
+- **A list card** is one link (the title, stretched over the card) and three lines at most:
+  the meta line (Private, counts in the list's own words, "Shared with n people" or "by owner",
+  "n waiting on you"); a progress bar once something is done; the latest thing an agent did, or
+  "No agent has worked on this yet. Connect one". Beside the title: "+ Add" (one field, this
+  list's own words, no list picker) and a "⋯" menu (Settings, Share, Delete with confirmation).
+- **Activity** is its own view at `/app/activity`: list chips, one or two lines a row, a
+  thumbnail only for a real image, Comment the only action. Rows may vanish between loads
+  (deleted on the server); the view never breaks on that.
+- **First run** is one card with three real actions (make a list, add to it, connect an agent);
+  the bio prompt sits inside it. It goes when there is a list and an agent.
+- **After making a list**, the list opens with one next step, "Give this list to your agent":
+  the prompt with Copy, chat-app shortcuts to their steps on `/connect`, and "Or add what you
+  want first". It stays until an agent connects or writes, or the person dismisses it.
+- A filter field appears only above eight lists. Everything works without JavaScript.
+
 ## Colour roles
 
 | Token | Role |

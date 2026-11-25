@@ -296,7 +296,7 @@
 }
 
 /* A list page fills at least the viewport below the site header with the theme's own surface. */
-.themed.list-page { min-height: calc(100dvh - 4.0625rem); }
+/* No minimum height: the page ends where the list ends and the footer follows (owner, 25 Nov). */
 
 /* Themes with a fixed identity look the same in light and dark (their palettes are equal). */
 .themed.scheme-dark { color-scheme: dark; }
@@ -585,6 +585,16 @@ button.check-toggle:hover { border-color: var(--ink); }
   .menu-sub-body { padding: 0.5rem 0.75rem 0.75rem; }
   .menu-sub-body > form, .menu-sub-body > .grid { margin-top: 0; }
 
+  /* /app: "Lists | Activity" as two real links in a quiet segmented pill. */
+  .view-switch { display: inline-flex; width: fit-content; gap: 0.25rem; padding: 0.25rem; border-radius: 980px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+  .view-tab { display: inline-flex; align-items: center; min-height: var(--ctl-sm); padding: 0 1rem; border-radius: 980px; color: var(--ink-2); font-size: 0.95rem; font-weight: 500; text-decoration: none; }
+  .view-tab:hover { color: var(--ink); }
+  .view-tab.is-on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+  /* Filter chips that are links (one control: which list to show). */
+  .chip-link { display: inline-flex; align-items: center; min-height: var(--ctl-sm); padding: 0 0.9rem; border-radius: 980px; background: var(--card); color: var(--ink-2); font-size: 0.9rem; text-decoration: none; }
+  .chip-link:hover { color: var(--ink); }
+  .chip-link.is-on { background: var(--ink); color: var(--paper); }
+
   /* The list header: the title with icon-only actions at its right end, on every screen. */
   .list-titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
   .list-titlebar > .list-title { flex: 1 1 auto; min-width: 0; margin: 0; }
@@ -659,6 +669,7 @@ button.check-toggle:hover { border-color: var(--ink); }
     .btn-quiet, .menu-trigger, .menu-item, .add-link, .textarea.textarea-grow { min-height: var(--ctl); }
     .btn-icon { width: var(--ctl); height: var(--ctl); }
     .btn-tool { min-width: var(--ctl); min-height: var(--ctl); }
+    .view-tab, .chip-link { min-height: var(--ctl); }
     .menu-trigger { min-width: var(--ctl); }
   }
 
@@ -744,6 +755,18 @@ button.check-toggle:hover { border-color: var(--ink); }
   }
 
   details > summary { cursor: pointer; list-style: none; }
+  /* "a · b · c" that wraps as whole items and never starts a line with a dot: each item's dot sits in the gap
+     before it, and the row is shifted left by one gap and clipped, so the first dot of every line falls outside. */
+  .meta-line > div { overflow: hidden; padding: 4px; margin: -4px; }
+  .meta-line > div > div { display: flex; flex-wrap: wrap; align-items: center; row-gap: 0.25rem; margin-left: -1.1rem; }
+  .meta-item { position: relative; margin-left: 1.1rem; white-space: nowrap; }
+  .meta-item::before { content: "·"; position: absolute; left: -0.75rem; top: 50%; transform: translateY(-50%); color: var(--ink-3); }
+  /* A visitor's open item: no box (nothing to tick), a small dot where the box would be. Beats every layout's box style. */
+  .check-toggle.status-open, .themed .check-toggle.status-open { border-color: transparent !important; background: transparent !important; box-shadow: none !important; }
+  .check-toggle.status-open::after { content: ""; width: 0.4rem; height: 0.4rem; border-radius: 999px; background: var(--ink-3); margin: auto; }
+  /* A long prompt: three lines while closed, the whole text when open. */
+  .prompt-peek[open] > summary { display: none; }
+  .prompt-peek-text { display: block; white-space: pre-wrap; max-height: 6.6em; overflow: hidden; mask-image: linear-gradient(to bottom, #000 60%, transparent); }
   details > summary::-webkit-details-marker { display: none; }
 
   .divider-dots { background-image: radial-gradient(var(--line-strong) 1px, transparent 1.2px); background-size: 8px 8px; height: 8px; }

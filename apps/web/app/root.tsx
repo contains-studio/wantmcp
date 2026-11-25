@@ -73,28 +73,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 
 /** "My lists", with how many questions wait on the person (SPEC 12.1). Loaded after the page so it never slows it. */
-function MyListsLink({ className }: { className: (s: { isActive: boolean }) => string }) {
-  const fetcher = useFetcher<{ count: number }>();
-  const location = useLocation();
-  useEffect(() => {
-    fetcher.load("/waiting");
-    // Reload on navigation: answering a question changes the count.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search]);
-  const count = fetcher.data?.count ?? 0;
-  return (
-    <NavLink to="/app" className={className} end={false}>
-      My lists
-      {count > 0 && (
-        <>
-          <span className="sr-only">,</span>
-          <span className="ml-1.5 inline-grid min-w-5 place-items-center rounded-[3px] bg-ink px-1 text-[0.72rem] font-semibold text-paper">{count}</span>
-          <span className="sr-only"> waiting on you</span>
-        </>
-      )}
-    </NavLink>
-  );
-}
 
 function Header() {
   const { user } = useRootData();
@@ -117,7 +95,14 @@ function Header() {
             Connect
           </NavLink>
           {user ? (
-            <MyListsLink className={navCls} />
+            <>
+              <NavLink to="/app" className={navCls} end={false}>
+                Lists
+              </NavLink>
+              <NavLink to="/app/account" className={navCls}>
+                Account
+              </NavLink>
+            </>
           ) : (
             <NavLink to="/login" className={navCls}>
               Sign in
@@ -138,7 +123,7 @@ function Header() {
 function Footer() {
   const { sourceUrl } = useRootData();
   return (
-    <footer className="mt-24 border-t border-line bg-sunk">
+    <footer className="mt-16 flex-1 border-t border-line bg-sunk">
       <div className="wrap flex flex-col gap-4 py-10 text-[0.88rem] text-ink-3 sm:flex-row sm:items-center sm:justify-between">
         <Wordmark />
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -192,7 +177,7 @@ export default function App() {
   return (
     <>
       <Header />
-      <main id="main" className="flex-1" tabIndex={-1}>
+      <main id="main" tabIndex={-1}>
         <Outlet />
       </main>
       <Footer />
@@ -223,7 +208,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <title>{`${title} · The Want MCP`}</title>
       <meta name="robots" content="noindex" />
       <Header />
-      <main id="main" className="wrap flex-1 py-24">
+      <main id="main" className="wrap py-24">
         <p className="eyebrow">Error {status}</p>
         <h1 className="serif mt-2 text-[2.5rem] leading-tight sm:text-[3rem]">{title}</h1>
         <p className="mt-4 max-w-prose text-ink-2">{details}</p>

@@ -3,7 +3,7 @@ import { freshEmail, signIn } from "./helpers";
 
 // Pages from three different groups, all cleared for search.
 const PAGES = [
-  { slug: "black-friday-shopping-list", h1: "Know which Black Friday deals are real" },
+  { slug: "black-friday-shopping-list", h1: "A Black Friday list with the price before the sale" },
   { slug: "literature-review-tracker", h1: "Track the open questions in your literature review" },
   { slug: "task-list-for-multiple-coding-agents", h1: "A shared task list for your coding agents" },
 ];

@@ -1,4 +1,13 @@
+import { formatMoney } from "./format.ts";
 import type { Entry, PriceObservation } from "./types";
+
+/** "−$150.00 (−19%)" from the first price to the latest; null when it hasn't moved. */
+export function priceChangeLabel(first: number, last: number, currency: string): string | null {
+  const change = Math.round((last - first) * 100) / 100;
+  if (change === 0 || !first) return null;
+  const sign = change < 0 ? "−" : "+";
+  return `${sign}${formatMoney(Math.abs(change), currency, { cents: true })} (${sign}${Math.round((Math.abs(change) / first) * 100)}%)`;
+}
 
 /** SPEC 12.5: a price not checked for 24 hours is stale: shown muted, never "Lowest". */
 export const PRICE_FRESH_MS = 24 * 3600_000;

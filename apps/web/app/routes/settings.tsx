@@ -7,7 +7,7 @@ import { api, apiOptional, formError, toRouteError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin } from "~/lib/session.server";
-import type { AgentInfo, ListDetail, ListFormat, ListSummary, ListVisibility, Member } from "~/lib/types";
+import type { AgentInfo, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { ThemeThumb } from "~/components/ThemeThumb";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
@@ -74,7 +74,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   );
 }
 
-type ActionData = { ok?: boolean; error?: string; intent?: string; key?: string; agent?: AgentInfo; devInvite?: string };
+/** "3 people · 2 agents · 1 invited": who can write the list, from ListSummary.access (writers only). */
+function accessLine(a: ListSummary["access"]): string | null {
+  if (!a) return null;
+  const parts = [`${a.people} ${a.people === 1 ? "person" : "people"}`, `${a.agents} ${a.agents === 1 ? "agent" : "agents"}`];
+  if (a.pending_invites) parts.push(`${a.pending_invites} invited`);
+  return `${parts.join(" · ")} can write this list.`;
+}
+
+type ActionData = { ok?: boolean; error?: string; intent?: string; key?: string; agent?: AgentInfo; devInvite?: string; sent?: boolean };
 
 export async function action({ request, params }: Route.ActionArgs) {
   assertSameOrigin(request);
@@ -111,15 +119,15 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { ok: true, intent } satisfies ActionData;
       case "invite": {
         let devInvite: string | undefined;
-        await api(request, `/lists/${id}/members`, {
-          method: "POST",
-          body: { email: s("email") },
-          // A local API server echoes the invite token. Only surfaced in development builds.
-          onHeaders: (h) => {
-            if (import.meta.env.DEV) devInvite = h.get("x-dev-invite-token") ?? undefined;
-          },
-        });
-        return { ok: true, intent, devInvite } satisfies ActionData;
+        // A local API server echoes the invite token. Only surfaced in development builds.
+        const onHeaders = (h: Headers) => {
+          if (import.meta.env.DEV) devInvite = h.get("x-dev-invite-token") ?? undefined;
+        };
+        const body = { email: s("email"), ...(s("note") ? { note: s("note") } : {}) };
+        const res = await apiOptional<ShareListResult>(request, `/lists/${id}/invites`, { method: "POST", body, onHeaders });
+        // Older API builds only have POST /members (always sends).
+        if (!res) await api(request, `/lists/${id}/members`, { method: "POST", body: { email: s("email") }, onHeaders });
+        return { ok: true, intent, devInvite, sent: res ? res.sent : true } satisfies ActionData;
       }
       case "revoke-member":
         await api(request, `/lists/${id}/members/${encodeURIComponent(s("member_id"))}`, { method: "DELETE" });
@@ -254,7 +262,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         {err("revoke-agent")}
       </Section>
 
-      <Section id="members-h" title="People" desc={isOwner ? "They can add, tick off and connect their own agents." : undefined}>
+      <Section id="members-h" title="People" desc={accessLine(list.access) ?? (isOwner ? "They can add, tick off and connect their own agents." : undefined)}>
         <ul className="grid gap-2">
           {members.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
@@ -289,7 +297,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               {err("invite")}
               {result?.intent === "invite" && result.ok && (
                 <p className="form-ok">
-                  Invite sent.
+                  {result.sent === false ? "Already invited today. We didn't send another email." : "Invite sent."}
                   {result.devInvite && (
                     <>
                       {" "}Local dev: <Link to={`/invite/${result.devInvite}`} className="link">/invite/{result.devInvite}</Link>

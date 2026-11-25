@@ -23,15 +23,14 @@ export function acceptDialogs(page: Page) {
 
 /** Create a list from /app and land on its page; returns the list id. */
 export async function createList(page: Page, opts: { format: "Shopping" | "Tasks" | "Research"; title: string; visibility?: "Public" | "Private" }) {
-  await page.goto("/app");
-  const form = page.locator("#new-list");
-  if (!(await form.evaluate((d) => (d as { open?: boolean }).open))) await form.locator("summary").click();
+  await page.goto("/app/new");
+  const form = page.locator("main form");
   await form.getByRole("radio", { name: new RegExp(`^${opts.format}`) }).check();
   await form.locator('input[name="title"]').fill(opts.title);
   if (opts.visibility) await form.getByRole("radio", { name: new RegExp(`^${opts.visibility}`) }).check();
   await form.getByRole("button", { name: /^Create .* list$/ }).click();
-  await expect(page).toHaveURL(/\/l\/[^/]+$/);
-  return page.url().split("/l/")[1];
+  await expect(page).toHaveURL(/\/l\/[^/?]+(\?new=1)?$/);
+  return page.url().split("/l/")[1].split("?")[0];
 }
 
 /** Add an item on a list page with the compact add row, then skip the details prompt. */

@@ -101,7 +101,7 @@ export default function Login() {
   const claiming = next === "/claim";
 
   return (
-    <div className="wrap grid min-h-[70dvh] place-items-center py-12">
+    <div className="wrap grid place-items-center py-12">
       <div className="card w-full max-w-md p-6 sm:p-8">
         <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : "Sign in"}</h1>
 

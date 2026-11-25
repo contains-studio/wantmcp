@@ -73,6 +73,8 @@ export interface ItemRow {
   claimed_by?: ActorRef | null;
   claimed_at?: Timestamp | null;
   completion?: Completion | null;
+  status_note?: string | null;
+  text_by?: "person" | "agent";
 }
 
 export interface EntryRow {

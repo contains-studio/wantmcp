@@ -3,7 +3,7 @@ import { addItem, createList, freshEmail, signIn } from "./helpers";
 
 test("sign in with an emailed code, then sign out @phone", async ({ page }) => {
   await signIn(page, freshEmail("auth"));
-  await expect(page.getByRole("heading", { name: "Get started" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Three steps to your first agent at work" })).toBeVisible();
   await page.goto("/app/account");
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();

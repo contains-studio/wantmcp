@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { GiveToAgent } from "~/components/GiveToAgent";
 import { HeadingBase, headingTag } from "~/components/preview";
 import { Link, useFetcher, useLocation } from "react-router";
 import { ActorTag } from "~/components/ActorTag";
@@ -20,7 +21,7 @@ import { itemCurrency, listCurrency } from "~/lib/currency";
 import { lowestEntryId } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
-import type { Comment, Entry, Item, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
+import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
 import type { Layout } from "~/themes/types";
 import type { ThemeView } from "~/themes/view";
 
@@ -52,6 +53,10 @@ export interface ListViewProps {
   previewItems?: number;
   /** A miniature: the header is the title only (no counts, owner, description or sample note). */
   thumbnail?: boolean;
+  /** The owner's next step while no agent works on the list (list page only). */
+  handoff?: { focus: boolean; connectedName: string | null } | null;
+  /** Who can write the list (writers only, list page only). */
+  accessList?: ListAccess | null;
 }
 
 /** A want list, rendered in its theme. Used by the list page, the theme gallery and settings previews. */
@@ -121,7 +126,16 @@ export function ListView(props: ListViewProps) {
             </H1>
             {!preview && (
               <div role="toolbar" aria-label="List" className="list-actions">
-                <CopyButton text={listUrl} label="Share" labelClass="btn-tool-label" doneText="Link copied" tooltip="Copy link" className="btn-tool" icon={<Icon name="share" />} />
+                {/* Public: the link carries ?ref=share so sign-ups from shared lists can be counted. Private: the plain link, and who can open it. */}
+                <CopyButton
+                  text={isPrivate ? listUrl : `${listUrl}?ref=share`}
+                  label="Share"
+                  labelClass="btn-tool-label"
+                  doneText={isPrivate ? "Link copied. Only people with access can open it." : "Link copied"}
+                  tooltip={isPrivate ? "Copy link (only people with access can open it)" : "Copy link"}
+                  className="btn-tool"
+                  icon={<Icon name="share" />}
+                />
                 {isWriter && (
                   <Link to={`/app/lists/${list.id}/settings`} className="btn-tool" title="List settings">
                     <Icon name="gear" />
@@ -134,19 +148,28 @@ export function ListView(props: ListViewProps) {
           </header>
           {!thumbnail && (
             <>
-          <div className="list-meta mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.88rem] text-ink-3">
-            {isPrivate && (
-              <span className="inline-flex items-center gap-1 text-ink-2">
-                <LockIcon />
-                Private
-              </span>
-            )}
-            {meta.map((m, i) => (
-              <span key={i} className="inline-flex items-center gap-2">
-                {(i > 0 || isPrivate) && <span aria-hidden="true">·</span>}
-                {m}
-              </span>
-            ))}
+          {/* Each item draws its own leading dot; a dot that would start a wrapped line is clipped (app.css .meta-line). */}
+          <div className="list-meta meta-line mt-1.5 text-[0.88rem] text-ink-3">
+            <div>
+            <div>
+              {isPrivate && (
+                <span className="meta-item inline-flex items-center gap-1 text-ink-2">
+                  <LockIcon />
+                  Private
+                </span>
+              )}
+              {isWriter && list.access && !preview && (list.access.people > 1 || list.access.agents > 0 || list.access.pending_invites > 0) && (
+                <span className="meta-item">
+                  <WhoHasAccess counts={list.access} who={props.accessList ?? null} listId={list.id} />
+                </span>
+              )}
+              {meta.map((m, i) => (
+                <span key={i} className="meta-item">
+                  {m}
+                </span>
+              ))}
+            </div>
+            </div>
           </div>
           {list.description && <p className="list-desc mt-3 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
             </>
@@ -163,7 +186,8 @@ export function ListView(props: ListViewProps) {
             </button>
           </div>
         )}
-        {nothingYet && !preview && (
+        {props.handoff && !preview && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
+        {nothingYet && !preview && !props.handoff && (
           <p className="list-nothing-yet text-[0.95rem] text-ink-2">
             {isWriter ? (
               <>
@@ -245,14 +269,11 @@ export function ListView(props: ListViewProps) {
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
 
         {!isWriter && !preview && (
-          <aside className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
-            <div>
-              <h2 className="serif text-[1.6rem]">Make your own list</h2>
-              <p className="mt-1 text-ink-2">
-                Things to buy, do or find out. Your AI agents work on it.
-              </p>
-            </div>
-            <Link to={user ? "/app" : "/login"} className="btn btn-want">
+          <aside aria-labelledby="own-h" className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
+            <h2 id="own-h" className="text-[1.05rem] font-semibold">
+              Make your own list. Your AI agents work on it.
+            </h2>
+            <Link to="/?ref=share" className="btn btn-want">
               Start a list
             </Link>
           </aside>
@@ -381,8 +402,9 @@ function ItemSection({
           </span>
         </div>
         <div className="item-meta item-indent flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem] text-ink-3 sm:pl-11">
-          {/* Who added it, only when that tells the owner something: an agent or another person. */}
-          {!(item.created_by.kind === "user" && item.created_by.handle === ownerHandle) && (
+          {/* Who added it, only when that tells the owner something: an agent or another person. Once a person rewrites an
+              agent's want (text_by "person"), the words are theirs and the line goes. */}
+          {!(item.created_by.kind === "user" && item.created_by.handle === ownerHandle) && !(item.text_by === "person" && item.created_by.kind === "agent") && (
             <span className="inline-flex items-center gap-1.5">
               Added by <ActorTag actor={item.created_by} compact /> <Time ts={item.created_at} />
             </span>
@@ -401,13 +423,14 @@ function ItemSection({
           </div>
         )}
         <ItemDetails details={item.details} />
-        {(!shopping || status === "waiting_on_owner") && (
+        {(!shopping || status === "waiting_on_owner" || !!item.status_note) && (
           <ItemStatusBar
             itemId={item.id}
             status={status}
             claimedBy={item.claimed_by}
             claimedAt={item.claimed_at}
             completion={item.completion}
+            statusNote={item.status_note}
             fi={fi}
             canWrite={isWriter}
           />
@@ -799,10 +822,13 @@ export function ChecklistBox({
   const checked = bought;
   const error = fetcher.state === "idle" ? fetcher.data?.error : undefined;
   if (!canWrite) {
-    return (
-      <span className={`check-toggle ${checked ? "is-checked" : ""}`} aria-hidden="true">
-        {checked ? "✓" : ""}
+    // Visitors get a status mark, not something that looks tickable: a tick when done, a small dot while open.
+    return checked ? (
+      <span className="check-toggle is-checked" aria-hidden="true">
+        ✓
       </span>
+    ) : (
+      <span className="check-toggle status-open" aria-hidden="true" />
     );
   }
   return (
@@ -838,6 +864,45 @@ export function ChecklistBox({
         </p>
       )}
     </fetcher.Form>
+  );
+}
+
+/** "3 people · 2 agents": opens who they are. Counts for writers only (ListSummary.access). */
+function WhoHasAccess({ counts, who, listId }: { counts: NonNullable<ListSummary["access"]>; who: ListAccess | null; listId: string }) {
+  const { user } = useRootData();
+  const label = [plural(counts.people, "person", "people"), plural(counts.agents, "agent"), ...(counts.pending_invites ? [`${counts.pending_invites} invited`] : [])].join(" · ");
+  const me = (handle: string) => (user?.handle === handle ? "you" : handle);
+  return (
+    <Menu label={`Who can write this list: ${label}`} triggerClass="textlink-btn text-ink-2" trigger={<>{label}</>} wide>
+      <div className="grid gap-3 p-3 text-[0.88rem]">
+        {who ? (
+          <>
+            <AccessGroup title="People" rows={who.people.map((p) => `${me(p.handle)}${p.role === "owner" ? " (owner)" : ""}`)} />
+            <AccessGroup title="Agents" rows={who.agents.map((a) => `${a.name} · ${user?.handle === a.owner_handle ? "your agent" : `${a.owner_handle}'s agent`}`)} />
+            <AccessGroup title="Invited" rows={who.pending_invites.map((i) => i.email)} />
+          </>
+        ) : null}
+        <Link to={`/app/lists/${listId}/settings#members-h`} className="link w-fit">
+          Sharing settings
+        </Link>
+      </div>
+    </Menu>
+  );
+}
+
+function AccessGroup({ title, rows }: { title: string; rows: string[] }) {
+  if (!rows.length) return null;
+  return (
+    <div className="grid gap-1">
+      <p className="label">{title}</p>
+      <ul className="grid gap-0.5 text-ink-2">
+        {rows.map((r, i) => (
+          <li key={i} className="break-words">
+            {r}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

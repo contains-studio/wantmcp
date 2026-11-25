@@ -1,12 +1,12 @@
-import { data } from "react-router";
+import { data, redirect } from "react-router";
 import type { Route } from "./+types/list";
 import { ListView, type ItemWithEntries } from "~/components/ListView";
 import { api, apiOptional, toRouteError } from "~/lib/api.server";
 import { siteOrigin } from "~/lib/config.server";
 import { clip, plural } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
-import { getSessionToken } from "~/lib/session.server";
-import type { Comment, Entry, Item, ListDetail, ListPrices, Page, PriceObservation } from "~/lib/types";
+import { assertSameOrigin, dismissedHandoffs, dismissHandoffCookie, getSessionToken } from "~/lib/session.server";
+import type { AgentInfo, Comment, ListAccess, Entry, Item, ListDetail, ListPrices, Page, PriceObservation } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
 import { formatInfo, formatOf, visibilityOf } from "~/lib/formats";
 
@@ -80,6 +80,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const { items: _drop, ...summary } = list;
   const signedIn = Boolean(getSessionToken(request));
+  const [handoff, accessList] = await Promise.all([
+    role === "owner" ? handoffFor(request, list) : Promise.resolve(null),
+    // Who can write it, for writers (older API builds don't have it: the header shows only the counts).
+    isWriter ? apiOptional<ListAccess>(request, `/lists/${encodeURIComponent(id)}/access`).catch(() => null) : Promise.resolve(null),
+  ]);
   return data(
     {
       list: summary,
@@ -92,6 +97,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       role,
       origin: siteOrigin(request),
       isPrivate,
+      handoff,
+      accessList,
       // Only this list's theme is sent to the page: custom properties and motif, no theme code.
       // No theme picked: the format's default (Checklist for tasks, Doc for research).
       // A stored `default` (the retired Cards), an occasion alone or anything unknown resolves to the format's layout.
@@ -115,7 +122,28 @@ export function headers({ loaderHeaders }: Route.HeadersArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  return handleWriterIntent(request, await request.formData(), params.id);
+  const form = await request.formData();
+  if (form.get("intent") === "dismiss-handoff") {
+    assertSameOrigin(request);
+    throw redirect(`/l/${encodeURIComponent(params.id)}`, { headers: { "Set-Cookie": dismissHandoffCookie(request, params.id) } });
+  }
+  return handleWriterIntent(request, form, params.id);
+}
+
+/**
+ * "Give this list to your agent" (the owner's next step): until an agent connects to the list or writes on it, or the
+ * owner dismisses it. Opened from /app/new with ?new=1, which also moves focus to it.
+ */
+async function handoffFor(request: Request, list: ListDetail): Promise<{ focus: boolean; connectedName: string | null } | null> {
+  if (dismissedHandoffs(request).includes(list.id)) return null;
+  const agentWrote = list.items.some(
+    (it) => it.created_by.kind === "agent" || it.claimed_by?.kind === "agent" || it.entries.some((e) => e.author.kind === "agent"),
+  );
+  if (agentWrote) return null;
+  const agents = await api<AgentInfo[]>(request, "/me/agents").catch(() => [] as AgentInfo[]);
+  if (agents.some((a) => a.list_ids.includes(list.id))) return null;
+  const oauth = agents.find((a) => a.kind === "oauth");
+  return { focus: new URL(request.url).searchParams.get("new") === "1", connectedName: oauth?.name ?? null };
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {

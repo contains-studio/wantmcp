@@ -1,5 +1,5 @@
 import { actorName, formatDate, formatDateTime, formatMoney } from "~/lib/format";
-import { checkedAt } from "~/lib/prices";
+import { checkedAt, priceChangeLabel } from "~/lib/prices";
 import type { PriceObservation } from "~/lib/types";
 import { Time } from "./Time";
 
@@ -39,6 +39,7 @@ export function PriceSparkline({ prices, now }: { prices: PriceObservation[]; no
   const last = pts[pts.length - 1];
   const cur = last.p.currency;
   const change = last.v - first.v;
+  const changeLabel = priceChangeLabel(first.v, last.v, cur);
   const summary =
     change === 0
       ? `Price unchanged at ${formatMoney(last.v, cur)} across ${pts.length} observations.`
@@ -73,13 +74,7 @@ export function PriceSparkline({ prices, now }: { prices: PriceObservation[]; no
           {formatMoney(first.v, cur)} on {formatDate(checkedAt(first.p))}
         </span>
         {/* The change from the first check to now; nothing when the price hasn't moved. */}
-        {change !== 0 && (
-          <span className={change < 0 ? "text-deal" : ""}>
-            {change < 0 ? "−" : "+"}
-            {formatMoney(Math.abs(change), cur, { cents: true })} ({change < 0 ? "−" : "+"}
-            {Math.round((Math.abs(change) / first.v) * 100)}%)
-          </span>
-        )}
+        {changeLabel && <span className={change < 0 ? "text-deal" : ""}>{changeLabel}</span>}
       </figcaption>
     </figure>
   );

@@ -107,6 +107,11 @@ test("a list nobody has worked on says so once, and empty wants stay compact", a
     if (await skip.isVisible()) await skip.click();
   }
   await page.goto(`/l/${id}`);
+  // The one next step comes first; once dismissed, one line for the whole list.
+  await expect(page.getByRole("heading", { name: "Give this list to your agent" })).toBeVisible();
+  await expect(page.locator(".list-nothing-yet")).toHaveCount(0);
+  await page.getByRole("button", { name: /Not now/ }).click();
+  await expect(page.getByRole("heading", { name: "Give this list to your agent" })).toHaveCount(0);
   await expect(page.locator(".list-nothing-yet")).toHaveCount(1);
   await expect(page.locator(".entries-empty")).toHaveCount(0);
   // No comment box per want until there are comments: it's in each want's menu.
@@ -118,7 +123,8 @@ test("people see 'you', not their own handle", async ({ page }) => {
   await page.goto("/l/lst_desk2026");
   // The keyboard was bought by the demo owner.
   await expect(page.locator(".item-section", { hasText: "Quiet mechanical keyboard" }).getByText(/by you/)).toBeVisible();
-  await expect(page.getByText("quiet-otter-4821", { exact: false }).filter({ hasNotText: "/" })).toHaveCount(0);
+  // Visible text only (the page's own data script carries handles for its components).
+  await expect(page.locator("main").getByText("quiet-otter-4821", { exact: false }).filter({ hasNotText: "/" })).toHaveCount(0);
 });
 
 test("a gift list from the home page is private", async ({ page }) => {

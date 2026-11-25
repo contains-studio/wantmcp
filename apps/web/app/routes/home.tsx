@@ -1,10 +1,11 @@
 import { BrandLogo } from "~/components/BrandLogo";
+import { RefField } from "~/lib/ref";
 import { Form, Link } from "react-router";
 import type { Route } from "./+types/home";
 import { FeedCard } from "~/components/FeedCard";
 import { ThemeThumb } from "~/components/ThemeThumb";
 import { api } from "~/lib/api.server";
-import { BRANDS, type Brand } from "~/lib/brands";
+import { LIVE_BRANDS, type Brand } from "~/lib/brands";
 import { siteOrigin } from "~/lib/config.server";
 import { useRootData } from "~/lib/hooks";
 import type { FeedEntry, Page } from "~/lib/types";
@@ -21,7 +22,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const feed = await api<Page<FeedEntry>>(request, "/feed", {
     anonymous: true,
     query: { cursor },
-  }).catch(() => ({ data: [], next_cursor: null }));
+  })
+    // Products agents posted only: no updates, answers or anything a person added.
+    .then((p) => ({ ...p, data: p.data.filter((r) => (r.entry.kind ?? "product") === "product" && r.entry.author.kind === "agent") }))
+    .catch(() => ({ data: [] as FeedEntry[], next_cursor: null }));
   const accountDeleted = new URL(request.url).searchParams.get("account") === "deleted";
   const now = Date.now();
   // The three kinds of want, shown as real rendered lists rather than described.
@@ -177,43 +181,32 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </ul>
       </section>
 
-      <section aria-labelledby="feed-h" className="wrap py-20">
-        <p className="eyebrow">Live</p>
-        <h2 id="feed-h" className="serif mt-3 text-[2rem] sm:text-[2.4rem]">
-          Latest from agents
-        </h2>
-        {feed.data.length ? (
+      {/* Only products agents posted, never newly made lists; hidden entirely while there is nothing to show. */}
+      {feed.data.length > 0 && (
+        <section aria-labelledby="feed-h" className="wrap py-20">
+          <p className="eyebrow">Live</p>
+          <h2 id="feed-h" className="serif mt-3 text-[2rem] sm:text-[2.4rem]">
+            Latest from agents
+          </h2>
           <div className="feed-rows mt-8 grid border-t border-line md:grid-cols-2 md:gap-x-10">
             {feed.data.map((row) => (
               <FeedCard key={row.entry.id} row={row} />
             ))}
           </div>
-        ) : (
-          <div className="mt-8 grid gap-4 border-y border-line py-8 sm:grid-cols-[1fr_auto] sm:items-center">
-            <p className="text-ink-2">Nothing posted yet.</p>
-            <div className="flex flex-wrap gap-2">
-              <Link to={user ? "/app" : "/login"} className="btn btn-want">
-                {user ? "Go to my lists" : "Start a list"}
+          <div className="mt-6 flex gap-3">
+            {cursor && (
+              <Link to="/" className="btn btn-ghost btn-sm">
+                Newest
               </Link>
-              <Link to="/connect" className="btn btn-ghost">
-                Connect an agent
+            )}
+            {feed.next_cursor && (
+              <Link to={`/?cursor=${encodeURIComponent(feed.next_cursor)}#feed-h`} className="btn btn-ghost btn-sm">
+                Older
               </Link>
-            </div>
+            )}
           </div>
-        )}
-        <div className="mt-6 flex gap-3">
-          {cursor && (
-            <Link to="/" className="btn btn-ghost btn-sm">
-              Newest
-            </Link>
-          )}
-          {feed.next_cursor && (
-            <Link to={`/?cursor=${encodeURIComponent(feed.next_cursor)}#feed-h`} className="btn btn-ghost btn-sm">
-              Older
-            </Link>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
       <p className="wrap pb-6 text-[0.78rem] text-ink-3">Logos are their owners' trademarks; The Want MCP isn't affiliated with them.</p>
     </div>
   );
@@ -228,7 +221,7 @@ function WorksWith() {
   const row = (copy: boolean) => (
     <ul className="marquee-list" aria-hidden={copy || undefined} inert={copy || undefined}>
       <li className="eyebrow whitespace-nowrap px-2">Works with</li>
-      {BRANDS.map((b) => (
+      {LIVE_BRANDS.map((b) => (
         <li key={b.id}>
           <BrandLink brand={b} />
         </li>
@@ -272,6 +265,7 @@ function SeasonBand({ season, origin }: { season: { heading: string; sample: The
                   <div className="flex items-center justify-between gap-2 bg-card px-3 py-2">
                     <Form method="post" action="/start">
                       <input type="hidden" name="occasion" value={v.occasion!} />
+                      <RefField />
                       <button className="stretched-link text-left text-[0.9rem] font-medium" aria-label={`Start a ${name} gift list`}>
                         {name}
                       </button>

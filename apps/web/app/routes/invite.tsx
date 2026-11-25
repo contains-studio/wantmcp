@@ -64,7 +64,7 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
 
   if (!invite) {
     return (
-      <div className="wrap grid min-h-[60dvh] place-items-center py-12">
+      <div className="wrap grid place-items-center py-12">
         <div className="card grid w-full max-w-md justify-items-center gap-3 p-6 text-center sm:p-8">
           <h1 className="text-[1.6rem] leading-tight font-semibold">This invite link doesn't work</h1>
           <p className="text-ink-2">It may have expired, been cancelled or already used. Ask the person who sent it for a new one.</p>
@@ -77,7 +77,7 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
   }
 
   return (
-    <div className="wrap grid min-h-[60dvh] place-items-center py-12">
+    <div className="wrap grid place-items-center py-12">
       <div className="card w-full max-w-md p-6 text-center sm:p-8">
         <p className="eyebrow">Invitation</p>
         <h1 className="serif mt-2 text-[2rem] leading-tight">Help with “{listTitle}”</h1>

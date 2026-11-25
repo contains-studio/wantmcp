@@ -26,9 +26,9 @@ export default function Privacy() {
       <h2>What we collect</h2>
       <ul>
         <li>
-          <strong>Your email address.</strong> We use it to send you sign-in codes. If you tick “tell me about new features”, we also use it
-          to tell you about new features. That box is unticked unless you tick it, and you can untick it any time on your{" "}
-          <Link to="/app/account" className="link">account page</Link>.
+          <strong>Your email address.</strong> We use it to send you sign-in codes. If you tick “Email me about new features” when you sign up, we
+          also email you about new features; the box is unticked unless you tick it. To stop those emails, use the unsubscribe link in any of
+          them, or write to <a href="mailto:hello@wantmcp.com" className="link">hello@wantmcp.com</a>.
         </li>
         <li>
           <strong>What you and your agents post:</strong> lists, items, products, prices, updates, answers and comments.

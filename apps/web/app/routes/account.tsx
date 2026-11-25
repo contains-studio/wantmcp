@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { data, Form, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import { useRootData } from "~/lib/hooks";
 import { Field, Select, Textarea } from "~/components/ui";
-import { BIO_PLACEHOLDER, COUNTRIES, CURRENCIES } from "~/lib/locales";
+import { BIO_PLACEHOLDER, COUNTRIES, COUNTRY_CURRENCY, CURRENCIES } from "~/lib/locales";
 import type { Route } from "./+types/account";
 import { api, formError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
@@ -14,7 +14,12 @@ export function meta() {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
-  return data({ user }, { headers: { "Cache-Control": "private, no-store" } });
+  // Where the request comes from (Cloudflare tells the Worker): a starting guess for country and currency,
+  // only shown in the fields; nothing is saved until the person presses Save.
+  const cf = (request as unknown as { cf?: { country?: string } }).cf?.country ?? request.headers.get("cf-ipcountry");
+  const country = cf && COUNTRIES.some(([c]) => c === cf) ? cf : null;
+  const guess = !user.country && country ? { country, currency: user.currency ?? COUNTRY_CURRENCY[country] ?? null } : null;
+  return data({ user, guess }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -25,7 +30,8 @@ export async function action({ request }: Route.ActionArgs) {
     if (intent === "profile") {
       await api(request, "/me", {
         method: "PATCH",
-        body: { handle: String(form.get("handle") ?? "").trim(), updates_opt_in: form.get("updates_opt_in") === "on" },
+        // The feature-email choice is made once, at sign-up; this form never changes it.
+        body: { handle: String(form.get("handle") ?? "").trim() },
       });
       return { ok: true, intent };
     }
@@ -55,15 +61,12 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Account({ loaderData }: Route.ComponentProps) {
-  const { user } = loaderData;
+  const { user, guess } = loaderData;
   const result = useActionData<typeof action>() as { ok?: boolean; error?: string; intent?: string } | undefined;
   const nav = useNavigation();
   return (
     <div className="wrap grid max-w-2xl gap-6 py-8">
-      <div>
-        <p className="eyebrow">Account</p>
-        <h1 className="mt-1 text-[1.75rem] leading-tight font-normal tracking-[-0.02em] sm:text-[2rem]">{user.handle}</h1>
-      </div>
+      <h1 className="text-[1.75rem] leading-tight font-semibold tracking-[-0.02em] sm:text-[2rem]">Account</h1>
 
       <section aria-labelledby="profile-h" className="card grid gap-4 p-5 sm:p-6">
         <h2 id="profile-h" className="text-xl font-semibold">Profile</h2>
@@ -78,10 +81,6 @@ export default function Account({ loaderData }: Route.ComponentProps) {
             <span className="label">Handle</span>
             <input name="handle" required minLength={3} maxLength={40} pattern="[a-zA-Z0-9][a-zA-Z0-9\-]{2,39}" defaultValue={user.handle} className="input font-mono" />
             <span className="hint">Shown on your lists and comments. Letters, numbers and dashes.</span>
-          </label>
-          <label className="check">
-            <input type="checkbox" name="updates_opt_in" defaultChecked={user.updates_opt_in} />
-            <span>Email me about new features</span>
           </label>
           <div aria-live="polite">
             {result?.intent === "profile" && result.error && <p className="form-error">{result.error}</p>}
@@ -108,7 +107,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
           <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
             <Field label="Country">
               {(p) => (
-                <Select {...p} name="country" defaultValue={user.country ?? ""}>
+                <Select {...p} name="country" defaultValue={user.country ?? guess?.country ?? ""}>
                   <option value="">Not set</option>
                   {COUNTRIES.map(([code, name]) => (
                     <option key={code} value={code}>
@@ -120,7 +119,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
             </Field>
             <Field label="Currency">
               {(p) => (
-                <Select {...p} name="currency" defaultValue={user.currency ?? ""}>
+                <Select {...p} name="currency" defaultValue={user.currency ?? guess?.currency ?? ""}>
                   <option value="">Not set</option>
                   {CURRENCIES.map(([code, name]) => (
                     <option key={code} value={code}>
@@ -131,6 +130,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
               )}
             </Field>
           </div>
+          {guess && !(result?.intent === "bio" && result.ok) && <p className="hint -mt-2">We guessed your country and currency from your location. Save to keep them.</p>}
           <div aria-live="polite">
             {result?.intent === "bio" && result.error && <p className="form-error">{result.error}</p>}
             {result?.intent === "bio" && result.ok && <p className="form-ok">Saved.</p>}
@@ -182,11 +182,13 @@ function Appearance() {
   const fetcher = useFetcher<{ ok?: boolean }>();
   const [choice, setChoice] = useState(theme);
   const saved = fetcher.state === "idle" && fetcher.data?.ok;
-  useEffect(() => {
-    if (!saved) return;
-    if (choice === "system") document.documentElement.removeAttribute("data-theme");
-    else document.documentElement.setAttribute("data-theme", choice);
-  }, [saved, choice]);
+  // Applied the moment it is picked: it's a cookie on this browser, so there is nothing to confirm.
+  const pick = (value: typeof choice) => {
+    setChoice(value);
+    if (value === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", value);
+    fetcher.submit({ theme: value }, { method: "post", action: "/theme" });
+  };
   return (
     <section aria-labelledby="appearance-h" className="card grid gap-4 p-5 sm:p-6">
       <h2 id="appearance-h" className="text-xl font-semibold">
@@ -197,15 +199,18 @@ function Appearance() {
           <legend className="label mb-1">On this browser</legend>
           {APPEARANCE.map(([value, label]) => (
             <label key={value} className="check">
-              <input type="radio" name="theme" value={value} checked={choice === value} onChange={() => setChoice(value)} />
+              <input type="radio" name="theme" value={value} checked={choice === value} onChange={() => pick(value)} />
               <span>{label}</span>
             </label>
           ))}
         </fieldset>
-        <div aria-live="polite">{saved && <p className="form-ok">Saved.</p>}</div>
-        <button className="btn w-fit" disabled={fetcher.state !== "idle"}>
-          Save
-        </button>
+        <div aria-live="polite" className="sr-only">
+          {saved ? "Appearance saved." : ""}
+        </div>
+        {/* Without JavaScript the choice needs a button. */}
+        <noscript>
+          <button className="btn w-fit">Save</button>
+        </noscript>
       </fetcher.Form>
     </section>
   );

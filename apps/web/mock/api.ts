@@ -346,6 +346,8 @@ function itemOut(i: ItemRow, c: Caller): Item {
     ...(writer ? { questions: store.questions.filter((q) => q.item_id === i.id).sort((a, b) => a.asked_at.localeCompare(b.asked_at)) } : {}),
     claimed_by: i.claimed_by ?? null,
     claimed_at: i.claimed_by ? (i.claimed_at ?? null) : null,
+    status_note: i.status_note ?? null,
+    text_by: i.text_by ?? (i.created_by.kind === "agent" ? "agent" : "person"),
     completion:
       i.completion ??
       (i.purchase ? { completed_at: i.purchase.purchased_at, completed_by: i.purchase.purchased_by, note: null, entry_id: i.purchase.entry_id } : null),
@@ -690,6 +692,43 @@ route("POST", "/lists/{id}/members", ({ caller, params, body }) => {
   return new Response(JSON.stringify(memberOut(m, true)), { status: 201, headers: { "content-type": "application/json", "x-dev-invite-token": m.token } });
 });
 
+// SPEC 13.7: invite by email. A second invitation to the same address within a day sends no email (sent: false).
+route("POST", "/lists/{id}/invites", ({ caller, params, body }) => {
+  const c = requireOwner(caller, params[0]);
+  const email = text("email", body.email, 254, true).toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("That doesn't look like an email address");
+  if (email === "limit@example.com") throw new HttpError(429, "rate_limited", "Too many invitations from this list today", { limit: "invites.per_list_per_day" });
+  const existing = store.members.find((m) => m.list_id === params[0] && (m.invited_email === email || (m.user_id && userById(m.user_id).email === email)));
+  if (existing?.status === "active") throw new HttpError(409, "conflict", "That person can already write this list");
+  if (existing) {
+    const recent = Date.now() - Date.parse(existing.created_at) < 86_400_000;
+    return { member: memberOut(existing, true), sent: !recent };
+  }
+  const m = { id: newId("mem"), list_id: params[0], user_id: null, invited_email: email, role: "member" as const, status: "invited" as const, token: "inv_" + randomToken(24), created_at: nowIso(), invited_by: actorRef(c) };
+  store.members.push(m);
+  console.log(`[mock api] invite link for ${email}: /invite/${m.token}`);
+  return new Response(JSON.stringify({ member: memberOut(m, true), sent: true }), { status: 201, headers: { "content-type": "application/json", "x-dev-invite-token": m.token } });
+});
+
+// SPEC 13.7: who can write the list (writers only). Addresses are masked.
+route("GET", "/lists/{id}/access", ({ caller, params }) => {
+  const l = getList(params[0]);
+  if (!caller || !canWrite(caller, l.id)) throw forbidden();
+  const active = store.members.filter((m) => m.list_id === l.id && m.status === "active" && m.user_id);
+  const writers = active.map((m) => ({ user: userById(m.user_id!), role: m.role })).filter((w) => !w.user.placeholder);
+  const ids = new Set(active.map((m) => m.user_id));
+  const mask = (e: string) => e.replace(/^(.)[^@]*(@.*)$/, "$1•••$2");
+  return {
+    people: writers.map((w) => ({ handle: w.user.handle, role: w.role })),
+    agents: store.agents
+      .filter((a) => ids.has(a.owner_id) && a.list_ids.includes(l.id))
+      .map((a) => ({ id: a.id, name: a.name, kind: a.kind, owner_handle: userById(a.owner_id).handle })),
+    pending_invites: store.members
+      .filter((m) => m.list_id === l.id && m.status === "invited")
+      .map((m) => ({ id: m.id, email: mask(m.invited_email ?? ""), invited_at: m.created_at, invited_by: m.invited_by ?? null })),
+  };
+});
+
 route("DELETE", "/lists/{id}/members/{member_id}", ({ caller, params }) => {
   requireOwner(caller, params[0]);
   const m = store.members.find((x) => x.id === params[1] && x.list_id === params[0]);
@@ -917,7 +956,10 @@ route("PATCH", "/items/{id}", ({ caller, params, body }) => {
   const i = getItem(params[0]);
   const c = requireWriter(caller, i.list_id);
   requireAuthorOrOwner(i.created_by, c, i.list_id, "item");
-  if (body.text !== undefined) i.text = text("text", body.text, 500, true);
+  if (body.text !== undefined) {
+    i.text = text("text", body.text, 500, true);
+    i.text_by = c.kind === "agent" ? "agent" : "person";
+  }
   if (body.details !== undefined) i.details = text("details", body.details, 2000);
   if (body.due_at !== undefined) i.due_at = timestampOrNull("due_at", body.due_at);
   touch(i.list_id);
@@ -991,6 +1033,8 @@ route("POST", "/items/{id}/status", ({ caller, params, body }) => {
   }
   const sameHolder = status === "in_progress" && i.status === "in_progress" && i.claimed_by && sameActor(i.claimed_by, c);
   i.status = status;
+  // The note stays until the status changes again; re-sending in_progress with a new note posts progress.
+  i.status_note = status === "done" ? null : note;
   if (status === "open") {
     i.claimed_by = null;
     i.claimed_at = null;

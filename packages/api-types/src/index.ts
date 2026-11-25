@@ -66,6 +66,8 @@ export interface ListSummary {
   claim?: { state: "unclaimed"; expires_at: Timestamp } | null;
   /** SPEC 12.2. The list's own note (0..600). Present only when the caller can write the list. */
   note?: string;
+  /** Who wrote the note, for writers. */
+  note_by?: "person" | "agent" | null;
   /** Present only for the signed-in caller. */
   my_role?: "owner" | "member" | null;
 }
@@ -104,7 +106,14 @@ export interface Item {
   claimed_by: ActorRef | null;
   /** When the current claim started. */
   claimed_at: Timestamp | null;
+  /**
+   * The note given with the latest in_progress (or a release back to open): what the agent is doing now. Stays until
+   * the status changes again. Absent from older API builds.
+   */
+  status_note?: string | null;
   completion: Completion | null;
+  /** Who wrote the item's text: a person, or an agent. A person editing it makes it theirs. */
+  text_by?: "person" | "agent";
   created_by: ActorRef;
   created_at: Timestamp;
   /** Shopping lists only; null elsewhere. */
@@ -141,7 +150,14 @@ export interface Question {
   options: string[];
   asked_by: ActorRef;
   asked_at: Timestamp;
-  answer: { text: string; answered_by: ActorRef; answered_at: Timestamp } | null;
+  answer: {
+    text: string;
+    answered_by: ActorRef;
+    answered_at: Timestamp;
+    /** How the answer arrived: on the web, in an agent's form (elicitation), or relayed by an agent. Absent from older API builds. */
+    via?: "web" | "agent_form" | "agent" | null;
+    via_agent?: { id: string; name: string } | null;
+  } | null;
 }
 
 export interface Entry {
@@ -418,6 +434,8 @@ export interface ItemSummary {
   due_at: Timestamp | null;
   claimed_by: ActorRef | null;
   claimed_at: Timestamp | null;
+  status_note?: string | null;
+  text_by?: "person" | "agent";
   /** Writers only; null for everyone else. */
   open_question: Question | null;
   entry_counts: { listed: number; suggested: number };

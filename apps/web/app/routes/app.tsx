@@ -1,74 +1,69 @@
-import { moneyPlaceholder, useCurrency } from "~/lib/hooks";
+/**
+ * /app, home for signed-in people (docs/design-standards.md, "Home for signed-in people"): what
+ * needs me (questions waiting), then how my lists are doing. One column, the same on every screen.
+ * The cross-list feed lives at /app/activity; a new list is made at /app/new.
+ */
 import { useEffect, useRef, useState } from "react";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
-import { PrivateBadge } from "~/components/ListView";
-import { FORMATS, formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import type { Route } from "./+types/app";
-import { CommentForm } from "~/components/Comments";
-import { MarkBought } from "~/components/EntryCard";
-import { FeedCard } from "~/components/FeedCard";
+import { Icon, Menu, MenuRemove } from "~/components/Actions";
+import { ActorTag } from "~/components/ActorTag";
+import { CopyButton } from "~/components/CopyButton";
+import { LiveUpdates } from "~/components/LiveUpdates";
 import { Time } from "~/components/Time";
+import type { IntentResult } from "~/components/WriteTools";
 import { api, apiOptional, formError } from "~/lib/api.server";
+import { listCards, type ListCard } from "~/lib/app-home.server";
 import { requireUser } from "~/lib/auth.server";
-import { plural } from "~/lib/format";
+import { formatMoney, plural } from "~/lib/format";
+import { FORMATS } from "~/lib/formats";
+import { moneyPlaceholder, useCurrency } from "~/lib/hooks";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin } from "~/lib/session.server";
-import { LiveUpdates } from "~/components/LiveUpdates";
-import { DetailsPrompt } from "~/components/ListView";
+import type { AgentInfo, ListSummary, PendingInvite } from "~/lib/types";
 import { waitingQuestions, type WaitingQuestion } from "~/lib/waiting.server";
-import { BIO_PLACEHOLDER } from "~/lib/locales";
-import { OwnerQuestion } from "~/components/ItemWork";
-import { Button, Field, Input, Select, Textarea } from "~/components/ui";
-import type { AgentInfo, FeedEntry, ListFormat, ListSummary, ListVisibility, Page, PendingInvite } from "~/lib/types";
 
 export function meta() {
-  return [{ title: "My lists · The Want MCP" }, { name: "robots", content: "noindex" }];
+  return [{ title: "Your lists · The Want MCP" }, { name: "robots", content: "noindex" }];
 }
+
+/** Questions shown before "Show all". */
+const FIRST_QUESTIONS = 3;
+/** Lists at which a filter field appears. */
+const FILTER_FROM = 9;
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
   const url = new URL(request.url);
-  const listId = url.searchParams.get("list") || null;
-  const cursor = url.searchParams.get("cursor");
-  const [lists, feed, invites] = await Promise.all([
+  const [lists, invites, waiting, agents] = await Promise.all([
     api<ListSummary[]>(request, "/me/lists"),
-    api<Page<FeedEntry>>(request, "/me/feed", { query: { list_id: listId, cursor } }),
     // Older API servers don't have pending invites yet: show none.
     apiOptional<PendingInvite[]>(request, "/me/invites").then((r) => r ?? []),
+    // SPEC 12.1: every open question across the person's lists comes first on this page.
+    waitingQuestions(request).catch(() => ({ questions: [] as WaitingQuestion[], count: 0 })),
+    api<AgentInfo[]>(request, "/me/agents").catch(() => [] as AgentInfo[]),
   ]);
-  // SPEC 12.1: every open question across the person's lists comes first on this page.
-  const { questions: waiting, count: waitingTotal } = await waitingQuestions(request).catch(() => ({ questions: [], count: 0 }));
-  // First run: work out which getting-started steps are done.
-  const firstRun = !listId && !cursor && feed.data.length === 0;
-  const agentCount = firstRun ? (await api<AgentInfo[]>(request, "/me/agents").catch(() => [])).length : 0;
-  return data({ user, lists, feed, listId, cursor, invites, firstRun, agentCount, waiting, waitingTotal }, { headers: { "Cache-Control": "private, no-store" } });
+  const cards = await listCards(request, lists, waiting.questions);
+  const q = (url.searchParams.get("q") ?? "").trim();
+  return data(
+    {
+      bio: user.bio ?? null,
+      cards: q ? cards.filter((c) => c.title.toLowerCase().includes(q.toLowerCase())) : cards,
+      listCount: cards.length,
+      q,
+      invites,
+      waiting: waiting.questions,
+      waitingTotal: waiting.count,
+      showAllQuestions: url.searchParams.get("questions") === "all",
+      hasAgent: agents.length > 0,
+    },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
   const form = await request.formData();
-  if (form.get("intent") === "create-list") {
-    const title = String(form.get("title") ?? "").trim();
-    if (!title) return data({ error: "Give the list a title" }, 400);
-    try {
-      const list = await api<ListSummary>(request, "/lists", {
-        method: "POST",
-        body: {
-          title,
-          description: String(form.get("description") ?? "").trim() || undefined,
-          format: ["shopping", "tasks", "research"].includes(String(form.get("format"))) ? form.get("format") : "shopping",
-          visibility: form.get("visibility") === "private" ? "private" : form.get("visibility") === "public" ? "public" : undefined,
-          note: String(form.get("note") ?? "").trim() || undefined,
-        },
-      });
-      // Offered once, with the first list: the bio for the person's own agents (SPEC 12.2).
-      const bio = String(form.get("bio") ?? "").trim();
-      if (bio) await api(request, "/me", { method: "PATCH", body: { bio } }).catch(() => null);
-      return redirect(`/l/${list.id}`);
-    } catch (err) {
-      return data(formError(err), 400);
-    }
-  }
   if (form.get("intent") === "accept-invite") {
     const id = String(form.get("list_id") ?? "");
     try {
@@ -78,318 +73,484 @@ export async function action({ request }: Route.ActionArgs) {
       return data({ ...formError(err), intent: "accept-invite" }, 400);
     }
   }
+  if (form.get("intent") === "delete-list") {
+    const id = String(form.get("list_id") ?? "");
+    try {
+      await api(request, `/lists/${encodeURIComponent(id)}`, { method: "DELETE" });
+      return { ok: true, intent: "delete-list" };
+    } catch (err) {
+      return data({ ...formError(err), intent: "delete-list" }, 400);
+    }
+  }
+  // Adding to a list and answering questions: the same intents as on the list page.
   return handleWriterIntent(request, form);
 }
 
 export default function AppHome({ loaderData }: Route.ComponentProps) {
-  const { user, lists, feed, listId, cursor, invites, firstRun, agentCount, waiting, waitingTotal } = loaderData;
-  const current = lists.find((l) => l.id === listId) ?? null;
-
+  const { cards, listCount, q, invites, waiting, waitingTotal, showAllQuestions, hasAgent, bio } = loaderData;
+  const firstRun = listCount === 0 || !hasAgent;
+  // Answers are confirmed here: the answered card itself leaves the page once the question is gone.
+  const [announce, setAnnounce] = useState("");
   return (
-    <div className="wrap grid grid-cols-1 gap-8 py-8 lg:grid-cols-[19rem_1fr] lg:gap-10">
-
-      <section aria-labelledby="feed-h" className="grid content-start gap-5">
-        <h1 className="sr-only">My lists</h1>
-        {waiting.length > 0 && <WaitingOnYou waiting={waiting} total={waitingTotal} />}
-        {!user.bio && <BioPrompt />}
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 id="feed-h" className="serif text-[1.75rem]">
-              {current ? current.title : "Latest"}
-            </h2>
-          </div>
-          {lists.length > 1 && <ListFilter lists={lists} listId={listId} />}
-        </div>
-
-        {/* Phones: the list sidebar comes after the feed, so give quick links to it here. */}
-        <nav aria-label="Your lists, quick links" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden">
-          {lists.map((l) => (
-            <Link key={l.id} to={`/l/${l.id}`} className="btn btn-ghost btn-sm max-w-[15rem] shrink-0">
-              <span className="truncate">{l.title}</span>
+    <div className="bg-sunk">
+      <div className="mx-auto grid w-full max-w-[47.5rem] gap-8 px-4 pt-8 pb-16 sm:pt-10">
+        <header className="grid gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] sm:text-[2.4rem]">Your lists</h1>
+            <Link to="/app/new" className="btn btn-want">
+              <Icon name="plus" />
+              New list
             </Link>
-          ))}
-          <a href="#new-list" className="btn btn-ghost btn-sm shrink-0" onClick={() => document.getElementById("new-list")?.setAttribute("open", "")}>
-            New list
-          </a>
-        </nav>
-
-        {lists.length > 0 && <QuickAddItem lists={lists} listId={listId} />}
+          </div>
+          <ViewSwitch current="lists" />
+        </header>
 
         <LiveUpdates query="scope=me" />
+        <p role="status" className={announce ? "card px-5 py-3 text-[0.95rem] text-deal" : "sr-only"}>
+          {announce}
+        </p>
         {invites.length > 0 && <PendingInvites invites={invites} />}
-
-        {firstRun ? (
-          <GettingStarted lists={lists} agentCount={agentCount} />
-        ) : feed.data.length === 0 ? (
-          <div className="rounded-md border border-dashed border-line-strong p-8 text-center">
-            <p className="text-lg font-semibold">Nothing posted yet</p>
-            <p className="mx-auto mt-2 max-w-md text-ink-3">
-              Ask an agent to work on your list.
-            </p>
-            <Link to="/connect" className="btn btn-ghost btn-sm mt-4">
-              Connect an agent
-            </Link>
-          </div>
-        ) : (
-          <ol className="feed-rows grid border-t border-line">
-            {feed.data.map((row) => (
-              <li key={row.entry.id}>
-                <FeedCard row={row}>
-                  {row.entry.status === "listed" && (row.entry.kind ?? "product") === "product" && (
-                    <div className="mt-1 flex flex-wrap items-start gap-2">
-                      {!row.item.purchase && <MarkBought itemId={row.item.id} entryId={row.entry.id} />}
-                      <details className="min-w-0 flex-1">
-                        <summary className="btn btn-ghost btn-xs w-fit">Comment</summary>
-                        <div className="mt-2">
-                          <CommentForm targetType="entry" targetId={row.entry.id} label={`Comment on ${row.entry.title}`} />
-                        </div>
-                      </details>
-                    </div>
-                  )}
-                </FeedCard>
-              </li>
-            ))}
-          </ol>
+        {waiting.length > 0 && (
+          <WaitingOnYou waiting={showAllQuestions ? waiting : waiting.slice(0, FIRST_QUESTIONS)} total={waitingTotal} onAnswered={setAnnounce} />
         )}
-        <div className="flex gap-3">
-          {cursor && (
-            <Link to={listId ? `/app?list=${listId}` : "/app"} className="btn btn-ghost btn-sm">
-              Newest
-            </Link>
-          )}
-          {feed.next_cursor && (
-            <Link to={`/app?${new URLSearchParams({ ...(listId ? { list: listId } : {}), cursor: feed.next_cursor })}`} className="btn btn-ghost btn-sm">
-              Older
-            </Link>
-          )}
-        </div>
-      </section>
-      <aside className="grid content-start gap-6 lg:sticky lg:top-24 lg:order-first">
-        <div>
-          <p className="mt-1 font-display text-xl font-semibold">{user.handle}</p>
-          <Link to="/app/account" className="link text-[0.85rem] text-ink-3">
-            Account
-          </Link>
-        </div>
+        {firstRun && (
+          <FirstRun hasList={listCount > 0} hasItem={cards.some((c) => c.items > 0)} hasAgent={hasAgent} firstListId={cards[0]?.id ?? null} needsBio={!bio} />
+        )}
 
-        <nav aria-labelledby="lists-h" className="grid gap-2">
-          <h2 id="lists-h" className="eyebrow">Your lists</h2>
-          {lists.length === 0 && <p className="text-[0.9rem] text-ink-3">No lists yet.</p>}
-          <ul className="grid border-t border-line">
-            {lists.map((l) => (
-              <li key={l.id} className={`border-b border-line py-3 ${l.id === listId ? "-mx-3 bg-sunk px-3" : ""}`}>
-                <Link to={`/l/${l.id}`} className="link block font-semibold leading-snug">
-                  {l.title}
-                </Link>
-                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[0.78rem] text-ink-3">
-                  {visibilityOf(l) === "private" && (
-                    <>
-                      <PrivateBadge bare />
-                      <span aria-hidden="true">·</span>
-                    </>
-                  )}
-                  {plural(l.item_count, formatInfo(l).item)}
-                  {l.my_role === "member" && <> · member</>}
-                </p>
-                <p className="mt-1.5 flex gap-3 text-[0.8rem]">
-                  <Link to={l.id === listId ? "/app" : `/app?list=${l.id}`} className="link text-ink-2" aria-current={l.id === listId ? "true" : undefined}>
-                    {l.id === listId ? "Show all" : "Show only this"}
-                  </Link>
-                  <Link to={`/app/lists/${l.id}/settings`} className="link text-ink-2">
-                    Settings<span className="sr-only"> for {l.title}</span>
-                  </Link>
-                </p>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <CreateList first={lists.length === 0} hasBio={!!user.bio} />
-      </aside>
+        {listCount > 0 && (
+          <section aria-labelledby="lists-h" className="grid gap-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <h2 id="lists-h" className="text-[0.95rem] font-semibold text-ink-2">
+                Lists
+              </h2>
+              {listCount >= FILTER_FROM && (
+                <Form method="get" role="search" className="flex items-end gap-2">
+                  <label className="field">
+                    <span className="sr-only">Find a list</span>
+                    <input name="q" defaultValue={q} placeholder="Find a list" className="input input-sm w-52" />
+                  </label>
+                </Form>
+              )}
+            </div>
+            {cards.length === 0 ? (
+              <p className="text-ink-2">No list matches “{q}”.</p>
+            ) : (
+              <ul className="grid gap-3">
+                {cards.map((c) => (
+                  <ListCardRow key={c.id} card={c} />
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
 
-function ListFilter({ lists, listId }: { lists: ListSummary[]; listId: string | null }) {
+/** Lists | Activity: two real links, the current one marked. */
+export function ViewSwitch({ current }: { current: "lists" | "activity" }) {
+  const tab = (to: string, label: string, on: boolean) => (
+    <Link to={to} aria-current={on ? "page" : undefined} className={`view-tab ${on ? "is-on" : ""}`}>
+      {label}
+    </Link>
+  );
   return (
-    <Form method="get" className="flex items-center gap-2">
-      <label htmlFor="list-filter" className="sr-only">
-        Show
-      </label>
-      <select
-        id="list-filter"
-        name="list"
-        defaultValue={listId ?? ""}
-        className="select w-auto min-w-44"
-        onChange={(e) => e.currentTarget.form?.requestSubmit()}
-      >
-        <option value="">All lists</option>
-        {lists.map((l) => (
-          <option key={l.id} value={l.id}>
-            {l.title}
-          </option>
+    <nav aria-label="View" className="view-switch">
+      {tab("/app", "Lists", current === "lists")}
+      {tab("/app/activity", "Activity", current === "activity")}
+    </nav>
+  );
+}
+
+/* ---------------------------------------------------------------- Waiting on you */
+
+function WaitingOnYou({ waiting, total, onAnswered }: { waiting: WaitingQuestion[]; total: number; onAnswered: (message: string) => void }) {
+  return (
+    <section aria-labelledby="waiting-h" className="grid gap-3">
+      <h2 id="waiting-h" className="flex items-center gap-2 text-[0.95rem] font-semibold text-ink-2">
+        Waiting on you
+        <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[0.8rem] text-warn">
+          {total}
+          <span className="sr-only"> {total === 1 ? "question" : "questions"}</span>
+        </span>
+      </h2>
+      <ul className="grid gap-3">
+        {waiting.map((q) => (
+          <QuestionCard key={q.id} q={q} onAnswered={onAnswered} />
         ))}
-      </select>
-      <noscript>
-        <button className="btn btn-ghost btn-sm">Go</button>
-      </noscript>
-    </Form>
+      </ul>
+      {total > waiting.length && (
+        <Link to="/app?questions=all" className="link w-fit text-[0.9rem]">
+          Show all ({total})
+        </Link>
+      )}
+    </section>
   );
 }
 
-function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string | null }) {
-  const currency = useCurrency();
-  const fetcher = useFetcher<{ ok?: boolean; error?: string; itemId?: string }>();
+/** One question: who asked about which want; the options answer in one tap. */
+function QuestionCard({ q, onAnswered }: { q: WaitingQuestion; onAnswered: (message: string) => void }) {
+  const fetcher = useFetcher<IntentResult>();
   const busy = fetcher.state !== "idle";
-  const added = fetcher.state === "idle" && fetcher.data?.ok && fetcher.data.itemId ? fetcher.data.itemId : null;
-  const [promptFor, setPromptFor] = useState<string | null>(null);
-  // Details already written on the add form: no need to ask again.
-  const hadDetails = useRef(false);
+  const answered = fetcher.state === "idle" && fetcher.data?.ok;
+  // The action's result arrives while the page revalidates, before this card leaves it.
+  const ok = !!fetcher.data?.ok;
   useEffect(() => {
-    if (added && !hadDetails.current) setPromptFor(added);
-  }, [added]);
-  const [target, setTarget] = useState(listId ?? lists[0]?.id ?? "");
-  const fi = formatInfo(lists.find((l) => l.id === target));
+    if (ok) onAnswered(`Answered “${q.item.text}”. ${q.asked_by.kind === "agent" ? q.asked_by.name : "The agent"} can carry on.`);
+  }, [ok]);
+  const qid = `q-${q.id}`;
+  if (answered) {
+    return (
+      <li role="status" className="card px-5 py-4 text-[0.95rem] text-deal">
+        Answered. {q.asked_by.kind === "agent" ? q.asked_by.name : "The agent"} can carry on.
+      </li>
+    );
+  }
+  const hidden = (
+    <>
+      <input type="hidden" name="intent" value="answer-question" />
+      <input type="hidden" name="question_id" value={q.id} />
+    </>
+  );
   return (
-    <div className="card grid gap-3 p-4">
-      <fetcher.Form
-        method="post"
-        className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end"
-        onSubmit={(e) => {
-          const form = e.currentTarget;
-          const d = form.elements.namedItem("details") as HTMLTextAreaElement | null;
-          hadDetails.current = !!d?.value.trim();
-          requestAnimationFrame(() => {
-            const input = form.elements.namedItem("text") as HTMLInputElement | null;
-            const details = form.elements.namedItem("details") as HTMLTextAreaElement | null;
-            if (input) input.value = "";
-            if (details) details.value = "";
-          });
-        }}
-      >
-        <input type="hidden" name="intent" value="add-item" />
-        <Field label={fi.addItemTitle}>
-          {(p) => <Input {...p} name="text" required maxLength={500} placeholder={moneyPlaceholder(fi.itemPlaceholder, currency)} />}
-        </Field>
-        <Field label="List">
-          {(p) => (
-            <Select {...p} name="list_id" value={target} onChange={(e) => setTarget(e.currentTarget.value)}>
-              {lists.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.title}
-                </option>
-              ))}
-            </Select>
-          )}
-        </Field>
-        <Button variant="primary" disabled={busy}>
-          {busy ? "Adding…" : `Add ${fi.item}`}
-        </Button>
-        <details className="group sm:col-span-3">
-          <summary className="textlink-btn text-[0.85rem]">
-            Details <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-          </summary>
-          <Field label="Details (optional)" className="mt-2">
-            {(p) => <Textarea {...p} name="details" maxLength={2000} placeholder={fi.detailsPlaceholder} className="min-h-16" />}
-          </Field>
-        </details>
-        <div aria-live="polite" className="empty:hidden sm:col-span-3">
-          {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
-        </div>
-      </fetcher.Form>
-      {promptFor && <DetailsPrompt itemId={promptFor} fi={fi} onDone={() => setPromptFor(null)} />}
-    </div>
+    <li className="card grid gap-3 p-5 sm:p-6">
+      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.85rem] text-ink-3">
+        <ActorTag actor={q.asked_by} compact /> asked · <Time ts={q.asked_at} /> ·{" "}
+        <Link to={`/l/${q.list.id}#${q.item.id}`} className="link text-ink-2">
+          {q.item.text}
+        </Link>
+        <span aria-hidden="true">·</span>
+        <span>{q.list.title}</span>
+      </p>
+      <p id={qid} className="text-[1.15rem] leading-snug font-semibold whitespace-pre-line">
+        {q.text}
+      </p>
+      {q.options.length > 0 ? (
+        <>
+          <div role="group" aria-labelledby={qid} className="flex flex-wrap gap-2">
+            {q.options.map((o) => (
+              <fetcher.Form method="post" key={o}>
+                {hidden}
+                <input type="hidden" name="text" value={o} />
+                <button className="btn" disabled={busy}>
+                  {o}
+                </button>
+              </fetcher.Form>
+            ))}
+          </div>
+          <details className="group">
+            <summary className="add-link">Something else…</summary>
+            <AnswerField fetcher={fetcher} hidden={hidden} labelledBy={qid} busy={busy} />
+          </details>
+        </>
+      ) : (
+        <AnswerField fetcher={fetcher} hidden={hidden} labelledBy={qid} busy={busy} />
+      )}
+      {fetcher.data?.error && (
+        <p className="form-error" role="alert">
+          {fetcher.data.error}
+        </p>
+      )}
+    </li>
   );
 }
 
-function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
-  const currency = useCurrency();
-  const nav = useNavigation();
-  const result = useActionData<typeof action>() as { error?: string } | undefined;
-  const busy = nav.state === "submitting" && nav.formData?.get("intent") === "create-list";
-  const [format, setFormat] = useState<ListFormat>("shopping");
-  // Visibility follows the format's default until the person picks one themselves.
-  const [visibility, setVisibility] = useState<ListVisibility | null>(null);
-  const fi = FORMATS[format];
-  const vis = visibility ?? fi.defaultVisibility;
+function AnswerField({
+  fetcher,
+  hidden,
+  labelledBy,
+  busy,
+}: {
+  fetcher: ReturnType<typeof useFetcher<IntentResult>>;
+  hidden: React.ReactNode;
+  labelledBy: string;
+  busy: boolean;
+}) {
+  const id = `${labelledBy}-a`;
   return (
-    <details id="new-list" open={first || undefined} className="card scroll-mt-24 p-4">
-      <summary className="flex items-center justify-between text-lg font-semibold">
-        New list <span aria-hidden="true" className="text-ink-3">+</span>
-      </summary>
-      <Form method="post" className="mt-3 grid gap-4">
-        <input type="hidden" name="intent" value="create-list" />
-        <fieldset className="grid gap-2">
-          <legend className="label mb-1">What is this list for?</legend>
-          {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
-            <label
-              key={f.format}
-              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${format === f.format ? "border-ink-3 bg-sunk" : "border-line"}`}
-            >
-              <input
-                type="radio"
-                name="format"
-                value={f.format}
-                checked={format === f.format}
-                onChange={() => setFormat(f.format)}
-                className="mt-1 accent-[var(--ink)]"
-              />
-              <span>
-                <span className="block font-semibold">{f.label}</span>
-                <span className="block text-[0.82rem] text-ink-2">{f.blurb}</span>
-                <span className="mt-0.5 block text-[0.76rem] text-ink-3">e.g. {f.examples}</span>
+    <fetcher.Form method="post" className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+      {hidden}
+      <label htmlFor={id} className="sr-only">
+        Your answer
+      </label>
+      <textarea
+        id={id}
+        name="text"
+        required
+        maxLength={2000}
+        rows={1}
+        placeholder="Your answer"
+        aria-describedby={labelledBy}
+        className="textarea textarea-grow flex-1"
+      />
+      <button className="btn" disabled={busy}>
+        {busy ? "Sending…" : "Answer"}
+      </button>
+    </fetcher.Form>
+  );
+}
+
+/* ---------------------------------------------------------------- Lists */
+
+function ListCardRow({ card: c }: { card: ListCard }) {
+  const fi = FORMATS[c.format];
+  const progress = c.items > 0 && c.done > 0 ? c.done / c.items : 0;
+  return (
+    <li className="card relative grid gap-3 p-5 sm:p-6">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[1.2rem] leading-snug font-semibold tracking-[-0.01em]">
+            {/* The title is the card's link; the controls beside it sit above the stretched area. */}
+            <Link to={`/l/${c.id}`} className="stretched-link">
+              {c.title}
+            </Link>
+          </h3>
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.88rem] text-ink-3">
+            {c.isPrivate && (
+              <span className="inline-flex items-center gap-1 text-ink-2">
+                <LockGlyph /> Private
               </span>
-            </label>
-          ))}
-        </fieldset>
-        <label className="field">
-          <span className="label">Title</span>
-          <input name="title" required maxLength={140} placeholder={format === "shopping" ? "Black Friday 2026" : format === "tasks" ? "Moving day" : "Heat pump questions"} className="input" />
-        </label>
-        <label className="field">
-          <span className="label">Description (optional)</span>
-          <textarea name="description" maxLength={500} className="textarea" placeholder={fi.detailsPlaceholder} />
-        </label>
-        <details className="group">
-          <summary className="textlink-btn text-[0.85rem]">
-            Note for agents <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-          </summary>
-          <label className="field mt-2">
-            <span className="label">Note for agents (optional)</span>
-            <textarea name="note" maxLength={600} className="textarea min-h-16" placeholder={moneyPlaceholder("Gifts for Dad, about {50} each, ship to Denver", currency)} />
-            <span className="hint">Everyone who can write this list, and their agents, can see it. Never public.</span>
-          </label>
-        </details>
-        {first && !hasBio && (
-          <label className="field">
-            <span className="label">Tell your agents about you (optional)</span>
-            <textarea name="bio" maxLength={600} className="textarea min-h-16" placeholder={BIO_PLACEHOLDER} />
-            <span className="hint">Only your own agents see this. Change it any time in Account.</span>
-          </label>
-        )}
-        <fieldset className="grid gap-2">
-          <legend className="label mb-1">Who can see it?</legend>
-          {(["public", "private"] as const).map((v) => (
-            <label key={v} className="flex cursor-pointer items-start gap-2 text-[0.88rem]">
-              <input type="radio" name="visibility" value={v} checked={vis === v} onChange={() => setVisibility(v)} className="mt-1 accent-[var(--ink)]" />
-              <span>
-                <span className="font-semibold">{v === "public" ? "Public" : "Private"}</span>
-                {fi.defaultVisibility === v && <span className="text-ink-3"> (usual for {fi.label.toLowerCase()})</span>}
-                <span className="block text-ink-3">
-                  {v === "public"
-                    ? "Anyone with the link can read it, and search engines can find it once it has an item."
-                    : "Only you, people you invite and your connected agents can see it."}
+            )}
+            {c.isPrivate && <Dot />}
+            <span>{plural(c.items, fi.item)}</span>
+            {c.done > 0 && (
+              <>
+                <Dot />
+                <span>
+                  {c.done} {fi.done}
                 </span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        {result?.error && <p className="form-error" role="alert">{result.error}</p>}
-        <button className="btn" disabled={busy}>
-          {busy ? "Creating…" : `Create ${fi.label.toLowerCase()} list`}
-        </button>
-      </Form>
-    </details>
+              </>
+            )}
+            {c.role === "member" && (
+              <>
+                <Dot />
+                <span>by {c.ownerHandle}</span>
+              </>
+            )}
+            {c.role === "owner" && c.access && c.access.people > 1 && (
+              <>
+                <Dot />
+                <span>Shared with {plural(c.access.people - 1, "person", "people")}</span>
+              </>
+            )}
+            {c.waiting > 0 && (
+              <>
+                <Dot />
+                <span className="font-medium text-warn">
+                  <span aria-hidden="true">● </span>
+                  {c.waiting} waiting on you
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+        <div className="relative z-[2] flex flex-none items-center gap-1">
+          <AddToList card={c} />
+          <Menu label={`More for ${c.title}`}>
+            <Link to={`/app/lists/${c.id}/settings`} className="menu-item">
+              Settings<span className="sr-only"> for {c.title}</span>
+            </Link>
+            <CopyButton text={c.url} label="Share: copy link" ariaLabel={`Copy link to ${c.title}`} className="menu-item" />
+            {c.role === "owner" && (
+              <MenuRemove
+                intent="delete-list"
+                fields={{ list_id: c.id }}
+                label="Delete list"
+                confirmText={`Delete “${c.title}” and everything on it? This can't be undone.`}
+              />
+            )}
+          </Menu>
+        </div>
+      </div>
+      {progress > 0 && (
+        <div
+          className="h-1 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ink)_8%,transparent)]"
+          role="img"
+          aria-label={`${c.done} of ${c.items} ${fi.done}`}
+        >
+          <div className="h-full rounded-full bg-deal" style={{ width: `${Math.round(progress * 100)}%` }} />
+        </div>
+      )}
+      <div className="border-t border-line pt-3 text-[0.92rem]">
+        {/* What an agent says it is doing now beats what it posted last; the note has no time of its own. */}
+        {c.note ? (
+          <p className="flex items-baseline gap-2">
+            <span className="min-w-0 flex-1">
+              <ActorTag actor={c.note.actor} compact /> <span className="text-ink-2">on {c.note.item}:</span> <span className="text-ink">“{c.note.text}”</span>
+            </span>
+          </p>
+        ) : c.latest ? (
+          <p className="flex items-baseline gap-2">
+            <span className="min-w-0 flex-1">
+              <ActorTag actor={c.latest.actor} compact />{" "}
+              <span className="text-ink-2">{c.latest.kind === "product" ? "found" : c.latest.kind === "answer" ? "answered" : "posted"}</span>{" "}
+              <span className="text-ink">{c.latest.title}</span>
+              {c.latest.price && (
+                <>
+                  {" "}
+                  <span className="text-ink-2">for</span>{" "}
+                  <strong className="font-semibold tabular-nums">{formatMoney(c.latest.price.price, c.latest.price.currency)}</strong>
+                </>
+              )}
+            </span>
+            <span className="flex-none text-[0.82rem] text-ink-3">
+              <Time ts={c.latest.at} />
+            </span>
+          </p>
+        ) : (
+          <p className="text-ink-2">
+            No agent has worked on this yet.{" "}
+            <Link to={`/connect?list=${c.id}`} className="relative z-[2] link font-medium text-ink">
+              Connect one<span className="sr-only"> to {c.title}</span>
+            </Link>
+          </p>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** "+ Add": one field, in this list's own words. No list dropdown anywhere. */
+function AddToList({ card }: { card: ListCard }) {
+  const fi = FORMATS[card.format];
+  const currency = useCurrency();
+  const fetcher = useFetcher<IntentResult & { itemId?: string }>();
+  const ref = useRef<HTMLFormElement>(null);
+  const done = fetcher.state === "idle" && fetcher.data?.ok;
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (done) {
+      ref.current?.reset();
+      setCount((n) => n + 1);
+    }
+  }, [done]);
+  const inputId = `add-${card.id}`;
+  return (
+    <Menu
+      label={`${fi.addItemTitle}: ${card.title}`}
+      wide
+      triggerClass="btn btn-sm"
+      trigger={
+        <>
+          + Add<span className="sr-only"> to {card.title}</span>
+        </>
+      }
+    >
+      <fetcher.Form method="post" ref={ref} className="grid gap-2 p-3">
+        <input type="hidden" name="intent" value="add-item" />
+        <input type="hidden" name="list_id" value={card.id} />
+        <label htmlFor={inputId} className="label">
+          {fi.addItemTitle}
+        </label>
+        <input id={inputId} name="text" required maxLength={500} placeholder={moneyPlaceholder(fi.itemPlaceholder, currency)} className="input" />
+        <div className="flex items-center gap-3">
+          <button className="btn btn-want btn-sm" disabled={fetcher.state !== "idle"}>
+            {fetcher.state !== "idle" ? "Adding…" : `Add ${fi.item}`}
+          </button>
+          <span aria-live="polite" className="text-[0.85rem] text-deal">
+            {count > 0 && done ? `Added to ${card.title}.` : ""}
+          </span>
+        </div>
+        {fetcher.data?.error && (
+          <p className="form-error" role="alert">
+            {fetcher.data.error}
+          </p>
+        )}
+      </fetcher.Form>
+    </Menu>
+  );
+}
+
+const Dot = () => <span aria-hidden="true">·</span>;
+const LockGlyph = () => (
+  <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+    <rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor" />
+    <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+  </svg>
+);
+
+/* ---------------------------------------------------------------- First run and invites */
+
+/** Until there is a list and an agent: the three steps, each a real action. */
+function FirstRun({
+  hasList,
+  hasItem,
+  hasAgent,
+  firstListId,
+  needsBio,
+}: {
+  hasList: boolean;
+  hasItem: boolean;
+  hasAgent: boolean;
+  firstListId: string | null;
+  needsBio: boolean;
+}) {
+  const steps = [
+    {
+      done: hasList,
+      title: "Make a list",
+      action: (
+        <Link to="/app/new" className="btn btn-sm">
+          New list
+        </Link>
+      ),
+    },
+    {
+      done: hasItem,
+      title: "Add what you want",
+      action: hasList ? (
+        <Link to={`/l/${firstListId}#add-item`} className="btn btn-sm">
+          Add to your list
+        </Link>
+      ) : null,
+    },
+    {
+      done: hasAgent,
+      title: "Connect an agent",
+      action: (
+        <Link to={firstListId ? `/connect?list=${firstListId}` : "/connect"} className="btn btn-sm">
+          Connect an agent
+        </Link>
+      ),
+    },
+  ];
+  const next = steps.findIndex((s) => !s.done);
+  return (
+    <section aria-labelledby="start-h" className="card grid gap-4 p-5 sm:p-6">
+      <h2 id="start-h" className="text-[1.2rem] font-semibold">
+        Three steps to your first agent at work
+      </h2>
+      <ol className="grid gap-2">
+        {steps.map((s, i) => (
+          <li
+            key={s.title}
+            aria-current={i === next ? "step" : undefined}
+            className={`flex flex-wrap items-center gap-3 rounded-[14px] px-4 py-3 ${i === next ? "bg-[color-mix(in_srgb,var(--ink)_7%,var(--card))]" : ""}`}
+          >
+            <span
+              aria-hidden="true"
+              className={`grid h-7 w-7 flex-none place-items-center rounded-full text-[0.85rem] font-semibold ${s.done ? "bg-deal-soft text-deal" : "bg-sunk text-ink-2"}`}
+            >
+              {s.done ? "✓" : i + 1}
+            </span>
+            <span className={`min-w-0 flex-1 font-medium ${s.done ? "text-ink-3 line-through" : ""}`}>
+              {s.title}
+              {s.done && <span className="sr-only"> (done)</span>}
+            </span>
+            {!s.done && i === next && s.action}
+          </li>
+        ))}
+      </ol>
+      {needsBio && (
+        <p className="text-[0.9rem] text-ink-2">
+          <Link to="/app/account#bio" className="link">
+            Tell your agents your sizes and country
+          </Link>{" "}
+          so they search the right stores.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -397,23 +558,23 @@ function PendingInvites({ invites }: { invites: PendingInvite[] }) {
   const nav = useNavigation();
   const result = useActionData<typeof action>() as { error?: string; intent?: string } | undefined;
   return (
-    <section aria-labelledby="invites-h" className="card grid gap-3 p-4 sm:p-5">
-      <h2 id="invites-h" className="text-lg font-semibold">
+    <section aria-labelledby="invites-h" className="grid gap-3">
+      <h2 id="invites-h" className="text-[0.95rem] font-semibold text-ink-2">
         {invites.length === 1 ? "You're invited to a list" : `You're invited to ${invites.length} lists`}
       </h2>
-      <ul className="grid gap-2">
+      <ul className="grid gap-3">
         {invites.map((inv) => (
-          <li key={inv.list.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line p-3">
+          <li key={inv.list.id} className="card flex flex-wrap items-center gap-x-3 gap-y-2 p-5">
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{inv.list.title}</p>
-              <p className="text-[0.8rem] text-ink-3">
+              <p className="text-[0.85rem] text-ink-3">
                 by {inv.list.owner_handle} · invited <Time ts={inv.invited_at} />
               </p>
             </div>
             <Form method="post">
               <input type="hidden" name="intent" value="accept-invite" />
               <input type="hidden" name="list_id" value={inv.list.id} />
-              <button className="btn btn-want btn-sm" disabled={nav.state !== "idle"}>
+              <button className="btn btn-sm" disabled={nav.state !== "idle"}>
                 Accept<span className="sr-only"> invite to {inv.list.title}</span>
               </button>
             </Form>
@@ -426,119 +587,5 @@ function PendingInvites({ invites }: { invites: PendingInvite[] }) {
         </p>
       )}
     </section>
-  );
-}
-
-/** First run: what will appear here, and the three steps to get there. */
-function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCount: number }) {
-  const hasList = lists.length > 0;
-  const hasItem = lists.some((l) => l.item_count > 0);
-  const hasAgent = agentCount > 0;
-  const firstList = lists[0];
-  const steps: Array<{ done: boolean; title: string; body: React.ReactNode }> = [
-    {
-      done: hasList,
-      title: "Make a list",
-      body: hasList ? (
-        <Link to={`/l/${firstList.id}`} className="link">
-          Open {firstList.title}
-        </Link>
-      ) : (
-        <>Use New list.</>
-      ),
-    },
-    { done: hasItem, title: "Add what you want", body: hasItem ? null : <>In your own words.</> },
-    {
-      done: hasAgent,
-      title: "Connect an agent",
-      body: hasAgent ? (
-        <>Ask it to work on your list.</>
-      ) : (
-        <>
-          ChatGPT, Claude or any AI app.{" "}
-          <Link to="/connect" className="link">
-            How to connect
-          </Link>
-        </>
-      ),
-    },
-  ];
-  const next = steps.findIndex((st) => !st.done);
-  return (
-    <section aria-labelledby="start-h" className="card grid gap-5 p-5 sm:p-7">
-      <div>
-        <h2 id="start-h" className="serif text-[1.75rem]">
-          {next === -1 ? "All set" : "Get started"}
-        </h2>
-      </div>
-      <ol className="grid gap-3 sm:grid-cols-3">
-        {steps.map((st, i) => (
-          <li
-            key={st.title}
-            className={`grid content-start gap-2 rounded-[18px] p-4 ${i === next ? "bg-[color-mix(in_srgb,var(--ink)_8%,var(--card))]" : "bg-sunk"}`}
-            aria-current={i === next ? "step" : undefined}
-          >
-            <span
-              className={`text-[0.95rem] font-medium ${st.done ? "text-deal" : i === next ? "text-ink" : "text-ink-3"}`}
-              aria-hidden="true"
-            >
-              {st.done ? "✓" : i + 1}
-            </span>
-            <h3 className="font-sans text-[1.02rem] font-semibold tracking-normal">
-              {st.title}
-              {st.done && <span className="sr-only"> (done)</span>}
-            </h3>
-            <p className="text-[0.9rem] text-ink-2">{st.body}</p>
-          </li>
-        ))}
-      </ol>
-      {next === -1 && (
-        <p className="rounded-[14px] bg-sunk px-4 py-3 text-[0.9rem] text-ink-2">
-          Try: “Work on my Want MCP list.”
-        </p>
-      )}
-    </section>
-  );
-}
-
-/**
- * SPEC 12.1: every open question across the person's lists, first on the page. Answering here posts
- * the answer and puts the item back to open.
- */
-function WaitingOnYou({ waiting, total }: { waiting: WaitingQuestion[]; total: number }) {
-  return (
-    <section aria-labelledby="waiting-h" className="grid gap-3">
-      <h2 id="waiting-h" className="serif text-[1.75rem]">
-        Waiting on you <span className="font-sans text-[1rem] text-ink-3">{total}</span>
-      </h2>
-      <ul className="grid gap-3">
-        {waiting.map((q) => (
-          <li key={q.id} className="grid gap-2">
-            <p className="text-[0.85rem] text-ink-3">
-              <Link to={`/l/${q.list.id}#${q.item.id}`} className="link font-medium text-ink">
-                {q.item.text}
-              </Link>{" "}
-              · {q.list.title}
-            </p>
-            <OwnerQuestion
-              question={{ id: q.id, item_id: q.item.id, text: q.text, options: q.options, asked_by: q.asked_by, asked_at: q.asked_at, answer: null }}
-              compact
-            />
-          </li>
-        ))}
-      </ul>
-      {total > waiting.length && <p className="text-[0.85rem] text-ink-3">Showing the newest {waiting.length}.</p>}
-    </section>
-  );
-}
-
-/** A quiet prompt until the person has told their agents about themselves (SPEC 12.2). */
-function BioPrompt() {
-  return (
-    <p className="border-y border-line py-3 text-[0.9rem] text-ink-2">
-      <Link to="/app/account#bio" className="link font-medium text-ink">
-        Tell your agents your sizes and country
-      </Link>
-    </p>
   );
 }

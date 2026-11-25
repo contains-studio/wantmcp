@@ -56,6 +56,21 @@ export function assertSameOrigin(request: Request) {
 }
 
 /**
+ * Lists whose "Give this list to your agent" step the person dismissed, on this device. Only list ids, at most 50.
+ */
+const HANDOFF_COOKIE = "wm_handoff_off";
+
+export function dismissedHandoffs(request: Request): string[] {
+  const v = readCookie(request, HANDOFF_COOKIE) ?? "";
+  return v.split(",").filter((id) => /^[A-Za-z0-9_-]{1,64}$/.test(id));
+}
+
+export function dismissHandoffCookie(request: Request, listId: string): string {
+  const ids = [listId, ...dismissedHandoffs(request).filter((id) => id !== listId)].slice(0, 50);
+  return `${HANDOFF_COOKIE}=${ids.join(",")}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000${secureFlag(request)}`;
+}
+
+/**
  * The sign-in attempt (SPEC: POST /auth/code returns { attempt_id }, sent back with the code). Kept in an
  * httpOnly cookie for the ten minutes a code lives, so it never appears in the page or a URL.
  */

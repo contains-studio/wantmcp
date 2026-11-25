@@ -4,10 +4,10 @@ export default {
   slug: "black-friday-shopping-list",
   order: 1,
   group: "deals",
-  title: "A Black Friday list that shows if a deal is real",
+  title: "A Black Friday list with the price before the sale",
   description:
     "Write down what you planned to buy anyway. Your AI agent adds each store's price and the price before the sale, so you can judge every Black Friday deal.",
-  h1: "Know which Black Friday deals are real",
+  h1: "A Black Friday list with the price before the sale",
   intro: "List the few things you meant to buy anyway. Ask your agent before and during the sale, and each price it finds lands next to the last one.",
   label: "Black Friday buying",
   index: true,

@@ -70,7 +70,7 @@ export default function Claim({ loaderData, actionData }: Route.ComponentProps) 
   const left = hoursLeft(claim.expires_at, now);
 
   return (
-    <div className="wrap grid min-h-[60dvh] place-items-center py-10 sm:py-14">
+    <div className="wrap grid place-items-center py-10 sm:py-14">
       <div className="card grid w-full max-w-md gap-4 p-6 sm:p-8">
         <div className="grid gap-1">
           <p className="text-[0.95rem] text-ink-2">
@@ -146,7 +146,7 @@ export default function Claim({ loaderData, actionData }: Route.ComponentProps) 
 
 function LinkGone({ signedIn, message }: { signedIn: boolean; message?: string }) {
   return (
-    <div className="wrap grid min-h-[60dvh] place-items-center py-12">
+    <div className="wrap grid place-items-center py-12">
       <div className="card grid w-full max-w-md justify-items-center gap-3 p-6 text-center sm:p-8">
         <h1 className="text-[1.6rem] leading-tight font-semibold">This link doesn't work any more</h1>
         <p className="text-ink-2">

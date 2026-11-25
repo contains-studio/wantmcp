@@ -73,10 +73,13 @@ export function ItemStatusBar({
   claimedBy,
   claimedAt,
   completion,
+  statusNote,
   fi,
   canWrite,
 }: {
   itemId: string;
+  /** What the agent said it is doing (with in_progress, or a release back to open). */
+  statusNote?: string | null;
   status: ItemStatus;
   claimedBy: ActorRef | null | undefined;
   claimedAt?: string | null;
@@ -117,6 +120,8 @@ export function ItemStatusBar({
   }
   // Shopping lists finish items by marking them bought, so their status is shown, not changed here.
   const control = canWrite && !shopping;
+  // A visitor already sees a dot for an open item; a chip saying "Open" would repeat it.
+  if (!canWrite && status === "open" && !statusNote) return null;
   return (
     <div className="item-status item-indent flex flex-wrap items-center gap-2 text-[0.88rem] sm:pl-11">
       {control ? (
@@ -137,6 +142,11 @@ export function ItemStatusBar({
         </Menu>
       ) : (
         <span className={`chip ${tone}`}>{text}</span>
+      )}
+      {status !== "done" && statusNote && (
+        <p className="item-status-note w-full whitespace-pre-line break-words text-ink-2">
+          <span className="sr-only">Latest note: </span>“{statusNote}”
+        </p>
       )}
       {status === "done" && completion?.note && (
         <p className="w-full whitespace-pre-line break-words text-ink-2">
@@ -419,6 +429,9 @@ export function TextEntryForm({ itemId, fi, entry }: { itemId: string; fi: Forma
  */
 export function OwnerQuestion({ question, history = [], compact = false }: { question: Question | null; history?: Question[]; compact?: boolean }) {
   const answered = history.filter((q) => q.answer);
+  // "You" for the viewer's own answers, never their handle.
+  const label = useActorLabel();
+  const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
   if (!question && !answered.length) return null;
   return (
     <div className={`owner-question grid gap-3 ${compact ? "" : "item-indent sm:pl-11"}`}>
@@ -433,12 +446,15 @@ export function OwnerQuestion({ question, history = [], compact = false }: { que
             {answered.map((q) => (
               <li key={q.id} className="grid gap-1 border-b border-line py-2 text-[0.9rem]">
                 <p className="whitespace-pre-line break-words">
-                  <span className="text-ink-3">{actorLabel(q.asked_by)}: </span>
+                  <span className="text-ink-3">{cap(label(q.asked_by))}: </span>
                   {q.text}
                 </p>
                 <p className="whitespace-pre-line break-words text-ink-2">
-                  <span className="text-ink-3">{actorLabel(q.answer!.answered_by)}: </span>
+                  <span className="text-ink-3">{cap(label(q.answer!.answered_by))}: </span>
                   {q.answer!.text}
+                  {q.answer!.via === "agent_form" && q.answer!.via_agent && (
+                    <span className="text-[0.85em] text-ink-3"> · answered in {q.answer!.via_agent.name}'s form</span>
+                  )}
                 </p>
               </li>
             ))}

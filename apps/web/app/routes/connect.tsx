@@ -50,7 +50,7 @@ const CHECKED = "24 Nov 2026";
 type Client = {
   id: string;
   name: string;
-  status: "confirmed" | "partial" | "generic";
+  status: "confirmed" | "partial" | "generic" | "soon";
   sources: Array<[string, string]>;
   body: (mcp: string) => React.ReactNode;
 };
@@ -311,16 +311,10 @@ const CLIENT_LIST: Client[] = [
   {
     id: "msgblast",
     name: "msgblast",
-    status: "generic",
+    // Not released yet (brands.ts comingSoon): no steps until it ships.
+    status: "soon",
     sources: [],
-    body: () => (
-      <>
-        <p>
-          msgblast for Mac connects to The Want MCP itself: open <strong>View › Show Wants</strong> (⌘3) and sign in with your Want MCP account. From there it
-          can send an item to the agents you pick and show what they post.
-        </p>
-      </>
-    ),
+    body: () => <p className="text-ink-2">Not available yet.</p>,
   },
   {
     id: "other",
@@ -360,6 +354,7 @@ const STATUS = {
   confirmed: { label: `Checked ${CHECKED}`, cls: "chip chip-live" },
   partial: { label: `Partly checked ${CHECKED}`, cls: "chip chip-warn" },
   generic: null,
+  soon: { label: "Coming soon", cls: "chip" },
 };
 
 /** Each client's mark. Claude Code uses the Claude symbol with its name beside it, as Codex uses OpenAI's. */

@@ -132,6 +132,7 @@ function ListCard({ list }: { list: ListDetail }) {
           <span>
             {listed.length} {listed.length === 1 ? "product" : "products"} found by agents
           </span>
+          <span style={{ marginTop: 18, fontSize: 24, color: C.ink3, fontWeight: 500 }}>wantmcp.com</span>
         </div>
         {cheapest && (
           <div

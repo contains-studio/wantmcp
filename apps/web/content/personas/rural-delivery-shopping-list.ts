@@ -4,10 +4,10 @@ export default {
   slug: "rural-delivery-shopping-list",
   order: 67,
   group: "anywhere",
-  title: "Shop only what delivers to your rural ZIP code",
+  title: "Ask what delivers to your rural ZIP code",
   description:
     "Make your list private, add your ZIP code once, and ask your agent which stores deliver there, what delivery costs and when it would arrive, before you order.",
-  h1: "Only what delivers to your ZIP code",
+  h1: "Ask which options deliver to your ZIP code",
   intro: "Make the list private, put your ZIP code in the details, and ask your agent to check delivery before price. Errands for the next trip to town go on a task list.",
   label: "Rural and remote delivery",
   index: true,

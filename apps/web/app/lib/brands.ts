@@ -10,6 +10,8 @@
 export interface Brand {
   id: string; // matches the section id on /connect
   name: string;
+  /** Not released yet: "Coming soon" on /connect with no steps, and left out of every logo row. */
+  comingSoon?: boolean;
   /** Official mark for light backgrounds, and one for dark if the vendor provides it. */
   logo?: {
     light: string;
@@ -36,5 +38,9 @@ export const BRANDS: Brand[] = [
   { id: "cursor", name: "Cursor", logo: { light: "/brands/cursor-on-light.svg", dark: "/brands/cursor-on-dark.svg", width: 2239, height: 532, optical: 1.15 } },
   { id: "grok", name: "Grok", logo: { light: "/brands/grok-mark.svg", width: 512, height: 512, nameBeside: true, optical: 1.4 } },
   { id: "gemini", name: "Gemini", logo: { light: "/brands/gemini-sparkle.svg", width: 192, height: 192, nameBeside: true, optical: 1.3 } },
-  { id: "msgblast", name: "msgblast", logo: { light: "/brands/msgblast.png", width: 206, height: 206, nameBeside: true, optical: 1.4 } },
+  // Not shipped yet (its pull requests are drafts).
+  { id: "msgblast", name: "msgblast", comingSoon: true, logo: { light: "/brands/msgblast.png", width: 206, height: 206, nameBeside: true, optical: 1.4 } },
 ];
+
+/** Clients people can use today: every logo row shows only these. */
+export const LIVE_BRANDS = BRANDS.filter((b) => !b.comingSoon);

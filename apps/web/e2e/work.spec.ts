@@ -4,6 +4,16 @@ import { DEMO, signIn } from "./helpers";
 // These use the mock's seeded demo lists (fresh for every run): outside suggestions on the desk
 // list, open questions, and claims nobody has touched for days.
 
+test("an answer given in an agent's form says so, quietly", async ({ page }) => {
+  await signIn(page, DEMO);
+  await page.goto("/l/lst_tasks");
+  const history = page.locator("details.group", { hasText: "Is the account in your name" }).last();
+  await history.locator("> summary").click();
+  await expect(history.getByText("answered in Claude's form")).toBeVisible();
+  // The viewer's own answer says "You", not their handle.
+  await expect(history.getByText("You:")).toBeVisible();
+});
+
 test("promote one outside suggestion and reject another", async ({ page }) => {
   await signIn(page, DEMO);
   await page.goto("/l/lst_desk2026");
@@ -36,6 +46,7 @@ test("answer the questions waiting on you", async ({ page }) => {
   // One tap on an option.
   await waiting.getByRole("button", { name: "4K panel" }).click();
   await expect(waiting.locator("li")).toHaveCount(before - 1);
+  await expect(page.locator("main").getByRole("status").filter({ hasText: /^Answered/ })).toBeVisible();
   // A written answer, on the list page.
   await page.goto("/l/lst_tasks");
   const q = page.getByRole("group", { name: "Question for you" });
