@@ -805,6 +805,7 @@ route("GET", "/invites/{token}", ({ params }) => invitePreview(params[0]));
 route("POST", "/invites/{token}/accept", ({ caller, params }) => acceptInvite(caller, params[0]));
 
 function invitePreview(token: string) {
+  if (token.startsWith("inv_fail_")) throw new HttpError(503, "internal", "Service unavailable");
   const m = store.members.find((x) => x.token === token);
   if (!m) throw notFound("This invite has expired or was revoked");
   const l = getList(m.list_id);
@@ -923,6 +924,8 @@ route("GET", "/claims/{token}", ({ params }) => claimPreview(params[0]));
 route("POST", "/claims/{token}", ({ caller, params }) => keepClaim(caller, params[0]));
 
 function claimPreview(token: string): ClaimPreview {
+  // Mock only: tokens starting clm_fail_ answer as if the API were down, to exercise the page's fallback.
+  if (token.startsWith("clm_fail_")) throw new HttpError(503, "internal", "Service unavailable");
   const k = liveClaim(token);
   if (!k || k.used_by || expired(k)) throw notFound("This link has expired or was already used");
   const l = getList(k.list_id);

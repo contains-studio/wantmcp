@@ -132,10 +132,15 @@ export async function apiOptional<T>(request: Request, path: string, init: ApiIn
 export function formError(err: unknown): { error: string; code?: string; details?: unknown } {
   if (err instanceof ApiError) {
     if (err.status === 401) throw redirect("/login");
-    return { error: err.message, code: err.code, details: err.details };
+    return { error: friendlyError(err), code: err.code, details: err.details };
   }
+  // fetch itself failed (offline, DNS, a dropped connection): say so instead of an error page.
+  if (err instanceof TypeError) return { error: NETWORK_MESSAGE, code: "network" };
   throw err;
 }
+
+export { friendlyError } from "./errors";
+import { friendlyError, NETWORK_MESSAGE } from "./errors";
 
 /** Map API 404/403 to a Response the route ErrorBoundary understands. */
 export function toRouteError(err: unknown): never {

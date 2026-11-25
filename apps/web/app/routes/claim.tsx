@@ -1,4 +1,6 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
+import { orUnavailable } from "~/lib/degrade.server";
+import { Unavailable } from "~/components/Unavailable";
 import type { Route } from "./+types/claim";
 import { keep, keepAndLand } from "~/lib/claims.server";
 import { lookupClaim } from "~/lib/tokens.server";
@@ -25,16 +27,15 @@ export function headers() {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const [user, claim] = await Promise.all([
-    getUser(request),
-    lookupClaim(request, params.token),
-  ]);
+  const [user, looked] = await Promise.all([getUser(request), orUnavailable(lookupClaim(request, params.token), "/claim/:token")]);
+  const claim = looked.value;
+  if (looked.unavailable) return data({ user, claim: null, now: Date.now(), unavailable: looked.unavailable }, { headers: PRIVATE_HEADERS });
   // A used link reopened by the person who used it: claiming is idempotent for them, so take them to the list.
   if (!claim && user) {
     const kept = await keep(request, params.token);
     if ("list" in kept) throw redirect(`/l/${kept.list.id}`, { headers: PRIVATE_HEADERS });
   }
-  return data({ user, claim, now: Date.now() }, { headers: PRIVATE_HEADERS });
+  return data({ user, claim, now: Date.now(), unavailable: null as string | null }, { headers: PRIVATE_HEADERS });
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -49,10 +50,11 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function Claim({ loaderData, actionData }: Route.ComponentProps) {
-  const { user, claim, now } = loaderData;
+  const { user, claim, now, unavailable } = loaderData;
   const nav = useNavigation();
   const busy = nav.state !== "idle";
 
+  if (unavailable) return <Unavailable reference={unavailable} what="this link" />;
   if (!claim || actionData?.error) {
     return <LinkGone signedIn={!!user} message={actionData?.error} />;
   }

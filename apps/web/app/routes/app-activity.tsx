@@ -2,6 +2,7 @@
  * /app/activity: everything agents posted across the person's lists, newest first (the feed the
  * spec requires), one or two lines a row. Filter by list with one row of chips.
  */
+import { orFallback, orUnavailable } from "~/lib/degrade.server";
 import { data, Link } from "react-router";
 import type { Route } from "./+types/app-activity";
 import { ActorTag } from "~/components/ActorTag";
@@ -26,19 +27,21 @@ export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const listId = url.searchParams.get("list") || null;
   const cursor = url.searchParams.get("cursor");
-  const [lists, feed] = await Promise.all([
+  const [lists, feedResult] = await Promise.all([
     api<ListSummary[]>(request, "/me/lists"),
-    api<Page<FeedEntry>>(request, "/me/feed", { query: { list_id: listId, cursor } }),
+    orUnavailable(api<Page<FeedEntry>>(request, "/me/feed", { query: { list_id: listId, cursor } }), "/app/activity"),
   ]);
+  const feed: Page<FeedEntry> = feedResult.value ?? { data: [], next_cursor: null };
+  const feedUnavailable = feedResult.unavailable;
   const chips = [...lists].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).map((l) => ({ id: l.id, title: l.title }));
   // What agents say they are doing now (status_note), on the first page only.
   const working = cursor
     ? []
-    : (await loadCards(request, []))
+    : (await orFallback(loadCards(request, []), [], "/app/activity"))
         .filter((c) => c.note && (!listId || c.id === listId))
         .map((c) => ({ listId: c.id, listTitle: c.title, ...c.note! }))
         .sort((a, b) => b.at.localeCompare(a.at));
-  return data({ chips, listId, cursor, feed, working }, { headers: { "Cache-Control": "private, no-store" } });
+  return data({ chips, listId, cursor, feed, working, feedUnavailable }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -46,7 +49,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Activity({ loaderData }: Route.ComponentProps) {
-  const { chips, listId, cursor, feed, working } = loaderData;
+  const { chips, listId, cursor, feed, working, feedUnavailable } = loaderData;
   const q = (id: string | null, c?: string | null) => {
     const p = new URLSearchParams();
     if (id) p.set("list", id);
@@ -101,7 +104,15 @@ export default function Activity({ loaderData }: Route.ComponentProps) {
           </section>
         )}
 
-        {feed.data.length === 0 ? (
+        {feedUnavailable ? (
+          <p role="alert" className="card px-5 py-4 text-[0.95rem]">
+            We couldn't load the activity just now.{" "}
+            <a href="/app/activity" className="link">
+              Try again
+            </a>
+            . Reference: <code className="font-semibold">{feedUnavailable}</code>
+          </p>
+        ) : feed.data.length === 0 ? (
           <div className="card grid justify-items-start gap-3 p-6">
             <p className="font-semibold">Nothing posted yet</p>
             <p className="text-ink-2">When an agent finds something or posts an update, it shows here.</p>

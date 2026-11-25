@@ -1,4 +1,5 @@
 import { data, redirect } from "react-router";
+import { orFallback } from "~/lib/degrade.server";
 import type { Route } from "./+types/list";
 import { ListView, type ItemWithEntries } from "~/components/ListView";
 import { api, apiOptional, toRouteError } from "~/lib/api.server";
@@ -74,7 +75,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   });
 
   const listedIds = new Set(items.flatMap((it) => it.entries.map((e) => e.id)));
-  const [{ comments, cursor: commentsCursor }, prices] = await Promise.all([loadComments(request, id), formatInfo(list).format === "shopping" ? loadPrices(request, id, items, isPrivate) : Promise.resolve({} as Record<string, PriceObservation[]>)]);
+  const [{ comments, cursor: commentsCursor }, prices] = await Promise.all([
+    orFallback(loadComments(request, id), { comments: [] as Comment[], cursor: null as string | null }, "/l/:id"),
+    formatInfo(list).format === "shopping"
+      ? orFallback(loadPrices(request, id, items, isPrivate), {} as Record<string, PriceObservation[]>, "/l/:id")
+      : Promise.resolve({} as Record<string, PriceObservation[]>),
+  ]);
   // Only listed entries' histories reach the page.
   for (const key of Object.keys(prices)) if (!listedIds.has(key)) delete prices[key];
 
@@ -84,7 +90,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const kept = role === "owner" ? readKept(request) : null;
   const keptHere = kept?.listId === list.id ? kept : null;
   const [handoff, accessList] = await Promise.all([
-    role === "owner" ? handoffFor(request, list) : Promise.resolve(null),
+    role === "owner" ? orFallback(handoffFor(request, list), null, "/l/:id") : Promise.resolve(null),
     // Who can write it, for writers (older API builds don't have it: the header shows only the counts).
     isWriter ? apiOptional<ListAccess>(request, `/lists/${encodeURIComponent(id)}/access`).catch(() => null) : Promise.resolve(null),
   ]);

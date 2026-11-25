@@ -1,6 +1,6 @@
 import { data, Form, Link, redirect, useActionData, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/login";
-import { api, ApiError } from "~/lib/api.server";
+import { api, ApiError, friendlyError } from "~/lib/api.server";
 import { getUser } from "~/lib/auth.server";
 import { assertSameOrigin, attemptCookie, clearAttemptCookie, getAttemptId, sessionCookie } from "~/lib/session.server";
 import { cleanRef, RefField } from "~/lib/ref";
@@ -22,19 +22,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 /** The API's own message is user-facing; for email delivery problems it says what went wrong. */
+/** The same plain messages every form uses (api.server friendlyError). */
 function loginError(err: ApiError): string {
-  if (err.code === "email_unavailable") return "We can't send email right now. Try again in a little while.";
-  if (err.code === "rate_limited") {
-    const d = (err.details ?? {}) as { retry_after?: unknown; retry_at?: unknown };
-    const secs = typeof d.retry_after === "number" ? d.retry_after : typeof d.retry_at === "string" ? (Date.parse(d.retry_at) - Date.now()) / 1000 : NaN;
-    if (Number.isFinite(secs) && secs > 0) {
-      const mins = Math.ceil(secs / 60);
-      return `Too many tries for now. Try again in ${mins <= 1 ? "a minute" : `${mins} minutes`}.`;
-    }
-    return "Too many tries for now. Wait a few minutes, then try again.";
-  }
-  if (err.code === "network") return "Can't reach the server. Try again in a moment.";
-  return err.message;
+  return friendlyError(err);
 }
 
 type ActionResult = { step: "code"; email: string; optIn: boolean; error?: string; devCode?: string } | { step: "email"; email?: string; error: string };
@@ -63,6 +53,7 @@ export async function action({ request }: Route.ActionArgs) {
       return redirect(next, { headers });
     } catch (err) {
       if (err instanceof ApiError) return data<ActionResult>({ step: "code", email, optIn, error: loginError(err) }, err.status);
+      if (err instanceof TypeError) return data<ActionResult>({ step: "code", email, optIn, error: "Can't reach the server. Check your connection and try again." }, 503);
       throw err;
     }
   }
@@ -84,6 +75,7 @@ export async function action({ request }: Route.ActionArgs) {
     attemptId = typeof res?.attempt_id === "string" ? res.attempt_id : null;
   } catch (err) {
     if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, error: loginError(err) }, err.status);
+    if (err instanceof TypeError) return data<ActionResult>({ step: "email", email, error: "Can't reach the server. Check your connection and try again." }, 503);
     throw err;
   }
   const result: ActionResult = { step: "code", email, optIn, devCode };

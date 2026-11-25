@@ -1,4 +1,5 @@
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation, useSearchParams } from "react-router";
+import { orFallback } from "~/lib/degrade.server";
 import type { Route } from "./+types/settings";
 import { AgentPrompt } from "~/components/AgentPrompt";
 import { CopyButton } from "~/components/CopyButton";
@@ -34,8 +35,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     api<Member[]>(request, `/lists/${id}/members`).catch(() => [] as Member[]),
     // The owner sees every agent on the list, a member only their own. Older API servers
     // only have /me/agents, which lists the caller's own.
-    apiOptional<AgentInfo[]>(request, `/lists/${id}/agents`).then(
-      (all) => all ?? api<AgentInfo[]>(request, "/me/agents", { query: { list_id: params.id } }),
+    orFallback(
+      apiOptional<AgentInfo[]>(request, `/lists/${id}/agents`).then((all) => all ?? api<AgentInfo[]>(request, "/me/agents", { query: { list_id: params.id } })),
+      [] as AgentInfo[],
+      "/app/lists/:id/settings",
     ),
   ]);
   const { items: _items, ...summary } = list;

@@ -39,7 +39,22 @@ const { token } = await (
   await handleMockRequest(new Request("http://mock/v1/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "demo@example.com", code: "123456" }) }))
 ).json();
 
-// The routes the web app reads, with a mock path to call. Paged routes first.
+// Every route the web app calls, by method (grep api<…>(request, … in app/ and workers/). Each must exist in the API's
+// document, so a renamed or removed route is caught before a deploy.
+const CALLS = {
+  GET: ["/me", "/me/invites", "/me/agent-keys", "/me/questions", "/me/lists", "/me/feed", "/me/agents", "/feed", "/lists", "/lists/{id}",
+    "/lists/{id}/members", "/lists/{id}/agents", "/lists/{id}/prices", "/lists/{id}/access", "/lists/{id}/comments", "/lists/{id}/suggestions",
+    "/entries/{id}/prices", "/invites/{token}", "/claims/{claim_token}", "/unsubscribe/{token}"],
+  POST: ["/auth/code", "/auth/verify", "/auth/logout", "/claims/lookup", "/claims/claim", "/invites/lookup", "/invites/accept", "/invites/{token}/accept",
+    "/claims/{claim_token}", "/me/invites/{list_id}/accept", "/lists", "/lists/{id}/handover", "/lists/{id}/invites", "/lists/{id}/members", "/lists/{id}/keys",
+    "/lists/{id}/items", "/items/{id}/entries", "/items/{id}/purchase", "/items/{id}/status", "/entries/{id}/promote", "/entries/{id}/reject",
+    "/entries/{id}/prices", "/questions/{id}/answer", "/comments", "/reports", "/unsubscribe"],
+  PATCH: ["/me", "/lists/{id}", "/items/{id}", "/entries/{id}"],
+  DELETE: ["/me", "/me/agent-keys/{id}", "/agents/{id}", "/lists/{id}", "/lists/{id}/members/{member_id}", "/items/{id}", "/items/{id}/purchase", "/entries/{id}", "/comments/{id}"],
+};
+
+// Responses the web reads, called on the mock and compared with the document. Paged routes must be { data, next_cursor }.
+const entryId = (await call("/lists/lst_desk2026", token)).items.flatMap((i) => i.entries)[0].id;
 const ROUTES = [
   ["/feed", "/feed", true],
   ["/lists", "/lists", true],
@@ -48,11 +63,26 @@ const ROUTES = [
   ["/lists/{id}/comments", "/lists/lst_desk2026/comments", true],
   ["/lists/{id}/suggestions", "/lists/lst_desk2026/suggestions", true],
   ["/me", "/me", false],
+  ["/me/questions", "/me/questions", false],
   ["/lists/{id}", "/lists/lst_desk2026", false],
   ["/lists/{id}/access", "/lists/lst_desk2026/access", false],
+  ["/lists/{id}/prices", "/lists/lst_desk2026/prices", false],
+  ["/invites/{token}", "/invites/inv_seed_from_agent", false],
+  ["/claims/{claim_token}", "/claims/clm_seed_unclaimed", false],
+  ["/unsubscribe/{token}", "/unsubscribe/unsub_check_contract", false],
+  ["/entries/{id}/prices", `/entries/${entryId}/prices`, false],
 ];
-
 let failures = 0;
+for (const [method, paths] of Object.entries(CALLS)) {
+  for (const path of paths) {
+    if (!spec.paths[path]?.[method.toLowerCase()]) {
+      console.log(`FAIL ${method} ${path}: the web calls it, the API's document doesn't have it`);
+      failures++;
+    }
+  }
+}
+console.log(`ok   ${Object.values(CALLS).flat().length} routes the web calls all exist in the API's document`);
+
 for (const [specPath, mockPath, paged] of ROUTES) {
   const op = spec.paths[specPath]?.get;
   if (!op) {

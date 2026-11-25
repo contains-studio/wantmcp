@@ -1,6 +1,8 @@
 import { data, Form, Link, redirect, useActionData, useNavigation } from "react-router";
+import { orFallback, orUnavailable } from "~/lib/degrade.server";
+import { Unavailable } from "~/components/Unavailable";
 import type { Route } from "./+types/invite";
-import { ApiError, apiOptional } from "~/lib/api.server";
+import { ApiError, apiOptional, friendlyError } from "~/lib/api.server";
 import { getUser } from "~/lib/auth.server";
 import { assertSameOrigin } from "~/lib/session.server";
 import { acceptInvite, lookupInvite } from "~/lib/tokens.server";
@@ -12,18 +14,20 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const [user, invite] = await Promise.all([
+  const [user, looked] = await Promise.all([
     getUser(request),
-    // null for an unknown token (or an API without the preview endpoint yet).
-    lookupInvite(request, params.token),
+    // null for an unknown token (or an API without the preview endpoint yet); unavailable when it can't be checked now.
+    orUnavailable(lookupInvite(request, params.token), "/invite/:token"),
   ]);
+  const invite = looked.value;
+  if (looked.unavailable) return data({ user, invite: null, alreadyMember: false, unavailable: looked.unavailable }, { headers: { "Cache-Control": "private, no-store" } });
   // Already a writer of the list: nothing to accept.
   let alreadyMember = false;
   if (user && invite) {
-    const list = await apiOptional<ListSummary>(request, `/lists/${encodeURIComponent(invite.list.id)}`);
+    const list = await orFallback(apiOptional<ListSummary>(request, `/lists/${encodeURIComponent(invite.list.id)}`), null, "/invite/:token");
     alreadyMember = Boolean(list?.my_role);
   }
-  return data({ user, invite, alreadyMember }, { headers: { "Cache-Control": "private, no-store" } });
+  return data({ user, invite, alreadyMember, unavailable: null as string | null }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -39,7 +43,7 @@ export async function action({ request, params }: Route.ActionArgs) {
           ? "This invite has expired or was cancelled. Ask the list owner for a new one."
           : err.code === "conflict"
             ? "Someone has already used this invite. Ask the list owner for a new one."
-            : err.message;
+            : friendlyError(err);
       return data({ error: message }, err.status);
     }
     throw err;
@@ -55,13 +59,14 @@ function sentBy(invite: InvitePreview): string {
 }
 
 export default function Invite({ loaderData, params }: Route.ComponentProps) {
-  const { user, invite, alreadyMember } = loaderData;
+  const { user, invite, alreadyMember, unavailable } = loaderData;
   const result = useActionData<typeof action>();
   const nav = useNavigation();
   const listTitle = invite?.list.title;
   // Checked before anything else: an unknown, used or cancelled link never says "you're invited".
   const usable = !!invite && invite.status === "invited";
 
+  if (unavailable) return <Unavailable reference={unavailable} what="this invite" />;
   if (!invite) {
     return (
       <div className="wrap grid place-items-center py-12">
