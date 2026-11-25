@@ -11,6 +11,9 @@ const ART = [
   { file: "muse-mark", out: "muse-mark" },
   { file: "gemini-sparkle", out: "gemini-sparkle" },
   { file: "openclaw-on-light", out: "openclaw-mark", part: "svg > g" },
+  // Large (a detailed drawing) and a white card on white: both are simpler for the renderer as images.
+  { file: "hermes-agent-icon-dark", out: "hermes-agent" },
+  { file: "instinct-icon", out: "instinct" },
 ];
 const SIZE = 192; // drawn at up to 80px on a 1200px card; 192 keeps it crisp at 2x and above
 const browser = await chromium.launch({ channel: process.env.CI ? undefined : "chrome" });
@@ -23,8 +26,9 @@ for (const { file, out, part } of ART) {
     await page.setContent(`<style>html,body{margin:0;background:transparent}svg{display:block;height:${SIZE * 1.6}px;width:auto}</style>${svg}`);
     await page.locator(part).first().screenshot({ path, omitBackground: true });
   } else {
-    await page.setContent(`<style>html,body{margin:0;background:transparent}svg{display:block;width:${SIZE}px;height:${SIZE}px}</style>${svg}`);
-    await page.locator("svg").first().screenshot({ path, omitBackground: true });
+    const data = "data:image/svg+xml;base64," + Buffer.from(svg).toString("base64");
+    await page.setContent(`<style>html,body{margin:0;background:transparent}img{display:block;width:${SIZE}px;height:${SIZE}px}</style><img src="${data}">`);
+    await page.locator("img").first().screenshot({ path, omitBackground: true });
   }
   console.log(`workers/og-art/${out}.png`);
 }

@@ -16,14 +16,13 @@ import inter600 from "@fontsource/inter/files/inter-latin-600-normal.woff?inline
 import openaiSvg from "../public/brands/openai-blossom-on-light.svg?raw";
 import claudeSparkSvg from "../public/brands/claude-spark.svg?raw";
 import grokBotSvg from "../public/brands/grok-bot-on-light.svg?raw";
-import cursorSvg from "../public/brands/cursor-on-light.svg?raw";
-import grokSvg from "../public/brands/grok-mark.svg?raw";
 // Drawn from public/brands by scripts/make-og-art.mjs: resvg cannot render Muse's and Gemini's files as SVG, and
 // OpenClaw's file holds its mark beside lettering.
 import musePng from "./og-art/muse-mark.png?inline";
 import geminiPng from "./og-art/gemini-sparkle.png?inline";
 import openclawPng from "./og-art/openclaw-mark.png?inline";
-import { LIVE_BRANDS } from "../app/lib/brands";
+import hermesPng from "./og-art/hermes-agent.png?inline";
+import instinctPng from "./og-art/instinct.png?inline";
 import { api } from "../app/lib/api.server";
 import { formatMoney } from "../app/lib/format";
 import type { ListDetail } from "../app/lib/types";
@@ -45,30 +44,37 @@ const TAG_SVG =
 const svgUrl = (svg: string) => "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
 
 /**
- * The apps it works with, as marks only, no lettering (owner, 25 Nov 2026: "remove claude openclaw and cursor
- * lettering and just make the logo marks bigger"). Keyed by brand id (brands.ts); `ratio` is width over height.
- * ChatGPT and Codex share OpenAI's mark, so Codex has no entry. OpenAI's and Cursor's files are cropped to the
- * mark by their viewBox; Claude has a mark of its own.
+ * The marks on the home card, in order, without lettering (owner, 25 Nov 2026: "remove claude openclaw and
+ * cursor lettering and just make the logo marks bigger", then "instead of cursor and grok in these images use
+ * Hermes icon and Instinct Icon"). This is the owner's own selection for the share image, so it is a list of
+ * its own rather than the site's "Works with" row: Hermes Agent and Instinct are not on that row or on the
+ * connect page. `ratio` is width over height; `card` gives a white app icon an edge so it shows on the light card.
  */
-const MARKS: Record<string, { art: string; ratio: number; scale?: number }> = {
-  chatgpt: { art: svgUrl(openaiSvg.replace('viewBox="0 0 716 716"', 'viewBox="170 170 376 376"')), ratio: 1, scale: 1.04 },
-  claude: { art: svgUrl(claudeSparkSvg), ratio: 1 },
-  "grok-bot": { art: svgUrl(grokBotSvg), ratio: 1, scale: 0.96 },
-  muse: { art: musePng, ratio: 1, scale: 1.22 },
-  openclaw: { art: openclawPng, ratio: 255 / 243, scale: 1.04 },
-  cursor: { art: svgUrl(cursorSvg.replace('viewBox="0 0 2238.7 532.09"', 'viewBox="0 0 467 532.09"')), ratio: 467 / 532.09, scale: 1.04 },
-  grok: { art: svgUrl(grokSvg), ratio: 1, scale: 0.94 },
-  gemini: { art: geminiPng, ratio: 1, scale: 1.04 },
-};
+const CARD_MARKS: Array<{ id: string; art: string; ratio: number; scale?: number; card?: boolean }> = [
+  { id: "chatgpt", art: svgUrl(openaiSvg.replace('viewBox="0 0 716 716"', 'viewBox="170 170 376 376"')), ratio: 1, scale: 1.04 },
+  { id: "claude", art: svgUrl(claudeSparkSvg), ratio: 1 },
+  { id: "grok-bot", art: svgUrl(grokBotSvg), ratio: 1, scale: 0.96 },
+  { id: "muse", art: musePng, ratio: 1, scale: 1.22 },
+  { id: "openclaw", art: openclawPng, ratio: 255 / 243, scale: 1.04 },
+  { id: "hermes-agent", art: hermesPng, ratio: 1, scale: 0.98 },
+  { id: "instinct", art: instinctPng, ratio: 1, scale: 0.98, card: true },
+  { id: "gemini", art: geminiPng, ratio: 1, scale: 1.04 },
+];
 
-/** One row of marks across the top of the card, where the product's own lockup used to be, in the site's order. */
+/** One row of marks across the top of the card, where the product's own lockup used to be. */
 function MarkRow({ size = 80 }: { size?: number }) {
-  const marks = LIVE_BRANDS.flatMap((b) => (MARKS[b.id] ? [{ id: b.id, ...MARKS[b.id] }] : []));
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: size + 16 }}>
-      {marks.map((m) => {
+      {CARD_MARKS.map((m) => {
         const h = Math.round(size * (m.scale ?? 1));
-        return <img key={m.id} src={m.art} width={Math.round(h * m.ratio)} height={h} />;
+        const w = Math.round(h * m.ratio);
+        return m.card ? (
+          <div key={m.id} style={{ display: "flex", width: w, height: h, borderRadius: Math.round(h * 0.275), boxShadow: `0 0 0 1.5px ${C.line}, 0 4px 14px rgba(0,0,0,0.10)` }}>
+            <img src={m.art} width={w} height={h} />
+          </div>
+        ) : (
+          <img key={m.id} src={m.art} width={w} height={h} />
+        );
       })}
     </div>
   );
