@@ -10,7 +10,7 @@ export default {
   h1: "Neighbors' questions, answered with sources",
   intro: "Your agent drafts an answer and links its source. A volunteer reads the source and accepts the answer, and the list is ready to share.",
   label: "Civic Q&A with sources",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

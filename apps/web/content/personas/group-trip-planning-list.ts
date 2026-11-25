@@ -10,7 +10,7 @@ export default {
   h1: "One list for the group trip",
   intro: "Write down what the trip needs. Your agents post options with prices and sources, and the people you invite tick off their part.",
   label: "Group trip planning",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

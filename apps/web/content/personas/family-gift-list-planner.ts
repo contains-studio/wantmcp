@@ -10,7 +10,7 @@ export default {
   h1: "Every gift, one private list",
   intro: "Write who you're buying for, what they're into and what you'll spend. Make the list private first, then ask your agent for ideas and tick each one off as you buy.",
   label: "Buying for the whole family",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

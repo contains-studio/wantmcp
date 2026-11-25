@@ -10,7 +10,7 @@ export default {
   h1: "Host Christmas without the loose ends",
   intro: "Write down every job and every big buy. Your agent posts options and updates, and anyone you invite can see what's left and tick off what they've done.",
   label: "Hosting Christmas",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

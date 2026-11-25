@@ -90,6 +90,11 @@ export interface Theme {
   name: string;
   /** Three words or fewer, under the thumbnail. */
   caption: string;
+  /**
+   * false keeps a look out of the picker, the gallery and the home page (out of season). Lists that
+   * already use it keep rendering with it. Flip it back to offer it again.
+   */
+  offered?: boolean;
   /** Templates are "workspace" ("default" was the retired Cards); occasions dress any template. */
   group: "default" | "occasion" | "workspace";
   /** Accents per mode (missing ones fall back to the template's, then to the palette). */

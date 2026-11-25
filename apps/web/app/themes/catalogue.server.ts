@@ -28,6 +28,14 @@ export const TEMPLATES: Theme[] = [sheet, today, doc, board, sections, heat, tra
 /** Occasions: how a list is dressed, on any template. In calendar order from the end of November. */
 export const OCCASIONS: Theme[] = [blackFriday, cyberMonday, chanukah, christmas, kwanzaa, newYear, valentines, halloween, birthday];
 
+/** The occasions offered in the picker, the gallery and on the home page. */
+export const OFFERED_OCCASIONS: Theme[] = OCCASIONS.filter((o) => o.offered !== false);
+
+/** Whether a look may be offered (its occasion, if any, is in season). */
+export function isOffered(look: Look): boolean {
+  return !look.occasion || look.occasion.offered !== false;
+}
+
 /** Every look. */
 export const THEMES: Theme[] = [...TEMPLATES, ...OCCASIONS];
 
@@ -95,7 +103,7 @@ export function templateViews(): ThemeView[] {
 /** Every occasion on one layout (Sheet unless another is given). */
 export function occasionViews(template = "sheet", only?: readonly string[]): ThemeView[] {
   const tpl = TEMPLATE_BY_SLUG.get(template) ?? sheet;
-  const list = only ? OCCASIONS.filter((o) => only.includes(o.slug)) : OCCASIONS;
+  const list = only ? OCCASIONS.filter((o) => only.includes(o.slug)) : OFFERED_OCCASIONS;
   return list.map((o) => lookView(tpl, o, lookSlug(tpl.slug, o.slug)));
 }
 

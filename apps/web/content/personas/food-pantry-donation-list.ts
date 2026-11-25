@@ -10,7 +10,7 @@ export default {
   h1: "Show donors exactly what the pantry needs",
   intro: "Keep this month's needs on one public page. Your agent adds a low price for each item, and you tick off what's been covered as donations come in.",
   label: "Food pantry needs list",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

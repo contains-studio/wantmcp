@@ -10,7 +10,7 @@ export default {
   h1: "Competitor prices and answers, dated",
   intro: "List the rival products and questions your team keeps asking about. Each time your agents check, the new price lands next to the old one, with its date.",
   label: "Competitor and market tracking",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

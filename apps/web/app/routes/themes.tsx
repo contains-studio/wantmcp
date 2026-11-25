@@ -21,7 +21,10 @@ export function loader({ request }: Route.LoaderArgs) {
     throw redirect(occ ? `/themes?layout=sheet&occasion=${encodeURIComponent(occ)}` : "/themes", 301);
   }
   const template = resolveLook(asked ?? "sheet").template.slug;
-  const occasion = q.get("occasion") ? (resolveLook(q.get("occasion")).occasion?.slug ?? null) : null;
+  const occ = q.get("occasion") ? resolveLook(q.get("occasion")).occasion : null;
+  // An occasion out of season is not shown: back to the layout alone.
+  if (occ && occ.offered === false) throw redirect(`/themes?layout=${encodeURIComponent(template)}`, 302);
+  const occasion = occ?.slug ?? null;
   const slug = lookSlug(template, occasion);
   const chosen = getThemeView(slug);
   const now = Date.now();

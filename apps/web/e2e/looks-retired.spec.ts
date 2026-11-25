@@ -33,3 +33,15 @@ test("a season tile starts a gift list in its look, after sign-in", async ({ pag
   await expect(page.getByRole("heading", { level: 1, name: "Christmas gifts" })).toBeVisible();
   await expect(page.locator(".themed").first()).toHaveClass(/\bocc-christmas\b/);
 });
+
+test("occasions out of season are not offered and their previews redirect", async ({ page }) => {
+  for (const from of ["/themes/sheet--valentines", "/themes/halloween", "/themes?layout=sheet&occasion=valentines"]) {
+    await page.goto(from);
+    await expect(page, from).toHaveURL(/\/themes(\?layout=sheet)?$/);
+  }
+  await page.goto("/themes");
+  await expect(page.getByText("Valentine's Day")).toHaveCount(0);
+  await expect(page.getByText("Halloween")).toHaveCount(0);
+  await expect(page.getByText("New Year").first()).toBeVisible();
+  await expect(page.getByText("Birthday").first()).toBeVisible();
+});

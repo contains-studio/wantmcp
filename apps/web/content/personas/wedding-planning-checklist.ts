@@ -10,7 +10,7 @@ export default {
   h1: "Plan the wedding together, in one place",
   intro: "Write down each decision still ahead. Your agents gather options and sourced answers, and you both see the same list.",
   label: "Wedding planning",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

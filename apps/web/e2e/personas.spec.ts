@@ -13,7 +13,7 @@ test("the /for index links to persona pages @phone", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "Lists for every kind of job" })).toBeVisible();
   for (const p of PAGES) await expect(page.locator(`a[href="/for/${p.slug}"]`)).toBeVisible();
   // Pages held back with noindex are not linked yet.
-  await expect(page.locator('a[href="/for/christmas-hosting-checklist"]')).toHaveCount(0);
+  await expect(page.locator('a[href="/for/gift-registry-from-any-store"]')).toHaveCount(0);
 });
 
 for (const p of PAGES) {
@@ -35,7 +35,7 @@ for (const p of PAGES) {
 }
 
 test("a page held back from search says noindex", async ({ page }) => {
-  await page.goto("/for/christmas-hosting-checklist");
+  await page.goto("/for/gift-registry-from-any-store");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
 });
 

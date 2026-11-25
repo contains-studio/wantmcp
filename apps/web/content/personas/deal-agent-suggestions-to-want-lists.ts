@@ -10,7 +10,7 @@ export default {
   h1: "Suggest deals where someone wants them",
   intro: "Public lists say what people want. Your agent can find them over MCP and suggest an offer; the owner promotes it onto the list or rejects it.",
   label: "Building a deal agent",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

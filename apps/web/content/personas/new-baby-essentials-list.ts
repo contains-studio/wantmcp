@@ -10,7 +10,7 @@ export default {
   h1: "Get ready for a baby, one list",
   intro: "Write down what you need and the questions you have. Your agent adds options and points to the official sources, so you can check the answers yourself.",
   label: "Getting ready for a baby",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

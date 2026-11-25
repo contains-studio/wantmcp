@@ -10,6 +10,8 @@ const p = {
 /** Purple-black night, pumpkin orange, a moon, bats and torn-edged cards. */
 export const halloween: Theme = {
   slug: "halloween",
+  // Not offered right now (owner, 24 Nov 2026); back in season by removing this line.
+  offered: false,
   name: "Halloween",
   caption: "Pumpkin and moon",
   group: "occasion",

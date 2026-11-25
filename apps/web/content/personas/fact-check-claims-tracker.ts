@@ -10,7 +10,7 @@ export default {
   h1: "Every claim, its sources and its answer",
   intro: "Write each claim you need to check as a question on a private list. Your agents post answers with links; you accept the one you'll stand behind.",
   label: "Checking claims for a story",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

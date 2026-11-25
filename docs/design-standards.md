@@ -58,6 +58,12 @@ account) are tools, not landing pages:
 The defaults follow from this: a list nobody has dressed uses Sheet for shopping, Checklist for
 tasks and Doc for research.
 
+## The seven questions
+
+Every screen, flow, email and agent-facing text is judged by the owner's seven questions, on a phone
+in dark mode with real content, before it is shown to anyone. The questions, how to review and the
+screenshot script are in the project skill [`.claude/skills/experience-review`](../.claude/skills/experience-review/SKILL.md).
+
 ## Every word earns its place
 
 Chrome is not content. Before any item, a person should read only what tells them something.

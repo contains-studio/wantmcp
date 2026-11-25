@@ -10,7 +10,7 @@ export default {
   h1: "Get the household admin off your mind",
   intro: "List the renewals, bookings and forms the home needs. Your agent does the looking up and drafting, and marks anything it is waiting on you for.",
   label: "Household admin",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

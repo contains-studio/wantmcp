@@ -10,7 +10,7 @@ export default {
   h1: "Arrange help for a relative from afar",
   intro: "Keep the jobs, buys and questions in one private list the family shares. Your agent looks things up; everyone sees what is done and what is next.",
   label: "Caring from a distance",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

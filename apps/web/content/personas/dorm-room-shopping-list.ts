@@ -10,7 +10,7 @@ export default {
   h1: "Set up your dorm room without overspending",
   intro: "Write down what the room needs. Ask your agent for options, tick things off as you buy them, and share the link so family can see what's left.",
   label: "Dorm room setup",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

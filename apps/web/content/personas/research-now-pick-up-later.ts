@@ -10,7 +10,7 @@ export default {
   h1: "Let your agent do the legwork",
   intro: "Write down what needs doing. Your agent does the research and leaves it on the list, with any question for you, until you're ready to pick it up.",
   label: "Hand off legwork for later",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

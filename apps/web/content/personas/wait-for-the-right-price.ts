@@ -10,7 +10,7 @@ export default {
   h1: "Buy when it reaches your price",
   intro: "Name the model and your number. Ask your agent to re-check, or set up a schedule in your assistant, and every price it posts lands in the item's history.",
   label: "Waiting for a target price",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

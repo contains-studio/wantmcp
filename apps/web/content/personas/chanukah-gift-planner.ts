@@ -10,7 +10,7 @@ export default {
   h1: "Plan Chanukah night by night",
   intro: "Give each night its own wants and dates. Ask your agent for options, and the list shows what is chosen, bought and still open before each evening.",
   label: "Chanukah, night by night",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

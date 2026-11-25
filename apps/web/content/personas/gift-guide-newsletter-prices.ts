@@ -10,7 +10,7 @@ export default {
   h1: "A gift guide you can re-price before every issue",
   intro: "Put your picks on one public list and link to it. Prices are as fresh as the last time you asked your agent, and each one shows when it was checked.",
   label: "Gift guides and deal newsletters",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

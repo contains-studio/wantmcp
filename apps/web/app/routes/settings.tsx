@@ -9,7 +9,6 @@ import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin } from "~/lib/session.server";
 import type { AgentInfo, ListDetail, ListFormat, ListSummary, ListVisibility, Member } from "~/lib/types";
 import { ThemeThumb } from "~/components/ThemeThumb";
-import { ListView } from "~/components/ListView";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeView } from "~/themes/view";
@@ -46,7 +45,17 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const current = resolveLook(summary.theme ?? formatInfo(summary).defaultTheme, formatOf(summary));
   const browsing = new URL(request.url).searchParams.get("template") ?? current.template.slug;
   const looks = owner
-    ? { templates: templateViews(), occasions: occasionViews(resolveLook(browsing, formatOf(summary)).template.slug), browsing: resolveLook(browsing, formatOf(summary)).template.slug }
+    ? {
+        templates: templateViews(),
+        // The list's own occasion stays choosable even when it is not offered right now.
+        occasions: [
+          ...occasionViews(resolveLook(browsing, formatOf(summary)).template.slug),
+          ...(current.occasion && current.occasion.offered === false
+            ? occasionViews(resolveLook(browsing, formatOf(summary)).template.slug, [current.occasion.slug]).map((v) => ({ ...v, caption: "Not offered right now" }))
+            : []),
+        ],
+        browsing: resolveLook(browsing, formatOf(summary)).template.slug,
+      }
     : null;
   const sample = owner ? sampleList(Date.now(), formatOf(summary)) : null;
   return data(
@@ -186,7 +195,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         title="Agents and write keys"
         desc={
           <>
-            Signed-in agents appear here. Command-line tools use a write key. <Link to="/connect" className="link">Setup guides</Link>
+            Signed-in agents appear here. Command-line tools use a write key. <Link to={`/connect?list=${list.id}`} className="link">Setup guides</Link>
           </>
         }
       >
@@ -600,21 +609,9 @@ function ThemePicker({
         <p className="label" id="theme-preview-label">
           Preview: {view.name}
         </p>
-        <div className="max-h-[30rem] overflow-hidden rounded-md border border-line" aria-hidden="true" inert>
-          <ListView
-            list={sample.list}
-            items={sample.items}
-            suggestions={[]}
-            comments={sample.comments}
-            commentsCursor={null}
-            prices={sample.prices}
-            isWriter={false}
-            role={null}
-            origin={origin}
-            theme={view}
-            preview
-            previewItems={view.layout === "board" || view.layout === "heat" || view.layout === "sections" ? 4 : 1}
-          />
+        {/* A picture of the list in this look, scaled to the frame: nothing inside it scrolls. */}
+        <div className="overflow-hidden rounded-[14px] border border-line">
+          <ThemeThumb theme={view} sample={sample} origin={origin} items={3} className="thumb-half h-[18rem] sm:h-[24rem]" />
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3" aria-live="polite">

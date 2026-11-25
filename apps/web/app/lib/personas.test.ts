@@ -91,7 +91,8 @@ test("no promises the product can't keep", () => {
 
 test("every list names a current layout (no retired Cards, no occasion without a layout)", () => {
   const LAYOUTS = ["sheet", "today", "doc", "board", "sections", "heat", "tracker"];
-  const OCCASIONS = ["black-friday", "cyber-monday", "chanukah", "christmas", "kwanzaa", "new-year", "valentines", "halloween", "birthday"];
+  // Offered occasions only (Valentine's Day and Halloween are out of season).
+  const OCCASIONS = ["black-friday", "cyber-monday", "chanukah", "christmas", "kwanzaa", "new-year", "birthday"];
   for (const p of personas)
     for (const l of [p.lists.shopping, p.lists.tasks, p.lists.research]) {
       if (!l.look) continue;
@@ -99,4 +100,9 @@ test("every list names a current layout (no retired Cards, no occasion without a
       assert.ok(LAYOUTS.includes(t), `${p.slug}: layout "${t}"`);
       if (o) assert.ok(OCCASIONS.includes(o), `${p.slug}: occasion "${o}"`);
     }
+});
+
+test("49 pages are indexed; the 18 not yet served stay out", () => {
+  assert.equal(personas.filter((p) => p.index).length, 49);
+  assert.equal(personas.filter((p) => !p.index).length, 18);
 });

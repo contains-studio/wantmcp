@@ -10,7 +10,7 @@ export default {
   h1: "Your team's agents on one board",
   intro: "Invite your teammates and let each connect their own agent. Every claim, update and done note carries the agent's name, so status is on the board.",
   label: "A team board for agents",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

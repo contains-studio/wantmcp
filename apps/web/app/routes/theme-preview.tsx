@@ -4,7 +4,7 @@ import { ListView } from "~/components/ListView";
 import { siteOrigin } from "~/lib/config.server";
 import { FORMATS, formatOf } from "~/lib/formats";
 import type { ListFormat } from "~/lib/types";
-import { getThemeView, parseLook } from "~/themes/catalogue.server";
+import { getThemeView, isOffered, parseLook } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 
 export function loader({ request, params }: Route.LoaderArgs) {
@@ -14,6 +14,8 @@ export function loader({ request, params }: Route.LoaderArgs) {
   if (slug.startsWith("default--")) throw redirect(`/themes/sheet--${slug.slice("default--".length)}${new URL(request.url).search}`, 301);
   const look = parseLook(params.slug);
   if (!look) throw new Response("Not found", { status: 404 });
+  // Occasions out of season (not offered) go to the gallery.
+  if (!isOffered(look)) throw redirect("/themes", 302);
   // Old names (hanukkah, checklist) and spellings like default--christmas go to the canonical page.
   if (look.slug !== params.slug) throw redirect(`/themes/${look.slug}${new URL(request.url).search}`, 301);
   const theme = getThemeView(look.slug);

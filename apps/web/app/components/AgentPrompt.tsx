@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Form, Link } from "react-router";
 import { AGENT_PROMPT_RESTART_NOTE, AGENT_PROMPT_SIGN_IN, AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
 import { CopyButton } from "./CopyButton";
 
@@ -11,7 +12,7 @@ export function AgentPrompt({ mcpUrl, listUrl, keyValue, title }: { mcpUrl: stri
   return (
     <div className="grid gap-2">
       {title && <p className="label">{title}</p>}
-      <pre className="codeblock max-h-80 overflow-y-auto text-[0.78rem]" tabIndex={0} role="region" aria-label="Prompt for your agent">{text}</pre>
+      <pre className="codeblock text-[0.78rem]" tabIndex={0} role="region" aria-label="Prompt for your agent">{text}</pre>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <CopyButton text={text} label="Copy prompt" className="btn btn-sm w-fit" />
         <p className="text-[0.82rem] text-ink-3">{AGENT_PROMPT_RESTART_NOTE}</p>
@@ -20,25 +21,55 @@ export function AgentPrompt({ mcpUrl, listUrl, keyValue, title }: { mcpUrl: stri
   );
 }
 
-/** The sign-in prompt with an editable list link, for /connect. */
-export function AgentPromptBuilder({ mcpUrl, lists }: { mcpUrl: string; lists: Array<{ title: string; url: string }> }) {
-  const [listUrl, setListUrl] = useState(lists[0]?.url ?? "");
+type MyList = { id: string; title: string; url: string; shared: boolean };
+
+/**
+ * The sign-in prompt for /connect, filled with the person's list:
+ * - signed in with lists: a select (most recent first, or the list they came from), the prompt
+ *   rendered on the server for it; without JavaScript, "Use this list" reloads with ?list=
+ * - signed in without lists: no field, a way to start one
+ * - signed out: a field for the link
+ */
+export function AgentPromptBuilder({ mcpUrl, lists, selected, signedIn }: { mcpUrl: string; lists: MyList[]; selected: string | null; signedIn: boolean }) {
+  const [id, setId] = useState(selected);
+  const [typed, setTyped] = useState("");
+  const chosen = lists.find((l) => l.id === id);
+  const listUrl = signedIn ? (chosen?.url ?? "") : typed;
   return (
     <div className="grid gap-3">
-      <label className="field">
-        <span className="label">Your list's link</span>
-        {lists.length > 0 ? (
-          <select className="select" value={listUrl} onChange={(e) => setListUrl(e.target.value)}>
-            {lists.map((l) => (
-              <option key={l.url} value={l.url}>
-                {l.title}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input className="input" value={listUrl} onChange={(e) => setListUrl(e.target.value.trim())} placeholder="https://wantmcp.com/l/…" inputMode="url" />
-        )}
-      </label>
+      {signedIn && lists.length > 0 && (
+        <Form method="get" preventScrollReset className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+          <label className="field">
+            <span className="label">Your list</span>
+            <select name="list" className="select" value={id ?? ""} onChange={(e) => setId(e.target.value)}>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.title}
+                  {l.shared ? " (shared)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          {/* Without JavaScript the prompt follows the list after this; with it, it follows at once. */}
+          <noscript>
+            <button className="btn">Use this list</button>
+          </noscript>
+        </Form>
+      )}
+      {signedIn && lists.length === 0 && (
+        <p className="text-[0.95rem] text-ink-2">
+          You don't have a list yet.{" "}
+          <Link to="/app" className="link font-medium text-ink">
+            Start a list
+          </Link>
+        </p>
+      )}
+      {!signedIn && (
+        <label className="field">
+          <span className="label">Your list's link</span>
+          <input className="input" value={typed} onChange={(e) => setTyped(e.target.value.trim())} placeholder="https://wantmcp.com/l/…" inputMode="url" />
+        </label>
+      )}
       <AgentPrompt mcpUrl={mcpUrl} listUrl={listUrl || "[paste the link to your list here]"} />
     </div>
   );
@@ -52,7 +83,7 @@ export function KeyPromptExample({ mcpUrl, agent }: { mcpUrl: string; agent: str
   const text = fillPrompt(AGENT_PROMPT_WITH_KEY, { mcpUrl, listUrl: "https://wantmcp.com/l/YOUR_LIST", key: "wk_YOUR_WRITE_KEY" });
   return (
     <div className="grid gap-2">
-      <pre className="codeblock max-h-72 overflow-y-auto text-[0.78rem]" tabIndex={0} role="region" aria-label={`Prompt for ${agent}, with a write key`}>{text}</pre>
+      <pre className="codeblock text-[0.78rem]" tabIndex={0} role="region" aria-label={`Prompt for ${agent}, with a write key`}>{text}</pre>
       <p className="text-[0.85rem] text-ink-2">
         Create a write key in your list's settings (<strong>Agents and write keys</strong>): this same prompt appears there with your list and key filled in, ready to copy.
       </p>

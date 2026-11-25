@@ -10,13 +10,13 @@ export default {
   h1: "Run the block party from one list",
   intro: "Put every job, supply and open question on the list. Volunteers you invite take their part, and next year's team starts from it.",
   label: "Community event organizing",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",
       title: "Fall block party: supplies",
       description: "Bought from the neighborhood fund unless someone donates it.",
-      look: "sheet--halloween",
+      look: "sheet",
       items: [
         {
           want: "Three 10 x 10 pop-up canopies",
@@ -54,7 +54,7 @@ export default {
       format: "tasks",
       title: "Fall block party: who's doing what",
       description: "Invited volunteers can tick off their own jobs on the web.",
-      look: "today--halloween",
+      look: "today",
       items: [
         {
           want: "Apply for the street closure permit",

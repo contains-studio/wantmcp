@@ -10,7 +10,7 @@ export default {
   h1: "Get the school supply list done in one evening",
   intro: "Type in the teacher's list and each child's sizes. Ask your agent for prices, and buy the whole list before the first day.",
   label: "Back-to-school shopping",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

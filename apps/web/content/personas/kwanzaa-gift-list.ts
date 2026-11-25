@@ -10,7 +10,7 @@ export default {
   h1: "Choose Kwanzaa gifts with intent",
   intro: "Write down the books and handmade pieces you are looking for. Ask your agent to find them at the shops and makers you want to support, and to show where each claim comes from.",
   label: "Kwanzaa zawadi",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

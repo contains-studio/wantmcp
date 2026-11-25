@@ -10,7 +10,7 @@ export default {
   h1: "Compare what each option costs at your door",
   intro: "When the nearest store doesn't carry it, the sticker price is only the start. Your agent can note shipping, delivery time and warranty terms beside each price.",
   label: "Delivered cost from the mainland",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

@@ -10,7 +10,7 @@ export default {
   h1: "Every room's specs, prices and open questions",
   intro: "Write each fixture with the sizes that matter. Ask your agent to price it now and again before you order, and the price history stays on the list.",
   label: "Home renovation planning",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

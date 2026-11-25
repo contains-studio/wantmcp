@@ -10,7 +10,7 @@ export default {
   h1: "From a vague job to the next small step",
   intro: "Write the task the way it sits in your head. Your agent splits it up, does the parts it can and shows you one next step.",
   label: "Next steps for big tasks",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

@@ -10,7 +10,7 @@ export default {
   h1: "Options ready before they ask",
   intro: "Put each request on a private list. Your agent gathers options with prices and links, and the person you support can see them in one place.",
   label: "Executive assistant requests",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

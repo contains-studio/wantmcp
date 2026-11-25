@@ -10,7 +10,7 @@ export default {
   h1: "Only what delivers to your ZIP code",
   intro: "Make the list private, put your ZIP code in the details, and ask your agent to check delivery before price. Errands for the next trip to town go on a task list.",
   label: "Rural and remote delivery",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

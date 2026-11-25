@@ -77,7 +77,7 @@ for (const viewport of Object.keys(VIEWPORTS))
 if (WITH_THEMES) {
   // Every template with each format, every occasion on Sheet, and every occasion on a rotating
   // template (so each template is dressed at least once), in both schemes.
-  const { TEMPLATES, OCCASIONS } = await import("../app/themes/catalogue.server.ts");
+  const { TEMPLATES, OFFERED_OCCASIONS: OCCASIONS } = await import("../app/themes/catalogue.server.ts");
   const looks = [
     ...TEMPLATES.flatMap((t) => ["shopping", "tasks", "research"].map((f) => `/themes/${t.slug}?format=${f}`)),
     ...OCCASIONS.map((o) => `/themes/sheet--${o.slug}`),

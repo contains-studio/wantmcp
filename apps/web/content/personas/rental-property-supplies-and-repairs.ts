@@ -10,7 +10,7 @@ export default {
   h1: "Keep every rental stocked and in repair",
   intro: "Make one private list per unit. Your agent prices replacements and posts updates on repairs, and a cleaner you invite can add what broke during a turnover.",
   label: "Rental restocking and repairs",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

@@ -10,7 +10,7 @@ export default {
   h1: "Find the exact part, with sources to check",
   intro: "Ask once which part fits and keep the sourced answer next to the stores that still sell it. Make the list public and the next person with the same fault can find it.",
   label: "Replacement part finder",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

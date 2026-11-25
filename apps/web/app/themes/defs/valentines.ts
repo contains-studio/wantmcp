@@ -4,6 +4,8 @@ import type { Theme } from "../types.ts";
 /** Love letters: blush paper, deep red, a script-like italic serif and scalloped cards. */
 export const valentines: Theme = {
   slug: "valentines",
+  // Not offered right now (owner, 24 Nov 2026); back in season by removing this line.
+  offered: false,
   name: "Valentine's Day",
   caption: "Love letters",
   group: "occasion",

@@ -10,7 +10,7 @@ export default {
   h1: "Run the group gift from one list",
   intro: "Your agent gathers ideas under the limit and posts updates on the jobs. People you invite can add ideas and tick off their part on the web.",
   label: "Group gifts and Secret Santa",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

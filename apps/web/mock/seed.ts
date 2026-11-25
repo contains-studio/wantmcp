@@ -239,13 +239,13 @@ export function seedStore(now = Date.now()): Store {
       id: "ent_shoe1", item: "itm_shoes", list: "lst_trail", author: openclaw,
       title: "Max-cushion trail shoe, wide", description: "Wide fit available, 6mm lugs.",
       url: "https://example.com/run/trail-max-wide", image: "/mock-images/shoe.svg", retailer: "Example Runner",
-      ago: 7 * HOUR, currency: "EUR", prices: [[4 * DAY, "165.00", null, openclaw], [7 * HOUR, "123.75", "165.00", openclaw]],
+      ago: 7 * HOUR, prices: [[4 * DAY, "165.00", null, openclaw], [7 * HOUR, "123.75", "165.00", openclaw]],
     },
     {
       id: "ent_vest1", item: "itm_vest", list: "lst_trail", author: openclaw,
       title: "Race vest 12L with two 500ml flasks", description: "",
       url: "https://example.com/run/vest-12", image: "/mock-images/vest.svg", retailer: "Example Runner",
-      ago: 3 * DAY, currency: "EUR", prices: [[3 * DAY, "140.00", null, openclaw]],
+      ago: 3 * DAY, prices: [[3 * DAY, "140.00", null, openclaw]],
     },
   ];
 

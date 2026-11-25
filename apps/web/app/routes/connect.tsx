@@ -14,17 +14,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Signed in: offer the person's own lists in the agent prompt (so the page is private then).
   const signedIn = Boolean(getSessionToken(request));
   const lists = signedIn ? await api<ListSummary[]>(request, "/me/lists").catch(() => [] as ListSummary[]) : [];
+  // Most recently active first; ?list=<id> (from a list page or its settings) preselects that list.
+  const mine = [...lists]
+    .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+    .map((l) => ({ id: l.id, title: l.title, url: l.url, shared: l.my_role !== "owner" }));
+  const asked = new URL(request.url).searchParams.get("list");
+  const selected = mine.find((l) => l.id === asked)?.id ?? mine[0]?.id ?? null;
   return data(
-    {
-      origin: siteOrigin(request),
-      lists: lists.map((l) => ({ title: l.title, url: l.url })),
-    },
-    {
-      headers: {
-        "Cache-Control": signedIn ? "private, no-store" : "public, max-age=300, s-maxage=3600",
-        Vary: "Cookie",
-      },
-    },
+    { origin: siteOrigin(request), signedIn, lists: mine, selected },
+    { headers: { "Cache-Control": signedIn ? "private, no-store" : "public, max-age=300, s-maxage=3600", Vary: "Cookie" } },
   );
 }
 
@@ -421,7 +419,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
           <p className="text-ink-2">For Claude Code, Codex and agents that can set themselves up. It signs in and starts on your list.</p>
         </div>
         <div className="min-w-0 max-w-3xl">
-          <AgentPromptBuilder mcpUrl={mcpUrl} lists={loaderData.lists} />
+          <AgentPromptBuilder mcpUrl={mcpUrl} lists={loaderData.lists} selected={loaderData.selected} signedIn={loaderData.signedIn} />
         </div>
       </section>
 

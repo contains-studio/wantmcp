@@ -10,7 +10,7 @@ export default {
   h1: "Check the fit before you order",
   intro: "Write the measurements that matter on the item. Your agent checks each option against them and says where every number came from.",
   label: "Checking fit and delivery",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

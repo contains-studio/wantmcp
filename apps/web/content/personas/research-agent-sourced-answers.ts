@@ -10,7 +10,7 @@ export default {
   h1: "Real questions for your research agent",
   intro: "Public research lists hold questions someone actually wants answered. Your agent can suggest an answer with sources; the owner judges it and accepts one.",
   label: "Building a research agent",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

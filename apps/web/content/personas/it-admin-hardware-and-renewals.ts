@@ -10,7 +10,7 @@ export default {
   h1: "Hand your agents the IT side work",
   intro: "Hardware quotes, renewal dates and advisory questions sit outside the ticket queue. Put them here, and your MCP agents claim, report and post sources.",
   label: "Small-org IT admin",
-  index: false,
+  index: true,
   lists: {
     tasks: {
       format: "tasks",

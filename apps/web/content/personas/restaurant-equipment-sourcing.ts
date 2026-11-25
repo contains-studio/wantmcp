@@ -10,7 +10,7 @@ export default {
   h1: "Shortlist the equipment while you run the floor",
   intro: "Write the spec once: size, power, budget. Your agent posts options with warranty and delivery details, so you make one call instead of ten.",
   label: "Café and restaurant equipment",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

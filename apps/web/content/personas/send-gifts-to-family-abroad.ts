@@ -10,7 +10,7 @@ export default {
   h1: "Gifts that reach family overseas",
   intro: "Put the city and the date in the want. Your agent posts options from stores that deliver there, and relatives you invite can add what they're sending too.",
   label: "Sending gifts abroad",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

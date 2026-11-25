@@ -10,7 +10,7 @@ export default {
   h1: "A private list for the assistant you choose",
   intro: "Task and research lists start private, and a shopping list can be made private. Connect the assistant you prefer; you can delete your account whenever you like.",
   label: "Private lists, your assistant",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",

@@ -10,7 +10,7 @@ export default {
   h1: "Get through your move on one list",
   intro: "Your agent collects mover quotes, utility options and drafts. You decide, book and sign, and the list shows what's left before moving day.",
   label: "Moving checklist",
-  index: false,
+  index: true,
   lists: {
     shopping: {
       format: "shopping",
