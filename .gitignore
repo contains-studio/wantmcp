@@ -12,10 +12,13 @@ node_modules/
 !.env.example
 
 # React Router
-/.react-router/
-/build/
+.react-router/
+build/
 
 # Cloudflare
 .mf
 .wrangler
 worker-configuration.d.ts
+
+# Vite cache
+.vite/

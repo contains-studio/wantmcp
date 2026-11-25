@@ -1,13 +1,17 @@
 # Design standards
 
-The rules every page and every list theme follow. They are based on WCAG 2.2 AA and on the
-conventions Apple's Human Interface Guidelines and Google's Material guidelines share. The
-shared controls in `app/components/ui.tsx` and the control rules in `app/app.css` apply them;
-`pnpm check:a11y` (axe) and `pnpm check:contrast` test them.
+The rules every client of The Want MCP follows, on every screen and in every list theme. They
+are based on WCAG 2.2 AA and on the conventions Apple's Human Interface Guidelines and Google's
+Material guidelines share, so they carry over to native apps: sizes are given in CSS pixels,
+which map to points on iOS and dp on Android.
+
+In the web app (`apps/web`), the shared controls in `app/components/ui.tsx` and the control rules
+in `app/app.css` apply them, and `pnpm check:a11y` (axe) and `pnpm check:contrast` test them. A new
+client should have the same single source for its controls and the same two checks.
 
 ## Spacing
 
-Spacing comes from a 4px scale: 4, 8, 12, 16, 24, 32, 48, 64 (Tailwind `1 2 3 4 6 8 12 16`).
+Spacing comes from a 4px scale: 4, 8, 12, 16, 24, 32, 48, 64 (in the web app, Tailwind `1 2 3 4 6 8 12 16`).
 Use 8 between related controls, 12 to 16 inside cards and between fields, 24 to 32 between
 sections, and 48 or more between page bands. Odd values (6, 10, 14) are only used inside a
 component to centre text optically.
@@ -24,8 +28,9 @@ component to centre text optically.
 | Small | 14px | meta lines, labels |
 | Caption | 12 to 13px | eyebrows, timestamps; never for sentences people must read |
 
-Form fields are always 16px so phones do not zoom into them. Body text is at most about 70
-characters per line (`max-w-prose`, 65ch).
+Form fields are always 16px (on the web, so phones do not zoom into them; natively, the
+platform's body size). Body text is at most about 70
+characters per line (65ch).
 
 ## Controls
 
@@ -95,5 +100,6 @@ off. Live updates announce themselves in a polite live region, not with animatio
 
 A theme may change colours, fonts, radius, card style, page layout and decoration. It may not
 change control heights, spacing rhythm, label placement, the focus ring or contrast, and it
-keeps the heading order and the `#itm_` and `#ent_` anchors. `pnpm check:contrast` tests every
-theme's text, controls and focus colours in light and dark, including text over gradients.
+keeps the heading order and the item and entry anchors (`#itm_`, `#ent_` on the web). The contrast
+check tests every theme's text, controls and focus colours in light and dark, including text over
+gradients and bands.

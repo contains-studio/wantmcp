@@ -1,0 +1,13 @@
+{
+  "name": "@wantmcp/api-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TypeScript wire types for the public Want MCP REST API (https://api.wantmcp.com/v1), shared by every client.",
+  "license": "MIT",
+  "type": "module",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": ["src"]
+}

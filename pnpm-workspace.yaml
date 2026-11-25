@@ -1,3 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
 # workerd downloads its platform binary and esbuild its native bindings at install time.
 # pnpm 10 reads onlyBuiltDependencies; pnpm 11+ reads allowBuilds.
 onlyBuiltDependencies:

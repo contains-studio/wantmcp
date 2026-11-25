@@ -1,0 +1,44 @@
+name: Production smoke check
+
+# Every 15 minutes, with no credentials: the site's main pages, a missing list's 404, the security
+# headers, the API health endpoint and the MCP server card. A failure fails the run and opens (or
+# comments on) an issue labelled "smoke-check".
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check production
+        id: smoke
+        run: node .github/scripts/smoke.mjs 2>&1 | tee smoke.log; exit "${PIPESTATUS[0]}"
+      - name: Report the failure in an issue
+        if: failure() && steps.smoke.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          body="$(printf 'The production smoke check failed: %s\n\n```\n%s\n```\n' "$RUN_URL" "$(tail -n 40 smoke.log)")"
+          gh label create smoke-check --color B60205 --description "Production smoke check failures" 2>/dev/null || true
+          existing="$(gh issue list --label smoke-check --state open --json number --jq '.[0].number')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "Production smoke check failing" --label smoke-check --body "$body"
+          fi
