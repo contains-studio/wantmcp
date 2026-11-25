@@ -304,6 +304,8 @@ export interface ClaimPreview {
   /** Handover only: who is handing the list over. */
   from?: { handle: string };
   list: { title: string; format: ListFormat; theme: string | null; counts: { items: number; entries: number; open_questions: number } };
+  /** The first ten wants, in order. Absent from older API builds. */
+  items?: Array<{ text: string }>;
   /** Empty when the owner made a hand-over link on the web. */
   agent_name: string;
   expires_at: Timestamp;

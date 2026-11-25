@@ -30,6 +30,8 @@ interface ApiInit {
   anonymous?: boolean;
   /** Read response headers (e.g. local-dev-only headers). */
   onHeaders?: (headers: Headers) => void;
+  /** A source tag (`?ref=`), sent as X-Want-Ref; the API trusts it only beside the proxy secret. */
+  ref?: string | null;
 }
 
 let mockModule: Promise<typeof import("../../mock/api")> | null = null;
@@ -64,6 +66,7 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
   if (ip && secret) {
     headers.set("x-forwarded-for", ip);
     headers.set("x-wantmcp-proxy-secret", secret);
+    if (init.ref && /^[a-z0-9-]{1,24}$/.test(init.ref)) headers.set("x-want-ref", init.ref);
   }
 
   let res: Response;

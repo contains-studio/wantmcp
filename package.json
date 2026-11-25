@@ -14,5 +14,11 @@
   "engines": {
     "node": ">=22.18"
   },
-  "packageManager": "pnpm@10.6.1"
+  "packageManager": "pnpm@10.6.1",
+  "pnpm": {
+    "overrides": {
+      "satori": "0.33.5",
+      "fflate@0.7": "0.7.5"
+    }
+  }
 }

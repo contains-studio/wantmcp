@@ -1,8 +1,9 @@
 import { data, Form, Link, redirect, useActionData, useNavigation } from "react-router";
 import type { Route } from "./+types/invite";
-import { api, ApiError, apiOptional } from "~/lib/api.server";
+import { ApiError, apiOptional } from "~/lib/api.server";
 import { getUser } from "~/lib/auth.server";
 import { assertSameOrigin } from "~/lib/session.server";
+import { acceptInvite, lookupInvite } from "~/lib/tokens.server";
 import type { InvitePreview, ListSummary } from "~/lib/types";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -14,7 +15,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const [user, invite] = await Promise.all([
     getUser(request),
     // null for an unknown token (or an API without the preview endpoint yet).
-    apiOptional<InvitePreview>(request, `/invites/${encodeURIComponent(params.token)}`, { anonymous: true }),
+    lookupInvite(request, params.token),
   ]);
   // Already a writer of the list: nothing to accept.
   let alreadyMember = false;
@@ -28,7 +29,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export async function action({ request, params }: Route.ActionArgs) {
   assertSameOrigin(request);
   try {
-    const list = await api<ListSummary>(request, `/invites/${encodeURIComponent(params.token)}/accept`, { method: "POST" });
+    const list = await acceptInvite(request, params.token);
     return redirect(`/l/${list.id}`);
   } catch (err) {
     if (err instanceof ApiError) {

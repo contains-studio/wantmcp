@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRememberRef } from "~/lib/ref";
 import {
   data,
   isRouteErrorResponse,
@@ -187,6 +188,7 @@ function BuildGuard() {
 }
 
 export default function App() {
+  useRememberRef();
   return (
     <>
       <Header />

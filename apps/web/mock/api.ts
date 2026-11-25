@@ -440,9 +440,12 @@ route("POST", "/auth/code", ({ body }) => {
   if (email === "fail@example.com") {
     throw new HttpError(503, "email_unavailable", "We couldn't send your sign-in email right now. Please try again in a few minutes.");
   }
-  store.codes.set(email, { code: MOCK_LOGIN_CODE, attempts: 0, expires: Date.now() + 10 * 60_000 });
+  // Lets contributors see the rate-limit message.
+  if (email === "slow@example.com") throw new HttpError(429, "rate_limited", "Too many codes for this address", { retry_after: 300 });
+  const attemptId = "att_" + randomToken(24);
+  store.codes.set(email, { code: MOCK_LOGIN_CODE, attempts: 0, expires: Date.now() + 10 * 60_000, attempt_id: attemptId });
   console.log(`[mock api] login code for ${email}: ${MOCK_LOGIN_CODE}`);
-  return new Response(null, { status: 204, headers: { "x-dev-login-code": MOCK_LOGIN_CODE } });
+  return new Response(JSON.stringify({ attempt_id: attemptId }), { status: 200, headers: { "content-type": "application/json", "x-dev-login-code": MOCK_LOGIN_CODE } });
 });
 
 route("POST", "/auth/verify", ({ body }) => {
@@ -453,6 +456,8 @@ route("POST", "/auth/verify", ({ body }) => {
   rec.attempts += 1;
   if (rec.attempts > 5) throw new HttpError(429, "rate_limited", "Too many attempts. Ask for a new code.");
   if (code !== rec.code) throw invalid("That code isn't right");
+  // The attempt from POST /auth/code; a verify without it is still accepted during the transition.
+  if (body.attempt_id !== undefined && body.attempt_id !== rec.attempt_id) throw invalid("That code is for another sign-in. Ask for a new one.");
   store.codes.delete(email);
   let user = store.users.find((u) => u.email === email);
   if (!user) {
@@ -697,16 +702,21 @@ route("DELETE", "/lists/{id}/members/{member_id}", ({ caller, params }) => {
   return store.members.filter((x) => x.list_id === params[0]).map((x) => memberOut(x, true));
 });
 
-route("GET", "/invites/{token}", ({ params }) => {
-  const m = store.members.find((x) => x.token === params[0]);
+route("POST", "/invites/lookup", ({ body }) => invitePreview(text("token", body.token, 200, true)));
+route("POST", "/invites/accept", ({ caller, body }) => acceptInvite(caller, text("token", body.token, 200, true)));
+route("GET", "/invites/{token}", ({ params }) => invitePreview(params[0]));
+route("POST", "/invites/{token}/accept", ({ caller, params }) => acceptInvite(caller, params[0]));
+
+function invitePreview(token: string) {
+  const m = store.members.find((x) => x.token === token);
   if (!m) throw notFound("This invite has expired or was revoked");
   const l = getList(m.list_id);
   return { list: { id: l.id, title: l.title, owner_handle: userById(l.owner_id).handle }, status: m.status, invited_by: m.invited_by ?? null };
-});
+}
 
-route("POST", "/invites/{token}/accept", ({ caller, params }) => {
+function acceptInvite(caller: Caller, token: string) {
   const c = requireSession(caller);
-  const m = store.members.find((x) => x.token === params[0]);
+  const m = store.members.find((x) => x.token === token);
   if (!m) throw notFound("This invite has expired or was revoked");
   if (m.status === "active") {
     if (m.user_id !== c.user.id) throw new HttpError(409, "conflict", "This invite has already been used");
@@ -718,7 +728,7 @@ route("POST", "/invites/{token}/accept", ({ caller, params }) => {
     m.status = "active";
   }
   return listSummary(getList(m.list_id), c);
-});
+}
 
 // claims (SPEC 13)
 const isoIn = (ms: number) => new Date(Date.now() + ms).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -808,8 +818,15 @@ route("POST", "/lists/{id}/handover", ({ caller, params }) => {
   return created(out);
 });
 
-route("GET", "/claims/{token}", ({ params }) => {
-  const k = liveClaim(params[0]);
+// Tokens travel in the body (POST /claims/lookup, /claims/claim), so they stay out of request logs.
+// The path forms are the older shape, kept for clients that still use them.
+route("POST", "/claims/lookup", ({ body }) => claimPreview(text("token", body.token, 200, true)));
+route("POST", "/claims/claim", ({ caller, body }) => keepClaim(caller, text("token", body.token, 200, true)));
+route("GET", "/claims/{token}", ({ params }) => claimPreview(params[0]));
+route("POST", "/claims/{token}", ({ caller, params }) => keepClaim(caller, params[0]));
+
+function claimPreview(token: string): ClaimPreview {
+  const k = liveClaim(token);
   if (!k || k.used_by || expired(k)) throw notFound("This link has expired or was already used");
   const l = getList(k.list_id);
   const items = store.items.filter((i) => i.list_id === l.id);
@@ -822,6 +839,7 @@ route("GET", "/claims/{token}", ({ params }) => {
       title: l.title, format: fmt(l), theme: l.theme ?? null,
       counts: { items: items.length, entries: store.entries.filter((e) => ids.has(e.item_id) && e.status === "listed").length, open_questions: open.length },
     },
+    items: items.slice(0, 10).map((i) => ({ text: i.text })),
     agent_name: k.agent_name,
     expires_at: k.expires_at,
     open_questions: open.map((q) => {
@@ -830,11 +848,11 @@ route("GET", "/claims/{token}", ({ params }) => {
     }),
   };
   return out;
-});
+}
 
-route("POST", "/claims/{token}", ({ caller, params }) => {
+function keepClaim(caller: Caller, token: string): ListSummary {
   const c = requireSession(caller);
-  const k = liveClaim(params[0]);
+  const k = liveClaim(token);
   if (!k) throw notFound("This link has expired or was already used");
   const l = getList(k.list_id);
   if (k.used_by) {
@@ -862,7 +880,7 @@ route("POST", "/claims/{token}", ({ caller, params }) => {
   k.used_by = c.user.id;
   l.updated_at = t;
   return listSummary(l, c);
-});
+}
 
 // keys
 route("POST", "/lists/{id}/keys", ({ caller, params, body }) => {

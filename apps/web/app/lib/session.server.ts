@@ -56,6 +56,25 @@ export function assertSameOrigin(request: Request) {
 }
 
 /**
+ * The sign-in attempt (SPEC: POST /auth/code returns { attempt_id }, sent back with the code). Kept in an
+ * httpOnly cookie for the ten minutes a code lives, so it never appears in the page or a URL.
+ */
+const ATTEMPT_COOKIE = "wm_attempt";
+
+export function attemptCookie(request: Request, attemptId: string): string {
+  return `${ATTEMPT_COOKIE}=${encodeURIComponent(attemptId)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=900${secureFlag(request)}`;
+}
+
+export function clearAttemptCookie(request: Request): string {
+  return `${ATTEMPT_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureFlag(request)}`;
+}
+
+export function getAttemptId(request: Request): string | null {
+  const t = readCookie(request, ATTEMPT_COOKIE);
+  return t && /^[A-Za-z0-9_-]{1,200}$/.test(t) ? t : null;
+}
+
+/**
  * A claim link's token while its person signs in (SPEC 13.4). It stays out of the /login URL (and so out of
  * request logs and history) and is read only by the /claim pages. One hour is plenty for an emailed code.
  */

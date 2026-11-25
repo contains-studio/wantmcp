@@ -1,13 +1,12 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import type { Route } from "./+types/claim";
-import { apiOptional } from "~/lib/api.server";
 import { keep } from "~/lib/claims.server";
+import { lookupClaim } from "~/lib/tokens.server";
 import { getUser } from "~/lib/auth.server";
 import { hoursLeft, inHours, UNCLAIMED_TTL_HOURS } from "~/lib/claims";
 import { PrivateBadge } from "~/components/ListView";
 import { FORMATS } from "~/lib/formats";
 import { assertSameOrigin, claimCookie, getSessionToken } from "~/lib/session.server";
-import type { ClaimPreview } from "~/lib/types";
 
 /**
  * A claim link (SPEC 13.4): a list an agent started for its person, or a list handed over to them.
@@ -28,7 +27,7 @@ export function headers() {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const [user, claim] = await Promise.all([
     getUser(request),
-    apiOptional<ClaimPreview>(request, `/claims/${encodeURIComponent(params.token)}`, { anonymous: true }),
+    lookupClaim(request, params.token),
   ]);
   // A used link reopened by the person who used it: claiming is idempotent for them, so take them to the list.
   if (!claim && user) {

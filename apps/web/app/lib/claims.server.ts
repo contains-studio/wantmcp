@@ -1,10 +1,11 @@
-import { api, ApiError } from "./api.server";
+import { ApiError } from "./api.server";
+import { claimList } from "./tokens.server";
 import type { ListSummary } from "./types";
 
 /** POST the claim; the list on success, or an error to show (empty when the link can't be used). A 409 means someone else kept it. */
 export async function keep(request: Request, token: string): Promise<{ list: ListSummary } | { error: string }> {
   try {
-    const list = await api<ListSummary>(request, `/claims/${encodeURIComponent(token)}`, { method: "POST" });
+    const list = await claimList(request, token);
     return { list };
   } catch (err) {
     if (err instanceof ApiError) {

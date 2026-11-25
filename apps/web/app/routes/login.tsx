@@ -2,7 +2,8 @@ import { data, Form, Link, redirect, useActionData, useNavigation, useSearchPara
 import type { Route } from "./+types/login";
 import { api, ApiError } from "~/lib/api.server";
 import { getUser } from "~/lib/auth.server";
-import { assertSameOrigin, sessionCookie } from "~/lib/session.server";
+import { assertSameOrigin, attemptCookie, clearAttemptCookie, getAttemptId, sessionCookie } from "~/lib/session.server";
+import { cleanRef, RefField } from "~/lib/ref";
 import { safeNext } from "~/lib/url";
 import type { UserSelf } from "~/lib/types";
 
@@ -22,7 +23,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 /** The API's own message is user-facing; for email delivery problems it says what went wrong. */
 function loginError(err: ApiError): string {
-  if (err.code === "email_unavailable") return err.message || "Couldn't send the email. Try again in a few minutes.";
+  if (err.code === "email_unavailable") return "We can't send email right now. Try again in a little while.";
+  if (err.code === "rate_limited") {
+    const d = (err.details ?? {}) as { retry_after?: unknown; retry_at?: unknown };
+    const secs = typeof d.retry_after === "number" ? d.retry_after : typeof d.retry_at === "string" ? (Date.parse(d.retry_at) - Date.now()) / 1000 : NaN;
+    if (Number.isFinite(secs) && secs > 0) {
+      const mins = Math.ceil(secs / 60);
+      return `Too many tries for now. Try again in ${mins <= 1 ? "a minute" : `${mins} minutes`}.`;
+    }
+    return "Too many tries for now. Wait a few minutes, then try again.";
+  }
   if (err.code === "network") return "Can't reach the server. Try again in a moment.";
   return err.message;
 }
@@ -39,23 +49,30 @@ export async function action({ request }: Route.ActionArgs) {
   if (form.get("intent") === "verify") {
     const code = String(form.get("code") ?? "").replace(/\s+/g, "");
     if (!/^\d{6}$/.test(code)) return data<ActionResult>({ step: "code", email, optIn, error: "Enter the 6-digit code." }, 400);
+    const attempt = getAttemptId(request);
     try {
       const res = await api<{ token: string; user: UserSelf }>(request, "/auth/verify", {
         method: "POST",
         anonymous: true,
-        body: { email, code, updates_opt_in: optIn },
+        body: { email, code, updates_opt_in: optIn, ...(attempt ? { attempt_id: attempt } : {}) },
+        ref: cleanRef(form.get("ref")),
       });
-      return redirect(next, { headers: { "set-cookie": sessionCookie(request, res.token) } });
+      const headers = new Headers();
+      headers.append("set-cookie", sessionCookie(request, res.token));
+      headers.append("set-cookie", clearAttemptCookie(request));
+      return redirect(next, { headers });
     } catch (err) {
-      if (err instanceof ApiError) return data<ActionResult>({ step: "code", email, optIn, error: err.message }, err.status);
+      if (err instanceof ApiError) return data<ActionResult>({ step: "code", email, optIn, error: loginError(err) }, err.status);
       throw err;
     }
   }
 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, error: "Enter a valid email." }, 400);
   let devCode: string | undefined;
+  let attemptId: string | null = null;
   try {
-    await api(request, "/auth/code", {
+    // Older API builds answer 204 with no body: there is no attempt to carry.
+    const res = await api<{ attempt_id?: string } | undefined>(request, "/auth/code", {
       method: "POST",
       anonymous: true,
       body: { email },
@@ -64,11 +81,13 @@ export async function action({ request }: Route.ActionArgs) {
         if (import.meta.env.DEV) devCode = h.get("x-dev-login-code") ?? undefined;
       },
     });
+    attemptId = typeof res?.attempt_id === "string" ? res.attempt_id : null;
   } catch (err) {
     if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, error: loginError(err) }, err.status);
     throw err;
   }
-  return { step: "code", email, optIn, devCode } satisfies ActionResult;
+  const result: ActionResult = { step: "code", email, optIn, devCode };
+  return attemptId ? data(result, { headers: { "set-cookie": attemptCookie(request, attemptId) } }) : result;
 }
 
 export default function Login() {
@@ -97,6 +116,7 @@ export default function Login() {
               </p>
             )}
             <input type="hidden" name="intent" value="verify" />
+            <RefField />
             <input type="hidden" name="email" value={result.email} />
             <input type="hidden" name="next" value={next} />
             {result.optIn && <input type="hidden" name="updates_opt_in" value="on" />}

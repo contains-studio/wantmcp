@@ -113,7 +113,7 @@ export interface ClaimRow {
 export interface Store {
   users: UserRow[];
   sessions: Map<string, string>; // token -> user id
-  codes: Map<string, { code: string; attempts: number; expires: number }>;
+  codes: Map<string, { code: string; attempts: number; expires: number; attempt_id?: string }>;
   lists: ListRow[];
   members: MemberRow[];
   agents: AgentRow[];
