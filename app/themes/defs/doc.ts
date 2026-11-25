@@ -5,6 +5,8 @@ export const doc: Theme = {
   slug: "doc",
   name: "Doc",
   group: "workspace",
+  natural: "research",
+  stylesheet: true,
   idea: "A quiet page to write on: white paper, a book serif and one readable column of entries.",
   light: {
     paper: "#ffffff", card: "#ffffff", sunk: "#f5f4f2", ink: "#1c1917", ink2: "#44403c", ink3: "#655f59",

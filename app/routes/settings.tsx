@@ -66,7 +66,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         const picked = getTheme(s("theme")).slug;
         // The format's own default is stored as "no theme" so it follows the format; anything
         // else (including the site default on a task list) is stored explicitly.
-        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: picked === formatInfo(current).defaultTheme ? null : picked } });
+        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: picked === getTheme(formatInfo(current).defaultTheme).slug ? null : picked } });
         return { ok: true, intent } satisfies ActionData;
       }
       case "visibility":

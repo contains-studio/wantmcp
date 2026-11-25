@@ -1,0 +1,41 @@
+/* Today: a calm to-do list with lots of air. */
+.theme-today .list-hero, .theme-today { background: var(--paper); }
+.theme-today .list-hero { border-bottom: 0; }
+.theme-today .list-hero > .wrap, .theme-today > .wrap { max-width: 46rem; }
+.theme-today .list-hero > .wrap { padding-block: 3.5rem 1rem; }
+.theme-today .list-title { display: flex; align-items: center; gap: 0.9rem; font-size: clamp(2rem, 5vw, 2.6rem); font-weight: 800; letter-spacing: -0.025em; }
+/* The round mark fills like a pie as items get done. */
+.theme-today .list-title-mark {
+  display: inline-block; flex: none; width: 1.7rem; height: 1.7rem; border-radius: 999px; border: 2.5px solid var(--want);
+  background: conic-gradient(var(--want) calc(var(--list-progress, 0) * 360deg), transparent 0); background-clip: content-box; padding: 2.5px;
+}
+.theme-today .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; font-weight: 500; }
+.theme-today .list-hero h1 + p { color: var(--ink-3); font-size: 1rem; margin-top: 0.5rem; padding-left: 2.6rem; }
+.theme-today .list-hero > .wrap > div { padding-left: 2.6rem; font-size: 0.85rem; }
+.theme-today > .wrap { gap: 2.5rem; padding-bottom: 7rem; }
+.theme-today .items-region { gap: 0.35rem; }
+.theme-today .item-section { gap: 0.6rem; padding: 0.7rem 0.75rem; border-radius: 12px; }
+.theme-today .item-section:hover { background: var(--sunk); }
+.theme-today .item-section:target { background: var(--want-soft); }
+.theme-today .item-title { font-family: var(--font-sans); font-size: 1.05rem !important; font-weight: 500; line-height: 1.45; letter-spacing: 0; }
+.theme-today .item-indent { padding-left: 2.25rem !important; margin-left: 0 !important; }
+.theme-today .item-details { font-size: 0.9rem; color: var(--ink-3); }
+.theme-today .item-meta { font-size: 0.8rem; gap: 0.6rem; }
+.theme-today .item-meta > span:first-child { display: none; }
+.theme-today .item-meta .chip { background: transparent; border: 0; padding: 0; color: var(--warn); font-weight: 650; }
+.theme-today .item-meta .chip::before { content: "⚑ "; }
+.theme-today .check-toggle {
+  width: 1.3rem; height: 1.3rem; border-radius: 0.38rem; border: 1.5px solid var(--line-strong); background: var(--card); font-size: 0.8rem; margin-top: 0.2rem;
+}
+.theme-today button.check-toggle { position: relative; }
+.theme-today button.check-toggle::before { content: ""; position: absolute; inset: -0.75rem; }
+.theme-today .check-toggle[aria-checked="true"], .theme-today .check-toggle.is-checked { background: var(--want); border-color: var(--want); color: var(--want-ink); }
+.theme-today .item-section > header .flex.items-start { gap: 0.95rem; }
+.theme-today .text-entry, .theme-today .entry-card { background: var(--sunk); border: 0; box-shadow: none; }
+.theme-today .item-entries { gap: 0.5rem !important; }
+.theme-today .bought-group { gap: 0.25rem; opacity: 1; }
+.theme-today .bought-divider h2 { font-family: var(--font-sans); font-size: 0.85rem; font-weight: 700; color: var(--ink-3); letter-spacing: 0.02em; }
+.theme-today .bought-divider .divider-dots { background: var(--line); height: 1px; }
+.theme-today .is-bought .item-title { color: var(--ink-3); text-decoration: none !important; }
+.theme-today .add-item { background: var(--sunk); border: 0; box-shadow: none; }
+.theme-today .item-status, .theme-today .item-section .btn { font-size: 0.85rem; }

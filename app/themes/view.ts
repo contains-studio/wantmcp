@@ -8,6 +8,11 @@ export interface ThemeView {
   idea: string;
   layout: Layout;
   checklist: boolean;
+  fab: boolean;
+  scheme: "light" | "dark" | null;
+  natural: "shopping" | "tasks" | "research";
+  /** The theme's own stylesheet, or null. */
+  stylesheet: string | null;
   /** Class names for the themed wrapper. */
   className: string;
   /** Custom properties for the themed wrapper's style attribute. */
@@ -66,7 +71,11 @@ export function themeView(t: Theme): ThemeView {
     idea: t.idea,
     layout,
     checklist: traits.includes("checklist"),
-    className: ["themed", `theme-${t.slug}`, `layout-${layout}`, ...traits.map((x) => `t-${x}`)].join(" "),
+    fab: traits.includes("fab"),
+    scheme: t.scheme ?? null,
+    natural: t.natural ?? "shopping",
+    stylesheet: t.stylesheet ? `/theme-css/${t.slug}.css` : null,
+    className: ["themed", `theme-${t.slug}`, `layout-${layout}`, t.scheme ? `scheme-${t.scheme}` : "", ...traits.map((x) => `t-${x}`)].filter(Boolean).join(" "),
     style,
     swatch: { paper: t.light.paper, card: t.light.card, ink: t.light.ink, want: t.light.want, darkPaper: t.dark.paper, darkWant: t.dark.want },
   };

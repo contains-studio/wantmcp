@@ -5,6 +5,7 @@ import { CommentForm, CommentList } from "~/components/Comments";
 import { CopyButton } from "~/components/CopyButton";
 import { EntryCard } from "~/components/EntryCard";
 import { EntrySheet } from "~/components/EntrySheet";
+import { ItemIndex } from "~/components/ItemIndex";
 import { LiveUpdates } from "~/components/LiveUpdates";
 import { PreviewContext, ReportLink } from "~/components/Report";
 import { Time } from "~/components/Time";
@@ -12,6 +13,7 @@ import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, RemoveButton } fro
 import { formatMoney, plural } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
+import { BUILD_ID } from "~/lib/build";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
 import type { Layout } from "~/themes/types";
@@ -76,12 +78,22 @@ export function ListView(props: ListViewProps) {
   const productCount = items.reduce((n, i) => n + i.entries.length, 0);
   // The Sheet table compares prices, so it only applies to shopping lists.
   const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
-  const className = `${theme.className.replace(/\blayout-\w+\b/, `layout-${layout}`)} format-${fi.format}`;
+  // Sections, Heat and (for tasks and research) Board show a compact index; each item opens in a panel.
+  const indexKind = layout === "sections" || layout === "heat" || (layout === "board" && !shopping) ? layout : null;
+  const className = `${theme.className.replace(/\blayout-\w+\b/, `layout-${layout}`)} format-${fi.format}${indexKind ? " has-index" : ""}`;
 
   return (
     <PreviewContext.Provider value={preview}>
-    <div className={className} style={theme.style as React.CSSProperties} data-list-theme={theme.slug} data-list-format={fi.format}>
-      <section className="list-hero border-b border-line">
+    <div
+      className={className}
+      style={{ ...theme.style, ["--list-progress" as string]: items.length ? (items.length - items.filter((i) => !isDone(i)).length) / items.length : 0 } as React.CSSProperties}
+      data-list-theme={theme.slug}
+      data-list-format={fi.format}
+    >
+      {/* Only this theme's stylesheet (React hoists it into <head> and loads each one once). */}
+      {theme.stylesheet && <link rel="stylesheet" href={`${theme.stylesheet}?v=${BUILD_ID}`} precedence="theme" />}
+      {/* data-year: the year ahead (from October on), for themes that print it. */}
+      <section className="list-hero border-b border-line" data-year={yearAhead(list.created_at)}>
         <div className="wrap py-10 sm:py-14">
           <p className="eyebrow flex flex-wrap items-center gap-2">
             <span>
@@ -89,7 +101,10 @@ export function ListView(props: ListViewProps) {
             </span>
             {isPrivate && <PrivateBadge />}
           </p>
-          <h1 className="mt-3 max-w-4xl text-[2.4rem] font-extrabold sm:text-6xl">{list.title}</h1>
+          <h1 className="list-title mt-3 max-w-4xl text-[2.4rem] font-extrabold sm:text-6xl">
+            <span className="list-title-mark" aria-hidden="true" />
+            {list.title}
+          </h1>
           {list.description && <p className="mt-4 max-w-2xl text-[1.05rem] text-ink-2">{list.description}</p>}
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3 text-[0.9rem] text-ink-3">
             <span>
@@ -138,7 +153,17 @@ export function ListView(props: ListViewProps) {
         {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} />}
         {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">Nothing here yet.</p>}
 
-        <div className="items-region grid grid-cols-1 gap-12">
+        {indexKind && (
+          <ItemIndex
+            kind={indexKind}
+            items={previewItems ? items.slice(0, Math.max(previewItems, 4)) : items}
+            fi={fi}
+            isWriter={isWriter}
+            isDone={isDone}
+          />
+        )}
+        <div className={`items-region grid grid-cols-1 gap-12 ${indexKind ? "ix-panel" : ""}`}>
+          {indexKind && <a href="#list-index" className="ix-backdrop" tabIndex={-1} aria-hidden="true" />}
         {wanted.map((item, i) => (
           <ItemSection
             fi={fi}
@@ -154,6 +179,7 @@ export function ListView(props: ListViewProps) {
             user={user}
             canDeleteComment={canDeleteComment}
             eager={i === 0}
+            inPanel={!!indexKind}
           />
         ))}
 
@@ -176,11 +202,17 @@ export function ListView(props: ListViewProps) {
                 role={role}
                 user={user}
                 canDeleteComment={canDeleteComment}
+                inPanel={!!indexKind}
               />
             ))}
           </section>
         )}
         </div>
+        {theme.fab && isWriter && !preview && (
+          <a href="#add-item" className="list-fab" aria-label={fi.addItemTitle}>
+            <span aria-hidden="true">+</span>
+          </a>
+        )}
 
         {!isWriter && !preview && (
           <aside className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -214,7 +246,9 @@ function ItemSection({
   layout,
   checklist,
   fi,
+  inPanel = false,
 }: {
+  inPanel?: boolean;
   fi: FormatInfo;
   layout: Layout;
   checklist: boolean;
@@ -248,6 +282,11 @@ function ItemSection({
 
   return (
     <section id={item.id} aria-labelledby={headingId} className={`item-section grid scroll-mt-24 gap-5 ${done ? "is-bought" : ""}`}>
+      {inPanel && (
+        <a href="#list-index" className="ix-close btn btn-ghost btn-sm justify-self-end">
+          Close<span className="sr-only"> {item.text}</span>
+        </a>
+      )}
       <header className="grid gap-2">
         <div className="flex items-start gap-3">
           {checklist ? (
@@ -427,7 +466,7 @@ function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: bool
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const busy = fetcher.state !== "idle";
   return (
-    <section aria-labelledby="add-item-h" className={`card p-5 ${empty ? "border-want" : ""}`}>
+    <section id="add-item" aria-labelledby="add-item-h" className={`add-item card scroll-mt-24 p-5 ${empty ? "border-want" : ""}`}>
       <h2 id="add-item-h" className="text-xl font-extrabold">
         {empty ? fi.addItemFirst : fi.addItemTitle}
       </h2>
@@ -626,7 +665,12 @@ function useDeepLinks() {
  * Checklist style: a big box per item. Writers tick it to mark the item bought (shopping) or
  * done (tasks, research), and untick to undo.
  */
-function ChecklistBox({ itemId, text, bought, canWrite, shopping, doneWord }: { itemId: string; text: string; bought: boolean; canWrite: boolean; shopping: boolean; doneWord: string }) {
+function yearAhead(iso: string) {
+  const d = new Date(iso);
+  return String(d.getUTCFullYear() + (d.getUTCMonth() >= 9 ? 1 : 0));
+}
+
+export function ChecklistBox({ itemId, text, bought, canWrite, shopping, doneWord }: { itemId: string; text: string; bought: boolean; canWrite: boolean; shopping: boolean; doneWord: string }) {
   const fetcher = useFetcher();
   const pending = fetcher.formData?.get("intent");
   const pendingStatus = fetcher.formData?.get("status");

@@ -5,6 +5,8 @@ export const sheet: Theme = {
   slug: "sheet",
   name: "Sheet",
   group: "workspace",
+  natural: "shopping",
+  stylesheet: true,
   idea: "A ledger: gridlines, tabular numbers and a sortable comparison table for every item.",
   light: {
     paper: "#f7f8f9", card: "#ffffff", sunk: "#eef0f2", ink: "#111827", ink2: "#374151", ink3: "#525c6b",

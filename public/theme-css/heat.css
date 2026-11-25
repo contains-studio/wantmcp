@@ -1,0 +1,24 @@
+/* Heat: bars graded from hot to cool. Colours must match HEAT_HOT / HEAT_COOL in app/themes/defs/heat.ts. */
+.theme-heat { --hot: #c4122f; --cool: #3a3fc4; background: var(--paper); }
+.theme-heat .list-hero { background: var(--paper); border-bottom: 0; }
+.theme-heat .list-hero > .wrap, .theme-heat > .wrap { max-width: 56rem; }
+.theme-heat .list-hero > .wrap { padding-block: 2.5rem 1.25rem; }
+.theme-heat .list-title { font-size: clamp(2.4rem, 7vw, 4rem); font-weight: 800; letter-spacing: -0.035em; line-height: 0.95; }
+.theme-heat .eyebrow { color: var(--ink-3); }
+.theme-heat > .wrap { padding-top: 0.5rem; gap: 2rem; }
+.theme-heat .ix-bars { border-radius: 14px; overflow: hidden; }
+.theme-heat .ix-bar .ix-link {
+  background: color-mix(in srgb, var(--hot) calc(100% - var(--i) / var(--n) * 100%), var(--cool));
+  color: #fff; min-height: 4.5rem; padding: 0.9rem 1.25rem; border-bottom: 1px solid rgb(0 0 0 / 0.18);
+}
+.theme-heat .ix-bar .ix-link:hover { filter: brightness(1.08); }
+.theme-heat .ix-bar .ix-link:focus-visible { outline-offset: -4px; outline-color: #fff; }
+.theme-heat .ix-bar .ix-title { font-size: clamp(1.15rem, 2.6vw, 1.5rem); font-weight: 800; letter-spacing: -0.015em; line-height: 1.2; }
+.theme-heat .ix-bar .ix-sub { color: #fff; font-weight: 600; }
+.theme-heat .ix-bar .ix-pill { background: rgb(255 255 255 / 0.2); color: #fff; }
+.theme-heat .ix-bar.is-done .ix-link { background: #222226; color: #9e9ea4; }
+.theme-heat .ix-bar.is-done .ix-title { text-decoration: line-through; text-decoration-thickness: 2px; font-weight: 700; color: #9e9ea4; }
+.theme-heat .ix-bar.is-done .ix-sub { color: #9e9ea4; }
+.theme-heat .ix-panel:has(:target) { background: #151518; border-color: #2a2a2e; }
+.theme-heat .ix-panel .item-title { font-size: 1.6rem; font-weight: 800; }
+.theme-heat .add-item { background: #151518; }

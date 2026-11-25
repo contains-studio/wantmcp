@@ -4,6 +4,8 @@
  *
  * Text pairs must reach 4.5:1 (AA, normal text). The accent outline (`want` on card),
  * used for the "lowest" ring and focus rings, is a non-text UI part and needs 3:1.
+ * Each theme can add pairs its stylesheet relies on (`contrast` in its definition), such as
+ * text over a gradient or a full-bleed band; gradients are sampled at several points.
  */
 import { THEMES } from "../app/themes/catalogue.server.ts";
 import type { Palette } from "../app/themes/types.ts";
@@ -54,10 +56,19 @@ for (const t of THEMES) {
         minName = name;
       }
     }
+    // Pairs the theme's own stylesheet relies on: text over gradients, backdrops, bands.
+    for (const x of t.contrast?.[mode] ?? []) {
+      const need = x.need ?? 4.5;
+      const r = ratio(x.fg, x.bg);
+      if (r < need) {
+        failures++;
+        rows.push(`FAIL ${t.slug} ${mode}: ${x.label} ${r.toFixed(2)} < ${need}`);
+      }
+    }
     const price = ratio(p.ink, p.card);
     rows.push(`${t.slug.padEnd(13)} ${mode.padEnd(5)}  price ${price.toFixed(1).padStart(5)}:1   lowest text pair ${min.toFixed(2)}:1 (${minName})`);
   }
 }
 console.log(rows.join("\n"));
-console.log(failures ? `\n${failures} failure(s)` : `\nAll ${THEMES.length} themes pass: every text pair >= 4.5:1, accent outlines >= 3:1, light and dark.`);
+console.log(failures ? `\n${failures} failure(s)` : `\nAll ${THEMES.length} themes pass: every text pair >= 4.5:1, accent outlines >= 3:1, extra pairs (gradients, bands) met, light and dark.`);
 process.exit(failures ? 1 : 0);

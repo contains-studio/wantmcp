@@ -264,6 +264,116 @@
   .themed .list-hero { background-size: min(16rem, 58%) auto, auto; background-position: right -1.5rem top 0.25rem, 0 0; }
 }
 
+/* Themes with a fixed identity look the same in light and dark (their palettes are equal). */
+.themed.scheme-dark { color-scheme: dark; }
+.themed.scheme-light { color-scheme: light; }
+.list-title-mark { display: none; }
+
+/* ---- Item index (Sections, Heat, task Board) and the item panel ----
+   Structure only; each theme's stylesheet gives it its look. */
+.ix { display: grid; gap: 1rem; }
+.ix ul, .ix ol { list-style: none; margin: 0; padding: 0; }
+.ix-link { display: grid; color: inherit; text-decoration: none; min-width: 0; }
+.ix-title { font-weight: 650; overflow-wrap: anywhere; }
+.ix-meta { font-size: 0.8125rem; color: var(--ink-3); }
+.ix-count { font-size: 0.8125rem; font-weight: 600; color: var(--ink-3); }
+.ix-empty { color: var(--ink-3); padding: 1rem 0; }
+.ix-pill { display: inline-flex; align-items: center; min-height: 1.5rem; padding: 0 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: var(--sunk); color: var(--ink-2); white-space: nowrap; }
+.ix-pill.is-in_progress { background: var(--want-soft); color: var(--ink); }
+.ix-pill.is-done { background: var(--deal-soft); color: var(--deal); }
+.ix-avatars { display: inline-flex; align-items: center; }
+.ix-avatar-wrap { display: inline-flex; align-items: center; gap: 0.4rem; }
+.ix-avatar-wrap + .ix-avatar-wrap { margin-left: -0.35rem; }
+.ix-avatar {
+  display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 999px; flex: none;
+  background: var(--hue); color: #fff; font-size: 0.72rem; font-weight: 800; box-shadow: 0 0 0 2px var(--card);
+}
+.ix-avatar-name { font-size: 0.85rem; color: var(--ink-2); }
+.ix-add {
+  display: flex; align-items: center; gap: 0.5rem; min-height: var(--ctl); padding: 0 0.75rem; border-radius: var(--r-control, 0.6rem);
+  color: var(--ink-2); font-weight: 600; font-size: 0.9rem; text-decoration: none;
+}
+.ix-add:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+
+/* Sections: a table-like index in collapsible groups. */
+.ix-sections { gap: 0.25rem; }
+.ix-table-head, .ix-row { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) 9rem 8rem 8.5rem; align-items: center; gap: 0.5rem; }
+.ix-table-head { padding: 0 0.5rem 0.5rem; font-size: 0.75rem; font-weight: 600; color: var(--ink-3); border-bottom: 1px solid var(--line); }
+.ix-table-head > :first-child { grid-column: 2; }
+.ix-group-head { display: flex; align-items: center; gap: 0.5rem; min-height: var(--ctl); padding: 0 0.5rem; font-weight: 750; font-size: 1.05rem; }
+.ix-chevron { width: 0.55rem; height: 0.55rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform 120ms ease; margin-right: 0.25rem; }
+.ix-group[open] .ix-chevron { transform: rotate(45deg); }
+.ix-row { position: relative; min-height: 3rem; padding: 0.25rem 0.5rem; border-bottom: 1px solid var(--line); }
+.ix-row:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.ix-row .ix-link { padding-block: 0.4rem; }
+.ix-row .ix-link::after { content: ""; position: absolute; inset: 0; }
+.ix-row .ix-tick { position: relative; z-index: 1; }
+.ix-row .check-toggle { width: 1.6rem; height: 1.6rem; border-radius: 999px; border-width: 2px; font-size: 0.85rem; margin: 0; }
+.ix-row button.check-toggle::before { content: ""; position: absolute; inset: -0.5rem; }
+.ix-row button.check-toggle { position: relative; }
+.ix-row.is-done .ix-title { color: var(--ink-3); text-decoration: line-through; }
+.ix-cell { font-size: 0.875rem; color: var(--ink-3); min-width: 0; }
+@media (max-width: 767px) {
+  .ix-table-head { display: none; }
+  .ix-row { grid-template-columns: 2.75rem minmax(0, 1fr) auto; }
+  .ix-row .ix-who { display: none; }
+  .ix-row .ix-due:has(.chip) { grid-column: 2; grid-row: 2; }
+  .ix-row .ix-due:not(:has(.chip)) { display: none; }
+}
+
+/* Board for tasks and research: status columns of cards, swipeable on phones. */
+.ix-columns {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(16.5rem, 85vw); gap: 0.75rem; align-items: start;
+  overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 0.75rem; overscroll-behavior-x: contain;
+}
+@media (min-width: 640px) { .ix-columns { grid-auto-columns: minmax(17rem, 1fr); } }
+.ix-column { scroll-snap-align: start; display: grid; gap: 0.5rem; padding: 0.6rem; border-radius: var(--r-card, 0.75rem); }
+.ix-column-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0.4rem; font-weight: 700; font-size: 0.95rem; }
+.ix-cards { display: grid; gap: 0.5rem; }
+.ix-card .ix-link { gap: 0.45rem; padding: 0.65rem 0.75rem; border-radius: calc(var(--r-card, 0.75rem) * 0.7); background: var(--card); }
+.ix-labels { display: flex; gap: 0.3rem; }
+.ix-label { width: 2.5rem; height: 0.5rem; border-radius: 999px; background: var(--line-strong); }
+.ix-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; }
+.ix-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.ix-none { font-size: 0.85rem; color: var(--ink-3); padding: 0.5rem 0.4rem; }
+.ix-card.is-done .ix-title { text-decoration: line-through; color: var(--ink-3); }
+
+/* Heat: full-width bars. */
+.ix-bars { display: grid; gap: 0; }
+.ix-bar .ix-link { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; min-height: 4rem; padding: 0.75rem 1.1rem; }
+.ix-bar .ix-sub { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+
+/* The panel: every item section lives here; only the one in the URL hash is shown. */
+.ix-panel { display: none; }
+.ix-panel:has(:target) {
+  display: grid; position: fixed; z-index: 60; inset: 0 0 0 auto; width: min(40rem, 100vw); overflow-y: auto; overscroll-behavior: contain;
+  align-content: start; gap: 0; padding: 1.25rem 1.5rem 3rem; background: var(--card); color: var(--ink);
+  border-left: 1px solid var(--line); box-shadow: -24px 0 60px -20px rgb(0 0 0 / 0.35);
+}
+.ix-panel .item-section, .ix-panel .bought-divider { display: none; }
+.ix-panel .bought-group { display: contents; }
+.ix-panel .item-section:target, .ix-panel .item-section:has(:target) { display: grid; }
+.ix-panel .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
+.ix-panel .item-number { display: none; }
+.ix-panel .item-entries { grid-template-columns: 1fr !important; }
+.ix-backdrop { display: none; }
+.ix-panel:has(:target) .ix-backdrop { display: block; position: fixed; inset: 0; right: min(40rem, 100vw); background: rgb(0 0 0 / 0.35); cursor: default; }
+@media (max-width: 639px) {
+  .ix-panel:has(:target) {
+    inset: auto 0 0 0; width: 100%; max-height: 88dvh; border-left: 0; border-top: 1px solid var(--line);
+    border-radius: 1.25rem 1.25rem 0 0; padding: 0.75rem 1rem 2.5rem; box-shadow: 0 -20px 50px -10px rgb(0 0 0 / 0.4);
+  }
+  .ix-panel:has(:target)::before { content: ""; justify-self: center; width: 2.5rem; height: 0.3rem; border-radius: 999px; background: var(--line-strong); margin-bottom: 0.5rem; }
+  .ix-panel:has(:target) .ix-backdrop { right: 0; bottom: 88dvh; top: 0; }
+}
+
+/* Floating add button (Today). */
+.list-fab {
+  position: fixed; z-index: 40; right: max(1rem, env(safe-area-inset-right)); bottom: max(1.25rem, env(safe-area-inset-bottom));
+  display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 999px; text-decoration: none;
+  background: var(--want); color: var(--want-ink); font-size: 2rem; font-weight: 400; line-height: 1; box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.45);
+}
+
 /* ---- Traits: small reusable style switches a theme can opt into ---- */
 .themed.t-serif-display h1, .themed.t-serif-display h2, .themed.t-serif-display h3 { font-weight: 600; letter-spacing: -0.01em; }
 .themed.t-upper-display h1, .themed.t-upper-display .item-title { text-transform: uppercase; letter-spacing: -0.01em; }

@@ -1,0 +1,33 @@
+/* Sections: a project tracker on a white surface. */
+.theme-sections .list-hero { background: var(--paper); border-bottom: 1px solid var(--line); }
+.theme-sections .list-hero > .wrap { padding-block: 1.75rem 0; display: grid; gap: 0.35rem; }
+.theme-sections .list-hero .eyebrow { order: 1; margin: 0.75rem 0 0; }
+.theme-sections .list-title { display: flex; align-items: center; gap: 0.85rem; margin: 0; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 650; letter-spacing: -0.01em; }
+.theme-sections .list-title-mark {
+  display: inline-block; flex: none; width: 2.6rem; height: 2.6rem; border-radius: 0.7rem; background: var(--want);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7h14M5 12h14M5 17h9'/%3E%3C/svg%3E");
+  background-size: 60%; background-position: center; background-repeat: no-repeat;
+}
+.theme-sections .list-hero h1 + p { margin-top: 0.25rem; font-size: 0.95rem; }
+.theme-sections .list-hero > .wrap > div { order: 2; margin: 0.5rem 0 0; font-size: 0.85rem; }
+/* A tab strip under the header: the list view is the one you are on. */
+.theme-sections .list-hero > .wrap::after {
+  order: 3; content: "List"; justify-self: start; margin-top: 0.75rem; padding: 0.55rem 0.1rem; font-size: 0.9rem; font-weight: 600;
+  border-bottom: 2px solid var(--ink); color: var(--ink);
+}
+.theme-sections > .wrap { padding-top: 1.5rem; gap: 2rem; }
+.theme-sections .ix-group-head { border-radius: 6px; }
+.theme-sections .ix-group-head:hover { background: var(--sunk); }
+.theme-sections .ix-row { border-color: var(--line); }
+.theme-sections .ix-row .check-toggle { border-color: var(--line-strong); color: var(--ink-3); }
+.theme-sections .ix-row .check-toggle:not(.is-checked):not([aria-checked="true"])::after { content: "✓"; font-size: 0.8rem; opacity: 0.6; }
+.theme-sections .ix-row .check-toggle[aria-checked="true"], .theme-sections .ix-row .check-toggle.is-checked { background: var(--deal); border-color: var(--deal); color: #fff; }
+.theme-sections .ix-title { font-weight: 500; font-size: 0.95rem; }
+.theme-sections .ix-pill.is-open { background: var(--sunk); color: var(--ink-2); }
+.theme-sections .ix-pill.is-in_progress { background: #fff1cc; color: #5c3d00; }
+.theme-sections .ix-pill.is-done { background: var(--deal-soft); color: var(--deal); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .theme-sections .ix-pill.is-in_progress { background: #4a3a10; color: #ffe8a8; } }
+:root[data-theme="dark"] .theme-sections .ix-pill.is-in_progress { background: #4a3a10; color: #ffe8a8; }
+.theme-sections .ix-add { color: var(--ink-3); padding-left: 3.25rem; }
+.theme-sections .item-title { font-family: var(--font-sans); font-weight: 650; }
+.theme-sections .add-item { border-style: dashed; box-shadow: none; }

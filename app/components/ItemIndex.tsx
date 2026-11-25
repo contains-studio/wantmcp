@@ -1,0 +1,220 @@
+import { useEffect } from "react";
+import { DueChip } from "~/components/ItemWork";
+import { ChecklistBox, type ItemWithEntries } from "~/components/ListView";
+import { agentHue, plural } from "~/lib/format";
+import type { FormatInfo } from "~/lib/formats";
+import type { ActorRef } from "~/lib/types";
+
+type Kind = "sections" | "heat" | "board";
+
+/**
+ * A compact index of a list's items, used by the Sections, Heat and (for tasks and research)
+ * Board layouts. Each row, bar or card links to the item's own #itm_ anchor; the full item
+ * opens in a panel (`.ix-panel`, shown with :target, so it works without JavaScript).
+ * Group names are not headings: the page keeps the same heading order in every theme.
+ */
+export function ItemIndex({
+  kind,
+  items,
+  fi,
+  isWriter,
+  isDone,
+}: {
+  kind: Kind;
+  items: ItemWithEntries[];
+  fi: FormatInfo;
+  isWriter: boolean;
+  isDone: (i: ItemWithEntries) => boolean;
+}) {
+  useEscapeCloses();
+  const shopping = fi.format === "shopping";
+  const statusOf = (i: ItemWithEntries) => (isDone(i) ? "done" : shopping ? "open" : (i.status ?? "open"));
+  const working = items.filter((i) => statusOf(i) === "in_progress");
+  const open = items.filter((i) => statusOf(i) === "open");
+  const done = items.filter((i) => statusOf(i) === "done");
+  const names =
+    fi.format === "tasks"
+      ? { working: "In progress", open: "To do", done: "Done" }
+      : fi.format === "research"
+        ? { working: "Being researched", open: "Open questions", done: "Answered" }
+        : { working: "In progress", open: "Wanted", done: fi.doneGroup };
+  const groups = [
+    ...(shopping ? [] : [{ key: "working", name: names.working, items: working }]),
+    { key: "open", name: names.open, items: open },
+    { key: "done", name: names.done, items: done },
+  ];
+  // Board keeps every column (an empty column is information); Sections hides empty groups.
+  const shown = kind === "board" ? (shopping ? groups : [groups[1], groups[0], groups[2]]) : groups.filter((g) => g.items.length > 0);
+
+  if (kind === "heat") {
+    const ordered = [...working, ...open];
+    return (
+      <nav id="list-index" aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-heat scroll-mt-24">
+        <ol className="ix-bars">
+          {ordered.map((item, i) => (
+            <li key={item.id} className="ix-bar" style={{ ["--i" as string]: i, ["--n" as string]: Math.max(ordered.length - 1, 1) }}>
+              <a href={`#${item.id}`} className="ix-link">
+                <span className="ix-title">{item.text}</span>
+                <span className="ix-sub">
+                  {statusOf(item) === "in_progress" && <span className="ix-pill">{names.working}</span>}
+                  {countLabel(item, fi)}
+                </span>
+              </a>
+            </li>
+          ))}
+          {done.map((item) => (
+            <li key={item.id} className="ix-bar is-done">
+              <a href={`#${item.id}`} className="ix-link">
+                <span className="ix-title">
+                  <span className="sr-only">{fi.done[0].toUpperCase() + fi.done.slice(1)}: </span>
+                  {item.text}
+                </span>
+                <span className="ix-sub">{countLabel(item, fi)}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+        {items.length === 0 && <p className="ix-empty">{isWriter ? fi.addItemFirst : `No ${fi.items} yet.`}</p>}
+      </nav>
+    );
+  }
+
+  if (kind === "board") {
+    return (
+      <nav id="list-index" aria-label="Board" className="ix ix-board scroll-mt-24">
+        <div className="ix-columns">
+          {shown.map((g) => (
+            <section key={g.key} className={`ix-column is-${g.key}`} aria-label={`${g.name}, ${g.items.length}`}>
+              <p className="ix-column-head">
+                <span>{g.name}</span> <span className="ix-count">{g.items.length}</span>
+              </p>
+              <ul className="ix-cards">
+                {g.items.map((item) => (
+                  <li key={item.id} className={`ix-card ${g.key === "done" ? "is-done" : ""}`}>
+                    <a href={`#${item.id}`} className="ix-link">
+                      <span className="ix-labels" aria-hidden="true">
+                        <span className={`ix-label is-${g.key}`} />
+                        {item.due_at && <span className="ix-label is-due" />}
+                      </span>
+                      <span className="ix-title">{item.text}</span>
+                      <span className="ix-foot">
+                        <span className="ix-chips">
+                          <DueChip due={item.due_at} done={g.key === "done"} />
+                          <span className="ix-meta">{countLabel(item, fi)}</span>
+                        </span>
+                        <Avatars actors={[item.claimed_by ?? null, item.created_by]} />
+                      </span>
+                    </a>
+                  </li>
+                ))}
+                {g.items.length === 0 && <li className="ix-none">Nothing here</li>}
+              </ul>
+              {isWriter && g.key === "open" && (
+                <a href="#add-item" className="ix-add">
+                  <span aria-hidden="true">+</span> {fi.addItemTitle}
+                </a>
+              )}
+            </section>
+          ))}
+        </div>
+      </nav>
+    );
+  }
+
+  // Sections
+  return (
+    <nav id="list-index" aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-sections scroll-mt-24">
+      <div className="ix-table-head" aria-hidden="true">
+        <span>Name</span>
+        <span>{shopping ? "Found" : "Agent"}</span>
+        <span>Due</span>
+        <span>Status</span>
+      </div>
+      {shown.map((g) => (
+        <details key={g.key} open={g.key !== "done" || shown.length === 1} className={`ix-group is-${g.key}`}>
+          <summary className="ix-group-head">
+            <span className="ix-chevron" aria-hidden="true" />
+            <span>{g.name}</span> <span className="ix-count">{g.items.length}</span>
+          </summary>
+          <ul className="ix-rows">
+            {g.items.map((item) => {
+              const st = statusOf(item);
+              const who = item.claimed_by ?? item.completion?.completed_by ?? null;
+              return (
+                <li key={item.id} className={`ix-row ${st === "done" ? "is-done" : ""}`}>
+                  <span className="ix-tick">
+                    <ChecklistBox itemId={item.id} text={item.text} bought={st === "done"} canWrite={isWriter} shopping={shopping} doneWord={fi.done} />
+                  </span>
+                  <a href={`#${item.id}`} className="ix-link">
+                    <span className="ix-title">{item.text}</span>
+                    <span className="ix-meta">{countLabel(item, fi)}</span>
+                  </a>
+                  <span className="ix-cell ix-who">{shopping ? item.entries.length || "–" : who ? <Avatars actors={[who]} named /> : "–"}</span>
+                  <span className="ix-cell ix-due">{item.due_at ? <DueChip due={item.due_at} done={st === "done"} /> : "–"}</span>
+                  <span className="ix-cell">
+                    <span className={`ix-pill is-${st}`}>{st === "done" ? names.done : st === "in_progress" ? names.working : shopping ? "Wanted" : "Open"}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {isWriter && g.key === "open" && (
+            <a href="#add-item" className="ix-add">
+              <span aria-hidden="true">+</span> {fi.addItemTitle}
+            </a>
+          )}
+        </details>
+      ))}
+      {items.length === 0 && <p className="ix-empty">{isWriter ? fi.addItemFirst : `No ${fi.items} yet.`}</p>}
+    </nav>
+  );
+}
+
+function countLabel(item: ItemWithEntries, fi: FormatInfo) {
+  const n = item.entries.length;
+  return n ? plural(n, fi.entry) : `No ${fi.entries} yet`;
+}
+
+function Avatars({ actors, named = false }: { actors: Array<ActorRef | null>; named?: boolean }) {
+  const seen = new Set<string>();
+  const list = actors.filter((a): a is ActorRef => {
+    if (!a) return false;
+    const key = a.kind === "agent" ? a.agent_id : a.kind === "user" ? a.handle : "outside";
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return (
+    <span className="ix-avatars">
+      {list.map((a, i) => {
+        const name = a.kind === "agent" ? a.name : a.kind === "user" ? a.handle : (a.name ?? "Outside agent");
+        const hue = a.kind === "agent" ? `var(--agent-${agentHue(a.name)})` : "var(--ink-3)";
+        return (
+          <span key={i} className="ix-avatar-wrap">
+            <span className="ix-avatar" style={{ ["--hue" as string]: hue }} aria-hidden="true">
+              {name.slice(0, 1).toUpperCase()}
+            </span>
+            {named ? <span className="ix-avatar-name">{name}</span> : <span className="sr-only">{name}</span>}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** Escape closes an open item panel. */
+function useEscapeCloses() {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || !location.hash) return;
+      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      if (target?.closest(".ix-panel")) {
+        const id = target.closest(".item-section")?.id;
+        location.hash = "list-index";
+        if (id) document.querySelector<HTMLAnchorElement>(`.ix a[href="#${id}"]`)?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+}

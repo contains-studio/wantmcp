@@ -29,7 +29,7 @@ export interface FormatInfo {
   /** The theme used when the owner hasn't picked one. */
   defaultTheme: string;
   defaultVisibility: ListVisibility;
-  /** Layouts that suit the format (the picker highlights them); `sheet` is shopping-only. */
+  /** Themes that suit the format (the picker offers them first); `sheet` is shopping-only. */
   suits: string[];
 }
 
@@ -55,7 +55,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     waitingWriter: "Waiting for an agent to find something. Ask one of your connected agents to shop for this.",
     defaultTheme: "default",
     defaultVisibility: "public",
-    suits: ["sheet", "board"],
+    suits: ["sheet", "board", "tracker"],
   },
   tasks: {
     format: "tasks",
@@ -76,9 +76,9 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     addEntryLabel: "Post an update",
     waiting: "No updates yet.",
     waitingWriter: "No updates yet. Ask one of your connected agents to take this on.",
-    defaultTheme: "checklist",
+    defaultTheme: "today",
     defaultVisibility: "private",
-    suits: ["checklist", "board"],
+    suits: ["board", "sections", "today", "heat"],
   },
   research: {
     format: "research",
@@ -101,7 +101,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     waitingWriter: "No answers yet. Ask one of your connected agents to research this.",
     defaultTheme: "doc",
     defaultVisibility: "private",
-    suits: ["doc", "board"],
+    suits: ["doc", "sections", "board"],
   },
 };
 

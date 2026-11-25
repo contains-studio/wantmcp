@@ -1,28 +1,23 @@
 import type { Theme } from "../types.ts";
 
-/** Letterpress on blush card: wine and rose, an italic serif, a few outlined hearts. */
+/** Love letters: blush paper, deep red, a script-like italic serif and scalloped cards. */
 export const valentines: Theme = {
   slug: "valentines",
   name: "Valentine's Day",
   group: "occasion",
-  idea: "Letterpress on blush card: wine and rose, an italic serif and a few outlined hearts.",
+  stylesheet: true,
+  idea: "Love letters: blush paper and deep red, an italic serif, scalloped notes and a sealed-envelope header.",
   light: {
-    paper: "#fbf2f2", card: "#fffafa", sunk: "#f4e4e6", ink: "#350c19", ink2: "#5c2e3c", ink3: "#7a4b59",
-    line: "#efd8dc", lineStrong: "#dcb0ba", want: "#b0123e", wantInk: "#ffffff", wantSoft: "#fbe0e7",
-    deal: "#1d6b47", dealSoft: "#dcefe3", warn: "#8a5300", warnSoft: "#fdf0d5", danger: "#b42318",
+    paper: "#fff0f2", card: "#fffafa", sunk: "#fde2e7", ink: "#3b0a17", ink2: "#62212f", ink3: "#80414e",
+    line: "#f6cfd7", lineStrong: "#e399a8", want: "#b3123f", wantInk: "#ffffff", wantSoft: "#fdd9e1",
+    deal: "#0f6a45", dealSoft: "#dcf2e6", warn: "#8a4b00", warnSoft: "#fdeed6", danger: "#b3123f",
   },
   dark: {
-    paper: "#1c0a11", card: "#2a111a", sunk: "#13060b", ink: "#fbe9ee", ink2: "#e3c3cd", ink3: "#bf98a5",
-    line: "#45202c", lineStrong: "#663342", want: "#ff7aa0", wantInk: "#2a0711", wantSoft: "#45172a",
-    deal: "#7fdcaa", dealSoft: "#123022", warn: "#f5b13d", warnSoft: "#36270d", danger: "#ff8a80",
+    paper: "#24080f", card: "#330d17", sunk: "#1c060c", ink: "#ffe9ee", ink2: "#f3c6d0", ink3: "#d59aa8",
+    line: "#4d1624", lineStrong: "#7a2a3d", want: "#ff7a9a", wantInk: "#2a0510", wantSoft: "#4a1424",
+    deal: "#86e0b6", dealSoft: "#163226", warn: "#f5c76a", warnSoft: "#33280e", danger: "#ff9ab0",
   },
   fonts: { display: "serif" },
-  radius: { card: "22px", control: "999px", image: "16px" },
+  radius: { card: "18px", control: "999px", input: "14px", image: "14px" },
   traits: ["serif-display", "italic-display"],
-  motif: (c) => {
-    const heart = (x: number, y: number, s: number) =>
-      `<path transform="translate(${x} ${y}) scale(${s})" d="M0 8C-6-4-22 0-20 12c2 10 20 22 20 22s18-12 20-22C22 0 6-4 0 8z"/>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none" stroke="${c}" stroke-width="1.6" opacity="0.32">
-      ${heart(290, 60, 3)}${heart(170, 50, 1.3)}${heart(200, 200, 1.6)}${heart(360, 220, 1)}${heart(110, 150, 0.9)}</svg>`;
-  },
 };

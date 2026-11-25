@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, redirect } from "react-router";
 import type { Route } from "./+types/theme-preview";
 import { ListView } from "~/components/ListView";
 import { siteOrigin } from "~/lib/config.server";
@@ -9,9 +9,13 @@ import { sampleList } from "~/themes/sample.server";
 
 export function loader({ request, params }: Route.LoaderArgs) {
   const t = getTheme(params.slug);
-  if (t.slug !== params.slug) throw new Response("Not found", { status: 404 });
+  if (t.slug !== params.slug) {
+    // An old name for a theme (hanukkah, checklist): send people to its current page.
+    if (t.aliases?.includes(params.slug)) throw redirect(`/themes/${t.slug}${new URL(request.url).search}`, 301);
+    throw new Response("Not found", { status: 404 });
+  }
   const q = new URL(request.url).searchParams.get("format");
-  const natural = (Object.values(FORMATS).find((f) => f.defaultTheme === t.slug)?.format ?? "shopping") as ListFormat;
+  const natural: ListFormat = t.natural ?? "shopping";
   const format = q ? formatOf({ format: q as ListFormat }) : natural;
   return { theme: getThemeView(t.slug), sample: sampleList(Date.now(), format), format, origin: siteOrigin(request) };
 }

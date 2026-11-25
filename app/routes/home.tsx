@@ -210,8 +210,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               A look for every occasion
             </h2>
             <p className="mt-1 text-[0.95rem] text-ink-2">
-              Dress a list for Black Friday, Christmas, Hanukkah, a birthday or Valentine's Day, or in the style of your tools: a doc, a board, a
-              tracker, a checklist or a sheet.
+              Dress a list for Black Friday, Chanukah, Christmas, Kwanzaa, New Year or a birthday, or in the style of your tools: a board, sections,
+              a calm to-do list, a heat map, a doc, a tracker or a sheet.
             </p>
           </div>
           <Link to="/themes" className="btn btn-ghost">

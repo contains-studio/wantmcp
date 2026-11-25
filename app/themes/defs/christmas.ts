@@ -1,29 +1,30 @@
 import type { Theme } from "../types.ts";
 
-/** A card from a good stationer: evergreen, cranberry and a little gold, set in serif. */
+/** Evergreen, cranberry and gold: a full-bleed evergreen band, items wrapped like parcels, finds on gift tags. */
 export const christmas: Theme = {
   slug: "christmas",
   name: "Christmas",
   group: "occasion",
-  idea: "A card from a good stationer: evergreen, cranberry and a thread of gold, set in serif.",
+  stylesheet: true,
+  idea: "Evergreen, cranberry and gold: a full-bleed evergreen band, every item wrapped like a parcel and every find on a gift tag.",
   light: {
-    paper: "#f5f0e6", card: "#fffdf7", sunk: "#ece5d6", ink: "#14261b", ink2: "#3a4a3f", ink3: "#5b6a5f",
-    line: "#e0d8c6", lineStrong: "#c2b79c", want: "#a3172f", wantInk: "#ffffff", wantSoft: "#f6dde0",
-    deal: "#1d6b3a", dealSoft: "#dcefe0", warn: "#8a5300", warnSoft: "#fbefd3", danger: "#b42318",
+    paper: "#f7f1e4", card: "#fffbf2", sunk: "#efe6d2", ink: "#16261d", ink2: "#3b4a40", ink3: "#5a6a5f",
+    line: "#e4d9c0", lineStrong: "#b9a984", want: "#a3152f", wantInk: "#ffffff", wantSoft: "#f8e1e4",
+    deal: "#0f6a3c", dealSoft: "#ddf0e3", warn: "#855000", warnSoft: "#fbefd2", danger: "#a3152f",
   },
   dark: {
-    paper: "#0e1c15", card: "#16291f", sunk: "#0a140f", ink: "#f4efe2", ink2: "#d3cbb8", ink3: "#aaa28f",
-    line: "#264034", lineStrong: "#3a5a4a", want: "#ff7a8e", wantInk: "#2a0710", wantSoft: "#3a1820",
-    deal: "#7fdc9a", dealSoft: "#123222", warn: "#e8c66a", warnSoft: "#33280e", danger: "#ff8a80",
+    paper: "#0b2a1d", card: "#113726", sunk: "#08211a", ink: "#fbf3e2", ink2: "#dcd3bf", ink3: "#b5ae99",
+    line: "#1d4a35", lineStrong: "#336b50", want: "#f0c75e", wantInk: "#2a1a00", wantSoft: "#2c3a1c",
+    deal: "#8fe0b0", dealSoft: "#123d2a", warn: "#f5c76a", warnSoft: "#3a2f10", danger: "#ff9a9a",
   },
   fonts: { display: "serif" },
-  radius: { card: "14px", control: "999px", image: "10px" },
+  radius: { card: "10px", control: "999px", input: "10px", image: "8px" },
   traits: ["serif-display"],
-  motifColor: { light: "#1f5133", dark: "#e8c66a" },
-  motif: (c) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" opacity="0.32">
-    <path d="M300 30l6 18h19l-15 11 6 18-16-11-16 11 6-18-15-11h19z"/>
-    <path d="M300 95v170M300 130l-40 30M300 130l40 30M300 175l-55 40M300 175l55 40M300 220l-70 45M300 220l70 45"/>
-    <path d="M120 70c20 10 30 30 20 50-20-5-30-25-20-50zM120 70c-20 10-30 30-20 50 20-5 30-25 20-50z"/>
-    <circle cx="112" cy="128" r="6"/><circle cx="128" cy="130" r="6"/>
-  </svg>`,
+  contrast: {
+    light: [
+      { label: "band text on evergreen", fg: "#fbf3e2", bg: "#0e3b28" },
+      { label: "gold on evergreen band (large)", fg: "#e9bf55", bg: "#0e3b28", need: 3 },
+    ],
+    dark: [{ label: "band text on evergreen", fg: "#fbf3e2", bg: "#06180f" }],
+  },
 };
