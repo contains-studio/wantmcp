@@ -113,6 +113,19 @@ export interface ClaimRow {
   used_by: string | null;
 }
 
+/** SPEC 14.2 */
+export interface SkillRow {
+  id: string;
+  user_id: string;
+  name: string;
+  title: string;
+  description: string;
+  body: string;
+  enabled: boolean;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
 export interface Store {
   users: UserRow[];
   sessions: Map<string, string>; // token -> user id
@@ -129,6 +142,7 @@ export interface Store {
   events: WantEvent[];
   reports: Array<{ target_type: string; target_id: string; reason: string; created_at: Timestamp }>;
   claims: ClaimRow[];
+  skills: SkillRow[];
 }
 
 let counter = 0;
@@ -164,6 +178,7 @@ export function emptyStore(): Store {
     events: [],
     reports: [],
     claims: [],
+    skills: [],
   };
 }
 

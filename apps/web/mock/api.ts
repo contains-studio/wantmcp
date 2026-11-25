@@ -10,12 +10,12 @@
  * Sign-in: any email, code 123456.
  */
 import type {
-  ActorRef, AgentInfo, ClaimPreview, HandoverResult, ListWithSummary, UnclaimedListResult, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
+  ActorRef, AgentInfo, ClaimPreview, Skill, HandoverResult, ListWithSummary, UnclaimedListResult, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
   ItemSummary, ListSummaryPage, Member, OpenQuestionsPage, Page, PriceInput, PriceObservation, PriceSource, PurchaseInput, Question, UserSelf, WantEvent,
 } from "../app/lib/types.ts";
 import { HANDOVER_TTL_DAYS, UNCLAIMED_TTL_HOURS } from "../app/lib/claims.ts";
 import { seedStore } from "./seed.ts";
-import { newId, randomToken, type AgentRow, type ClaimRow, type EntryRow, type ItemRow, type ListRow, type Store, type UserRow } from "./store.ts";
+import { newId, randomToken, type AgentRow, type ClaimRow, type SkillRow, type EntryRow, type ItemRow, type ListRow, type Store, type UserRow } from "./store.ts";
 
 export const MOCK_LOGIN_CODE = "123456";
 const WEB = "https://wantmcp.com";
@@ -611,6 +611,88 @@ route("POST", "/unsubscribe", ({ body }) => {
   const token = text("token", body.token, 200, true);
   if (!/^unsub_[a-z0-9_-]{4,60}$/i.test(token)) throw notFound("This link doesn't work");
   unsubscribed.add(token);
+  return NO_CONTENT;
+});
+
+// SPEC 14.2: a person's skills. A web session only: any agent credential is refused, for every route.
+const SKILL_LIMIT = 20;
+const BUILT_IN_SKILLS = new Set(["shop-a-want-list", "work-a-task-list", "research-a-question-list"]);
+
+function skillSession(caller: Caller) {
+  if (!caller) throw unauthorized();
+  if (caller.kind !== "user") throw forbidden("Only a signed-in person can change skills.");
+  return caller.user;
+}
+
+function skillOut(k: SkillRow): Skill {
+  // The URI names the skill, never the person (SPEC 14.3); the mock's form is illustrative.
+  return { id: k.id, name: k.name, title: k.title, description: k.description, body: k.body, enabled: k.enabled, uri: `skill://${k.name}/SKILL.md`, created_at: k.created_at, updated_at: k.updated_at };
+}
+
+function skillName(userId: string, title: string): string {
+  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56) || "skill";
+  const taken = new Set(store.skills.filter((k) => k.user_id === userId).map((k) => k.name));
+  let name = base;
+  for (let n = 2; taken.has(name) || BUILT_IN_SKILLS.has(name); n++) name = `${base}-${n}`;
+  return name;
+}
+
+function skillFields(body: Record<string, unknown>, partial: boolean) {
+  const out: Partial<Pick<SkillRow, "title" | "description" | "body" | "enabled">> = {};
+  if (!partial || body.title !== undefined) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) throw invalid("title is required");
+    if (title.length > 80) throw invalid("title must be at most 80 characters");
+    out.title = title;
+  }
+  if (!partial || body.body !== undefined) {
+    const text = typeof body.body === "string" ? body.body.trim() : "";
+    if (!text) throw invalid("body is required");
+    if (text.length > 20000) throw invalid("body must be at most 20000 characters");
+    out.body = text;
+  }
+  if (body.description !== undefined && body.description !== null) {
+    const d = String(body.description).trim();
+    if (d.length > 300) throw invalid("description must be at most 300 characters");
+    out.description = d;
+  } else if (!partial) out.description = "";
+  if (body.enabled !== undefined) {
+    if (typeof body.enabled !== "boolean") throw invalid("enabled must be true or false");
+    out.enabled = body.enabled;
+  } else if (!partial) out.enabled = true;
+  return out;
+}
+
+route("GET", "/me/skills", ({ caller }) => {
+  const user = skillSession(caller);
+  return { data: store.skills.filter((k) => k.user_id === user.id).sort((a, b) => a.created_at.localeCompare(b.created_at)).map(skillOut) };
+});
+
+route("POST", "/me/skills", ({ caller, body }) => {
+  const user = skillSession(caller);
+  if (store.skills.filter((k) => k.user_id === user.id).length >= SKILL_LIMIT) {
+    throw new HttpError(429, "rate_limited", `You have ${SKILL_LIMIT} skills. Delete one to add another.`);
+  }
+  const f = skillFields(body, false);
+  const t = nowIso();
+  const k: SkillRow = { id: newId("skl"), user_id: user.id, name: skillName(user.id, f.title!), title: f.title!, description: f.description ?? "", body: f.body!, enabled: f.enabled ?? true, created_at: t, updated_at: t };
+  store.skills.push(k);
+  return created(skillOut(k));
+});
+
+route("PATCH", "/me/skills/{id}", ({ caller, params, body }) => {
+  const user = skillSession(caller);
+  const k = store.skills.find((x) => x.id === params[0] && x.user_id === user.id);
+  if (!k) throw notFound("Skill not found");
+  Object.assign(k, skillFields(body, true), { updated_at: nowIso() });
+  return skillOut(k);
+});
+
+route("DELETE", "/me/skills/{id}", ({ caller, params }) => {
+  const user = skillSession(caller);
+  const k = store.skills.find((x) => x.id === params[0] && x.user_id === user.id);
+  if (!k) throw notFound("Skill not found");
+  store.skills = store.skills.filter((x) => x !== k);
   return NO_CONTENT;
 });
 

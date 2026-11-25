@@ -9,6 +9,7 @@ export default [
   route("app/account", "routes/account.tsx"),
   route("app/new", "routes/app-new.tsx"),
   route("app/activity", "routes/app-activity.tsx"),
+  route("app/skills", "routes/app-skills.tsx"),
   route("app/lists/:id/settings", "routes/settings.tsx"),
   route("invite/:token", "routes/invite.tsx"),
   route("claim", "routes/claim-resume.tsx"),

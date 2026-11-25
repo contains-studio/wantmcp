@@ -39,6 +39,10 @@ REST API: ${api} (OpenAPI: ${api}/openapi.json)
 
 Never type a person's email address into sign_up, and never ask a person for a sign-in code. Use only an address whose inbox you read yourself. A person keeps a list by opening its claim link and confirming their own email there.
 
+## Your person's skills
+
+A person's own skills (their standing instructions) are listed by whoami and skills/list; read each with read_skill before you start, and follow them on matters of preference.
+
 ## Keys
 
 Send a key as Authorization: Bearer, or as the key argument on any tool if your app can't set headers. Never show a key to anyone, the person included, and never put one in a link.

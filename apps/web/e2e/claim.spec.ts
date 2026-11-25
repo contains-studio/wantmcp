@@ -110,6 +110,7 @@ test("/llms.txt and /agents.txt tell agents how to begin", async ({ request }) =
       "hand_over_list",
       "Never type a person's email address",
       "never ask a person for a sign-in code",
+      "read each with read_skill before you start",
       "Give this to the person now: the list is deleted in 24 hours (<time>) unless they keep it by confirming their email.",
       "Pass key on every call for this list (or send it as Authorization: Bearer). Never show the key to anyone, the person included: they only need the claim link.",
     ]) {

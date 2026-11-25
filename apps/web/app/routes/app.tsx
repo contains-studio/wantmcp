@@ -171,7 +171,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
 }
 
 /** Lists | Activity: two real links, the current one marked. */
-export function ViewSwitch({ current }: { current: "lists" | "activity" }) {
+export function ViewSwitch({ current }: { current: "lists" | "activity" | "skills" }) {
   const tab = (to: string, label: string, on: boolean) => (
     <Link to={to} aria-current={on ? "page" : undefined} className={`view-tab ${on ? "is-on" : ""}`}>
       {label}
@@ -181,6 +181,7 @@ export function ViewSwitch({ current }: { current: "lists" | "activity" }) {
     <nav aria-label="View" className="view-switch">
       {tab("/app", "Lists", current === "lists")}
       {tab("/app/activity", "Activity", current === "activity")}
+      {tab("/app/skills", "Skills", current === "skills")}
     </nav>
   );
 }

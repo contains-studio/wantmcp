@@ -361,6 +361,20 @@ export function seedStore(now = Date.now()): Store {
   // An invitation the agent Kit sent from its own account.
   s.members.push({ id: "mem_kit_inv", list_id: "lst_team", user_id: null, invited_email: "lynx@example.com", role: "member", status: "invited", token: "inv_seed_from_agent", created_at: at(DAY), invited_by: kit });
 
+  // ---- SPEC 14: the demo person's own skills, one on and one off.
+  s.skills.push(
+    {
+      id: "skl_shop", user_id: "usr_demo", name: "how-i-shop", title: "How I shop", description: "",
+      body: "I live in Seattle (98101). Ship to my address, never to a pickup point.\n\nSizes: men's M shirts, 32x32 jeans, size 10 shoes.\n\nI trust REI, Costco and the brand's own store. No marketplace sellers I can't return to, and never refurbished.\n\nAsk me before anything over $200.",
+      enabled: true, created_at: at(3 * DAY), updated_at: at(DAY),
+    },
+    {
+      id: "skl_gifts", user_id: "usr_demo", name: "gifts-for-my-family", title: "Gifts for my family", description: "When a list is for gifts",
+      body: "Mom likes gardening and mysteries. Dad cooks. My sister is vegan.\n\nAbout $50 each, and it must arrive by December 18.",
+      enabled: false, created_at: at(2 * DAY), updated_at: at(2 * DAY),
+    },
+  );
+
   // A question releases any claim.
   const movers = s.items.find((i) => i.id === "itm_t_movers");
   if (movers) movers.claimed_by = null;

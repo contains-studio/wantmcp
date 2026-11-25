@@ -316,6 +316,42 @@ export interface ListWithSummary extends ListSummary {
   };
 }
 
+/**
+ * SPEC 14.2: a person's own standing instructions, served to that person's agents only. Written only with a web
+ * session; any agent credential gets forbidden.
+ */
+export interface Skill {
+  id: string;
+  /** Slug for the skill's URI, made by the server from the title on create; it does not change on edit. */
+  name: string;
+  /** 1–80 characters. */
+  title: string;
+  /** When an agent should use it, 0–300 characters, as stored: "" when the person left it empty (never null). */
+  description: string;
+  /** The instructions, 1–20,000 characters. */
+  body: string;
+  enabled: boolean;
+  uri: string;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+/** POST /me/skills */
+export interface SkillInput {
+  title: string;
+  body: string;
+  description?: string;
+  enabled?: boolean;
+}
+
+/** PATCH /me/skills/{id} */
+export type SkillPatch = Partial<SkillInput>;
+
+/** GET /me/skills: oldest first, no paging. */
+export interface SkillList {
+  data: Skill[];
+}
+
 /** GET /unsubscribe/{token}. */
 export interface UnsubscribeState {
   valid: boolean;
