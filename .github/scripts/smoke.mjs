@@ -35,7 +35,7 @@ async function page(path, { status = 200, contains } = {}) {
 const home = await page("/", { contains: "The Want MCP" });
 await page("/connect", { contains: "mcp.wantmcp.com" });
 await page("/login");
-await page("/themes", { contains: "Themes" });
+await page("/themes", { contains: "Looks · The Want MCP" });
 await page("/l/lst_smoke_check_missing", { status: 404 });
 
 if (home) {
