@@ -3,6 +3,7 @@
  * needs me (questions waiting), then how my lists are doing. One column, the same on every screen.
  * The cross-list feed lives at /app/activity; a new list is made at /app/new.
  */
+import { MetaLine } from "~/components/MetaLine";
 import { useEffect, useRef, useState } from "react";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import type { Route } from "./+types/app";
@@ -13,7 +14,7 @@ import { LiveUpdates } from "~/components/LiveUpdates";
 import { Time } from "~/components/Time";
 import type { IntentResult } from "~/components/WriteTools";
 import { api, apiOptional, formError } from "~/lib/api.server";
-import { listCards, type ListCard } from "~/lib/app-home.server";
+import { listCards, orderCards, type ListCard } from "~/lib/app-home.server";
 import { requireUser } from "~/lib/auth.server";
 import { formatMoney, plural } from "~/lib/format";
 import { FORMATS } from "~/lib/formats";
@@ -43,7 +44,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     waitingQuestions(request).catch(() => ({ questions: [] as WaitingQuestion[], count: 0 })),
     api<AgentInfo[]>(request, "/me/agents").catch(() => [] as AgentInfo[]),
   ]);
-  const cards = await listCards(request, lists, waiting.questions);
+  const cards = orderCards(await listCards(request, lists, waiting.questions));
   const q = (url.searchParams.get("q") ?? "").trim();
   return data(
     {
@@ -215,14 +216,20 @@ function QuestionCard({ q, onAnswered }: { q: WaitingQuestion; onAnswered: (mess
   );
   return (
     <li className="card grid gap-3 p-5 sm:p-6">
-      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[0.85rem] text-ink-3">
-        <ActorTag actor={q.asked_by} compact /> asked · <Time ts={q.asked_at} /> ·{" "}
-        <Link to={`/l/${q.list.id}#${q.item.id}`} className="link text-ink-2">
-          {q.item.text}
-        </Link>
-        <span aria-hidden="true">·</span>
-        <span>{q.list.title}</span>
-      </p>
+      <MetaLine
+        as="p"
+        className="text-[0.85rem] text-ink-3"
+        items={[
+          <span key="a" className="inline-flex items-center gap-1.5">
+            <ActorTag actor={q.asked_by} compact /> asked
+          </span>,
+          <Time key="t" ts={q.asked_at} />,
+          <Link key="i" to={`/l/${q.list.id}#${q.item.id}`} className="link text-ink-2 whitespace-normal">
+            {q.item.text}
+          </Link>,
+          q.list.title,
+        ]}
+      />
       <p id={qid} className="text-[1.15rem] leading-snug font-semibold whitespace-pre-line">
         {q.text}
       </p>
@@ -306,44 +313,27 @@ function ListCardRow({ card: c }: { card: ListCard }) {
               {c.title}
             </Link>
           </h3>
-          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.88rem] text-ink-3">
-            {c.isPrivate && (
-              <span className="inline-flex items-center gap-1 text-ink-2">
-                <LockGlyph /> Private
-              </span>
-            )}
-            {c.isPrivate && <Dot />}
-            <span>{plural(c.items, fi.item)}</span>
-            {c.done > 0 && (
-              <>
-                <Dot />
-                <span>
-                  {c.done} {fi.done}
+          <MetaLine
+            as="p"
+            className="mt-1 text-[0.88rem] text-ink-3"
+            items={[
+              c.isPrivate && (
+                <span className="inline-flex items-center gap-1 text-ink-2">
+                  <LockGlyph /> Private
                 </span>
-              </>
-            )}
-            {c.role === "member" && (
-              <>
-                <Dot />
-                <span>by {c.ownerHandle}</span>
-              </>
-            )}
-            {c.role === "owner" && c.access && c.access.people > 1 && (
-              <>
-                <Dot />
-                <span>Shared with {plural(c.access.people - 1, "person", "people")}</span>
-              </>
-            )}
-            {c.waiting > 0 && (
-              <>
-                <Dot />
+              ),
+              plural(c.items, fi.item),
+              c.done > 0 && `${c.done} ${fi.done}`,
+              c.role === "member" && `by ${c.ownerHandle}`,
+              c.role === "owner" && c.access && c.access.people > 1 && `Shared with ${plural(c.access.people - 1, "person", "people")}`,
+              c.waiting > 0 && (
                 <span className="font-medium text-warn">
                   <span aria-hidden="true">● </span>
                   {c.waiting} waiting on you
                 </span>
-              </>
-            )}
-          </p>
+              ),
+            ]}
+          />
         </div>
         <div className="relative z-[2] flex flex-none items-center gap-1">
           <AddToList card={c} />
@@ -462,7 +452,6 @@ function AddToList({ card }: { card: ListCard }) {
   );
 }
 
-const Dot = () => <span aria-hidden="true">·</span>;
 const LockGlyph = () => (
   <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
     <rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor" />

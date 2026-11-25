@@ -4,7 +4,9 @@ import { useRootData } from "~/lib/hooks";
 import { Field, Select, Textarea } from "~/components/ui";
 import { BIO_PLACEHOLDER, COUNTRIES, COUNTRY_CURRENCY, CURRENCIES } from "~/lib/locales";
 import type { Route } from "./+types/account";
-import { api, formError } from "~/lib/api.server";
+import { api, apiOptional, formError } from "~/lib/api.server";
+import type { AgentInfo } from "~/lib/types";
+import { Time } from "~/components/Time";
 import { requireUser } from "~/lib/auth.server";
 import { assertSameOrigin, clearSessionCookie } from "~/lib/session.server";
 
@@ -19,7 +21,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const cf = (request as unknown as { cf?: { country?: string } }).cf?.country ?? request.headers.get("cf-ipcountry");
   const country = cf && COUNTRIES.some(([c]) => c === cf) ? cf : null;
   const guess = !user.country && country ? { country, currency: user.currency ?? COUNTRY_CURRENCY[country] ?? null } : null;
-  return data({ user, guess }, { headers: { "Cache-Control": "private, no-store" } });
+  // SPEC 13.6: account keys agents made with their own sign-up. Older API builds don't have the route: none.
+  const agentKeys = (await apiOptional<AgentInfo[]>(request, "/me/agent-keys").catch(() => null)) ?? [];
+  return data({ user, guess, agentKeys }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -47,6 +51,10 @@ export async function action({ request }: Route.ActionArgs) {
       });
       return { ok: true, intent };
     }
+    if (intent === "remove-agent-key") {
+      await api(request, `/me/agent-keys/${encodeURIComponent(String(form.get("agent_id") ?? ""))}`, { method: "DELETE" });
+      return { ok: true, intent };
+    }
     if (intent === "delete") {
       if (String(form.get("confirm") ?? "").trim().toLowerCase() !== "delete my account") {
         return data({ error: "Type “delete my account” to confirm.", intent }, 400);
@@ -61,7 +69,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Account({ loaderData }: Route.ComponentProps) {
-  const { user, guess } = loaderData;
+  const { user, guess, agentKeys } = loaderData;
   const result = useActionData<typeof action>() as { ok?: boolean; error?: string; intent?: string } | undefined;
   const nav = useNavigation();
   return (
@@ -141,6 +149,8 @@ export default function Account({ loaderData }: Route.ComponentProps) {
         </Form>
       </section>
 
+      {agentKeys.length > 0 && <AgentKeys keys={agentKeys} />}
+
       <Appearance />
 
       <section className="card flex flex-wrap items-center justify-between gap-3 p-5 sm:p-6">
@@ -212,6 +222,45 @@ function Appearance() {
           <button className="btn w-fit">Save</button>
         </noscript>
       </fetcher.Form>
+    </section>
+  );
+}
+
+/** Agents that signed up with their own address and hold a key to this account (SPEC 13.6). Only when there are some. */
+function AgentKeys({ keys }: { keys: AgentInfo[] }) {
+  return (
+    <section aria-labelledby="agent-keys-h" className="card grid gap-4 p-5 sm:p-6">
+      <div>
+        <h2 id="agent-keys-h" className="text-xl font-semibold">
+          Agents with access to your account
+        </h2>
+        <p className="hint mt-1">They can work on every list you own. Remove one to cut it off at once.</p>
+      </div>
+      <ul className="grid gap-2">
+        {keys.map((k) => (
+          <li key={k.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{k.name}</p>
+              <p className="text-[0.8rem] text-ink-3">
+                Added <Time ts={k.created_at} />
+                {k.last_used_at && (
+                  <>
+                    {" "}
+                    · last used <Time ts={k.last_used_at} />
+                  </>
+                )}
+              </p>
+            </div>
+            <Form method="post" onSubmit={(e) => !confirm(`Remove ${k.name}? It loses access to your account and every list right away.`) && e.preventDefault()}>
+              <input type="hidden" name="intent" value="remove-agent-key" />
+              <input type="hidden" name="agent_id" value={k.id} />
+              <button className="btn btn-danger btn-xs">
+                Remove<span className="sr-only"> {k.name}</span>
+              </button>
+            </Form>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

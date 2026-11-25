@@ -227,7 +227,8 @@ export interface Member {
 export interface AgentInfo {
   id: string;
   name: string;
-  kind: "key" | "oauth";
+  /** key: a write key for one list; oauth: a connected client; account: an account key (ak_, SPEC 13.6) for every list. */
+  kind: "key" | "oauth" | "account";
   key_prefix: string | null;
   list_ids: string[];
   owner_handle: string;

@@ -5,7 +5,7 @@ import { api, apiOptional, toRouteError } from "~/lib/api.server";
 import { siteOrigin } from "~/lib/config.server";
 import { clip, plural } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
-import { assertSameOrigin, dismissedHandoffs, dismissHandoffCookie, getSessionToken } from "~/lib/session.server";
+import { assertSameOrigin, clearKeptCookie, dismissedHandoffs, dismissHandoffCookie, getSessionToken, readKept } from "~/lib/session.server";
 import type { AgentInfo, Comment, ListAccess, Entry, Item, ListDetail, ListPrices, Page, PriceObservation } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
 import { formatInfo, formatOf, visibilityOf } from "~/lib/formats";
@@ -80,6 +80,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
   const { items: _drop, ...summary } = list;
   const signedIn = Boolean(getSessionToken(request));
+  // Just kept from a claim link: one line, once (the cookie is cleared with this response).
+  const kept = role === "owner" ? readKept(request) : null;
+  const keptHere = kept?.listId === list.id ? kept : null;
   const [handoff, accessList] = await Promise.all([
     role === "owner" ? handoffFor(request, list) : Promise.resolve(null),
     // Who can write it, for writers (older API builds don't have it: the header shows only the counts).
@@ -99,6 +102,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       isPrivate,
       handoff,
       accessList,
+      kept: keptHere,
       // Only this list's theme is sent to the page: custom properties and motif, no theme code.
       // No theme picked: the format's default (Checklist for tasks, Doc for research).
       // A stored `default` (the retired Cards), an occasion alone or anything unknown resolves to the format's layout.
@@ -111,6 +115,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         // so a list switched to private stops being served at once.
         "Cache-Control": signedIn || isPrivate ? "private, no-store" : "public, max-age=30, s-maxage=0, must-revalidate",
         Vary: "Cookie",
+        ...(keptHere ? { "Set-Cookie": clearKeptCookie(request) } : {}),
         ...(isPrivate ? { "X-Robots-Tag": "noindex, nofollow" } : {}),
       },
     },
@@ -130,16 +135,22 @@ export async function action({ request, params }: Route.ActionArgs) {
   return handleWriterIntent(request, form, params.id);
 }
 
+/** Has any agent done anything on these items: added one, claimed one, posted, or left a note? */
+function agentActive(items: ListDetail["items"]): boolean {
+  return items.some(
+    (it) => it.created_by.kind === "agent" || it.claimed_by?.kind === "agent" || !!it.status_note || it.entries.some((e) => e.author.kind === "agent"),
+  );
+}
+
 /**
  * "Give this list to your agent" (the owner's next step): until an agent connects to the list or writes on it, or the
  * owner dismisses it. Opened from /app/new with ?new=1, which also moves focus to it.
  */
 async function handoffFor(request: Request, list: ListDetail): Promise<{ focus: boolean; connectedName: string | null } | null> {
   if (dismissedHandoffs(request).includes(list.id)) return null;
-  const agentWrote = list.items.some(
-    (it) => it.created_by.kind === "agent" || it.claimed_by?.kind === "agent" || it.entries.some((e) => e.author.kind === "agent"),
-  );
-  if (agentWrote) return null;
+  if (agentActive(list.items)) return null;
+  // Any agent that can write the list (anyone's), from the API's counts.
+  if ((list.access?.agents ?? 0) > 0) return null;
   const agents = await api<AgentInfo[]>(request, "/me/agents").catch(() => [] as AgentInfo[]);
   if (agents.some((a) => a.list_ids.includes(list.id))) return null;
   const oauth = agents.find((a) => a.kind === "oauth");

@@ -1,11 +1,12 @@
 import { data, Link } from "react-router";
+import { agentsText } from "~/lib/agents-text";
 import { AgentPromptBuilder, KeyPromptExample } from "~/components/AgentPrompt";
 import { api } from "~/lib/api.server";
 import { getSessionToken } from "~/lib/session.server";
 import type { ListSummary } from "~/lib/types";
 import type { Route } from "./+types/connect";
 import { CopyButton } from "~/components/CopyButton";
-import { siteOrigin } from "~/lib/config.server";
+import { apiBaseUrl, mcpUrl, siteOrigin } from "~/lib/config.server";
 import { signinUrl, useRootData } from "~/lib/hooks";
 import { BRANDS, type Brand } from "~/lib/brands";
 import { BrandLogo } from "~/components/BrandLogo";
@@ -20,8 +21,10 @@ export async function loader({ request }: Route.LoaderArgs) {
     .map((l) => ({ id: l.id, title: l.title, url: l.url, shared: l.my_role !== "owner" }));
   const asked = new URL(request.url).searchParams.get("list");
   const selected = mine.find((l) => l.id === asked)?.id ?? mine[0]?.id ?? null;
+  const base = apiBaseUrl();
+  const forAgents = agentsText({ origin: siteOrigin(request), mcp: mcpUrl(), api: base === "mock" ? "https://api.wantmcp.com/v1" : base });
   return data(
-    { origin: siteOrigin(request), signedIn, lists: mine, selected },
+    { origin: siteOrigin(request), signedIn, lists: mine, selected, forAgents },
     { headers: { "Cache-Control": signedIn ? "private, no-store" : "public, max-age=300, s-maxage=3600", Vary: "Cookie" } },
   );
 }
@@ -377,6 +380,15 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
       <header className="grid max-w-3xl gap-5">
         <h1 className="display text-[2.25rem] sm:text-[2.75rem]">Connect an agent</h1>
         <p className="max-w-[65ch] text-[1.0625rem] text-ink-2">Add The Want MCP to your AI app, sign in, and pick the lists it can work on.</p>
+        {!loaderData.signedIn && (
+          <p className="text-[0.95rem] text-ink-2">
+            No account yet?{" "}
+            <a href="#for-agents" className="link">
+              Your agent can start a list for you
+            </a>
+            .
+          </p>
+        )}
         <div className="grid max-w-xl gap-1.5">
           <span id="url-l" className="label">
             Server URL
@@ -476,6 +488,19 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
             </div>
           ))}
         </dl>
+      </section>
+
+      {/* The same text agents read at /llms.txt and /agents.txt, for anyone (or any agent) reading this page. */}
+      <section id="for-agents" aria-labelledby="agents-h" className="grid scroll-mt-24 gap-4 lg:grid-cols-[18rem_1fr] lg:gap-10">
+        <div className="grid content-start gap-2">
+          <h2 id="agents-h" className="serif text-[1.75rem] leading-tight">
+            For agents
+          </h2>
+          <p className="text-[0.9rem] text-ink-3">
+            Also at <a href="/llms.txt" className="link">/llms.txt</a>.
+          </p>
+        </div>
+        <pre className="max-w-3xl font-sans text-[0.88rem] leading-relaxed whitespace-pre-wrap text-ink-2">{loaderData.forAgents}</pre>
       </section>
     </div>
   );

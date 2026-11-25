@@ -39,3 +39,16 @@ test("malformed fields are dropped, not logged", () => {
   const parsed = JSON.parse(errorLine({ kind: "client_error", ref: "NOT A REF", route: "javascript:alert(1)", status: 9999, build: "x".repeat(80), upstream_request_id: "a b c" }));
   assert.deepEqual(parsed, { event: "client_error", route: "(other)" });
 });
+
+test("claim and invite tokens never reach a log line", () => {
+  const token = "clm_k3m9q2x8w7v6u5t4s3r2p1n0";
+  for (const route of [`/claim/${token}`, `/claim/${token}.data`, `/invite/inv_${token}`]) {
+    const line = errorLine({ kind: "server_error", ref: "abcdefgh", route, status: 500, build: "b1" });
+    assert.ok(!line.includes(token), line);
+  }
+  assert.equal(JSON.parse(errorLine({ kind: "server_error", ref: "abcdefgh", route: `/claim/${token}`, status: 500, build: "b1" })).route, "/claim/:token");
+  assert.equal(JSON.parse(errorLine({ kind: "server_error", ref: "abcdefgh", route: "/claim", status: 500, build: "b1" })).route, "/claim");
+  // Upstream calls carry tokens in the body; an older path form is still reduced to its pattern.
+  assert.equal(JSON.parse(errorLine({ kind: "upstream_error", ref: "abcdefgh", route: `/v1/claims/${token}`, status: 502, build: "b1" })).route, "/v1/claims/:id");
+  assert.equal(JSON.parse(errorLine({ kind: "upstream_error", ref: "abcdefgh", route: "/v1/claims/lookup", status: 502, build: "b1" })).route, "/v1/claims/:id");
+});

@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { MetaLine } from "~/components/MetaLine";
 import { GiveToAgent } from "~/components/GiveToAgent";
 import { HeadingBase, headingTag } from "~/components/preview";
 import { Link, useFetcher, useLocation } from "react-router";
@@ -57,6 +58,8 @@ export interface ListViewProps {
   handoff?: { focus: boolean; connectedName: string | null } | null;
   /** Who can write the list (writers only, list page only). */
   accessList?: ListAccess | null;
+  /** Just kept from a claim link: who made it. */
+  kept?: { kind: "unclaimed" | "handover"; by: string } | null;
 }
 
 /** A want list, rendered in its theme. Used by the list page, the theme gallery and settings previews. */
@@ -87,6 +90,12 @@ export function ListView(props: ListViewProps) {
   const productCount = items.reduce((n, i) => n + i.entries.length, 0);
   // Nothing posted on any want yet: one line for the list instead of one per want.
   const nothingYet = items.length > 0 && productCount === 0;
+  // Has any agent done anything here (added, claimed, posted, noted)? Then "no agent has worked on this" would be false.
+  const agentActive = items.some(
+    (it) => it.created_by.kind === "agent" || it.claimed_by?.kind === "agent" || !!it.status_note || it.entries.some((e) => e.author.kind === "agent"),
+  );
+  const agentsCanWrite = list.access?.agents ?? 0;
+  const idleAgent = isWriter && agentsCanWrite > 0 && !agentActive ? (props.accessList?.agents[0]?.name ?? null) : null;
   // The Sheet table compares prices, so it only applies to shopping lists.
   const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
   // Sections, Heat and (for tasks and research) Board show a compact index; each item opens in a panel.
@@ -95,10 +104,11 @@ export function ListView(props: ListViewProps) {
 
   // Row 2 of the header: counts, and for anyone but the owner, whose list it is and (if over a day) its age.
   const now = useNow();
+  // Zero counts say nothing: they're left out.
   const meta: React.ReactNode[] = [
-    <>{wanted.length} open</>,
+    ...(wanted.length ? [<>{wanted.length} open</>] : []),
     ...(bought.length ? [<>{bought.length} {fi.done}</>] : []),
-    <>{productCount} {productCount === 1 ? fi.entry : fi.entries}</>,
+    ...(productCount ? [<>{productCount} {productCount === 1 ? fi.entry : fi.entries}</>] : []),
   ];
   if (role !== "owner") meta.push(<>by {list.owner_handle}</>);
   if (!isWriter && now - Date.parse(list.updated_at) > 24 * 3600_000) meta.push(<>updated <Time ts={list.updated_at} /></>);
@@ -149,28 +159,21 @@ export function ListView(props: ListViewProps) {
           {!thumbnail && (
             <>
           {/* Each item draws its own leading dot; a dot that would start a wrapped line is clipped (app.css .meta-line). */}
-          <div className="list-meta meta-line mt-1.5 text-[0.88rem] text-ink-3">
-            <div>
-            <div>
-              {isPrivate && (
-                <span className="meta-item inline-flex items-center gap-1 text-ink-2">
+          <MetaLine
+            className="list-meta mt-1.5 text-[0.88rem] text-ink-3"
+            items={[
+              isPrivate && (
+                <span className="inline-flex items-center gap-1 text-ink-2">
                   <LockIcon />
                   Private
                 </span>
-              )}
-              {isWriter && list.access && !preview && (list.access.people > 1 || list.access.agents > 0 || list.access.pending_invites > 0) && (
-                <span className="meta-item">
-                  <WhoHasAccess counts={list.access} who={props.accessList ?? null} listId={list.id} />
-                </span>
-              )}
-              {meta.map((m, i) => (
-                <span key={i} className="meta-item">
-                  {m}
-                </span>
-              ))}
-            </div>
-            </div>
-          </div>
+              ),
+              isWriter && list.access && !preview && (list.access.people > 1 || list.access.agents > 0 || list.access.pending_invites > 0) && (
+                <WhoHasAccess counts={list.access} who={props.accessList ?? null} listId={list.id} />
+              ),
+              ...meta,
+            ]}
+          />
           {list.description && <p className="list-desc mt-3 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
             </>
           )}
@@ -186,10 +189,13 @@ export function ListView(props: ListViewProps) {
             </button>
           </div>
         )}
+        {props.kept && !preview && <KeptNote listId={list.id} kept={props.kept} isPrivate={isPrivate} />}
         {props.handoff && !preview && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
-        {nothingYet && !preview && !props.handoff && (
+        {nothingYet && !preview && !props.handoff && (!isWriter || (!agentActive && agentsCanWrite === 0) || idleAgent) && (
           <p className="list-nothing-yet text-[0.95rem] text-ink-2">
-            {isWriter ? (
+            {idleAgent ? (
+              <>{idleAgent} is connected. Tell it what to do next.</>
+            ) : isWriter ? (
               <>
                 No agent has worked on this list yet.{" "}
                 <Link to={`/connect?list=${list.id}`} className="link font-medium text-ink">
@@ -201,7 +207,7 @@ export function ListView(props: ListViewProps) {
             )}
           </p>
         )}
-        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={listCurrencyHint} />}
+        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={listCurrencyHint} quiet={!!props.handoff && !preview} />}
         {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">No {fi.items} yet.</p>}
 
         {indexKind && (
@@ -546,7 +552,22 @@ function UndoPurchase({ itemId }: { itemId: string }) {
   );
 }
 
-function AddItem({ listId, empty, fi, isPrivate, currency: hint }: { listId: string; empty: boolean; fi: FormatInfo; isPrivate: boolean; currency?: string }) {
+function AddItem({
+  listId,
+  empty,
+  fi,
+  isPrivate,
+  currency: hint,
+  quiet = false,
+}: {
+  listId: string;
+  empty: boolean;
+  fi: FormatInfo;
+  isPrivate: boolean;
+  currency?: string;
+  /** Another step is the primary action right now (giving the list to an agent): the add button is the quiet style. */
+  quiet?: boolean;
+}) {
   const currency = useCurrency(hint);
   const fetcher = useFetcher<{ ok?: boolean; error?: string; itemId?: string }>();
   const busy = fetcher.state !== "idle";
@@ -585,7 +606,7 @@ function AddItem({ listId, empty, fi, isPrivate, currency: hint }: { listId: str
             {fi.addItemTitle}
           </label>
           <input id="new-item" name="text" required maxLength={500} placeholder={moneyPlaceholder(fi.itemPlaceholder, currency)} className="input flex-1" />
-          <button className="btn btn-want" disabled={busy}>
+          <button className={quiet ? "btn" : "btn btn-want"} disabled={busy}>
             {busy ? "Adding…" : `Add ${fi.item}`}
           </button>
         </div>
@@ -867,10 +888,36 @@ export function ChecklistBox({
   );
 }
 
+/** After keeping a list from a claim link: who made it, and where to share it. Shown once; "Got it" hides it now. */
+function KeptNote({ listId, kept, isPrivate }: { listId: string; kept: { kind: "unclaimed" | "handover"; by: string }; isPrivate: boolean }) {
+  const [shown, setShown] = useState(true);
+  if (!shown) return null;
+  return (
+    <div role="status" className="card flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-[0.95rem]">
+      <p className="min-w-0 flex-1">
+        {kept.kind === "unclaimed" ? `This list was started by ${kept.by}.` : `${kept.by} made this list for you. It's yours now.`}
+        {isPrivate ? " It is private." : ""} Share it or connect more agents in{" "}
+        <Link to={`/app/lists/${listId}/settings`} className="link">
+          Settings
+        </Link>
+        .
+      </p>
+      <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShown(false)}>
+        Got it
+      </button>
+    </div>
+  );
+}
+
 /** "3 people · 2 agents": opens who they are. Counts for writers only (ListSummary.access). */
 function WhoHasAccess({ counts, who, listId }: { counts: NonNullable<ListSummary["access"]>; who: ListAccess | null; listId: string }) {
   const { user } = useRootData();
-  const label = [plural(counts.people, "person", "people"), plural(counts.agents, "agent"), ...(counts.pending_invites ? [`${counts.pending_invites} invited`] : [])].join(" · ");
+  // "1 person" alone is just the viewer: left out, as are zero counts.
+  const label = [
+    ...(counts.people > 1 ? [plural(counts.people, "person", "people")] : []),
+    ...(counts.agents ? [plural(counts.agents, "agent")] : []),
+    ...(counts.pending_invites ? [`${counts.pending_invites} invited`] : []),
+  ].join(" · ");
   const me = (handle: string) => (user?.handle === handle ? "you" : handle);
   return (
     <Menu label={`Who can write this list: ${label}`} triggerClass="textlink-btn text-ink-2" trigger={<>{label}</>} wide>

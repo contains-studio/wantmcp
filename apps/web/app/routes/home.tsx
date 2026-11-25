@@ -8,6 +8,7 @@ import { api } from "~/lib/api.server";
 import { LIVE_BRANDS, type Brand } from "~/lib/brands";
 import { siteOrigin } from "~/lib/config.server";
 import { useRootData } from "~/lib/hooks";
+import { CopyButton } from "~/components/CopyButton";
 import type { FeedEntry, Page } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
@@ -91,6 +92,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
       content: "The Want MCP: an MCP server for getting what you want.",
     },
     { name: "twitter:card", content: "summary_large_image" },
+    // Instructions for agents reading the site (SPEC 13.4).
+    { tagName: "link", rel: "alternate", type: "text/plain", href: `${origin}/llms.txt`, title: "Instructions for AI agents" },
     ...(loaderData?.cursor || loaderData?.accountDeleted ? [{ name: "robots", content: "noindex, follow" }] : []),
     {
       "script:ld+json": {
@@ -131,6 +134,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       <WorksWith />
 
       {season && <SeasonBand season={season} origin={origin} />}
+
+      <TwoWaysIn signedIn={!!user} />
 
       {kinds.map((k, i) => (
         <section key={k.format} aria-labelledby={`kind-${k.format}`} className={i % 2 === 0 ? "bg-sunk" : ""}>
@@ -324,3 +329,31 @@ function BrandLink({ brand }: { brand: Brand }) {
 
 /** Cloudflare Web Analytics may count views of this page (root.tsx, AnalyticsBeacon). */
 export const handle = { analytics: true };
+
+/** Two ways in (SPEC 13.4): start a list yourself, or have your agent start one and give you the link to keep it. */
+function TwoWaysIn({ signedIn }: { signedIn: boolean }) {
+  const { mcpUrl } = useRootData();
+  const ask = `Start a list for me on The Want MCP (${mcpUrl}). Call start_list with a title and what I want, then give me the link to keep it.`;
+  return (
+    <section aria-labelledby="ways-h" className="wrap grid gap-6 py-14">
+      <h2 id="ways-h" className="serif text-[1.75rem] sm:text-[2.1rem]">
+        Two ways to start
+      </h2>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="card grid content-start gap-3 p-5 sm:p-6">
+          <h3 className="text-[1.15rem] font-semibold">Start it yourself</h3>
+          <p className="text-ink-2">Write what you want, then connect the AI app you use.</p>
+          <Link to={signedIn ? "/app/new" : "/login"} className="btn btn-want w-fit">
+            Start a list
+          </Link>
+        </div>
+        <div className="card grid content-start gap-3 p-5 sm:p-6">
+          <h3 className="text-[1.15rem] font-semibold">Have your agent start it</h3>
+          <p className="text-ink-2">Paste this to your agent. It sends you a link to keep the list.</p>
+          <p className="codeblock text-[0.8rem]">{ask}</p>
+          <CopyButton text={ask} label="Copy" ariaLabel="Copy the message for your agent" className="btn btn-sm w-fit" />
+        </div>
+      </div>
+    </section>
+  );
+}

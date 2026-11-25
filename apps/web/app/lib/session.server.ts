@@ -56,6 +56,31 @@ export function assertSameOrigin(request: Request) {
 }
 
 /**
+ * The one-time line after keeping a list ("This list was started by Claude…"): which list, how it came, and who made
+ * it. Read once by the list page, then cleared.
+ */
+const KEPT_COOKIE = "wm_kept";
+export type Kept = { listId: string; kind: "unclaimed" | "handover"; by: string };
+
+export function keptCookie(request: Request, kept: Kept): string {
+  const by = kept.by.replace(/[^\p{L}\p{N} ._'-]/gu, "").slice(0, 60);
+  return `${KEPT_COOKIE}=${encodeURIComponent(JSON.stringify({ ...kept, by }))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=300${secureFlag(request)}`;
+}
+
+export function readKept(request: Request): Kept | null {
+  try {
+    const v = JSON.parse(readCookie(request, KEPT_COOKIE) ?? "null") as Kept | null;
+    return v && typeof v.listId === "string" && (v.kind === "unclaimed" || v.kind === "handover") && typeof v.by === "string" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearKeptCookie(request: Request): string {
+  return `${KEPT_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureFlag(request)}`;
+}
+
+/**
  * Lists whose "Give this list to your agent" step the person dismissed, on this device. Only list ids, at most 50.
  */
 const HANDOFF_COOKIE = "wm_handoff_off";

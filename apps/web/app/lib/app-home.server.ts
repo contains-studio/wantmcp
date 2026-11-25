@@ -19,6 +19,7 @@ export interface ListCard {
   role: "owner" | "member" | null;
   ownerHandle: string;
   updatedAt: string;
+  createdAt: string;
   items: number;
   done: number;
   waiting: number;
@@ -35,6 +36,14 @@ export interface ListCard {
   note: { actor: ActorRef; text: string; item: string; at: string; anchor: string } | null;
   /** Writers only: how many people and agents can write the list (null when the API doesn't say). */
   access: { people: number; agents: number; pending_invites: number } | null;
+}
+
+/** Lists with something waiting on you first, then by latest activity from anyone, then newest made. */
+export function orderCards(cards: ListCard[]): ListCard[] {
+  const activity = (c: ListCard) => [c.updatedAt, c.latest?.at ?? ""].sort().at(-1)!;
+  return [...cards].sort(
+    (a, b) => Number(b.waiting > 0) - Number(a.waiting > 0) || activity(b).localeCompare(activity(a)) || b.createdAt.localeCompare(a.createdAt),
+  );
 }
 
 export async function listCards(request: Request, lists: ListSummary[], waiting: WaitingQuestion[]): Promise<ListCard[]> {
@@ -60,6 +69,7 @@ export async function listCards(request: Request, lists: ListSummary[], waiting:
       role: l.my_role ?? null,
       ownerHandle: l.owner_handle,
       updatedAt: l.updated_at,
+      createdAt: l.created_at,
       items: d ? items.length : l.item_count,
       done,
       waiting: waiting.filter((q) => q.list.id === l.id).length,

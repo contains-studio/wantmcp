@@ -757,15 +757,17 @@ button.check-toggle:hover { border-color: var(--ink); }
   details > summary { cursor: pointer; list-style: none; }
   /* "a · b · c" that wraps as whole items and never starts a line with a dot: each item's dot sits in the gap
      before it, and the row is shifted left by one gap and clipped, so the first dot of every line falls outside. */
-  .meta-line > div { overflow: hidden; padding: 4px; margin: -4px; }
-  .meta-line > div > div { display: flex; flex-wrap: wrap; align-items: center; row-gap: 0.25rem; margin-left: -1.1rem; }
-  .meta-item { position: relative; margin-left: 1.1rem; white-space: nowrap; }
+  .meta-line > * { display: block; overflow: hidden; padding: 4px; margin: -4px; }
+  .meta-line > * > * { display: flex; flex-wrap: wrap; align-items: center; row-gap: 0.25rem; margin-left: -1.1rem; }
+  .meta-item { position: relative; margin-left: 1.1rem; max-width: 100%; overflow-wrap: anywhere; }
   .meta-item::before { content: "·"; position: absolute; left: -0.75rem; top: 50%; transform: translateY(-50%); color: var(--ink-3); }
   /* A visitor's open item: no box (nothing to tick), a small dot where the box would be. Beats every layout's box style. */
   .check-toggle.status-open, .themed .check-toggle.status-open { border-color: transparent !important; background: transparent !important; box-shadow: none !important; }
   .check-toggle.status-open::after { content: ""; width: 0.4rem; height: 0.4rem; border-radius: 999px; background: var(--ink-3); margin: auto; }
   /* A long prompt: three lines while closed, the whole text when open. */
+  .prompt-peek[open] { flex-basis: 100%; order: -1; }
   .prompt-peek[open] > summary { display: none; }
+  .prompt-box:has(.prompt-peek[open]) > .prompt-peek-text { display: none; }
   .prompt-peek-text { display: block; white-space: pre-wrap; max-height: 6.6em; overflow: hidden; mask-image: linear-gradient(to bottom, #000 60%, transparent); }
   details > summary::-webkit-details-marker { display: none; }
 

@@ -40,19 +40,20 @@ export function GiveToAgent({ listId, listUrl, focus, connectedName }: { listId:
           : "Paste this into the AI app you use. It connects and starts on your list."}
       </p>
       {/* Three lines and Copy; the whole text one click away (it's long, and people only need to paste it). */}
-      <div className="grid gap-2">
-        <details className="prompt-peek">
-          <summary className="grid gap-1">
-            <span className="codeblock prompt-peek-text text-[0.8rem]" aria-hidden="true">
-              {prompt.split("\n").slice(0, 3).join("\n")}
-            </span>
-            <span className="add-link w-fit text-[0.85rem]">Show all</span>
-          </summary>
-          <pre className="codeblock text-[0.8rem]" tabIndex={0} role="region" aria-label="Prompt for your agent">
-            {prompt}
-          </pre>
-        </details>
-        <CopyButton text={prompt} label="Copy prompt" doneText="Copied" className="btn btn-want btn-sm w-fit" />
+      <div className="prompt-box grid gap-2">
+        <span className="codeblock prompt-peek-text text-[0.8rem]" aria-hidden="true">
+          {prompt.split("\n").slice(0, 3).join("\n")}
+        </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <CopyButton text={prompt} label="Copy prompt" doneText="Copied" className="btn btn-want btn-sm w-fit" />
+          {/* Open, the whole text takes the row above the button (app.css .prompt-peek). */}
+          <details className="prompt-peek">
+            <summary className="add-link text-[0.85rem]">Show all</summary>
+            <pre className="codeblock text-[0.8rem]" tabIndex={0} role="region" aria-label="Prompt for your agent">
+              {prompt}
+            </pre>
+          </details>
+        </div>
       </div>
       <div className="grid gap-2">
         <p className="text-[0.9rem] text-ink-2">Using a chat app? Follow its steps:</p>

@@ -556,6 +556,19 @@ route("GET", "/me/feed", ({ caller, url }) => {
   return paginate(rows, url.searchParams.get("cursor"));
 });
 
+// SPEC 13.6: account keys (ak_) agents made for themselves; the person can see and remove them.
+route("GET", "/me/agent-keys", ({ caller }) => {
+  const c = requireSession(caller);
+  return store.agents.filter((a) => a.owner_id === c.user.id && a.kind === "account").map(agentOut);
+});
+route("DELETE", "/me/agent-keys/{id}", ({ caller, params }) => {
+  const c = requireSession(caller);
+  const a = store.agents.find((x) => x.id === params[0] && x.owner_id === c.user.id && x.kind === "account");
+  if (!a) throw notFound("Key not found");
+  store.agents = store.agents.filter((x) => x !== a);
+  return store.agents.filter((x) => x.owner_id === c.user.id && x.kind === "account").map(agentOut);
+});
+
 route("GET", "/me/agents", ({ caller, url }) => {
   const c = requireSession(caller);
   const listId = url.searchParams.get("list_id");

@@ -336,7 +336,7 @@ export function seedStore(now = Date.now()): Store {
   s.agents.push(
     { id: "agt_boots", name: "Claude", kind: "key", key: "wk_seedbootskeycccccccccccccccccccccccc", list_ids: ["lst_boots"], owner_id: "usr_hold_boots", created_at: at(2 * HOUR), last_used_at: at(HOUR) },
     { id: "agt_packing", name: "ChatGPT", kind: "key", key: "wk_seedpackingkeydddddddddddddddddddddd", list_ids: ["lst_packing"], owner_id: "usr_hold_move", created_at: at(23 * HOUR), last_used_at: at(22 * HOUR) },
-    { id: "agt_kit", name: "Kit", kind: "key", key: "wk_seedkitkeyeeeeeeeeeeeeeeeeeeeeeeeeee", list_ids: ["lst_team"], owner_id: "usr_kit", created_at: at(3 * DAY), last_used_at: at(3 * HOUR) },
+    { id: "agt_kit", name: "Kit", kind: "account", key: "ak_seedkitkeyeeeeeeeeeeeeeeeeeeeeeeeeee", list_ids: ["lst_team"], owner_id: "usr_kit", created_at: at(3 * DAY), last_used_at: at(3 * HOUR) },
   );
   const boots = agent("agt_boots");
   const packing = agent("agt_packing");

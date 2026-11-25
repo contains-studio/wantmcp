@@ -6,6 +6,8 @@ export function loader({ request }: Route.LoaderArgs) {
   const body = [
     "User-agent: *",
     "Allow: /",
+    "Allow: /llms.txt",
+    "Allow: /agents.txt",
     "Disallow: /app",
     "Disallow: /login",
     "Disallow: /invite/",

@@ -1,6 +1,6 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import type { Route } from "./+types/claim";
-import { keep } from "~/lib/claims.server";
+import { keep, keepAndLand } from "~/lib/claims.server";
 import { lookupClaim } from "~/lib/tokens.server";
 import { getUser } from "~/lib/auth.server";
 import { hoursLeft, inHours, UNCLAIMED_TTL_HOURS } from "~/lib/claims";
@@ -43,9 +43,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     // Sign in (or sign up) first; /claim finishes the job with the token from the cookie.
     throw redirect("/login?next=/claim", { headers: { "Set-Cookie": claimCookie(request, params.token), ...PRIVATE_HEADERS } });
   }
-  const kept = await keep(request, params.token);
-  if ("list" in kept) throw redirect(`/l/${kept.list.id}`, { headers: PRIVATE_HEADERS });
-  return data({ error: kept.error }, { status: 400, headers: PRIVATE_HEADERS });
+  const landed = await keepAndLand(request, params.token, PRIVATE_HEADERS);
+  if (landed instanceof Response) throw landed;
+  return data({ error: landed.error }, { status: 400, headers: PRIVATE_HEADERS });
 }
 
 export default function Claim({ loaderData, actionData }: Route.ComponentProps) {
@@ -96,6 +96,20 @@ export default function Claim({ loaderData, actionData }: Route.ComponentProps) 
             Keep it and it becomes yours; they can keep working on it.
             {left > 0 && left < 24 && <> This link stops working {inHours(claim.expires_at, now)}.</>}
           </p>
+        )}
+
+        {claim.items && claim.items.length > 0 && (
+          <ul aria-label={`What's on it`} className="grid gap-1.5 border-y border-line py-3 text-[0.95rem]">
+            {claim.items.slice(0, 10).map((it, i) => (
+              <li key={i} className="flex gap-2">
+                <span aria-hidden="true" className="text-ink-3">
+                  •
+                </span>
+                <span className="min-w-0 break-words">{it.text}</span>
+              </li>
+            ))}
+            {items > 10 && <li className="text-ink-3">and {items - 10} more</li>}
+          </ul>
         )}
 
         {claim.open_questions.length > 0 && (

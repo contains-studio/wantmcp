@@ -52,7 +52,7 @@ export interface MemberRow {
 export interface AgentRow {
   id: string;
   name: string;
-  kind: "key" | "oauth";
+  kind: "key" | "oauth" | "account";
   key: string | null;
   list_ids: string[];
   owner_id: string;

@@ -7,7 +7,7 @@ import { api, apiOptional, formError, toRouteError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin } from "~/lib/session.server";
-import type { AgentInfo, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
+import type { AgentInfo, HandoverResult, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { ThemeThumb } from "~/components/ThemeThumb";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
@@ -82,7 +82,16 @@ function accessLine(a: ListSummary["access"]): string | null {
   return `${parts.join(" · ")} can write this list.`;
 }
 
-type ActionData = { ok?: boolean; error?: string; intent?: string; key?: string; agent?: AgentInfo; devInvite?: string; sent?: boolean };
+type ActionData = {
+  ok?: boolean;
+  error?: string;
+  intent?: string;
+  key?: string;
+  agent?: AgentInfo;
+  devInvite?: string;
+  sent?: boolean;
+  handover?: HandoverResult;
+};
 
 export async function action({ request, params }: Route.ActionArgs) {
   assertSameOrigin(request);
@@ -128,6 +137,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         // Older API builds only have POST /members (always sends).
         if (!res) await api(request, `/lists/${id}/members`, { method: "POST", body: { email: s("email") }, onHeaders });
         return { ok: true, intent, devInvite, sent: res ? res.sent : true } satisfies ActionData;
+      }
+      case "handover": {
+        // SPEC 13.6: a claim link for the person who should own the list. Shown once, in the page and the clipboard.
+        const handover = await api<HandoverResult>(request, `/lists/${id}/handover`, { method: "POST" });
+        return data({ ok: true, intent, handover } satisfies ActionData, { headers: { "Cache-Control": "no-store" } });
       }
       case "revoke-member":
         await api(request, `/lists/${id}/members/${encodeURIComponent(s("member_id"))}`, { method: "DELETE" });
@@ -224,14 +238,14 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         )}
 
         <h3 className="eyebrow mt-2">Your connected clients</h3>
-        {mine.filter((a) => a.kind === "oauth").length === 0 ? (
+        {mine.filter((a) => a.kind !== "key").length === 0 ? (
           <p className="text-[0.9rem] text-ink-3">
             None yet. When you add the MCP server to ChatGPT, Claude or another app and sign in, it appears here.
           </p>
         ) : (
           <ul className="grid gap-2">
             {mine
-              .filter((a) => a.kind === "oauth")
+              .filter((a) => a.kind !== "key")
               .map((a) => (
                 <AgentRow key={a.id} agent={a} own />
               ))}
@@ -308,6 +322,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
             </div>
           </Form>
         )}
+        {isOwner && <Handover result={result} busy={busy("handover")} />}
       </Section>
 
       {isOwner && (
@@ -442,7 +457,7 @@ function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{a.name}</p>
         <p className="text-[0.78rem] text-ink-3">
-          {a.kind === "oauth" ? "Signed in" : <>Key <code>{a.key_prefix}…</code></>}
+          {a.kind === "oauth" ? "Signed in" : a.kind === "account" ? "Its own account key" : <>Key <code>{a.key_prefix}…</code></>}
           {!own && <> · connected by {a.owner_handle}</>} · added <Time ts={a.created_at} /> ·{" "}
           {a.last_used_at ? <>last used <Time ts={a.last_used_at} /></> : "never used"}
           {own && a.list_ids.length > 1 && ` · can write ${a.list_ids.length} lists`}
@@ -736,5 +751,35 @@ function FormatControl({ list }: { list: Pick<ListSummary, "format" | "item_coun
       </button>
       {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
     </fetcher.Form>
+  );
+}
+
+/** "Hand this list to someone": a claim link that makes them the owner; you stay on as a member. */
+function Handover({ result, busy }: { result: ActionData | undefined; busy: boolean }) {
+  const made = result?.intent === "handover" && result.ok ? result.handover : undefined;
+  return (
+    <div className="grid gap-2 border-t border-line pt-4">
+      <p className="label">Hand this list to someone</p>
+      <p className="hint">They keep it with their own email and become its owner. You stay on the list and your agents keep working.</p>
+      {made ? (
+        <div className="grid gap-2">
+          <code className="input flex items-center break-all font-mono text-[0.8rem]">{made.claim_url}</code>
+          <div className="flex flex-wrap items-center gap-3">
+            <CopyButton text={made.claim_url} label="Copy link" className="btn btn-sm" />
+            <span className="text-[0.85rem] text-ink-3">
+              Works until <Time ts={made.expires_at} />. Making a new link stops this one.
+            </span>
+          </div>
+        </div>
+      ) : (
+        <Form method="post">
+          <input type="hidden" name="intent" value="handover" />
+          <button className="btn btn-sm" disabled={busy}>
+            {busy ? "Making the link…" : "Make a hand-over link"}
+          </button>
+        </Form>
+      )}
+      {result?.intent === "handover" && result.error && <p className="form-error">{result.error}</p>}
+    </div>
   );
 }
