@@ -43,10 +43,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   // The owner's look picker: every template, and every occasion on the template being looked at
   // (?template= while choosing, else the list's own). Views are custom properties only.
   const owner = list.my_role === "owner";
-  const current = resolveLook(summary.theme ?? formatInfo(summary).defaultTheme);
+  const current = resolveLook(summary.theme ?? formatInfo(summary).defaultTheme, formatOf(summary));
   const browsing = new URL(request.url).searchParams.get("template") ?? current.template.slug;
   const looks = owner
-    ? { templates: templateViews(), occasions: occasionViews(browsing), browsing: resolveLook(browsing).template.slug }
+    ? { templates: templateViews(), occasions: occasionViews(resolveLook(browsing, formatOf(summary)).template.slug), browsing: resolveLook(browsing, formatOf(summary)).template.slug }
     : null;
   const sample = owner ? sampleList(Date.now(), formatOf(summary)) : null;
   return data(
@@ -84,10 +84,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { ok: true, intent } satisfies ActionData;
       case "theme": {
         const current = await api<ListDetail>(request, `/lists/${id}`);
-        const picked = resolveLook(s("theme")).slug;
+        const format = formatOf(current);
+        const picked = resolveLook(s("theme"), format).slug;
         // The format's own default is stored as "no theme" so it follows the format; anything
-        // else (including the site default on a task list) is stored explicitly.
-        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: picked === resolveLook(formatInfo(current).defaultTheme).slug ? null : picked } });
+        // else is stored explicitly.
+        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: picked === resolveLook(formatInfo(current).defaultTheme, format).slug ? null : picked } });
         return { ok: true, intent } satisfies ActionData;
       }
       case "visibility":
@@ -534,7 +535,7 @@ function ThemePicker({
   const template = looks.browsing;
   // The Sheet table compares prices: shopping lists only.
   const templates = looks.templates.filter((t) => format === "shopping" || t.layout !== "sheet");
-  const slug = occasion ? (template === "default" ? occasion : `${template}--${occasion}`) : template;
+  const slug = occasion ? `${template}--${occasion}` : template;
   const view =
     (occasion ? looks.occasions.find((o) => o.occasion === occasion) : templates.find((t) => t.template === template)) ?? templates[0];
   const defaultTemplate = fi.defaultTheme;

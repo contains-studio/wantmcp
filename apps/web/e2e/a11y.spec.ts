@@ -17,7 +17,6 @@ test("public pages have no accessibility violations @phone", async ({ page }) =>
 
 test("a list page in every layout has no accessibility violations", async ({ page }) => {
   const layouts: Array<[string, string]> = [
-    ["default", "shopping"],
     ["sheet", "shopping"],
     ["today", "tasks"],
     ["sections", "tasks"],
@@ -48,8 +47,10 @@ test("look tiles stay whole links in the server HTML", async ({ browser }) => {
     expect(empty, `${path}: links with no text`).toBe(0);
   }
   await page.goto("/");
-  const tiles = page.locator(".look-tile a.stretched-link");
-  await expect(tiles).toHaveCount(17);
-  await expect(tiles.first()).toHaveAttribute("href", /^\/themes\//);
+  // 7 layouts link to their previews; the season's 5 occasions each start a list (a form button).
+  const layouts = page.locator("section[aria-labelledby=looks-h] .look-tile a.stretched-link");
+  await expect(layouts).toHaveCount(7);
+  await expect(layouts.first()).toHaveAttribute("href", /^\/themes\//);
+  await expect(page.locator(".look-tile .stretched-link")).toHaveCount(12);
   await ctx.close();
 });

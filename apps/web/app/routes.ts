@@ -13,6 +13,7 @@ export default [
   route("themes", "routes/themes.tsx"),
   route("themes/:slug", "routes/theme-preview.tsx"),
   route("for", "routes/for.tsx"),
+  route("start", "routes/start.tsx"),
   route("for/:slug", "routes/for-persona.tsx"),
   route("privacy", "routes/privacy.tsx"),
   route("terms", "routes/terms.tsx"),

@@ -16,7 +16,7 @@ export default {
       format: "shopping",
       title: "Still missing",
       description: "Kept private, so sellers don't see what I'd pay.",
-      look: "default",
+      look: "sheet",
       items: [
         {
           want: "The Delmar Quintet, Harbor Lights, 1978 first pressing",

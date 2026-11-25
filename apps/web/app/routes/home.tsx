@@ -1,5 +1,5 @@
 import { BrandLogo } from "~/components/BrandLogo";
-import { Link } from "react-router";
+import { Form, Link } from "react-router";
 import type { Route } from "./+types/home";
 import { FeedCard } from "~/components/FeedCard";
 import { ThemeThumb } from "~/components/ThemeThumb";
@@ -14,6 +14,7 @@ import type { ThemeSample } from "~/components/ThemeThumb";
 import type { ThemeView } from "~/themes/view";
 import { occasionViews, templateViews } from "~/themes/catalogue.server";
 import { PERSONAS } from "~/lib/personas.server";
+import { SEASON, seasonActive } from "~/lib/season";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const cursor = new URL(request.url).searchParams.get("cursor");
@@ -39,7 +40,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       title: "To get done",
       line: "Agents start a task, post updates and mark it done.",
       rows: ["One agent on each task", "Updates as they work", "Done, with a note"],
-      theme: getThemeView("board"),
+      theme: getThemeView("today"),
     },
     {
       format: "research" as const,
@@ -51,10 +52,13 @@ export async function loader({ request }: Route.LoaderArgs) {
     },
   ].map((k) => ({ ...k, sample: sampleList(now, k.format) }));
   // Every look, rendered with the same sample list so the differences are the looks themselves.
-  const looks = { sample: sampleList(now, "shopping"), layouts: templateViews(), occasions: occasionViews() };
+  const sample = sampleList(now, "shopping");
+  // Layouts only below; the season's occasions get their own band under the hero (app/lib/season.ts).
+  const looks = { sample, layouts: templateViews() };
+  const season = seasonActive(SEASON, now) ? { heading: SEASON.heading, sample, occasions: occasionViews("sheet", SEASON.occasions) } : null;
   // A few of the /for pages, and the way to the rest.
   const jobs = PERSONAS.filter((p) => p.index).slice(0, 8).map(({ slug, label }) => ({ slug, label }));
-  return { feed, cursor, accountDeleted, kinds, looks, jobs, origin: siteOrigin(request) };
+  return { feed, cursor, accountDeleted, kinds, looks, season, jobs, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -97,7 +101,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { feed, cursor, accountDeleted, kinds, looks, jobs, origin } = loaderData;
+  const { feed, cursor, accountDeleted, kinds, looks, season, jobs, origin } = loaderData;
   const { user } = useRootData();
 
   return (
@@ -108,8 +112,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      <section className="wrap grid justify-items-center gap-8 pt-16 pb-14 text-center sm:pt-24">
-        <h1 className="display max-w-4xl text-[2.6rem] sm:text-[4rem] lg:text-[4.6rem]">An MCP server for getting what you want.</h1>
+      <section className="wrap grid justify-items-center gap-6 pt-10 pb-8 text-center sm:pt-12">
+        <h1 className="display max-w-4xl text-[2.6rem] sm:text-[3.6rem] lg:text-[4.1rem]">An MCP server for getting what you want.</h1>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
             {user ? "My lists" : "Start a list"}
@@ -121,6 +125,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       </section>
 
       <WorksWith />
+
+      {season && <SeasonBand season={season} origin={origin} />}
 
       {kinds.map((k, i) => (
         <section key={k.format} aria-labelledby={`kind-${k.format}`} className={i % 2 === 0 ? "bg-sunk" : ""}>
@@ -143,7 +149,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               </Link>
             </div>
             <div className="overflow-hidden rounded-md border border-line bg-paper">
-              <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} className="thumb-half h-[20rem] sm:h-[26rem] lg:h-[30rem]" />
+              <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} items={4} className="thumb-half h-[20rem] sm:h-[26rem] lg:h-[30rem]" />
             </div>
           </div>
         </section>
@@ -213,31 +219,79 @@ export default function Home({ loaderData }: Route.ComponentProps) {
   );
 }
 
-/** "Works with": one calm row of each client's mark, each linking to its setup. */
+/**
+ * "Works with": one line that drifts slowly sideways (pure CSS). It pauses on hover and while
+ * anything in it has focus; with reduced motion it stands still and wraps. The second copy of
+ * the row exists only to make the loop seamless: hidden from screen readers and the tab order.
+ */
 function WorksWith() {
-  return (
-    <nav aria-labelledby="works-h" className="wrap grid justify-items-center gap-6 border-t border-line pt-12 pb-20">
-      <h2 id="works-h" className="eyebrow">
-        Works with
-      </h2>
-      <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-        {BRANDS.map((b) => (
-          <li key={b.id}>
-            <BrandLink brand={b} />
-          </li>
-        ))}
-        <li>
-          <Link to="/connect#other" className="brand-tile">
-            <span className="text-[0.95rem] font-medium text-ink-2">Other apps</span>
-          </Link>
+  const row = (copy: boolean) => (
+    <ul className="marquee-list" aria-hidden={copy || undefined} inert={copy || undefined}>
+      <li className="eyebrow whitespace-nowrap px-2">Works with</li>
+      {BRANDS.map((b) => (
+        <li key={b.id}>
+          <BrandLink brand={b} />
         </li>
-      </ul>
+      ))}
+      <li>
+        <Link to="/connect#other" className="brand-tile">
+          <span className="text-[0.95rem] font-medium text-ink-2">Other apps</span>
+        </Link>
+      </li>
+    </ul>
+  );
+  return (
+    <nav aria-label="Works with" className="marquee border-t border-line">
+      <div className="marquee-track">
+        {row(false)}
+        {row(true)}
+      </div>
     </nav>
   );
 }
 
-/** Every layout and occasion as a real miniature of the same list, each linking to its preview. */
-function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: ThemeView[]; occasions: ThemeView[] }; origin: string }) {
+/**
+ * The season's band under the hero: one tile per occasion, each starting a gift list dressed for it
+ * (POST /start; signed out, sign in first). A quiet "Preview" link opens the look in the gallery.
+ */
+function SeasonBand({ season, origin }: { season: { heading: string; sample: ThemeSample; occasions: ThemeView[] }; origin: string }) {
+  return (
+    <section aria-labelledby="season-h" className="bg-sunk">
+      <div className="wrap grid gap-5 pt-7 pb-10 sm:pt-8 sm:pb-12">
+        <h2 id="season-h" className="serif max-w-3xl text-[1.6rem] leading-tight sm:text-[2rem]">
+          {season.heading}
+        </h2>
+        <ul className="season-row">
+          {season.occasions.map((v) => {
+            const name = v.name.split(" · ").pop()!;
+            return (
+              <li key={v.slug}>
+                {/* The miniature holds links of its own, so the start button stretches over the tile instead of wrapping it. */}
+                <div className="look-tile relative grid overflow-hidden rounded-[14px] bg-card shadow-[var(--shadow)]">
+                  <ThemeThumb theme={v} sample={season.sample} origin={origin} className="h-36 sm:h-40" />
+                  <div className="flex items-center justify-between gap-2 bg-card px-3 py-2">
+                    <Form method="post" action="/start">
+                      <input type="hidden" name="occasion" value={v.occasion!} />
+                      <button className="stretched-link text-left text-[0.9rem] font-medium" aria-label={`Start a ${name} gift list`}>
+                        {name}
+                      </button>
+                    </Form>
+                    <Link to={`/themes/${v.slug}`} className="relative z-[2] rounded bg-card px-1 text-[0.8rem] text-ink-2 underline underline-offset-2 hover:text-ink">
+                      Preview<span className="sr-only"> {name}</span>
+                    </Link>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/** Every layout as a real miniature of the same list, each linking to its preview. */
+function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: ThemeView[] }; origin: string }) {
   const tile = (v: ThemeView) => (
     <li key={v.slug}>
       {/* The miniature holds links of its own, so it sits beside the link, never inside it: the link stretches over the tile. */}
@@ -260,10 +314,7 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
             All looks
           </Link>
         </div>
-        <h3 className="eyebrow -mb-4">Layouts</h3>
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">{looks.layouts.map(tile)}</ul>
-        <h3 className="eyebrow -mb-4">Occasions</h3>
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">{looks.occasions.map(tile)}</ul>
       </div>
     </section>
   );

@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, redirect } from "react-router";
 import type { Route } from "./+types/themes";
 import { ListView } from "~/components/ListView";
 import { ThemeThumb, type ThemeSample } from "~/components/ThemeThumb";
@@ -14,7 +14,13 @@ import type { ThemeView } from "~/themes/view";
  */
 export function loader({ request }: Route.LoaderArgs) {
   const q = new URL(request.url).searchParams;
-  const template = resolveLook(q.get("layout") ?? q.get("template") ?? "default").template.slug;
+  // The Cards layout (`default`) is retired: its old links land on the gallery, on Sheet.
+  const asked = q.get("layout") ?? q.get("template");
+  if (asked === "default") {
+    const occ = q.get("occasion");
+    throw redirect(occ ? `/themes?layout=sheet&occasion=${encodeURIComponent(occ)}` : "/themes", 301);
+  }
+  const template = resolveLook(asked ?? "sheet").template.slug;
   const occasion = q.get("occasion") ? (resolveLook(q.get("occasion")).occasion?.slug ?? null) : null;
   const slug = lookSlug(template, occasion);
   const chosen = getThemeView(slug);

@@ -1,11 +1,11 @@
 /**
- * List looks. A look is a template (how the list is laid out: Default cards, Board, Sections…)
+ * List looks. A look is a template (how the list is laid out: Sheet, Board, Sections…)
  * optionally dressed with an occasion (Christmas, Chanukah…). Both are data: palettes, accents,
  * fonts, shapes, traits, a layout and a stylesheet. They are combined on the server into CSS
  * custom properties (see view.ts), so a visitor downloads only what the chosen look uses.
  *
- * A list stores its look as one slug: `board`, `christmas` (an occasion on Default cards) or
- * `board--christmas`. See catalogue.server.ts.
+ * A list stores its look as one slug: `board` or `board--christmas` (older lists may hold an
+ * occasion alone or the retired `default`; see catalogue.server.ts).
  */
 
 export interface Palette {
@@ -90,7 +90,7 @@ export interface Theme {
   name: string;
   /** Three words or fewer, under the thumbnail. */
   caption: string;
-  /** Templates are "default" and "workspace"; occasions dress any template. */
+  /** Templates are "workspace" ("default" was the retired Cards); occasions dress any template. */
   group: "default" | "occasion" | "workspace";
   /** Accents per mode (missing ones fall back to the template's, then to the palette). */
   accents?: { light?: Partial<Accents>; dark?: Partial<Accents> };

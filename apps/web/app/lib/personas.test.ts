@@ -88,3 +88,15 @@ test("no promises the product can't keep", () => {
   const BAD = [/we('ll| will)? (watch|alert|notify|track)/i, /\bautomatically (track|check|watch|update|re-?check)/i, /notif(y|ies) you/i, /\balerts? you\b/i, /guests? can (claim|mark|reserve)/i, /\bwe buy\b/i];
   for (const p of personas) for (const t of [p.title, p.description, p.h1, p.intro]) for (const re of BAD) assert.doesNotMatch(t, re, `${p.slug}: "${t}"`);
 });
+
+test("every list names a current layout (no retired Cards, no occasion without a layout)", () => {
+  const LAYOUTS = ["sheet", "today", "doc", "board", "sections", "heat", "tracker"];
+  const OCCASIONS = ["black-friday", "cyber-monday", "chanukah", "christmas", "kwanzaa", "new-year", "valentines", "halloween", "birthday"];
+  for (const p of personas)
+    for (const l of [p.lists.shopping, p.lists.tasks, p.lists.research]) {
+      if (!l.look) continue;
+      const [t, o] = l.look.split("--");
+      assert.ok(LAYOUTS.includes(t), `${p.slug}: layout "${t}"`);
+      if (o) assert.ok(OCCASIONS.includes(o), `${p.slug}: occasion "${o}"`);
+    }
+});

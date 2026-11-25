@@ -45,7 +45,7 @@ const rows: string[] = [];
 // Every template alone and with every occasion, in each scheme the combination supports.
 for (const template of TEMPLATES) {
   for (const occasion of [null, ...OCCASIONS]) {
-    const name = occasion ? (template.slug === "default" ? occasion.slug : `${template.slug}--${occasion.slug}`) : template.slug;
+    const name = occasion ? `${template.slug}--${occasion.slug}` : template.slug;
     const fixedDark = template.scheme === "dark" || occasion?.scheme === "dark";
     for (const mode of fixedDark ? (["dark"] as const) : (["light", "dark"] as const)) {
       checked++;
@@ -63,9 +63,8 @@ for (const template of TEMPLATES) {
           minName = label;
         }
       }
-      // Pairs the stylesheets rely on: text on the template's band or Heat's bars in the occasion's
-      // colours, and, on Default cards, the occasion's own bands.
-      const extra = [...(template.contrast?.(p, a, mode) ?? []), ...(occasion && template.slug === "default" ? (occasion.contrast?.(p, a, mode) ?? []) : [])];
+      // Pairs the stylesheets rely on: text on the template's band or Heat's bars in the occasion's colours.
+      const extra = template.contrast?.(p, a, mode) ?? [];
       for (const x of extra) {
         const need = x.need ?? 4.5;
         const r = ratio(x.fg, x.bg);

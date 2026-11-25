@@ -27,9 +27,4 @@ export const christmas: Theme = {
     light: { band: "#0e3b28", bandAlt: "#165a3d", bandInk: "#fbf3e2", hot: "#a3152f", cool: "#0e5a3a", barInk: "#ffffff" },
     dark: { band: "#06180f", bandAlt: "#0e3b28", bandInk: "#fbf3e2", hot: "#b3203a", cool: "#145c3c", barInk: "#ffffff" },
   },
-  // On Default cards the header is an evergreen band with a gold eyebrow.
-  contrast: (_p, _a, mode) => [
-    { label: "band text on evergreen", fg: "#fbf3e2", bg: mode === "light" ? "#0e3b28" : "#06180f" },
-    { label: "gold eyebrow on evergreen band", fg: "#e9bf55", bg: mode === "light" ? "#0e3b28" : "#06180f" },
-  ],
 };

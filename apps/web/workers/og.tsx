@@ -51,7 +51,7 @@ type Colors = typeof C;
 /** The share card takes the look's palette (light, unless the look is always dark) and the occasion's art. */
 function themeColors(slug: string | null | undefined): { colors: Colors; motif: string | null } {
   const { template, occasion } = resolveLook(slug);
-  if (template.slug === "default" && !occasion) return { colors: C, motif: null };
+  if (!occasion) return { colors: C, motif: null };
   const p = lookColors(template, occasion, "light").palette;
   const colors: Colors = p;
   const motif = occasion?.art ? "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(occasion.art))) : null;

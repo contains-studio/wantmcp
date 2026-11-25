@@ -8,7 +8,6 @@ import { board } from "./defs/board.ts";
 import { chanukah } from "./defs/chanukah.ts";
 import { christmas } from "./defs/christmas.ts";
 import { cyberMonday } from "./defs/cyber-monday.ts";
-import { defaultTheme } from "./defs/default.ts";
 import { doc } from "./defs/doc.ts";
 import { halloween } from "./defs/halloween.ts";
 import { heat } from "./defs/heat.ts";
@@ -20,41 +19,45 @@ import { today } from "./defs/today.ts";
 import { tracker } from "./defs/tracker.ts";
 import { valentines } from "./defs/valentines.ts";
 import type { Theme } from "./types.ts";
+import type { ListFormat } from "../lib/types.ts";
 import { lookView, type ThemeView } from "./view.ts";
 
-/** Templates: how a list is laid out. Default cards first. */
-export const TEMPLATES: Theme[] = [defaultTheme, board, sections, today, heat, sheet, doc, tracker];
+/** Templates: how a list is laid out. (The old Cards look, slug `default`, is retired: see resolveLook.) */
+export const TEMPLATES: Theme[] = [sheet, today, doc, board, sections, heat, tracker];
 
 /** Occasions: how a list is dressed, on any template. In calendar order from the end of November. */
 export const OCCASIONS: Theme[] = [blackFriday, cyberMonday, chanukah, christmas, kwanzaa, newYear, valentines, halloween, birthday];
 
-/** Every look that existed as a single theme before templates and occasions were separate. */
+/** Every look. */
 export const THEMES: Theme[] = [...TEMPLATES, ...OCCASIONS];
 
 const index = (list: Theme[]) => new Map(list.flatMap((t) => [[t.slug, t] as const, ...(t.aliases ?? []).map((a) => [a, t] as const)]));
 const TEMPLATE_BY_SLUG = index(TEMPLATES);
 const OCCASION_BY_SLUG = index(OCCASIONS);
 
+/** The layout a list uses when it has none of its own (or a retired one): by format. */
+export const FORMAT_TEMPLATE: Record<ListFormat, Theme> = { shopping: sheet, tasks: today, research: doc };
+
 export interface Look {
   template: Theme;
   occasion: Theme | null;
-  /** Canonical slug: `board`, `christmas` (an occasion on Default cards) or `board--christmas`. */
+  /** Canonical slug: `board` or `board--christmas`. */
   slug: string;
 }
 
 /** The slug a list stores for a template and an occasion. */
-export function lookSlug(template: string, occasion: string | null): string {
-  const t = TEMPLATE_BY_SLUG.get(template)?.slug ?? "default";
+export function lookSlug(template: string, occasion: string | null, format: ListFormat = "shopping"): string {
+  const t = TEMPLATE_BY_SLUG.get(template)?.slug ?? FORMAT_TEMPLATE[format].slug;
   const o = occasion ? (OCCASION_BY_SLUG.get(occasion)?.slug ?? null) : null;
-  if (!o) return t;
-  return t === "default" ? o : `${t}--${o}`;
+  return o ? `${t}--${o}` : t;
 }
 
 /**
- * Reads a stored look. `board`, `christmas`, `board--christmas`, old names (`hanukkah`,
- * `checklist`), and anything unknown: each half falls back on its own (to Default cards, to no occasion).
+ * Reads a stored look. `board`, `board--christmas`, old names (`hanukkah`, `checklist`), an occasion
+ * alone (`christmas`), the retired Cards (`default`, `default--christmas`), null and anything unknown:
+ * an unknown or retired layout falls back to the format's default layout, keeping the occasion.
  */
-export function resolveLook(slug: string | null | undefined): Look {
+export function resolveLook(slug: string | null | undefined, format: ListFormat = "shopping"): Look {
   const raw = (slug ?? "").toLowerCase();
   let template: Theme | undefined;
   let occasion: Theme | null = null;
@@ -66,8 +69,8 @@ export function resolveLook(slug: string | null | undefined): Look {
     template = TEMPLATE_BY_SLUG.get(raw);
     if (!template) occasion = OCCASION_BY_SLUG.get(raw) ?? null;
   }
-  const tpl = template ?? defaultTheme;
-  return { template: tpl, occasion, slug: lookSlug(tpl.slug, occasion?.slug ?? null) };
+  const tpl = template ?? FORMAT_TEMPLATE[format];
+  return { template: tpl, occasion, slug: lookSlug(tpl.slug, occasion?.slug ?? null, format) };
 }
 
 /** Like resolveLook, but null when either half is unknown (for URLs, where a typo should 404). */
@@ -80,14 +83,8 @@ export function parseLook(slug: string): Look | null {
   return resolveLook(raw);
 }
 
-/** Kept for callers that think in single themes: the template, or the occasion on Default cards. */
-export function getTheme(slug: string | null | undefined): Theme {
-  const { template, occasion } = resolveLook(slug);
-  return occasion && template.slug === "default" ? occasion : template;
-}
-
-export function getThemeView(slug: string | null | undefined): ThemeView {
-  const look = resolveLook(slug);
+export function getThemeView(slug: string | null | undefined, format: ListFormat = "shopping"): ThemeView {
+  const look = resolveLook(slug, format);
   return lookView(look.template, look.occasion, look.slug);
 }
 
@@ -95,9 +92,11 @@ export function templateViews(): ThemeView[] {
   return TEMPLATES.map((t) => lookView(t, null, t.slug));
 }
 
-export function occasionViews(template = "default"): ThemeView[] {
-  const tpl = TEMPLATE_BY_SLUG.get(template) ?? defaultTheme;
-  return OCCASIONS.map((o) => lookView(tpl, o, lookSlug(tpl.slug, o.slug)));
+/** Every occasion on one layout (Sheet unless another is given). */
+export function occasionViews(template = "sheet", only?: readonly string[]): ThemeView[] {
+  const tpl = TEMPLATE_BY_SLUG.get(template) ?? sheet;
+  const list = only ? OCCASIONS.filter((o) => only.includes(o.slug)) : OCCASIONS;
+  return list.map((o) => lookView(tpl, o, lookSlug(tpl.slug, o.slug)));
 }
 
 export function allThemeViews(): ThemeView[] {

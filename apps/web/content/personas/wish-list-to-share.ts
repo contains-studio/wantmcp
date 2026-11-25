@@ -16,7 +16,7 @@ export default {
       format: "shopping",
       title: "Things I'd love this year",
       description: "Sizes and colors are in the details.",
-      look: "birthday",
+      look: "sheet--birthday",
       items: [
         {
           want: "Hiking boots, women's 9 wide, not leather",

@@ -27,5 +27,4 @@ export const chanukah: Theme = {
     light: { band: "#061030", bandAlt: "#1c3a86", bandInk: "#f1f4fb", hot: "#7d5f12", cool: "#1c3a86", barInk: "#ffffff" },
     dark: { band: "#061030", bandAlt: "#1c3a86", bandInk: "#f1f4fb", hot: "#7d5f12", cool: "#1c3a86", barInk: "#ffffff" },
   },
-  contrast: () => [{ label: "silver text on card", fg: "#c9d3e6", bg: "#0f2150" }],
 };

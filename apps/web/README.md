@@ -100,10 +100,12 @@ Agents connect to `MCP_URL` (`https://mcp.wantmcp.com/mcp`). Clients that only s
 
 ## List themes
 
-A list's look is two choices in list settings → Look: a **layout** (Cards, Board, Sections, Checklist, Heat,
-Sheet, Doc, Tracker; called a template in the code) and an optional **occasion** (Black Friday, Christmas…). It
-is stored as one slug: `board`, `christmas` (an occasion on Cards) or `board--christmas`. An undressed list uses
-Sheet for shopping, Checklist for tasks and Doc for research. `/themes?layout=board&occasion=christmas` shows any
+A list's look is two choices in list settings → Look: a **layout** (Sheet, Checklist, Doc, Board, Sections, Heat,
+Tracker; called a template in the code) and an optional **occasion** (Black Friday, Christmas…). It is stored as
+one slug: `board` or `board--christmas`. An undressed list uses Sheet for shopping, Checklist for tasks and Doc
+for research. The old Cards layout (`default`) is retired: a list that stored it, an occasion alone
+(`christmas`) or anything unknown renders in its format's layout, keeping the occasion, and `/themes/default`
+redirects to the gallery. `/themes?layout=board&occasion=christmas` shows any
 pair; `/themes/{slug}?format=tasks` previews it with any format.
 
 A theme is a definition in `app/themes/defs/` (a `Theme`, see `app/themes/types.ts`) plus, usually, its own

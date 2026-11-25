@@ -27,5 +27,4 @@ export const blackFriday: Theme = {
     light: { band: "#000000", bandAlt: "#1f1f1f", bandInk: "#ffffff", hot: "#ffe600", cool: "#bfa900", barInk: "#000000" },
     dark: { band: "#000000", bandAlt: "#1f1f1f", bandInk: "#ffffff", hot: "#ffe600", cool: "#bfa900", barInk: "#000000" },
   },
-  contrast: () => [{ label: "black on yellow tag", fg: "#000000", bg: "#ffe600" }],
 };

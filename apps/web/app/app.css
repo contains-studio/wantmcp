@@ -185,7 +185,6 @@
   }
 }
 
-
 /*
  * List themes (app/themes). A themed area sets --tl-* (light) and --td-* (dark) custom
  * properties in a style attribute; these rules pick the right set for the visitor's
@@ -779,23 +778,50 @@ button.check-toggle:hover { border-color: var(--ink); }
 }
 
 /* A link that covers its whole tile without wrapping the tile's other content (which may hold links of its own). */
-.stretched-link { text-decoration: none; color: inherit; }
+.stretched-link { text-decoration: none; color: inherit; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+/* The season's tiles: five across on wide screens, a snap-scroll row on phones. */
+.season-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
+@media (max-width: 899px) {
+  .season-row { display: flex; gap: 0.75rem; overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: -1rem; padding: 0 1rem 0.5rem; scroll-padding-inline: 1rem; }
+  .season-row > li { flex: 0 0 min(15rem, 70%); scroll-snap-align: start; }
+}
 .stretched-link::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
 .stretched-link:focus-visible { outline: none; }
 .stretched-link:focus-visible::after { outline: 3px solid var(--focus); outline-offset: -3px; }
 
 /* Theme gallery thumbnails: a whole list page, scaled down. */
-.theme-thumb-inner { width: 1100px; zoom: 0.345; pointer-events: none; }
-@media (min-width: 640px) and (max-width: 1023px) { .theme-thumb-inner { zoom: 0.31; } }
+.theme-thumb-fade { position: absolute; inset: auto 0 0; z-index: 1; height: 2.25rem; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--card)); }
+/* The miniature is sized from its frame (a size container), so the scaled page meets every edge. */
+.theme-thumb { container-type: inline-size; contain: paint; }
+.theme-thumb-inner { --z: 0.345; zoom: var(--z); width: calc(100cqw / var(--z)); pointer-events: none; }
+/* A picture, not a page: nothing inside it scrolls. */
+.theme-thumb-inner :is(.sheet-scroll, .ix-columns, .items-region, .overflow-x-auto, .overflow-y-auto, .overflow-auto) { overflow: hidden !important; }
+@media (min-width: 640px) and (max-width: 1023px) { .theme-thumb-inner { --z: 0.31; } }
 /* Larger renders on the home page: the hero block, and the right half of a two-column section. */
-.thumb-wide .theme-thumb-inner { zoom: 0.31; }
-.thumb-half .theme-thumb-inner { zoom: 0.31; }
-@media (min-width: 640px) { .thumb-wide .theme-thumb-inner { zoom: 0.55; } .thumb-half .theme-thumb-inner { zoom: 0.5; } }
-@media (min-width: 1024px) { .thumb-wide .theme-thumb-inner { zoom: 1; width: 100%; } .thumb-half .theme-thumb-inner { zoom: 0.6; } }
+.thumb-wide .theme-thumb-inner, .thumb-half .theme-thumb-inner { --z: 0.36; }
+@media (min-width: 640px) { .thumb-wide .theme-thumb-inner { --z: 0.55; } .thumb-half .theme-thumb-inner { --z: 0.55; } }
+@media (min-width: 1024px) { .thumb-wide .theme-thumb-inner { --z: 1; } .thumb-half .theme-thumb-inner { --z: 0.6; } }
 .theme-thumb-inner .list-fab, .theme-thumb-inner .ix-panel { display: none !important; }
 /* A miniature always fills its frame with the look's own surface. */
 .theme-thumb-inner > .themed { min-height: 1600px; }
 .ix-panel .deep-target { animation: none; }
+
+/* "Works with" as one drifting line: a full pass in about 40s, paused on hover or focus,
+   still and wrapped with reduced motion. The track holds the row twice and moves by one copy. */
+.marquee {
+  overflow: hidden; padding-block: 0.5rem;
+  mask-image: linear-gradient(90deg, transparent, #000 4rem, #000 calc(100% - 4rem), transparent);
+}
+.marquee-track { display: flex; width: max-content; animation: marquee 40s linear infinite; }
+.marquee-list { display: flex; flex: none; align-items: center; gap: 0.25rem; padding-right: 2rem; }
+.marquee:hover .marquee-track, .marquee:focus-within .marquee-track { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .marquee { mask-image: none; }
+  .marquee-track { animation: none; width: auto; justify-content: center; }
+  .marquee-list { flex-wrap: wrap; justify-content: center; padding-right: 0; }
+  .marquee-list[aria-hidden] { display: none; }
+}
 
 /* "Works with" tiles on the home page: 52px tall, logos shown unmodified at their own aspect ratio. */
 .brand-tile {
@@ -818,50 +844,8 @@ button.check-toggle:hover { border-color: var(--ink); }
 /* A square mark beside a name is drawn smaller than a wordmark so the two read at the same weight. */
 .brand-tile .brand-mark { height: 1.9rem; }
 
-/* ---- The default look (no template, no occasion): plain type and hairline rows. ---- */
-.themed.tpl-default.no-occ .list-title { font-weight: 500; letter-spacing: -0.02em; }
-.themed.tpl-default.no-occ .list-hero { border-bottom: 1px solid var(--line); }
-.themed.tpl-default.no-occ .items-region { gap: 0; border-top: 1px solid var(--line); }
-.themed.tpl-default.no-occ .item-section { padding: 1.25rem 0; border-bottom: 1px solid var(--line); gap: 0.75rem; }
-.themed.tpl-default.no-occ .item-title { font-weight: 500; letter-spacing: -0.015em; }
-.themed.tpl-default.no-occ .item-number { width: auto; height: auto; background: none; color: var(--ink-3); font-family: var(--font-sans); font-weight: 400; font-size: 1rem; margin-top: 0.35rem; }
-.themed.tpl-default.no-occ .item-number::after { content: "."; }
-/* Entries as plain rows: thumbnail, details, price, separated by hairlines. */
-.themed.tpl-default.no-occ .item-entries { grid-template-columns: 1fr !important; gap: 0 !important; border-top: 1px solid var(--line); }
-.themed.tpl-default.no-occ .entry-card {
-  grid-template-columns: 4.5rem 1fr !important; grid-template-rows: auto !important; gap: 1rem !important; padding: 1rem 0 !important;
-  border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none;
-}
-@media (min-width: 640px) { .themed.tpl-default.no-occ .entry-card { grid-template-columns: 5.5rem 1fr !important; } }
-.themed.tpl-default.no-occ .entry-card > div { padding: 0 !important; }
-.themed.tpl-default.no-occ .entry-card > .entry-tools { grid-column: 1 / -1 !important; margin: 0 !important; border-top: 0; padding-top: 0; }
-.themed.tpl-default.no-occ .entry-card .product-img { aspect-ratio: 1; }
-.themed.tpl-default.no-occ .entry-card .price { font-size: 1.35rem !important; }
-.themed.tpl-default.no-occ .entry-card.ring-2, .themed.tpl-default.no-occ .entry-card[class*="ring-"] { box-shadow: inset 3px 0 0 var(--deal); padding-left: 0.75rem !important; }
-.themed.tpl-default.no-occ .text-entry { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; padding-inline: 0; }
-.themed.tpl-default.no-occ .bought-divider h2 { font-weight: 600; letter-spacing: -0.02em; }
-.themed.tpl-default.no-occ .bought-divider .divider-dots { background: var(--line); height: 1px; }
-.themed.tpl-default.no-occ .entries-empty { border: 0; text-align: left; padding: 1rem 0; border-bottom: 1px solid var(--line); border-radius: 0; }
-.themed.tpl-default.no-occ .price-sparkline { max-width: 15rem; }
-.themed.tpl-default.no-occ .price-sparkline svg { height: 2.25rem; }
-.themed.tpl-default.no-occ .item-number { display: inline-block; }
 .ix-pill.is-waiting_on_owner { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 
-/* Cards: compact product rows whose columns line up (name, price, provenance). */
-.entry-rows { border-top: 1px solid var(--line); }
-.entry-row {
-  display: grid; grid-template-columns: 3rem minmax(0, 1fr) 7.5rem minmax(0, 15rem); gap: 0.25rem 1rem; align-items: start;
-  padding: 0.6rem 0; border-bottom: 1px solid var(--line);
-}
-.entry-row-img .product-img { aspect-ratio: 1; border-radius: 4px; }
-.entry-row-price { text-align: right; font-variant-numeric: tabular-nums; }
-.entry-row-meta { display: grid; gap: 0.25rem; }
-.entry-row.is-lowest { box-shadow: inset 2px 0 0 var(--ink); padding-left: 0.6rem; }
-.entry-row.is-stale .price { color: var(--ink-3); }
-@media (max-width: 639px) {
-  .entry-row { grid-template-columns: 2.5rem minmax(0, 1fr) auto; }
-  .entry-row-meta { grid-column: 2 / -1; }
-}
 /* A price nobody has checked today: muted, and it says so in words. */
 tr.is-stale .price { color: var(--ink-3); }
 /* The server refused a tick (for example, a question is waiting): say why, next to the box. */

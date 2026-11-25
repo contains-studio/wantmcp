@@ -8,7 +8,7 @@ import { handleWriterIntent } from "~/lib/intents.server";
 import { getSessionToken } from "~/lib/session.server";
 import type { Comment, Entry, Item, ListDetail, ListPrices, Page, PriceObservation } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
-import { formatInfo, visibilityOf } from "~/lib/formats";
+import { formatInfo, formatOf, visibilityOf } from "~/lib/formats";
 
 /** Comments for the whole list, a few pages deep. */
 async function loadComments(request: Request, listId: string): Promise<{ comments: Comment[]; cursor: string | null }> {
@@ -94,7 +94,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       isPrivate,
       // Only this list's theme is sent to the page: custom properties and motif, no theme code.
       // No theme picked: the format's default (Checklist for tasks, Doc for research).
-      theme: getThemeView(summary.theme ?? formatInfo(summary).defaultTheme),
+      // A stored `default` (the retired Cards), an occasion alone or anything unknown resolves to the format's layout.
+      theme: getThemeView(summary.theme ?? formatInfo(summary).defaultTheme, formatOf(summary)),
     },
     {
       headers: {

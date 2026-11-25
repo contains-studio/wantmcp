@@ -79,8 +79,8 @@ export function lookColors(template: Theme, occasion: Theme | null, mode: "light
 
 /** Combines a template and an optional occasion into what a page needs. */
 export function lookView(template: Theme, occasion: Theme | null, slug: string): ThemeView {
-  // On Default cards an occasion is the whole look (as before the two were separate choices).
-  const dressed = occasion && template.slug === "default" ? occasion : template;
+  // The layout sets the shape; an occasion dresses it (colors, art, the title's display face).
+  const dressed = template;
   const style: Record<string, string> = {};
   for (const [mode, prefix] of [["light", "tl"], ["dark", "td"]] as const) {
     const { palette: p, accents: a } = lookColors(template, occasion, mode);
@@ -110,16 +110,16 @@ export function lookView(template: Theme, occasion: Theme | null, slug: string):
   const stylesheets = [template, occasion].filter((t): t is Theme => !!t?.stylesheet).map((t) => `/theme-css/${t.slug}.css`);
   return {
     slug,
-    name: occasion ? (template.slug === "default" ? occasion.name : `${template.name} · ${occasion.name}`) : template.name,
+    name: occasion ? `${template.name} · ${occasion.name}` : template.name,
     caption: occasion ? occasion.caption : template.caption,
     template: template.slug,
     occasion: occasion?.slug ?? null,
     group: occasion ? "occasion" : template.group,
-    idea: occasion && template.slug !== "default" ? `${template.idea} Dressed for ${occasion.name}.` : (occasion ?? template).idea,
+    idea: occasion ? `${template.idea} Dressed for ${occasion.name}.` : template.idea,
     layout,
     checklist: traits.includes("checklist") || !!template.traits?.includes("checklist"),
     scheme,
-    natural: template.slug === "default" ? (occasion?.natural ?? "shopping") : (template.natural ?? "shopping"),
+    natural: template.natural ?? "shopping",
     stylesheets,
     className: [
       "themed",

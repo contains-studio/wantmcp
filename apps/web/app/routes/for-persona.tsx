@@ -22,7 +22,7 @@ export function loader({ request, params }: Route.LoaderArgs) {
   const now = Date.now();
   const lists = ORDER.map((format) => {
     const spec = persona.lists[format];
-    const theme = getThemeView(spec.look ?? DEFAULT_LOOK[format]);
+    const theme = getThemeView(spec.look ?? DEFAULT_LOOK[format], format);
     return { format, theme, sample: buildSample(spec, { id: `s-${format}`, now, url: `${origin}/for/${persona.slug}` }) };
   });
   const { lists: _specs, ...page } = persona;
@@ -64,8 +64,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   const spec = persona.lists[format];
   try {
     const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: spec.title, format, visibility: "private" } });
-    const look = resolveLook(spec.look ?? DEFAULT_LOOK[format]).slug;
-    if (look !== resolveLook(DEFAULT_LOOK[format]).slug) await api(request, `/lists/${list.id}`, { method: "PATCH", body: { theme: look } }).catch(() => null);
+    const look = resolveLook(spec.look ?? DEFAULT_LOOK[format], format).slug;
+    if (look !== resolveLook(DEFAULT_LOOK[format], format).slug) await api(request, `/lists/${list.id}`, { method: "PATCH", body: { theme: look } }).catch(() => null);
     for (const item of spec.items) {
       await api(request, `/lists/${encodeURIComponent(list.id)}/items`, { method: "POST", body: { text: item.want, ...(item.details ? { details: item.details } : {}) } });
     }

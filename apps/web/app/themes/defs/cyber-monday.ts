@@ -28,7 +28,4 @@ export const cyberMonday: Theme = {
     light: { band: "#1a1f6b", bandAlt: "#5a19d6", bandInk: "#ffffff", hot: "#5a19d6", cool: "#006a76", barInk: "#ffffff" },
     dark: { band: "#05071a", bandAlt: "#2a0a55", bandInk: "#e8ecff", hot: "#5a19d6", cool: "#006a76", barInk: "#ffffff" },
   },
-  contrast: (_p, _a, mode) => [
-    mode === "light" ? { label: "magenta accent text on card", fg: "#b0127a", bg: "#ffffff" } : { label: "magenta accent text on card", fg: "#ff5fd2", bg: "#0b1030" },
-  ],
 };

@@ -79,6 +79,18 @@ export const SAMPLE_SPECS: Record<ListFormat, SampleListSpec> = {
         status: "in_progress",
         updates: [{ title: "A utility rebate and a state program fit", body: "Both are claimed through the installer. Check the income limits before applying.", links: ["https://example.com/rebates"], by: "Codex" }],
       },
+      {
+        want: "Will the electrical panel need an upgrade?",
+        details: "100-amp panel, gas range and dryer.",
+        status: "in_progress",
+        updates: [{ title: "Probably not at 100 amps, if the range stays gas", body: "A 3-ton heat pump draws about 20 to 25 amps at 240 volts. Ask the installer for a load calculation before quoting.", links: ["https://example.org/panel-load"], by: "Claude" }],
+      },
+      {
+        want: "How well do heat pumps work below 0°F?",
+        updates: [
+          { title: "Cold-climate models keep heating to about -5°F", body: "Efficiency drops as it gets colder; most installs keep a backup heat strip for the coldest nights.", links: ["https://example.org/cold-climate"], by: "Gemini" },
+        ],
+      },
       { want: "How loud is the outdoor unit at night?" },
     ],
   },

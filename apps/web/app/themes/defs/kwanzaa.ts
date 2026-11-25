@@ -27,9 +27,4 @@ export const kwanzaa: Theme = {
     light: { band: "#0d0c0b", bandAlt: "#4a0d17", bandInk: "#f8f2e5", hot: "#b3122a", cool: "#0b6b35", barInk: "#ffffff" },
     dark: { band: "#000000", bandAlt: "#3a0a12", bandInk: "#f8f2e5", hot: "#b3122a", cool: "#0b6b35", barInk: "#ffffff" },
   },
-  // On Default cards the header is a black band with a green eyebrow.
-  contrast: (_p, _a, mode) => [
-    { label: "band text on black", fg: "#f8f2e5", bg: mode === "light" ? "#0d0c0b" : "#000000" },
-    { label: "green eyebrow on black band", fg: "#2fae63", bg: mode === "light" ? "#0d0c0b" : "#000000" },
-  ],
 };

@@ -19,7 +19,6 @@ import { BUILD_ID } from "~/lib/build";
 import { itemCurrency, listCurrency } from "~/lib/currency";
 import { lowestEntryId } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useNow } from "~/lib/hooks";
-import { EntryRows } from "~/components/EntryRows";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
 import type { Layout } from "~/themes/types";
@@ -51,11 +50,13 @@ export interface ListViewProps {
   preview?: boolean;
   /** Show only the first N wanted items (gallery tiles). */
   previewItems?: number;
+  /** A miniature: the header is the title only (no counts, owner, description or sample note). */
+  thumbnail?: boolean;
 }
 
 /** A want list, rendered in its theme. Used by the list page, the theme gallery and settings previews. */
 export function ListView(props: ListViewProps) {
-  const { list, items, suggestions, comments: firstComments, commentsCursor, prices, isWriter, role, origin, theme, preview = false, previewItems } = props;
+  const { list, items, suggestions, comments: firstComments, commentsCursor, prices, isWriter, role, origin, theme, preview = false, previewItems, thumbnail = false } = props;
   const { user } = useRootData();
   const base = useContext(HeadingBase);
   const H1 = headingTag(base, 0);
@@ -129,6 +130,8 @@ export function ListView(props: ListViewProps) {
               </div>
             )}
           </header>
+          {!thumbnail && (
+            <>
           <div className="list-meta mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.88rem] text-ink-3">
             {isPrivate && (
               <span className="inline-flex items-center gap-1 text-ink-2">
@@ -144,6 +147,8 @@ export function ListView(props: ListViewProps) {
             ))}
           </div>
           {list.description && <p className="list-desc mt-3 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
+            </>
+          )}
         </div>
       </section>
 
@@ -176,7 +181,6 @@ export function ListView(props: ListViewProps) {
             fi={fi}
             layout={layout}
             checklist={theme.checklist}
-            cards={theme.template === "default" && !theme.occasion}
             key={item.id}
             n={i + 1}
             item={item}
@@ -204,8 +208,7 @@ export function ListView(props: ListViewProps) {
                 fi={fi}
                 layout={layout}
                 checklist={theme.checklist}
-                cards={theme.template === "default" && !theme.occasion}
-                key={item.id}
+                    key={item.id}
                 item={item}
                 prices={prices}
                 commentsFor={commentsFor}
@@ -255,14 +258,12 @@ function ItemSection({
   checklist,
   fi,
   inPanel = false,
-  cards = false,
   ownerHandle,
   listCurrency,
 }: {
   ownerHandle: string;
   listCurrency?: string;
   inPanel?: boolean;
-  cards?: boolean;
   fi: FormatInfo;
   layout: Layout;
   checklist: boolean;
@@ -412,32 +413,6 @@ function ItemSection({
             {isWriter ? fi.waitingWriter : fi.waiting}
           </p>
         )
-      ) : entries.length > 0 && cards ? (
-        <div className="item-indent grid gap-2 sm:pl-11">
-          <EntryRows entries={entries} lowestId={lowest} boughtId={p?.entry_id ?? null} itemText={item.text} />
-          <details className="group">
-            <summary className="textlink-btn text-[0.85rem]">
-              Details, price history and comments <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-            </summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {entries.map((e) => (
-                <EntryCard
-                  key={e.id}
-                  anchor={false}
-                  entry={e}
-                  prices={prices[e.id] ?? null}
-                  comments={commentsFor("entry", e.id)}
-                  isLowest={e.id === lowest}
-                  boughtThis={p?.entry_id === e.id}
-                  itemPurchased={!!p}
-                  canWrite={isWriter}
-                  canEdit={canManage(e.author, user, role)}
-                  canDeleteComment={canDeleteComment}
-                />
-              ))}
-            </div>
-          </details>
-        </div>
       ) : entries.length > 0 && layout === "sheet" ? (
         <div className="item-indent grid gap-3 sm:pl-11">
           <EntrySheet entries={entries} lowestId={lowest} boughtId={p?.entry_id ?? null} itemText={item.text} />

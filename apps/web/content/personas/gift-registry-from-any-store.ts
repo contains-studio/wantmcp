@@ -16,7 +16,7 @@ export default {
       format: "shopping",
       title: "Our first kitchen",
       description: "The things we'd use every week, from the stores we like.",
-      look: "default",
+      look: "sheet",
       items: [
         {
           want: "A burr coffee grinder that does espresso and drip",

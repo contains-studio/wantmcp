@@ -215,7 +215,7 @@ off. Live updates announce themselves in a polite live region, not with animatio
 
 ## Themes
 
-A list's look is a layout (Cards, Board, Sections, Checklist, Heat, Sheet, Doc, Tracker) and an
+A list's look is a layout (Sheet, Checklist, Doc, Board, Sections, Heat, Tracker) and an
 optional occasion. Every layout shares this system's type, controls and spacing. A theme may
 change colours, fonts, radius, card style, page layout and decoration. It may not
 change control heights, spacing rhythm, label placement, the focus ring or contrast, and it

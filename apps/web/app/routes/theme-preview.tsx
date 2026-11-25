@@ -8,6 +8,10 @@ import { getThemeView, parseLook } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 
 export function loader({ request, params }: Route.LoaderArgs) {
+  // The retired Cards layout: its page goes to the gallery; its occasion pages use Sheet.
+  const slug = params.slug.toLowerCase();
+  if (slug === "default") throw redirect("/themes", 301);
+  if (slug.startsWith("default--")) throw redirect(`/themes/sheet--${slug.slice("default--".length)}${new URL(request.url).search}`, 301);
   const look = parseLook(params.slug);
   if (!look) throw new Response("Not found", { status: 404 });
   // Old names (hanukkah, checklist) and spellings like default--christmas go to the canonical page.

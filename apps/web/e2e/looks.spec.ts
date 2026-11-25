@@ -21,7 +21,6 @@ test("switch layout and occasion", async ({ page }) => {
   const id = await createList(page, { format: "Shopping", title: "E2E looks" });
   // An undressed shopping list uses Sheet.
   await expect(page.locator(".themed").first()).toHaveClass(/\btpl-sheet\b/);
-  await useLook(page, id, "Cards", "tpl-default");
   await useLook(page, id, "Checklist", "tpl-today");
   await useLook(page, id, "Sections", "tpl-sections");
   await useLook(page, id, "Doc", "tpl-doc");

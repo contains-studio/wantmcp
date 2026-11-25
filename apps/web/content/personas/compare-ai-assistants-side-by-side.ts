@@ -16,7 +16,7 @@ export default {
       format: "shopping",
       title: "Same request, four assistants",
       description: "One request sent to each; every find shows who posted it.",
-      look: "default",
+      look: "sheet",
       items: [
         {
           want: "A carry-on backpack under 40 liters that opens like a suitcase",
