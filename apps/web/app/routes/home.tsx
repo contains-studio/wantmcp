@@ -42,8 +42,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       theme: getThemeView("doc"),
     },
   ].map((k) => ({ ...k, sample: sampleList(now, k.format) }));
-  const hero = { theme: getThemeView("default"), sample: sampleList(now, "shopping") };
-  return { feed, cursor, accountDeleted, kinds, hero, origin: siteOrigin(request) };
+  return { feed, cursor, accountDeleted, kinds, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -84,7 +83,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { feed, cursor, accountDeleted, kinds, hero, origin } = loaderData;
+  const { feed, cursor, accountDeleted, kinds, origin } = loaderData;
   const { user } = useRootData();
 
   return (
@@ -95,7 +94,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </div>
       )}
 
-      <section className="wrap grid justify-items-center gap-6 pt-16 pb-12 text-center sm:pt-24">
+      <section className="wrap grid justify-items-center gap-8 pt-16 pb-14 text-center sm:pt-24">
         <h1 className="display max-w-5xl text-[2.6rem] sm:text-[4.4rem] lg:text-[5.2rem]">AN MCP SERVER FOR GETTING WHAT YOU WANT</h1>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
@@ -106,12 +105,6 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           </Link>
         </div>
       </section>
-
-      <div className="wrap pb-16">
-        <div className="overflow-hidden rounded-md border border-line">
-          <ThemeThumb theme={hero.theme} sample={hero.sample} origin={origin} className="thumb-wide h-[22rem] sm:h-[30rem] lg:h-[36rem]" />
-        </div>
-      </div>
 
       <WorksWith />
 
@@ -213,8 +206,8 @@ function BrandLink({ brand }: { brand: Brand }) {
     <Link to={`/connect#${brand.id}`} className="brand-tile" aria-label={`Connect ${brand.name}`} title={`Connect ${brand.name}`}>
       {l ? (
         <>
-          <img src={l.light} alt="" width={l.width} height={l.height} className={`brand-logo ${l.nameBeside ? "brand-mark" : ""} ${l.dark ? "brand-logo-light" : ""}`} decoding="async" />
-          {l.dark && <img src={l.dark} alt="" width={l.width} height={l.height} className={`brand-logo brand-logo-dark ${l.nameBeside ? "brand-mark" : ""}`} decoding="async" />}
+          <img src={l.light} alt="" width={l.width} height={l.height} style={{ height: `${l.optical ?? 1.5}rem` }} className={`brand-logo ${l.dark ? "brand-logo-light" : ""}`} decoding="async" />
+          {l.dark && <img src={l.dark} alt="" width={l.width} height={l.height} style={{ height: `${l.optical ?? 1.5}rem` }} className="brand-logo brand-logo-dark" decoding="async" />}
           {/* A company mark or symbol doesn't spell the product's name, so it is set beside it in our type. */}
           {l.nameBeside && <span className="text-[0.95rem] font-bold">{brand.name}</span>}
         </>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import { PrivateBadge } from "~/components/ListView";
 import { FORMATS, formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
@@ -13,7 +13,8 @@ import { plural } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin } from "~/lib/session.server";
 import { LiveUpdates } from "~/components/LiveUpdates";
-import { Button, Field, Input, Select } from "~/components/ui";
+import { DetailsPrompt } from "~/components/ListView";
+import { Button, Field, Input, Select, Textarea } from "~/components/ui";
 import type { AgentInfo, FeedEntry, ListFormat, ListSummary, ListVisibility, Page, PendingInvite } from "~/lib/types";
 
 export function meta() {
@@ -222,43 +223,62 @@ function ListFilter({ lists, listId }: { lists: ListSummary[]; listId: string | 
 }
 
 function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string | null }) {
-  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const fetcher = useFetcher<{ ok?: boolean; error?: string; itemId?: string }>();
   const busy = fetcher.state !== "idle";
-  const added = fetcher.state === "idle" && fetcher.data?.ok;
+  const added = fetcher.state === "idle" && fetcher.data?.ok && fetcher.data.itemId ? fetcher.data.itemId : null;
+  const [promptFor, setPromptFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (added) setPromptFor(added);
+  }, [added]);
   const [target, setTarget] = useState(listId ?? lists[0]?.id ?? "");
   const fi = formatInfo(lists.find((l) => l.id === target));
   return (
-    <fetcher.Form
-      method="post"
-      className="card grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end"
-      onSubmit={(e) => {
-        const input = e.currentTarget.elements.namedItem("text") as HTMLInputElement | null;
-        requestAnimationFrame(() => input && (input.value = ""));
-      }}
-    >
-      <input type="hidden" name="intent" value="add-item" />
-      <Field label={fi.addItemTitle}>
-        {(p) => <Input {...p} name="text" required maxLength={500} placeholder={fi.itemPlaceholder} />}
-      </Field>
-      <Field label="List">
-        {(p) => (
-          <Select {...p} name="list_id" value={target} onChange={(e) => setTarget(e.currentTarget.value)}>
-            {lists.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.title}
-              </option>
-            ))}
-          </Select>
-        )}
-      </Field>
-      <Button variant="primary" disabled={busy}>
-        {busy ? "Adding…" : `Add ${fi.item}`}
-      </Button>
-      <div aria-live="polite" className="empty:hidden sm:col-span-3">
-        {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
-        {added && <p className="text-[0.875rem] text-deal">Added.</p>}
-      </div>
-    </fetcher.Form>
+    <div className="card grid gap-3 p-4">
+      <fetcher.Form
+        method="post"
+        className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end"
+        onSubmit={(e) => {
+          const form = e.currentTarget;
+          requestAnimationFrame(() => {
+            const input = form.elements.namedItem("text") as HTMLInputElement | null;
+            const details = form.elements.namedItem("details") as HTMLTextAreaElement | null;
+            if (input) input.value = "";
+            if (details) details.value = "";
+          });
+        }}
+      >
+        <input type="hidden" name="intent" value="add-item" />
+        <Field label={fi.addItemTitle}>
+          {(p) => <Input {...p} name="text" required maxLength={500} placeholder={fi.itemPlaceholder} />}
+        </Field>
+        <Field label="List">
+          {(p) => (
+            <Select {...p} name="list_id" value={target} onChange={(e) => setTarget(e.currentTarget.value)}>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.title}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <Button variant="primary" disabled={busy}>
+          {busy ? "Adding…" : `Add ${fi.item}`}
+        </Button>
+        <details className="group sm:col-span-3">
+          <summary className="textlink-btn text-[0.85rem]">
+            Details <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+          </summary>
+          <Field label="Details (optional)" className="mt-2">
+            {(p) => <Textarea {...p} name="details" maxLength={2000} placeholder={fi.detailsPlaceholder} className="min-h-16" />}
+          </Field>
+        </details>
+        <div aria-live="polite" className="empty:hidden sm:col-span-3">
+          {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
+        </div>
+      </fetcher.Form>
+      {promptFor && <DetailsPrompt itemId={promptFor} fi={fi} onDone={() => setPromptFor(null)} />}
+    </div>
   );
 }
 

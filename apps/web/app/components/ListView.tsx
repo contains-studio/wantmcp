@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { Link, useFetcher, useLocation } from "react-router";
 import { ActorTag } from "~/components/ActorTag";
 import { CommentForm, CommentList } from "~/components/Comments";
@@ -14,6 +14,9 @@ import { formatMoney, plural } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
 import { BUILD_ID } from "~/lib/build";
+import { lowestEntryId } from "~/lib/prices";
+import { useNow } from "~/lib/hooks";
+import { EntryRows } from "~/components/EntryRows";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
 import type { Layout } from "~/themes/types";
@@ -21,13 +24,6 @@ import type { ThemeView } from "~/themes/view";
 
 export type ItemWithEntries = Item & { entries: Entry[] };
 
-function lowestEntryId(entries: Entry[]): string | null {
-  const priced = entries.filter((e) => e.current_price);
-  if (priced.length < 2) return null;
-  const currency = priced[0].current_price!.currency;
-  if (!priced.every((e) => e.current_price!.currency === currency)) return null;
-  return priced.reduce((a, b) => (Number(b.current_price!.price) < Number(a.current_price!.price) ? b : a)).id;
-}
 
 function sortByPrice(entries: Entry[]): Entry[] {
   return [...entries].sort((a, b) => {
@@ -96,19 +92,19 @@ export function ListView(props: ListViewProps) {
       ))}
       {/* data-year: the year ahead (from October on), for themes that print it. */}
       <section className="list-hero border-b border-line" data-year={yearAhead(list.created_at)}>
-        <div className="wrap py-10 sm:py-14">
+        <div className="wrap py-5 sm:py-7">
           <p className="eyebrow flex flex-wrap items-center gap-2">
             <span>
               {fi.label} <span aria-hidden="true">·</span> <span className="normal-case tracking-normal">{list.owner_handle}</span>
             </span>
             {isPrivate && <PrivateBadge />}
           </p>
-          <h1 className="list-title mt-3 max-w-4xl text-[2.4rem] font-semibold sm:text-6xl">
+          <h1 className="list-title mt-2 max-w-4xl text-[1.6rem] font-semibold sm:text-[2.1rem]">
             <span className="list-title-mark" aria-hidden="true" />
             <span className="list-title-text">{list.title}</span>
           </h1>
-          {list.description && <p className="mt-4 max-w-2xl text-[1.05rem] text-ink-2">{list.description}</p>}
-          <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3 text-[0.9rem] text-ink-3">
+          {list.description && <p className="mt-2 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.88rem] text-ink-3">
             <span>
               <strong className="text-ink">{wanted.length}</strong> open
             </span>
@@ -131,7 +127,7 @@ export function ListView(props: ListViewProps) {
             )}
           </div>
           {isWriter && (
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <Link to={`/app/lists/${list.id}/settings`} className="btn btn-ghost btn-sm">
                 Settings
               </Link>
@@ -141,7 +137,7 @@ export function ListView(props: ListViewProps) {
       </section>
 
       {!preview && <LiveUpdates query={`list=${encodeURIComponent(list.id)}`} />}
-      <div className="wrap grid grid-cols-1 gap-12 py-10">
+      <div className="wrap grid grid-cols-1 gap-8 py-6">
         {more.hasMore && (
           <div className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-sunk px-4 py-3 text-[0.9rem]" role="status">
             <button type="button" className="btn btn-ghost btn-xs" onClick={more.loadMore} disabled={more.loading}>
@@ -162,13 +158,14 @@ export function ListView(props: ListViewProps) {
             isDone={isDone}
           />
         )}
-        <div className={`items-region grid grid-cols-1 gap-12 ${indexKind ? "ix-panel" : ""}`}>
+        <div className={`items-region grid grid-cols-1 gap-8 ${indexKind ? "ix-panel" : ""}`}>
           {indexKind && <a href="#list-index" className="ix-backdrop" tabIndex={-1} aria-hidden="true" />}
         {wanted.map((item, i) => (
           <ItemSection
             fi={fi}
             layout={layout}
             checklist={theme.checklist}
+            cards={theme.template === "default" && !theme.occasion}
             key={item.id}
             n={i + 1}
             item={item}
@@ -194,6 +191,7 @@ export function ListView(props: ListViewProps) {
                 fi={fi}
                 layout={layout}
                 checklist={theme.checklist}
+                cards={theme.template === "default" && !theme.occasion}
                 key={item.id}
                 item={item}
                 prices={prices}
@@ -247,8 +245,10 @@ function ItemSection({
   checklist,
   fi,
   inPanel = false,
+  cards = false,
 }: {
   inPanel?: boolean;
+  cards?: boolean;
   fi: FormatInfo;
   layout: Layout;
   checklist: boolean;
@@ -264,8 +264,9 @@ function ItemSection({
 }) {
   const [editing, setEditing] = useState(false);
   const canEditItem = canManage(item.created_by, user, role);
+  const now = useNow();
   const entries = sortByPrice(item.entries);
-  const lowest = lowestEntryId(entries);
+  const lowest = lowestEntryId(entries, now);
   const itemComments = commentsFor("item", item.id);
   const shopping = fi.format === "shopping";
   const p = shopping ? item.purchase : null;
@@ -281,7 +282,7 @@ function ItemSection({
   const headingId = `${item.id}-h`;
 
   return (
-    <section id={item.id} aria-labelledby={headingId} data-status={status} className={`item-section grid scroll-mt-24 gap-5 ${done ? "is-bought" : ""}`}>
+    <section id={item.id} aria-labelledby={headingId} data-status={status} className={`item-section grid scroll-mt-24 gap-3 ${done ? "is-bought" : ""}`}>
       {inPanel && (
         <a href="#list-index" className="ix-close btn btn-ghost btn-sm justify-self-end">
           Close<span className="sr-only"> {item.text}</span>
@@ -306,7 +307,7 @@ function ItemSection({
               <EditItem item={item} onDone={() => setEditing(false)} label={`Edit ${fi.item}`} />
             </div>
           ) : (
-            <h2 id={headingId} className={`item-title text-[1.25rem] font-bold sm:text-[1.7rem] ${done ? "text-ink-2" : ""}`}>
+            <h2 id={headingId} className={`item-title text-[1.15rem] font-semibold sm:text-[1.35rem] ${done ? "text-ink-2" : ""}`}>
               {item.text}
             </h2>
           )}
@@ -390,6 +391,32 @@ function ItemSection({
             {isWriter ? fi.waitingWriter : fi.waiting}
           </p>
         )
+      ) : entries.length > 0 && cards ? (
+        <div className="item-indent grid gap-2 sm:pl-11">
+          <EntryRows entries={entries} lowestId={lowest} boughtId={p?.entry_id ?? null} itemText={item.text} />
+          <details className="group">
+            <summary className="textlink-btn text-[0.85rem]">
+              Details, price history and comments <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+            </summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {entries.map((e) => (
+                <EntryCard
+                  key={e.id}
+                  anchor={false}
+                  entry={e}
+                  prices={prices[e.id] ?? null}
+                  comments={commentsFor("entry", e.id)}
+                  isLowest={e.id === lowest}
+                  boughtThis={p?.entry_id === e.id}
+                  itemPurchased={!!p}
+                  canWrite={isWriter}
+                  canEdit={canManage(e.author, user, role)}
+                  canDeleteComment={canDeleteComment}
+                />
+              ))}
+            </div>
+          </details>
+        </div>
       ) : entries.length > 0 && layout === "sheet" ? (
         <div className="item-indent grid gap-3 sm:pl-11">
           <EntrySheet entries={entries} lowestId={lowest} boughtId={p?.entry_id ?? null} itemText={item.text} />
@@ -473,20 +500,28 @@ function UndoPurchase({ itemId }: { itemId: string }) {
 }
 
 function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: boolean; fi: FormatInfo; isPrivate: boolean }) {
-  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const fetcher = useFetcher<{ ok?: boolean; error?: string; itemId?: string }>();
   const busy = fetcher.state !== "idle";
+  const added = fetcher.state === "idle" && fetcher.data?.ok && fetcher.data.itemId ? fetcher.data.itemId : null;
+  const [promptFor, setPromptFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (added) setPromptFor(added);
+  }, [added]);
   return (
-    <section id="add-item" aria-labelledby="add-item-h" className={`add-item card scroll-mt-24 p-5 ${empty ? "border-want" : ""}`}>
-      <h2 id="add-item-h" className="text-xl font-semibold">
+    <section id="add-item" aria-labelledby="add-item-h" className={`add-item scroll-mt-24 ${empty ? "card p-5" : ""}`}>
+      <h2 id="add-item-h" className={empty ? "text-xl font-semibold" : "sr-only"}>
         {empty ? fi.addItemFirst : fi.addItemTitle}
       </h2>
-      <p className="mt-1 text-[0.9rem] text-ink-3">
-        {fi.addItemHint}
-        {empty && !isPrivate ? " The list becomes public once it has an item." : ""}
-      </p>
+      {empty && (
+        <p className="mt-1 text-[0.9rem] text-ink-3">
+          {fi.addItemHint}
+          {!isPrivate ? " The list becomes public once it has an item." : ""}
+        </p>
+      )}
+      {promptFor && <DetailsPrompt itemId={promptFor} fi={fi} onDone={() => setPromptFor(null)} />}
       <fetcher.Form
         method="post"
-        className="mt-4 grid gap-2"
+        className={`${empty ? "mt-4" : ""} grid gap-2`}
         onSubmit={(e) => {
           const form = e.currentTarget;
           requestAnimationFrame(() => form.reset());
@@ -678,6 +713,37 @@ function useDeepLinks() {
 function yearAhead(iso: string) {
   const d = new Date(iso);
   return String(d.getUTCFullYear() + (d.getUTCMonth() >= 9 ? 1 : 0));
+}
+
+/**
+ * After adding an item: one light, skippable prompt for what an agent would need (budget or size,
+ * where and by when, context), stored in the item's details.
+ */
+export function DetailsPrompt({ itemId, fi, onDone }: { itemId: string; fi: FormatInfo; onDone: () => void }) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const uid = useId();
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok) onDone();
+  }, [fetcher.state, fetcher.data, onDone]);
+  return (
+    <fetcher.Form method="post" className="mb-3 grid gap-2 rounded-md border border-line bg-sunk p-3">
+      <input type="hidden" name="intent" value="add-details" />
+      <input type="hidden" name="item_id" value={itemId} />
+      <label htmlFor={`${uid}-d`} className="label">
+        Added. Anything an agent needs?
+      </label>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <textarea id={`${uid}-d`} name="details" maxLength={2000} rows={1} placeholder={fi.detailsPrompt} className="textarea textarea-line flex-1" autoFocus />
+        <button className="btn" disabled={fetcher.state !== "idle"}>
+          Save
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onDone}>
+          Skip
+        </button>
+      </div>
+      {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
+    </fetcher.Form>
+  );
 }
 
 export function ChecklistBox({ itemId, text, bought, canWrite, shopping, doneWord }: { itemId: string; text: string; bought: boolean; canWrite: boolean; shopping: boolean; doneWord: string }) {

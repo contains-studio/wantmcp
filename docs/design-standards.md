@@ -32,6 +32,25 @@ display type, monospace labels everywhere.
   full-width buttons; on the right a large real render of the product. On phones the columns
   stack.
 
+## Density
+
+Restraint in colour and type; never emptiness. Working pages (a list, `/app`, settings,
+account) are tools, not landing pages:
+
+- **A list shows its work.** On a 1280 by 800 laptop screen a person sees the list header, an
+  item and at least three of its products with their prices, without scrolling. On a phone, the
+  first item and its first product.
+- **Headers take a few lines.** List titles are 26 to 34px. The very large light type is for the
+  home page headline only.
+- **Comparisons line up.** Prices, retailers and the "Lowest" marker sit in columns the eye can
+  run down. Descriptions, price charts, comments and report links go behind a disclosure, never
+  inline under every product.
+- **Tight rhythm.** 24 to 32px between items, 8 to 12px between an item and its products, 40 to
+  48px rows in tables. The generous 80 to 96px bands belong to the home page.
+
+The defaults follow from this: a list nobody has dressed uses Sheet for shopping, Checklist for
+tasks and Doc for research.
+
 ## Spacing
 
 Spacing comes from a 4px scale: 4, 8, 12, 16, 24, 32, 48, 64 (in the web app, Tailwind `1 2 3 4 6 8 12 16`).

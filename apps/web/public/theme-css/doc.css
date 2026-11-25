@@ -1,12 +1,12 @@
 /* Doc: a white page on a grey desk, a book serif and numbered sections. */
 .themed.tpl-doc { --desk: color-mix(in srgb, var(--paper) 90%, var(--ink)); background: var(--desk); counter-reset: doc-item; }
-.themed.tpl-doc .list-hero { background: transparent; border: 0; padding-top: 2.5rem; }
+.themed.tpl-doc .list-hero { background: transparent; border: 0; padding-top: 1.25rem; }
 .themed.tpl-doc .list-hero > .wrap, .themed.tpl-doc > .wrap { max-width: 50rem; background: var(--card); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 12px 40px -20px rgb(0 0 0 / 0.25); }
-.themed.tpl-doc .list-hero > .wrap { border-radius: 4px 4px 0 0; padding: 4.5rem clamp(1.25rem, 6vw, 4.5rem) 1rem; }
-.themed.tpl-doc > .wrap { border-radius: 0 0 4px 4px; padding: 1rem clamp(1.25rem, 6vw, 4.5rem) 5rem; margin-bottom: 3rem; gap: 2.75rem; }
-.themed.tpl-doc .list-title { font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 600; line-height: 1.1; }
+.themed.tpl-doc .list-hero > .wrap { border-radius: 4px 4px 0 0; padding: 2.25rem clamp(1.25rem, 5vw, 3.5rem) 0.75rem; }
+.themed.tpl-doc > .wrap { border-radius: 0 0 4px 4px; padding: 0.75rem clamp(1.25rem, 5vw, 3.5rem) 3rem; margin-bottom: 2rem; gap: 1.75rem; }
+.themed.tpl-doc .list-title { font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 600; line-height: 1.15; }
 .themed.tpl-doc .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
-.themed.tpl-doc .list-hero h1 + p { font-size: 1.15rem; line-height: 1.6; font-style: italic; }
+.themed.tpl-doc .list-hero h1 + p { font-size: 1.02rem; line-height: 1.5; font-style: italic; }
 .themed.tpl-doc .list-hero > .wrap > div { border-top: 1px solid var(--line); padding-top: 1rem; font-family: var(--font-sans); font-size: 0.82rem; }
 .themed.tpl-doc .item-section { counter-increment: doc-item; gap: 1rem; }
 .themed.tpl-doc .item-number { display: none; }

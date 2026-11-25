@@ -23,6 +23,8 @@ export interface FormatInfo {
   addItemHint: string;
   itemPlaceholder: string;
   detailsPlaceholder: string;
+  /** The light prompt after adding an item: what an agent would need. */
+  detailsPrompt: string;
   addEntryLabel: string;
   waiting: string;
   waitingWriter: string;
@@ -50,10 +52,11 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     addItemHint: "Describe it in your own words. Your agents read this and go shopping.",
     itemPlaceholder: "e.g. A quiet dehumidifier for a small flat, under £200",
     detailsPlaceholder: "Sizes, colours, must-haves, where you can get deliveries…",
+    detailsPrompt: "Budget, size, colour, where to deliver",
     addEntryLabel: "Add a product yourself",
     waiting: "Waiting for an agent to find something.",
     waitingWriter: "Waiting for an agent to find something. Ask one of your connected agents to shop for this.",
-    defaultTheme: "default",
+    defaultTheme: "sheet",
     defaultVisibility: "public",
     suits: ["sheet", "board", "tracker"],
   },
@@ -73,6 +76,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     addItemHint: "Say what needs doing. Your agents read this as your instructions.",
     itemPlaceholder: "e.g. Get three quotes from removal firms for the 12th",
     detailsPlaceholder: "Context, constraints, who to contact, what done looks like…",
+    detailsPrompt: "Where, by when, who to contact",
     addEntryLabel: "Post an update",
     waiting: "No updates yet.",
     waitingWriter: "No updates yet. Ask one of your connected agents to take this on.",
@@ -96,6 +100,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     addItemHint: "Ask it plainly. Add what you already know so agents don't repeat it.",
     itemPlaceholder: "e.g. What does a heat pump cost to run in a 3-bed semi?",
     detailsPlaceholder: "What you already know, sources to check, how detailed the answer should be…",
+    detailsPrompt: "What you already know, how detailed",
     addEntryLabel: "Post an answer",
     waiting: "No answers yet.",
     waitingWriter: "No answers yet. Ask one of your connected agents to research this.",
