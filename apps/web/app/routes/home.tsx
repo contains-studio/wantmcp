@@ -322,10 +322,13 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
   const tile = (v: ThemeView) => (
     <li key={v.slug} className="w-40 flex-none snap-start sm:w-auto">
       {/* The miniature holds links of its own, so it sits beside the link, never inside it: the link stretches over the tile. */}
-      <div className="look-tile relative grid overflow-hidden rounded-[14px] bg-card shadow-[var(--shadow)]">
-        <ThemeThumb theme={v} sample={looks.sample} origin={origin} className="h-24 sm:h-40" />
-        <Link to={`/themes/${v.slug}`} className="stretched-link px-3 py-2 text-[0.9rem] font-medium">
-          {v.name}
+      <div className="look-tile look-captioned relative grid gap-2.5">
+        <div className="look-frame">
+          <ThemeThumb theme={v} sample={looks.sample} origin={origin} className="h-28 sm:h-44" />
+        </div>
+        <Link to={`/themes/${v.slug}`} className="stretched-link grid gap-0.5 px-0.5">
+          <span className="look-name">{v.name}</span>
+          {v.caption && <span className="look-note">{v.caption}</span>}
         </Link>
       </div>
     </li>
@@ -342,7 +345,7 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
           </Link>
         </div>
         {/* Phones: one row that scrolls sideways; wider screens: a grid. */}
-        <ul className="looks-row -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+        <ul className="looks-row -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 sm:overflow-visible sm:px-0 lg:grid-cols-4">
           {looks.layouts.map(tile)}
         </ul>
       </div>

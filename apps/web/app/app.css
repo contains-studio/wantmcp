@@ -812,7 +812,11 @@ button.check-toggle:hover { border-color: var(--ink); }
 }
 
 /* A link that covers its whole tile without wrapping the tile's other content (which may hold links of its own). */
-.stretched-link { text-decoration: none; color: inherit; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.stretched-link { text-decoration: none; color: inherit; cursor: pointer; }
+/* Only a button needs its own look removed. On a link this reset also wiped the padding and type size its
+   classes set (these rules are unlayered, so they beat utilities), which left the look names oversized and flush
+   against the tile's edge. */
+button.stretched-link { background: none; border: 0; padding: 0; font: inherit; }
 /* The season's tiles: five across on wide screens, a snap-scroll row on phones. */
 .season-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
 @media (max-width: 899px) {
@@ -822,6 +826,18 @@ button.check-toggle:hover { border-color: var(--ink); }
 .stretched-link::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
 .stretched-link:focus-visible { outline: none; }
 .stretched-link:focus-visible::after { outline: 3px solid var(--focus); outline-offset: -3px; }
+
+/* A look on the home page: the miniature in its own frame, and its name under the frame as a caption
+   (owner, 25 Nov 2026: clearer and Apple-like). The frame has a hairline so a dark look still reads as a
+   frame on the dark page, and the miniature is cropped cleanly by the frame, without a fade. */
+.look-frame { overflow: hidden; border-radius: 18px; border: 1px solid var(--line); background: var(--card); transition: border-color 150ms ease, transform 150ms ease; }
+.look-frame .theme-thumb-fade { display: none; }
+.look-name { font-size: 0.98rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+.look-note { font-size: 0.84rem; line-height: 1.3; color: var(--ink-3); }
+.look-tile.look-captioned .stretched-link::after { border-radius: 18px; }
+@media (hover: hover) {
+  .look-tile.look-captioned:hover .look-frame { border-color: var(--line-strong); }
+}
 
 /* Theme gallery thumbnails: a whole list page, scaled down. */
 .theme-thumb-fade { position: absolute; inset: auto 0 0; z-index: 1; height: 2.25rem; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--card)); }
