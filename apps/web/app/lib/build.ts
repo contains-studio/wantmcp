@@ -16,6 +16,22 @@ export const BUILD_ID: string = typeof __BUILD_ID__ === "string" ? __BUILD_ID__ 
 export const BUILD_HEADER = "X-Build-Id";
 
 let stale = false;
+let hydrated = false;
+let lastErrorRef: string | null = null;
+
+/** Set once the app has mounted; an error boundary rendered before that is the server's error page. */
+export function markHydrated() {
+  hydrated = true;
+}
+export function isHydrated() {
+  return hydrated;
+}
+/** The reference of the last same-origin response that failed with a 5xx (the server logged it). */
+export function takeLastErrorRef(): string | null {
+  const r = lastErrorRef;
+  lastErrorRef = null;
+  return r;
+}
 const listeners = new Set<() => void>();
 
 export function isStale() {
@@ -94,7 +110,10 @@ export function installBuildGuard() {
     const res = await nativeFetch(input, init);
     try {
       const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url, location.href);
-      if (url.origin === location.origin) checkBuild(res);
+      if (url.origin === location.origin) {
+        checkBuild(res);
+        if (res.status >= 500) lastErrorRef = res.headers.get("X-Request-Ref");
+      }
     } catch {
       // ignore
     }

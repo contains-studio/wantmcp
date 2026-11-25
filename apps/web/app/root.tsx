@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   data,
   isRouteErrorResponse,
@@ -11,6 +11,7 @@ import {
   ScrollRestoration,
   useFetcher,
   useLocation,
+  useMatches,
   useNavigation,
   useRouteLoaderData,
 } from "react-router";
@@ -19,8 +20,10 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { Wordmark } from "./components/Logo";
 import { getUser } from "./lib/auth.server";
-import { mcpUrl, siteOrigin, sourceUrl } from "./lib/config.server";
-import { forgetTarget, installBuildGuard, rememberTarget } from "./lib/build";
+import { mcpUrl, siteOrigin, sourceUrl, webAnalyticsToken } from "./lib/config.server";
+import { BUILD_ID, forgetTarget, installBuildGuard, isHydrated, markHydrated, rememberTarget, takeLastErrorRef } from "./lib/build";
+import { newRef } from "./lib/telemetry";
+import { currentTrace } from "./lib/trace.server";
 import { useRootData } from "./lib/hooks";
 import { clearSessionCookie, getSessionToken, readCookie } from "./lib/session.server";
 
@@ -34,7 +37,11 @@ export async function loader({ request }: Route.LoaderArgs) {
   const theme = t === "light" || t === "dark" ? t : "system";
   // The cookie names a session the API no longer knows: drop it.
   const headers = !user && getSessionToken(request) ? { "set-cookie": clearSessionCookie(request) } : undefined;
-  return data({ user, now: Date.now(), theme, mcpUrl: mcpUrl(), origin: siteOrigin(request), sourceUrl: sourceUrl() }, { headers });
+  // ref: this request's reference, shown if the page turns out to be an error page.
+  return data(
+    { user, now: Date.now(), theme, mcpUrl: mcpUrl(), origin: siteOrigin(request), sourceUrl: sourceUrl(), ref: currentTrace()?.ref ?? null, analytics: webAnalyticsToken() },
+    { headers },
+  );
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -57,6 +64,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
         <ScrollRestoration />
         <Scripts />
+        <AnalyticsBeacon token={root?.analytics ?? null} />
       </body>
     </html>
   );
@@ -190,10 +198,27 @@ function Footer() {
   );
 }
 
+/**
+ * Cloudflare Web Analytics: counts page views without cookies. Loaded only when the token is set
+ * and only on pages that opt in with `handle.analytics` (never /app, sign-in, settings, private
+ * lists or anything with a key on screen).
+ */
+function AnalyticsBeacon({ token }: { token: string | null }) {
+  const matches = useMatches();
+  const leaf = matches.at(-1);
+  const opt = (leaf?.handle as { analytics?: boolean | ((data: unknown) => boolean) } | undefined)?.analytics;
+  const allowed = typeof opt === "function" ? opt(leaf?.loaderData) : opt === true;
+  if (!token || !allowed) return null;
+  return <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon={JSON.stringify({ token })} />;
+}
+
 /** See app/lib/build.ts: keeps a tab that was open across a deploy off the error page. */
 function BuildGuard() {
   const navigation = useNavigation();
-  useEffect(() => installBuildGuard(), []);
+  useEffect(() => {
+    installBuildGuard();
+    markHydrated();
+  }, []);
   useEffect(() => {
     const to = navigation.location;
     if (navigation.state === "loading" && to) rememberTarget(to.pathname + to.search + to.hash);
@@ -231,6 +256,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   } else if (import.meta.env.DEV && error instanceof Error) {
     details = error.message;
   }
+  const ref = useErrorRef(status, error);
   return (
     <>
       <title>{`${title} · The Want MCP`}</title>
@@ -240,6 +266,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <p className="eyebrow">Error {status}</p>
         <h1 className="mt-2 text-5xl font-extrabold">{title}</h1>
         <p className="mt-4 max-w-prose text-ink-2">{details}</p>
+        {status >= 500 && ref && (
+          <p className="mt-3 text-[0.9rem] text-ink-3">
+            Reference: <code className="font-semibold text-ink">{ref}</code>
+          </p>
+        )}
         {/* A full page load, not a client-side route change: after a deploy the open tab may hold an old build. */}
         <a href="/" className="btn mt-8">
           Go home
@@ -249,6 +280,43 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <RecoverOnce active={status >= 500} />
     </>
   );
+}
+
+/**
+ * The reference shown on an error page, so a screenshot can be matched to a log line.
+ * - The server's error page: the reference of the request that rendered it (the Worker logged it).
+ * - A failed data load during navigation: the reference of that response (the Worker logged it).
+ * - An error that only happened in the browser: a new reference, reported once to /telemetry/error.
+ */
+function useErrorRef(status: number, error: unknown): string | null {
+  const root = useRouteLoaderData<typeof loader>("root");
+  const matches = useMatches();
+  const [ref, setRef] = useState<string | null>(root?.ref ?? null);
+  useEffect(() => {
+    if (!isHydrated()) return; // the server rendered this error page and logged it
+    const fromServer = takeLastErrorRef();
+    if (fromServer) {
+      setRef(fromServer);
+      return;
+    }
+    const r = newRef();
+    setRef(r);
+    const body = JSON.stringify({
+      ref: r,
+      route: location.pathname,
+      status,
+      name: error instanceof Error ? error.name : isRouteErrorResponse(error) ? "RouteErrorResponse" : "Error",
+      build: BUILD_ID,
+    });
+    try {
+      navigator.sendBeacon?.("/telemetry/error", new Blob([body], { type: "application/json" })) ||
+        fetch("/telemetry/error", { method: "POST", body, headers: { "content-type": "application/json" }, keepalive: true });
+    } catch {
+      // Reporting is best effort.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches.at(-1)?.id]);
+  return ref;
 }
 
 /**

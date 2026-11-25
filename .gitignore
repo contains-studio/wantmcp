@@ -22,3 +22,8 @@ worker-configuration.d.ts
 
 # Vite cache
 .vite/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/

@@ -217,3 +217,6 @@ function BrandLink({ brand }: { brand: Brand }) {
     </Link>
   );
 }
+
+/** Cloudflare Web Analytics may count views of this page (root.tsx, AnalyticsBeacon). */
+export const handle = { analytics: true };

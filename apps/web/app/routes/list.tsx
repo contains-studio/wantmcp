@@ -210,3 +210,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export default function ListPage({ loaderData }: Route.ComponentProps) {
   return <ListView {...loaderData} />;
 }
+
+/** Page views are counted on public lists only; a private list never loads the beacon. */
+export const handle = {
+  analytics: (data: unknown) => (data as { list?: { visibility?: string } } | null)?.list?.visibility === "public",
+};

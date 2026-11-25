@@ -83,6 +83,10 @@ export default function Privacy() {
 
       <h2>Cookies</h2>
       <p>One cookie keeps you signed in and one remembers your light or dark theme. We use no tracking or advertising cookies.</p>
+      <p>
+        We count page views on public pages with Cloudflare Web Analytics, which uses no cookies and doesn't follow you across sites. It never
+        runs on your account pages, private lists or sign-in.
+      </p>
 
       <h2>Where it runs</h2>
       <p>The website, API and database are hosted on Cloudflare.</p>
@@ -119,3 +123,6 @@ export default function Privacy() {
     </LegalPage>
   );
 }
+
+/** Cloudflare Web Analytics may count views of this page (root.tsx, AnalyticsBeacon). */
+export const handle = { analytics: true };

@@ -150,7 +150,8 @@ export function seedStore(now = Date.now()): Store {
       details: "Gas boiler now uses about 12,000 kWh a year. Roughly 1970s build, cavity wall insulation done.", due_at: null, status: "done", claimed_by: null,
       completion: { completed_at: at(3 * HOUR), completed_by: demo, note: null, entry_id: "ent_r_cost1" } },
     { id: "itm_r_grant", list_id: "lst_research", text: "Which grants are available, and how do we apply?", created_by: demo, created_at: at(4 * DAY), purchase: null,
-      details: "", due_at: at(-6 * DAY), status: "open", claimed_by: null, completion: null },
+      // A claim nobody has touched for two days: a person can take it over.
+      details: "", due_at: at(-6 * DAY), status: "in_progress", claimed_by: codex, claimed_at: at(2 * DAY), completion: null },
     { id: "itm_shoes", list_id: "lst_trail", text: "Cushioned trail shoes for long distances, wide toe box", created_by: lynx, created_at: at(5 * DAY), purchase: null },
     { id: "itm_vest", list_id: "lst_trail", text: "Running vest, 10–12L, with soft flasks", created_by: lynx, created_at: at(4 * DAY), purchase: null },
   );

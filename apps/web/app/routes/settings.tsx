@@ -650,17 +650,21 @@ function LookOption({
   label?: string;
   small?: boolean;
 }) {
+  // The label holds only the radio and its name, so the radio's accessible name is "Sheet Price table".
+  // The miniature beside it is decorative; clicking it picks the same option.
   return (
-    <label className={`grid cursor-pointer overflow-hidden rounded-md border-2 ${checked ? "border-want" : "border-line"}`}>
-      <ThemeThumb theme={view} sample={sample} origin={origin} className={`${small ? "h-20" : "h-28"} border-b border-line`} />
-      <span className="flex items-center gap-2 p-2.5">
+    <div className={`grid overflow-hidden rounded-md border-2 ${checked ? "border-want" : "border-line"}`}>
+      <div onClick={onChange} className="cursor-pointer">
+        <ThemeThumb theme={view} sample={sample} origin={origin} className={`${small ? "h-20" : "h-28"} border-b border-line`} />
+      </div>
+      <label className="flex cursor-pointer items-center gap-2 p-2.5">
         <input type="radio" name={name} checked={checked} onChange={onChange} className="h-5 w-5 shrink-0 accent-[var(--want)]" />
         <span className="min-w-0">
           <span className="block text-[0.92rem] font-semibold leading-tight">{label ?? view.name}</span>
           {note && <span className="block text-[0.75rem] text-ink-3">{note}</span>}
         </span>
-      </span>
-    </label>
+      </label>
+    </div>
   );
 }
 

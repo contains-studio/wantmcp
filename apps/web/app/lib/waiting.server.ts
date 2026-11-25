@@ -1,25 +1,18 @@
 import { api } from "./api.server";
-import type { ItemSummary, ListSummary, ListSummaryPage } from "./types";
+import type { OpenQuestionsPage } from "./types";
 
-export type WaitingQuestion = { list: Pick<ListSummary, "id" | "title" | "format">; item: ItemSummary };
+export type WaitingQuestion = OpenQuestionsPage["questions"][number];
 
 /**
- * SPEC 12.1: every open question across the lists the person writes. There is no single endpoint
- * for this, so it reads each list's compact summary (questions are in it for writers only).
+ * SPEC 12.1: open questions across every list the person can write, newest first, from
+ * GET /me/questions. The only place the web app reads them: /app and the count in the navigation.
  */
-export async function waitingQuestions(request: Request, lists?: ListSummary[]): Promise<WaitingQuestion[]> {
-  const mine = lists ?? (await api<ListSummary[]>(request, "/me/lists").catch(() => [] as ListSummary[]));
-  const pages = await Promise.all(
-    mine
-      .filter((l) => l.my_role === "owner" || l.my_role === "member")
-      .map((l) => api<ListSummaryPage>(request, `/lists/${encodeURIComponent(l.id)}/summary`).catch(() => null)),
-  );
-  const out: WaitingQuestion[] = [];
-  for (const page of pages) {
-    if (!page) continue;
-    for (const item of page.items) {
-      if (item.open_question) out.push({ list: { id: page.list.id, title: page.list.title, format: page.list.format }, item });
-    }
-  }
-  return out.sort((a, b) => b.item.open_question!.asked_at.localeCompare(a.item.open_question!.asked_at));
+export async function waitingQuestions(request: Request, limit = 50): Promise<{ questions: WaitingQuestion[]; count: number }> {
+  const page = await api<OpenQuestionsPage>(request, "/me/questions", { query: { limit } });
+  return { questions: page.questions, count: page.count };
+}
+
+/** Just the number, for the navigation badge (one small call). */
+export async function waitingCount(request: Request): Promise<number> {
+  return (await waitingQuestions(request, 1)).count;
 }

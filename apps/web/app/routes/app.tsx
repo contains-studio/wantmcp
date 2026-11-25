@@ -36,11 +36,11 @@ export async function loader({ request }: Route.LoaderArgs) {
     apiOptional<PendingInvite[]>(request, "/me/invites").then((r) => r ?? []),
   ]);
   // SPEC 12.1: every open question across the person's lists comes first on this page.
-  const waiting = await waitingQuestions(request, lists);
+  const { questions: waiting, count: waitingTotal } = await waitingQuestions(request).catch(() => ({ questions: [], count: 0 }));
   // First run: work out which getting-started steps are done.
   const firstRun = !listId && !cursor && feed.data.length === 0;
   const agentCount = firstRun ? (await api<AgentInfo[]>(request, "/me/agents").catch(() => [])).length : 0;
-  return data({ user, lists, feed, listId, cursor, invites, firstRun, agentCount, waiting }, { headers: { "Cache-Control": "private, no-store" } });
+  return data({ user, lists, feed, listId, cursor, invites, firstRun, agentCount, waiting, waitingTotal }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -81,7 +81,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AppHome({ loaderData }: Route.ComponentProps) {
-  const { user, lists, feed, listId, cursor, invites, firstRun, agentCount, waiting } = loaderData;
+  const { user, lists, feed, listId, cursor, invites, firstRun, agentCount, waiting, waitingTotal } = loaderData;
   const current = lists.find((l) => l.id === listId) ?? null;
 
   return (
@@ -89,7 +89,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
 
       <section aria-labelledby="feed-h" className="grid content-start gap-5">
         <h1 className="sr-only">My lists</h1>
-        {waiting.length > 0 && <WaitingOnYou waiting={waiting} />}
+        {waiting.length > 0 && <WaitingOnYou waiting={waiting} total={waitingTotal} />}
         {!user.bio && <BioPrompt />}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -496,25 +496,29 @@ function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCoun
  * SPEC 12.1: every open question across the person's lists, first on the page. Answering here posts
  * the answer and puts the item back to open.
  */
-function WaitingOnYou({ waiting }: { waiting: WaitingQuestion[] }) {
+function WaitingOnYou({ waiting, total }: { waiting: WaitingQuestion[]; total: number }) {
   return (
     <section aria-labelledby="waiting-h" className="grid gap-3">
       <h2 id="waiting-h" className="serif text-[1.75rem]">
-        Waiting on you <span className="font-sans text-[1rem] text-ink-3">{waiting.length}</span>
+        Waiting on you <span className="font-sans text-[1rem] text-ink-3">{total}</span>
       </h2>
       <ul className="grid gap-3">
-        {waiting.map((w) => (
-          <li key={w.item.open_question!.id} className="grid gap-2">
+        {waiting.map((q) => (
+          <li key={q.id} className="grid gap-2">
             <p className="text-[0.85rem] text-ink-3">
-              <Link to={`/l/${w.list.id}#${w.item.id}`} className="link font-medium text-ink">
-                {w.item.text}
+              <Link to={`/l/${q.list.id}#${q.item.id}`} className="link font-medium text-ink">
+                {q.item.text}
               </Link>{" "}
-              · {w.list.title}
+              · {q.list.title}
             </p>
-            <OwnerQuestion question={w.item.open_question} compact />
+            <OwnerQuestion
+              question={{ id: q.id, item_id: q.item.id, text: q.text, options: q.options, asked_by: q.asked_by, asked_at: q.asked_at, answer: null }}
+              compact
+            />
           </li>
         ))}
       </ul>
+      {total > waiting.length && <p className="text-[0.85rem] text-ink-3">Showing the newest {waiting.length}.</p>}
     </section>
   );
 }

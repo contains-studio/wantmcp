@@ -2,6 +2,7 @@ import type { EntryContext, RouterContextProvider } from "react-router";
 import { ServerRouter } from "react-router";
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
+import { webAnalyticsToken } from "./lib/config.server";
 
 export const streamTimeout = 5_000;
 
@@ -17,14 +18,16 @@ function makeNonce(): string {
  * Inline style attributes are allowed (agent tag colours, chart markers); style elements are not.
  */
 function contentSecurityPolicy(nonce: string, secure: boolean): string {
+  // Cloudflare Web Analytics, only when its token is set (see webAnalyticsToken).
+  const analytics = webAnalyticsToken() !== null;
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}'${analytics ? " https://static.cloudflareinsights.com" : ""}`,
     "style-src 'self'",
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' https: data:",
     "font-src 'self' data:", // Vite inlines small font subsets as data: URIs
-    "connect-src 'self'",
+    `connect-src 'self'${analytics ? " https://cloudflareinsights.com" : ""}`,
     "form-action 'self'",
     "frame-ancestors 'none'",
     "base-uri 'none'",

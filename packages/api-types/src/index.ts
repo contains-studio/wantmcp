@@ -427,3 +427,20 @@ export interface PurchaseInput {
 
 /** Targets of POST /reports. */
 export type ReportTargetType = "list" | "item" | "entry" | "comment";
+
+/** GET /v1/me/questions: open questions across every list the caller can write, newest first. */
+export interface OpenQuestionsPage {
+  questions: Array<{
+    id: string;
+    text: string;
+    /** [] when the answer is free text. */
+    options: string[];
+    asked_at: Timestamp;
+    asked_by: ActorRef;
+    item: { id: string; /** first 140 characters */ text: string; url: string };
+    list: { id: string; title: string; url: string };
+  }>;
+  /** Total open questions the caller can see, not the page size. */
+  count: number;
+  next_cursor: string | null;
+}

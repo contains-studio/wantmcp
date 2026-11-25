@@ -130,6 +130,13 @@ colour, type, shape, layout and decoration, never control sizes, label placement
 Workers Cache API. On any error they redirect to the static `public/og.png`. If you change the home card in
 `workers/og.tsx`, save a fresh render over `public/og.png` and bump the `?v=` in `app/routes/home.tsx`.
 
+## Errors
+
+Every request gets a short reference (`X-Request-Ref`). An error page shows it, and the Worker logs one JSON line
+per 5xx, per upstream API failure and per error that happened only in the browser (reported to `/telemetry/error`):
+the reference, the route pattern (never the path itself), the status, the build id and the API's request id when
+there is one. Lines are built in `app/lib/telemetry.ts` from an allowlist; `pnpm test` checks the redaction.
+
 ## Live updates
 
 The list page and `/app` poll `/live` every 15 seconds while the tab is visible. `/live` reads the API's events
@@ -139,7 +146,9 @@ log server-side (`/lists/{id}/events`, `/me/events`) and the page revalidates wh
 
 The production Worker is named `wantmcp-web` (a service name; the repository is `wantmcp`). Set `API_BASE_URL`, `SITE_ORIGIN` and `MCP_URL` in
 `wrangler.jsonc` (or as Worker variables), add the `WEB_PROXY_SECRET` secret, optionally set `SOURCE_URL` to show a
-"Source" link in the footer (hidden when unset), then, from `apps/web`:
+"Source" link in the footer (hidden when unset), optionally set `CF_WEB_ANALYTICS_TOKEN` to count page views on
+public pages with Cloudflare Web Analytics (no cookies; unset means no beacon and nothing extra in the CSP), then,
+from `apps/web`:
 
 ```sh
 pnpm run deploy    # pnpm build && wrangler deploy

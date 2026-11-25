@@ -29,3 +29,9 @@ export function sourceUrl(): string | null {
   const v = (env as unknown as Record<string, string | undefined>).SOURCE_URL;
   return v && /^https:\/\//.test(v) ? v : null;
 }
+
+/** Cloudflare Web Analytics (cookieless). Unset by default: no beacon and nothing extra in the CSP. */
+export function webAnalyticsToken(): string | null {
+  const v = (env as unknown as Record<string, string | undefined>).CF_WEB_ANALYTICS_TOKEN;
+  return v && /^[A-Za-z0-9]{16,64}$/.test(v) ? v : null;
+}

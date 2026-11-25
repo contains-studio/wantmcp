@@ -153,7 +153,15 @@ export function ItemIndex({
               return (
                 <li key={item.id} className={`ix-row ${st === "done" ? "is-done" : ""}`}>
                   <span className="ix-tick">
-                    <ChecklistBox itemId={item.id} text={item.text} bought={st === "done"} canWrite={isWriter} shopping={shopping} doneWord={fi.done} />
+                    <ChecklistBox
+                      itemId={item.id}
+                      text={item.text}
+                      bought={st === "done"}
+                      canWrite={isWriter}
+                      shopping={shopping}
+                      doneWord={fi.done}
+                      waiting={st === "waiting_on_owner"}
+                    />
                   </span>
                   <a href={`#${item.id}`} className="ix-link">
                     <span className="ix-title">{item.text}</span>

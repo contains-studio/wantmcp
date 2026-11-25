@@ -76,3 +76,6 @@ export default function Terms() {
     </LegalPage>
   );
 }
+
+/** Cloudflare Web Analytics may count views of this page (root.tsx, AnalyticsBeacon). */
+export const handle = { analytics: true };

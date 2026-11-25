@@ -11,7 +11,7 @@
  */
 import type {
   ActorRef, AgentInfo, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
-  ItemSummary, ListSummaryPage, Member, Page, PriceInput, PriceObservation, PriceSource, PurchaseInput, Question, UserSelf, WantEvent,
+  ItemSummary, ListSummaryPage, Member, OpenQuestionsPage, Page, PriceInput, PriceObservation, PriceSource, PurchaseInput, Question, UserSelf, WantEvent,
 } from "../app/lib/types.ts";
 import { seedStore } from "./seed.ts";
 import { newId, randomToken, type AgentRow, type EntryRow, type ItemRow, type ListRow, type Store, type UserRow } from "./store.ts";
@@ -900,6 +900,31 @@ function bestPrice(itemId: string) {
   const best = pool.filter((p) => p.currency === cur).sort((a, b) => Number(a.price) - Number(b.price))[0];
   return { entry_id: best.entry_id, price: best.price, currency: best.currency, source: best.source, verified: best.verified, checked_at: best.checked_at };
 }
+
+/** Open questions across every list the caller can write, newest first (count is the total). */
+route("GET", "/me/questions", ({ caller, url }) => {
+  if (!caller) throw unauthorized();
+  const rows = store.questions
+    .filter((q) => !q.answer)
+    .map((q) => ({ q, item: store.items.find((i) => i.id === q.item_id) }))
+    .filter((r): r is { q: Question; item: ItemRow } => !!r.item && canWrite(caller, r.item.list_id))
+    .sort((a, b) => b.q.asked_at.localeCompare(a.q.asked_at));
+  const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? "50", 10) || 50));
+  const start = Math.max(0, parseInt(url.searchParams.get("cursor") ?? "0", 10) || 0);
+  const page: OpenQuestionsPage = {
+    questions: rows.slice(start, start + limit).map(({ q, item }) => {
+      const l = getList(item.list_id);
+      return {
+        id: q.id, text: q.text, options: q.options, asked_at: q.asked_at, asked_by: q.asked_by,
+        item: { id: item.id, text: item.text.slice(0, 140), url: `${WEB}/l/${l.id}#${item.id}` },
+        list: { id: l.id, title: l.title, url: `${WEB}/l/${l.id}` },
+      };
+    }),
+    count: rows.length,
+    next_cursor: start + limit < rows.length ? String(start + limit) : null,
+  };
+  return page;
+});
 
 route("GET", "/lists/{id}/summary", ({ caller, params }) => {
   const l = readableList(params[0], caller);

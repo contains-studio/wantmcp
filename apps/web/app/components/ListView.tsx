@@ -291,7 +291,15 @@ function ItemSection({
       <header className="grid gap-2">
         <div className="flex items-start gap-3">
           {checklist ? (
-            <ChecklistBox itemId={item.id} text={item.text} bought={done} canWrite={isWriter} shopping={shopping} doneWord={fi.done} />
+            <ChecklistBox
+              itemId={item.id}
+              text={item.text}
+              bought={done}
+              canWrite={isWriter}
+              shopping={shopping}
+              doneWord={fi.done}
+              waiting={status === "waiting_on_owner"}
+            />
           ) : (
             n !== undefined && (
               <span aria-hidden="true" className="item-number mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink font-display text-sm font-semibold text-paper">
@@ -746,11 +754,30 @@ export function DetailsPrompt({ itemId, fi, onDone }: { itemId: string; fi: Form
   );
 }
 
-export function ChecklistBox({ itemId, text, bought, canWrite, shopping, doneWord }: { itemId: string; text: string; bought: boolean; canWrite: boolean; shopping: boolean; doneWord: string }) {
-  const fetcher = useFetcher();
-  const pending = fetcher.formData?.get("intent");
-  const pendingStatus = fetcher.formData?.get("status");
-  const checked = pending ? pending === "purchase" || pendingStatus === "done" : bought;
+export function ChecklistBox({
+  itemId,
+  text,
+  bought,
+  canWrite,
+  shopping,
+  doneWord,
+  waiting = false,
+}: {
+  itemId: string;
+  text: string;
+  bought: boolean;
+  canWrite: boolean;
+  shopping: boolean;
+  doneWord: string;
+  /** The item has an open question: the server will refuse to finish it until it's answered. */
+  waiting?: boolean;
+}) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  // No optimistic tick: the box shows what the server says. A refusal (an open question, a claim)
+  // comes back as an error, shown next to the box with a way to the question.
+  const checked = bought;
+  const error = fetcher.state === "idle" ? fetcher.data?.error : undefined;
   if (!canWrite) {
     return (
       <span className={`check-toggle ${checked ? "is-checked" : ""}`} aria-hidden="true">
@@ -759,7 +786,7 @@ export function ChecklistBox({ itemId, text, bought, canWrite, shopping, doneWor
     );
   }
   return (
-    <fetcher.Form method="post">
+    <fetcher.Form method="post" className="relative">
       {shopping ? (
         <input type="hidden" name="intent" value={checked ? "unpurchase" : "purchase"} />
       ) : (
@@ -773,12 +800,23 @@ export function ChecklistBox({ itemId, text, bought, canWrite, shopping, doneWor
         type="submit"
         role="checkbox"
         aria-checked={checked}
+        aria-busy={busy || undefined}
         aria-label={`${doneWord[0].toUpperCase()}${doneWord.slice(1)}: ${text}`}
-        className="check-toggle"
-        disabled={fetcher.state !== "idle"}
+        className={`check-toggle ${busy ? "opacity-60" : ""}`}
+        disabled={busy}
       >
         {checked ? "✓" : ""}
       </button>
+      {error && (
+        <p role="alert" className="check-refusal">
+          {error}{" "}
+          {waiting && (
+            <a href={`#${itemId}`} className="link font-medium">
+              Answer the question
+            </a>
+          )}
+        </p>
+      )}
     </fetcher.Form>
   );
 }

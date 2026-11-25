@@ -742,3 +742,9 @@ button.check-toggle:hover { border-color: var(--want); }
 }
 /* A price nobody has checked today: muted, and it says so in words. */
 tr.is-stale .price { color: var(--ink-3); }
+/* The server refused a tick (for example, a question is waiting): say why, next to the box. */
+.check-refusal {
+  position: absolute; z-index: 5; left: 0; top: calc(100% + 0.35rem); width: max-content; max-width: min(22rem, 80vw);
+  padding: 0.5rem 0.65rem; border: 1px solid var(--danger); border-radius: 4px; background: var(--card); color: var(--ink);
+  font-size: 0.85rem; line-height: 1.35;
+}

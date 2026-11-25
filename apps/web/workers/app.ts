@@ -1,4 +1,6 @@
 import { createRequestHandler } from "react-router";
+import { errorLine, newRef } from "../app/lib/telemetry";
+import { requestTrace } from "../app/lib/trace.server";
 
 const requestHandler = createRequestHandler(() => import("virtual:react-router/server-build"), import.meta.env.MODE);
 
@@ -73,8 +75,33 @@ export default {
       const mcpOrigin = new URL(env.MCP_URL || "https://mcp.wantmcp.com/mcp").origin;
       return Response.redirect(`${mcpOrigin}/.well-known/ai-catalog.json`, 302);
     }
-    const response = await requestHandler(request);
+    // Client-side errors report here with their reference; the line is built from an allowlist.
+    if (url.pathname === "/telemetry/error" && request.method === "POST") {
+      const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+      if (body) {
+        console.log(
+          errorLine({
+            kind: "client_error",
+            ref: String(body.ref ?? ""),
+            route: String(body.route ?? ""),
+            status: Number(body.status ?? 0),
+            build: __BUILD_ID__,
+            name: typeof body.name === "string" ? body.name : null,
+          }),
+        );
+      }
+      return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+    }
+    // Every request gets a short reference; error pages show it and the log line carries it.
+    const trace = { ref: newRef(), upstreamRequestId: null as string | null };
+    const response = await requestTrace.run(trace, () => requestHandler(request));
     const res = new Response(response.body, response);
+    res.headers.set("X-Request-Ref", trace.ref);
+    if (res.status >= 500) {
+      console.error(
+        errorLine({ kind: "server_error", ref: trace.ref, route: url.pathname, status: res.status, build: __BUILD_ID__, upstream_request_id: trace.upstreamRequestId }),
+      );
+    }
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (!res.headers.has(k)) res.headers.set(k, v);
     if (NOINDEX.test(url.pathname) || res.status === 404) res.headers.set("X-Robots-Tag", "noindex");
     // Lets an open tab notice it is running an older build than the server (app/lib/build.ts).

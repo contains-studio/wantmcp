@@ -2,6 +2,8 @@ import { redirect } from "react-router";
 import { apiBaseUrl, proxySecret } from "./config.server";
 import { getSessionToken } from "./session.server";
 import type { ApiError as ApiErrorBody, ErrorCode } from "./types";
+import { errorLine } from "./telemetry";
+import { currentTrace } from "./trace.server";
 
 export class ApiError extends Error {
   status: number;
@@ -74,7 +76,7 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
       }),
     );
   } catch (err) {
-    console.error("API unreachable", url.pathname, err);
+    console.error(errorLine({ kind: "upstream_error", ref: currentTrace()?.ref ?? "", route: url.pathname, status: 503, build: __BUILD_ID__, code: "network" }));
     throw new ApiError(503, "network", "We couldn't reach the Want MCP API. Try again in a moment.");
   }
   // A stale session cookie (expired, signed out elsewhere, account deleted) must not break
@@ -84,6 +86,17 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
     return api<T>(request, path, { ...init, anonymous: true });
   }
   init.onHeaders?.(res.headers);
+  if (!res.ok && res.status !== 401) {
+    // One line per upstream failure, with the API's own request id so the two logs can be joined.
+    const trace = currentTrace();
+    const upstream = res.headers.get("x-request-id");
+    if (trace && upstream) trace.upstreamRequestId = upstream;
+    if (res.status >= 500 || res.status === 429) {
+      console.error(
+        errorLine({ kind: "upstream_error", ref: trace?.ref ?? "", route: url.pathname, status: res.status, build: __BUILD_ID__, upstream_request_id: upstream }),
+      );
+    }
+  }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   let data: unknown = null;
