@@ -63,8 +63,9 @@ tasks and Doc for research.
 Chrome is not content. Before any item, a person should read only what tells them something.
 
 1. **A list header is two rows at most**, in every layout, on every screen. Row 1 is the title
-   with its actions at the right end as icon-only buttons (copy link, settings; report for
-   visitors), each with an accessible name, a tooltip and a full touch target. Row 2 is one quiet
+   with its actions at the right end (Share, Settings; Report for visitors): icon and word
+   from 640px up, the icon alone on phones, each with an accessible name, a tooltip and a full
+   touch target. Row 2 is one quiet
    line: a lock and "Private" only when the list is private, then the counts ("1 open · 2
    products"). Visitors also see "by handle", and "updated …" when it is older than a day.
 2. **No labels for what the content already shows.** No format word ("Shopping") over a list of
@@ -73,8 +74,12 @@ Chrome is not content. Before any item, a person should read only what tells the
 3. **No decoration that reads as text.** A layout may draw a grid or a rule; it may not print
    fake cell names, column letters or "fx".
 4. **"Added by" only when it tells the owner something**: an agent or another person added it.
-5. **Hints are one short line or none.** A control that explains itself gets no paragraph.
-6. **Trust stays.** Who posted a price, when it was checked, its source and "unverified", the
+5. **An icon may replace a word only when the icon is a convention people already know** (share,
+   a cog for settings, a flag for report, sun and moon for appearance, ⋯ for more). Otherwise keep
+   the word. Toolbar actions show icon and word from 640px up; on phones the icon alone, with the
+   word as its accessible name and title.
+6. **Hints are one short line or none.** A control that explains itself gets no paragraph.
+7. **Trust stays.** Who posted a price, when it was checked, its source and "unverified", the
    agent's name on an entry and the private marker are never cut. On a phone, what doesn't fit
    (retailer, coupon, source) moves behind the row, not off the page.
 

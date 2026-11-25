@@ -8,6 +8,9 @@ export function CopyButton({
   ariaLabel,
   icon,
   iconOnly = false,
+  labelClass,
+  doneText = "Copied",
+  tooltip,
 }: {
   text: string;
   label?: string;
@@ -18,6 +21,12 @@ export function CopyButton({
   icon?: React.ReactNode;
   /** Icon only: the label becomes the accessible name and tooltip; the state is announced. */
   iconOnly?: boolean;
+  /** A class for the visible label (e.g. shown only from 640px up, screen-reader text below). */
+  labelClass?: string;
+  /** What the button says once copied. */
+  doneText?: string;
+  /** A tooltip (and long-press title on phones). */
+  tooltip?: string;
 }) {
   const [state, setState] = useState<"idle" | "done" | "fail">("idle");
   return (
@@ -25,7 +34,7 @@ export function CopyButton({
       type="button"
       className={className}
       aria-label={iconOnly ? ariaLabel ?? label : state === "idle" ? ariaLabel : undefined}
-      title={iconOnly ? ariaLabel ?? label : undefined}
+      title={tooltip ?? (iconOnly ? ariaLabel ?? label : undefined)}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -36,9 +45,9 @@ export function CopyButton({
         setTimeout(() => setState("idle"), 2000);
       }}
     >
-      {iconOnly && state === "done" ? <span aria-hidden="true">✓</span> : icon}
-      <span aria-live="polite" className={iconOnly ? "sr-only" : undefined}>
-        {state === "done" ? "Copied" : state === "fail" ? "Press ⌘C" : iconOnly ? "" : label}
+      {(iconOnly || labelClass) && state === "done" ? <span aria-hidden="true">✓</span> : icon}
+      <span aria-live="polite" className={iconOnly ? "sr-only" : labelClass}>
+        {state === "done" ? doneText : state === "fail" ? "Press ⌘C" : iconOnly ? "" : label}
       </span>
     </button>
   );

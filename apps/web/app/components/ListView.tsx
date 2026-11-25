@@ -118,10 +118,11 @@ export function ListView(props: ListViewProps) {
             </H1>
             {!preview && (
               <div role="toolbar" aria-label="List" className="list-actions">
-                <CopyButton text={listUrl} label="Copy link" ariaLabel="Copy link to this list" iconOnly className="btn-icon" icon={<Icon name="link" />} />
+                <CopyButton text={listUrl} label="Share" labelClass="btn-tool-label" doneText="Link copied" tooltip="Copy link" className="btn-tool" icon={<Icon name="share" />} />
                 {isWriter && (
-                  <Link to={`/app/lists/${list.id}/settings`} className="btn-icon" aria-label="List settings" title="List settings">
+                  <Link to={`/app/lists/${list.id}/settings`} className="btn-tool" title="List settings">
                     <Icon name="gear" />
+                    <span className="btn-tool-label">Settings</span>
                   </Link>
                 )}
                 {!isWriter && !isPrivate && <ReportLink type="list" id={list.id} label="Report" />}

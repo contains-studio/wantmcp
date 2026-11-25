@@ -66,9 +66,16 @@ export function ReportLink({ type, id, label = "Report" }: { type: ReportTargetT
     <Menu
       label={`${label} this ${type}`}
       wide
-      iconTrigger
-      triggerClass="btn-icon"
-      trigger={<Icon name="flag" />}
+      triggerClass="btn-tool"
+      trigger={
+        <>
+          <Icon name="flag" />
+          <span className="btn-tool-label">
+            {label}
+            <span className="sr-only"> this {type}</span>
+          </span>
+        </>
+      }
     >
       <div className="p-3">
         <ReportForm type={type} id={id} />

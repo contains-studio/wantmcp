@@ -76,7 +76,7 @@ function ThemeToggle() {
   const pending = fetcher.formData?.get("theme") as string | undefined;
   const current = pending ?? theme;
   const next = current === "system" ? "dark" : current === "dark" ? "light" : "system";
-  const label = current === "system" ? "Appearance: system" : current === "dark" ? "Appearance: dark" : "Appearance: light";
+  const label = current === "system" ? "Appearance: match device" : current === "dark" ? "Appearance: dark" : "Appearance: light";
 
   if (typeof document !== "undefined" && pending) {
     if (pending === "system") document.documentElement.removeAttribute("data-theme");
@@ -100,9 +100,10 @@ function ThemeToggle() {
               <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
             </g>
           ) : (
-            <g>
-              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-              <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" />
+            // "Match my device": the familiar monitor glyph, not a half-filled circle nobody can name.
+            <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="12" rx="2" />
+              <path d="M8 20h8M12 16v4" />
             </g>
           )}
         </svg>

@@ -13,17 +13,28 @@ function useSafeId(prefix: string) {
   return `${prefix}-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 }
 
+/** Only glyphs people already know (docs/design-standards.md): share, a cog, a flag, a plus. */
 const ICONS = {
-  link: "M6.5 9.5l3-3M7 4.5l1-1a2.5 2.5 0 0 1 3.5 3.5l-1 1M9 11.5l-1 1A2.5 2.5 0 0 1 4.5 9l1-1",
-  gear: "M8 5.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8zM8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1",
-  flag: "M3.5 14V2.5M3.5 3h8l-1.8 3 1.8 3h-8",
-  plus: "M8 3v10M3 8h10",
+  // The share convention: a tray with an arrow leaving it upward.
+  share: { d: "M5.5 6.5H4.5A1.5 1.5 0 0 0 3 8v5.5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5V8a1.5 1.5 0 0 0-1.5-1.5h-1M8 10V1.5M5.25 4.25 8 1.5l2.75 2.75", fill: false },
+  // A cog with eight square teeth and a centre hole, drawn solid so it can't read as a sun.
+  gear: {
+    d: "M13.05 6.10 L15.06 6.57 L15.06 9.43 L13.05 9.90 L12.92 10.23 L14.00 11.98 L11.98 14.00 L10.23 12.92 L9.90 13.05 L9.43 15.06 L6.57 15.06 L6.10 13.05 L5.77 12.92 L4.02 14.00 L2.00 11.98 L3.08 10.23 L2.95 9.90 L0.94 9.43 L0.94 6.57 L2.95 6.10 L3.08 5.77 L2.00 4.02 L4.02 2.00 L5.77 3.08 L6.10 2.95 L6.57 0.94 L9.43 0.94 L9.90 2.95 L10.23 3.08 L11.98 2.00 L14.00 4.02 L12.92 5.77Z M10.20 8 A2.2 2.2 0 1 0 5.80 8 A2.2 2.2 0 1 0 10.20 8Z",
+    fill: true,
+  },
+  flag: { d: "M3.5 14V2.5M3.5 3h8l-1.8 3 1.8 3h-8", fill: false },
+  plus: { d: "M8 3v10M3 8h10", fill: false },
 } as const;
 
 export function Icon({ name }: { name: keyof typeof ICONS }) {
+  const { d, fill } = ICONS[name];
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d={ICONS[name]} />
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0">
+      {fill ? (
+        <path d={d} fill="currentColor" fillRule="evenodd" />
+      ) : (
+        <path d={d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      )}
     </svg>
   );
 }

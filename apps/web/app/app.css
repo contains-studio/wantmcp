@@ -594,6 +594,20 @@ button.check-toggle:hover { border-color: var(--ink); }
   }
   .btn-icon:hover { background: color-mix(in srgb, currentColor 9%, transparent); }
   .btn-icon svg { width: 18px; height: 18px; }
+  /* Toolbar actions: icon and word side by side from 640px up; on phones the icon alone, with the
+     word kept for screen readers and a title for long-press. */
+  .btn-tool {
+    position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-width: var(--ctl-sm); min-height: var(--ctl-sm);
+    padding: 0 0.5rem; border: 0; border-radius: 980px; background: transparent; color: inherit; font: inherit; font-size: 0.875rem;
+    font-weight: 500; line-height: 1.2; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background 120ms ease;
+  }
+  .btn-tool:hover { background: color-mix(in srgb, currentColor 9%, transparent); }
+  .btn-tool svg { width: 18px; height: 18px; }
+  .btn-tool-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (min-width: 640px) {
+    .btn-tool { padding: 0 0.7rem; }
+    .btn-tool-label { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  }
   /* An item's actions: at the right end of its title row. */
   .item-actions { display: inline-flex; flex: none; align-items: center; gap: 0.25rem; margin-left: auto; margin-top: -0.3rem; }
 
@@ -642,6 +656,7 @@ button.check-toggle:hover { border-color: var(--ink); }
     .textlink-btn { min-height: var(--ctl); }
     .btn-quiet, .menu-trigger, .menu-item, .add-link, .textarea.textarea-grow { min-height: var(--ctl); }
     .btn-icon { width: var(--ctl); height: var(--ctl); }
+    .btn-tool { min-width: var(--ctl); min-height: var(--ctl); }
     .menu-trigger { min-width: var(--ctl); }
   }
 
