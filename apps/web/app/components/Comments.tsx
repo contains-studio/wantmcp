@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
 import type { Comment } from "~/lib/types";
+import { Menu, MenuRemove } from "./Actions";
 import { ActorTag } from "./ActorTag";
 import { Linkify } from "./ExtLink";
-import { ReportLink } from "./Report";
+import { ReportMenuItem } from "./Report";
 import { Time } from "./Time";
 
 export function CommentList({
@@ -21,9 +22,11 @@ export function CommentList({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <ActorTag actor={c.author} compact />
             <Time ts={c.created_at} className="text-[0.78rem] text-ink-3" />
-            <span className="ml-auto flex items-center gap-3">
-              {canDelete?.(c) && <DeleteComment id={c.id} />}
-              <ReportLink type="comment" id={c.id} />
+            <span className="ml-auto">
+              <Menu label="More actions for this comment">
+                <ReportMenuItem type="comment" id={c.id} />
+                {canDelete?.(c) && <MenuRemove intent="delete-comment" fields={{ comment_id: c.id }} label="Delete" confirmText="Delete this comment?" />}
+              </Menu>
             </span>
           </div>
           <p className="mt-1 whitespace-pre-line break-words text-[0.92rem] text-ink-2">
@@ -35,25 +38,7 @@ export function CommentList({
   );
 }
 
-function DeleteComment({ id }: { id: string }) {
-  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
-  return (
-    <fetcher.Form method="post" onSubmit={(e) => !confirm("Delete this comment?") && e.preventDefault()}>
-      <input type="hidden" name="intent" value="delete-comment" />
-      <input type="hidden" name="comment_id" value={id} />
-      <button className="textlink-btn text-[0.78rem]" disabled={fetcher.state !== "idle"}>
-        {fetcher.state !== "idle" ? "Deleting…" : "Delete"}
-        <span className="sr-only"> comment</span>
-      </button>
-      {fetcher.data?.error && (
-        <span className="ml-2 text-[0.78rem] text-danger" role="alert">
-          {fetcher.data.error}
-        </span>
-      )}
-    </fetcher.Form>
-  );
-}
-
+/** One line that grows as you type, with a small plain Post button. */
 export function CommentForm({ targetType, targetId, label }: { targetType: "item" | "entry"; targetId: string; label: string }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const ref = useRef<HTMLFormElement>(null);
@@ -70,8 +55,8 @@ export function CommentForm({ targetType, targetId, label }: { targetType: "item
         {label}
       </label>
       <div className="flex items-end gap-2">
-        <textarea id={inputId} name="body" required maxLength={1000} rows={1} placeholder={label} className="textarea min-h-11 flex-1 py-2" />
-        <button className="btn" disabled={fetcher.state !== "idle"}>
+        <textarea id={inputId} name="body" required maxLength={1000} rows={1} placeholder={label} className="textarea textarea-grow flex-1" />
+        <button className="btn btn-ghost btn-sm" disabled={fetcher.state !== "idle"}>
           {fetcher.state !== "idle" ? "Posting…" : "Post"}
         </button>
       </div>

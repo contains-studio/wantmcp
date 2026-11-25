@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import { useFetcher } from "react-router";
 import type { ActorRef, Entry, Item, UserSelf } from "~/lib/types";
+import { Menu, useCloseOnDone } from "./Actions";
 
 /** Result shape of the writer intents in `intents.server.ts`. */
 export type IntentResult = { ok?: boolean; intent?: string; error?: string; code?: string; details?: unknown };
@@ -29,7 +30,14 @@ function openPricePanel(entryId: string) {
   for (let el: HTMLElement | null = panel; el; el = el.parentElement) {
     if (el instanceof HTMLDetailsElement) el.open = true;
   }
-  (panel ?? document.getElementById(entryId))?.scrollIntoView({ behavior: "smooth", block: "center" });
+  // The price form lives in the entry's "⋯" menu: scroll to the entry, then open the menu.
+  document.getElementById(entryId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const pop = panel?.closest("[popover]") as (HTMLElement & { showPopover?: () => void }) | null;
+  try {
+    pop?.showPopover?.();
+  } catch {
+    // already open
+  }
   setTimeout(() => panel?.querySelector<HTMLInputElement>("input[name=price]")?.focus(), 400);
 }
 
@@ -147,7 +155,7 @@ export function EntryForm({ itemId, entry, onDone }: { itemId: string; entry?: E
       </label>
       <FormError result={fetcher.data} />
       <div className="flex gap-2 sm:col-span-2">
-        <button className="btn btn-sm" disabled={busy}>
+        <button className="btn btn-ghost btn-sm" disabled={busy}>
           {busy ? "Saving…" : editing ? "Save changes" : "Add product"}
         </button>
       </div>
@@ -188,7 +196,7 @@ export function PostPrice({ entry }: { entry: Entry }) {
         <input id={`${uid}-n`} name="note" maxLength={200} placeholder="e.g. Black Friday price" className="input" />
       </label>
       <div className="flex items-center gap-2" aria-live="polite">
-        <button className="btn btn-sm" disabled={fetcher.state !== "idle"}>
+        <button className="btn btn-ghost btn-sm" disabled={fetcher.state !== "idle"}>
           {fetcher.state !== "idle" ? "Posting…" : "Post price"}
         </button>
         {done && <span className="text-[0.82rem] text-deal">Posted.</span>}
@@ -197,33 +205,6 @@ export function PostPrice({ entry }: { entry: Entry }) {
         <p className="form-error" role="alert">
           {fetcher.data.error}
         </p>
-      )}
-    </fetcher.Form>
-  );
-}
-
-/** A small destructive button with a confirm step. */
-export function RemoveButton({ intent, fields, label, confirmText }: { intent: string; fields: Record<string, string>; label: string; confirmText: string }) {
-  const fetcher = useFetcher<IntentResult>();
-  return (
-    <fetcher.Form
-      method="post"
-      onSubmit={(e) => {
-        if (!confirm(confirmText)) e.preventDefault();
-      }}
-      className="inline"
-    >
-      <input type="hidden" name="intent" value={intent} />
-      {Object.entries(fields).map(([k, v]) => (
-        <input key={k} type="hidden" name={k} value={v} />
-      ))}
-      <button className="textlink-btn text-[0.8rem] text-danger" disabled={fetcher.state !== "idle"}>
-        {fetcher.state !== "idle" ? "Removing…" : label}
-      </button>
-      {fetcher.data?.error && (
-        <span className="ml-2 text-[0.8rem] text-danger" role="alert">
-          {fetcher.data.error}
-        </span>
       )}
     </fetcher.Form>
   );
@@ -244,7 +225,7 @@ export function EditItem({ item, onDone, label = "What do you want?" }: { item: 
       <label htmlFor={`${uid}-t`} className="sr-only">
         {label}
       </label>
-      <textarea id={`${uid}-t`} name="text" required maxLength={500} defaultValue={item.text} className="textarea min-h-16" autoFocus />
+      <textarea id={`${uid}-t`} name="text" required maxLength={500} defaultValue={item.text} className="textarea min-h-16" />
       <label htmlFor={`${uid}-d`} className="field">
         <span className="label">Details (optional)</span>
         <textarea id={`${uid}-d`} name="details" maxLength={2000} defaultValue={item.details ?? ""} className="textarea min-h-16" />
@@ -253,14 +234,9 @@ export function EditItem({ item, onDone, label = "What do you want?" }: { item: 
         <span className="label">Due date (optional)</span>
         <input id={`${uid}-due`} name="due_at" type="date" defaultValue={item.due_at ? item.due_at.slice(0, 10) : ""} className="input" />
       </label>
-      <div className="flex gap-2">
-        <button className="btn btn-sm" disabled={fetcher.state !== "idle"}>
-          {fetcher.state !== "idle" ? "Saving…" : "Save"}
-        </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onDone}>
-          Cancel
-        </button>
-      </div>
+      <button className="btn btn-ghost btn-sm w-fit" disabled={fetcher.state !== "idle"}>
+        {fetcher.state !== "idle" ? "Saving…" : "Save"}
+      </button>
       {fetcher.data?.error && (
         <p className="form-error" role="alert">
           {fetcher.data.error}
@@ -270,40 +246,51 @@ export function EditItem({ item, onDone, label = "What do you want?" }: { item: 
   );
 }
 
-/** Mark an item bought without picking a listed product, optionally recording where and for how much. */
-export function MarkBoughtElsewhere({ itemId }: { itemId: string }) {
+/** The "Mark bought" form: optionally where and for how much. */
+export function MarkBoughtForm({ itemId }: { itemId: string }) {
   const fetcher = useFetcher<IntentResult>();
+  const ref = useCloseOnDone(fetcher);
   const uid = useId();
   return (
-    <details className="w-full sm:w-auto">
-      <summary className="btn btn-ghost btn-xs w-fit">Mark bought</summary>
-      <fetcher.Form method="post" className="card mt-2 grid gap-2 p-3 sm:w-[26rem]">
-        <input type="hidden" name="intent" value="purchase" />
-        <input type="hidden" name="item_id" value={itemId} />
-        <p className="text-[0.85rem] text-ink-2">Bought one of the products below? Use its “Bought this” button. Otherwise, optionally say where:</p>
-        <div className="grid grid-cols-[1fr_6rem_6rem] items-end gap-2">
-          <label className="field" htmlFor={`${uid}-r`}>
-            <span className="label">Retailer</span>
-            <input id={`${uid}-r`} name="retailer" maxLength={80} className="input" />
-          </label>
-          <label className="field" htmlFor={`${uid}-p`}>
-            <span className="label">Price</span>
-            <input id={`${uid}-p`} name="price" inputMode="decimal" pattern="\d+(\.\d{1,2})?" className="input" />
-          </label>
-          <label className="field" htmlFor={`${uid}-c`}>
-            <span className="label">Currency</span>
-            <input id={`${uid}-c`} name="currency" defaultValue="GBP" maxLength={3} pattern="[A-Za-z]{3}" className="input px-2 uppercase" />
-          </label>
+    <fetcher.Form method="post" ref={ref} className="grid gap-2">
+      <input type="hidden" name="intent" value="purchase" />
+      <input type="hidden" name="item_id" value={itemId} />
+      <p className="text-[0.85rem] text-ink-2">Bought one of the products? Use its “Bought this”. Otherwise, optionally say where:</p>
+      <div className="grid grid-cols-[1fr_6rem_5rem] items-end gap-2">
+        <label className="field" htmlFor={`${uid}-r`}>
+          <span className="label">Retailer</span>
+          <input id={`${uid}-r`} name="retailer" maxLength={80} className="input" />
+        </label>
+        <label className="field" htmlFor={`${uid}-p`}>
+          <span className="label">Price</span>
+          <input id={`${uid}-p`} name="price" inputMode="decimal" pattern="\d+(\.\d{1,2})?" className="input" />
+        </label>
+        <label className="field" htmlFor={`${uid}-c`}>
+          <span className="label">Currency</span>
+          <input id={`${uid}-c`} name="currency" defaultValue="GBP" maxLength={3} pattern="[A-Za-z]{3}" className="input px-2 uppercase" />
+        </label>
+      </div>
+      <button className="btn btn-ghost btn-sm w-fit" disabled={fetcher.state !== "idle"}>
+        {fetcher.state !== "idle" ? "Saving…" : "Mark bought"}
+      </button>
+      {fetcher.data?.error && (
+        <p className="form-error" role="alert">
+          {fetcher.data.error}
+        </p>
+      )}
+    </fetcher.Form>
+  );
+}
+
+/** "Mark bought" as a quiet action at the right end of an item's title row (wider screens). */
+export function MarkBoughtElsewhere({ itemId, itemText }: { itemId: string; itemText: string }) {
+  return (
+    <span className="hidden sm:inline-flex">
+      <Menu label={`Mark “${itemText.slice(0, 60)}” bought`} wide triggerClass="btn-quiet" trigger="Mark bought">
+        <div className="p-3">
+          <MarkBoughtForm itemId={itemId} />
         </div>
-        <button className="btn btn-sm w-fit" disabled={fetcher.state !== "idle"}>
-          {fetcher.state !== "idle" ? "Saving…" : "Mark bought"}
-        </button>
-        {fetcher.data?.error && (
-          <p className="form-error" role="alert">
-            {fetcher.data.error}
-          </p>
-        )}
-      </fetcher.Form>
-    </details>
+      </Menu>
+    </span>
   );
 }

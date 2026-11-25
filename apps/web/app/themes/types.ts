@@ -64,7 +64,7 @@ export type FontKey = keyof typeof FONTS;
 export type Layout = "grid" | "list" | "rows" | "board" | "sheet" | "sections" | "heat";
 
 /** Generic style switches defined once in app.css (`.t-<trait>`). */
-export type Trait = "serif-display" | "upper-display" | "italic-display" | "soft" | "mono-meta" | "dense" | "roomy" | "checklist" | "fab";
+export type Trait = "serif-display" | "upper-display" | "italic-display" | "soft" | "mono-meta" | "dense" | "roomy" | "checklist";
 
 /** An extra contrast pair the theme's stylesheet relies on (text over a gradient, a backdrop…). */
 export interface ContrastPair {

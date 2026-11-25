@@ -8,10 +8,11 @@ import { CopyButton } from "./CopyButton";
 import { ExtLink } from "./ExtLink";
 import { PriceSparkline, PriceTable } from "./PriceHistory";
 import { ProductImage } from "./ProductImage";
-import { ReportLink } from "./Report";
+import { ReportMenuItem } from "./Report";
+import { Menu, MenuRemove, MenuSub } from "./Actions";
 import { Provenance } from "./Provenance";
 import { Time } from "./Time";
-import { EntryForm, PostPrice, RemoveButton } from "./WriteTools";
+import { EntryForm, PostPrice } from "./WriteTools";
 
 export function PriceBlock({ price, size = "lg" }: { price: PriceObservation | null; size?: "lg" | "md" }) {
   if (!price) return <p className="text-sm text-ink-3">No price yet</p>;
@@ -72,7 +73,7 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
       aria-labelledby={titleId}
       className={`entry-card card relative grid scroll-mt-24 grid-cols-[6.5rem_1fr] content-start gap-3 p-3 sm:grid-cols-1 sm:grid-rows-[auto_1fr_auto] sm:gap-0 sm:p-0 ${
         boughtThis ? "outline-2 outline-deal" : ""
-      } ${isLowest && !itemPurchased ? "ring-2 ring-want" : ""}`}
+      } ${isLowest && !itemPurchased ? "ring-1 ring-ink" : ""}`}
     >
       <div className="sm:p-3 sm:pb-0">
         <ProductImage src={entry.image_url} alt={entry.title} eager={eagerImage} />
@@ -104,7 +105,7 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
               <span className="coupon">
                 <span className="sr-only">Coupon code </span>
                 {entry.coupon_code}
-                <CopyButton text={entry.coupon_code} label="Copy" className="rounded-[0.35rem] bg-want px-1.5 py-0.5 text-[0.7rem] font-bold text-want-ink" />
+                <CopyButton text={entry.coupon_code} label="Copy" ariaLabel={`Copy coupon code ${entry.coupon_code}`} className="textlink-btn text-[0.75rem]" />
               </span>
             )}
             <DealBadge entry={entry} />
@@ -125,70 +126,69 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
           )}
         </div>
 
-        <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-line pt-2">
+        <div className="mt-auto flex flex-wrap items-center gap-1 border-t border-line pt-2">
           {entry.buy_url && (
-            <ExtLink href={entry.buy_url} className="btn btn-want btn-xs">
+            <ExtLink href={entry.buy_url} className="btn-quiet">
               Buy<span className="sr-only"> {entry.title} (new tab)</span> ↗
             </ExtLink>
           )}
-          {canWrite && !itemPurchased && <MarkBought itemId={entry.item_id} entryId={entry.id} />}
-          <span className="ml-auto">
-            <ReportLink type="entry" id={entry.id} />
-          </span>
-        </div>
-
-      </div>
-
-        {(entry.price_count > 1 || comments.length > 0 || canWrite) && (
-          <div className="entry-tools col-span-2 grid gap-1 border-t border-line pt-2 sm:col-span-1 sm:mx-4 sm:mb-4">
-            {canWrite && (
-              <details id={anchor ? `${entry.id}-price` : `${entry.id}-price-detail`} className="group">
-                <summary className="textlink-btn text-[0.8rem]">
-                  Post a new price <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-                </summary>
-                <PostPrice entry={entry} />
-              </details>
-            )}
-            {prices && prices.length > 1 && (
-              <details className="group">
-                <summary className="textlink-btn text-[0.8rem]">
-                  {plural(prices.length, "price")} posted <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-                </summary>
-                <div className="mt-2">
-                  <PriceTable prices={prices} />
-                </div>
-              </details>
-            )}
-            {(comments.length > 0 || canWrite) && (
-              <details className="group">
-                <summary className="textlink-btn text-[0.8rem]">
-                  {comments.length ? plural(comments.length, "comment") : "Comment"}{" "}
-                  <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-                </summary>
-                <div className="mt-2 grid gap-3">
-                  <CommentList comments={comments} canDelete={canDeleteComment} />
-                  {canWrite && <CommentForm targetType="entry" targetId={entry.id} label="Comment on this product" />}
-                </div>
-              </details>
-            )}
-            {canEdit && (
-              <div className="flex flex-wrap items-start gap-x-4 gap-y-1">
-                <details className="group w-full">
-                  <summary className="textlink-btn text-[0.8rem]">
-                    Edit product <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-                  </summary>
+          <span className="ml-auto flex items-center gap-1">
+            {canWrite && !itemPurchased && <MarkBought itemId={entry.item_id} entryId={entry.id} />}
+            <Menu label={`More actions for “${entry.title}”`}>
+              {canWrite && (
+                <MenuSub label="Post a new price" id={anchor ? `${entry.id}-price` : `${entry.id}-price-detail`}>
+                  <PostPrice entry={entry} />
+                </MenuSub>
+              )}
+              {canWrite && (
+                <MenuSub label="Comment">
+                  <CommentForm targetType="entry" targetId={entry.id} label="Comment on this product" />
+                </MenuSub>
+              )}
+              {canEdit && (
+                <MenuSub label="Edit product">
                   <EntryForm itemId={entry.item_id} entry={entry} />
-                </details>
-                <RemoveButton
+                </MenuSub>
+              )}
+              <ReportMenuItem type="entry" id={entry.id} />
+              {canEdit && (
+                <MenuRemove
                   intent="delete-entry"
                   fields={{ entry_id: entry.id }}
                   label="Remove product"
                   confirmText={`Remove “${entry.title}” from this item? Its price history and comments go too.`}
                 />
+              )}
+            </Menu>
+          </span>
+        </div>
+      </div>
+
+      {((prices && prices.length > 1) || comments.length > 0) && (
+        <div className="entry-tools col-span-2 grid gap-1 border-t border-line pt-2 sm:col-span-1 sm:mx-4 sm:mb-4">
+          {prices && prices.length > 1 && (
+            <details className="group">
+              <summary className="textlink-btn text-[0.8rem]">
+                {plural(prices.length, "price")} posted <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+              </summary>
+              <div className="mt-2">
+                <PriceTable prices={prices} />
               </div>
-            )}
-          </div>
-        )}
+            </details>
+          )}
+          {comments.length > 0 && (
+            <details className="group">
+              <summary className="textlink-btn text-[0.8rem]">
+                {plural(comments.length, "comment")} <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+              </summary>
+              <div className="mt-2 grid gap-3">
+                <CommentList comments={comments} canDelete={canDeleteComment} />
+                {canWrite && <CommentForm targetType="entry" targetId={entry.id} label="Comment on this product" />}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -201,7 +201,7 @@ export function MarkBought({ itemId, entryId }: { itemId: string; entryId?: stri
       <input type="hidden" name="intent" value="purchase" />
       <input type="hidden" name="item_id" value={itemId} />
       {entryId && <input type="hidden" name="entry_id" value={entryId} />}
-      <button className="btn btn-ghost btn-xs" disabled={fetcher.state !== "idle"}>
+      <button className="btn-quiet" disabled={fetcher.state !== "idle"}>
         {fetcher.state !== "idle" ? "Saving…" : entryId ? "Bought this" : "Mark bought"}
       </button>
     </fetcher.Form>

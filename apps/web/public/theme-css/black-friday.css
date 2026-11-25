@@ -19,7 +19,7 @@
 .themed.tpl-default.occ-black-friday .list-hero .eyebrow { display: inline-flex; background: var(--sig); color: #000; padding: 0.3rem 0.6rem; font-weight: 800; letter-spacing: 0.14em; }
 .themed.tpl-default.occ-black-friday .list-hero .eyebrow * { color: #000; }
 .themed.tpl-default.occ-black-friday .list-title { font-size: clamp(2.6rem, 9vw, 6.5rem); font-weight: 900; line-height: 0.9; letter-spacing: -0.04em; text-transform: uppercase; }
-.themed.tpl-default.occ-black-friday .list-hero h1 + p { font-size: 1.1rem; font-weight: 600; }
+.themed.tpl-default.occ-black-friday .list-hero .list-desc { font-size: 1.1rem; font-weight: 600; }
 .themed.tpl-default.occ-black-friday .list-hero strong { color: var(--sig); }
 .themed.tpl-default.occ-black-friday .item-section { border-top: 3px solid var(--sig); padding-top: 1.25rem; }
 .themed.tpl-default.occ-black-friday .item-number { background: var(--sig); color: #000; border-radius: 0; font-weight: 900; }

@@ -13,7 +13,6 @@ export interface ThemeView {
   idea: string;
   layout: Layout;
   checklist: boolean;
-  fab: boolean;
   scheme: "light" | "dark" | null;
   natural: "shopping" | "tasks" | "research";
   /** The stylesheets this look needs (template, then occasion), each loaded only where used. */
@@ -97,7 +96,7 @@ export function lookView(template: Theme, occasion: Theme | null, slug: string):
   // On other templates the occasion lends its display face to the list title only.
   if (occasion && dressed !== occasion && occasion.fonts?.display) style["--font-occ-display"] = FONTS[occasion.fonts.display];
   if (dressed.radius?.card) style["--r-card"] = dressed.radius.card;
-  if (dressed.radius?.control) style["--r-control"] = dressed.radius.control;
+  // Control radius is not a look's to change (docs/design-standards.md, "Actions"): buttons stay rectangles everywhere.
   if (dressed.radius?.input) style["--r-input"] = dressed.radius.input;
   if (dressed.radius?.image) style["--r-image"] = dressed.radius.image;
   if (dressed.card === "outline") style["--card-border-w"] = "1.5px";
@@ -118,7 +117,6 @@ export function lookView(template: Theme, occasion: Theme | null, slug: string):
     idea: occasion && template.slug !== "default" ? `${template.idea} Dressed for ${occasion.name}.` : (occasion ?? template).idea,
     layout,
     checklist: traits.includes("checklist") || !!template.traits?.includes("checklist"),
-    fab: !!template.traits?.includes("fab"),
     scheme,
     natural: template.slug === "default" ? (occasion?.natural ?? "shopping") : (template.natural ?? "shopping"),
     stylesheets,

@@ -53,7 +53,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     itemPlaceholder: "e.g. A quiet dehumidifier for a small flat, under £200",
     detailsPlaceholder: "Sizes, colours, must-haves, where you can get deliveries…",
     detailsPrompt: "Budget, size, colour, where to deliver",
-    addEntryLabel: "Add a product yourself",
+    addEntryLabel: "Add a product",
     waiting: "Waiting for an agent to find something.",
     waitingWriter: "Waiting for an agent to find something. Ask one of your connected agents to shop for this.",
     defaultTheme: "sheet",

@@ -23,6 +23,6 @@ export const today: Theme = {
   fonts: { display: "sans", price: "sans" },
   radius: { card: "14px", control: "999px", input: "10px", image: "10px" },
   card: "flat",
-  traits: ["checklist", "fab", "roomy"],
+  traits: ["checklist", "roomy"],
   layout: "list",
 };

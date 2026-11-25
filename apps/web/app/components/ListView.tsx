@@ -7,9 +7,10 @@ import { EntryCard } from "~/components/EntryCard";
 import { EntrySheet } from "~/components/EntrySheet";
 import { ItemIndex } from "~/components/ItemIndex";
 import { LiveUpdates } from "~/components/LiveUpdates";
-import { PreviewContext, ReportLink } from "~/components/Report";
+import { PreviewContext, ReportLink, ReportMenuItem } from "~/components/Report";
+import { closeMenuOf, Icon, Menu, MenuRemove, MenuSub } from "~/components/Actions";
 import { Time } from "~/components/Time";
-import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, RemoveButton } from "~/components/WriteTools";
+import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, MarkBoughtForm } from "~/components/WriteTools";
 import { formatMoney, plural } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
@@ -99,11 +100,26 @@ export function ListView(props: ListViewProps) {
             </span>
             {isPrivate && <PrivateBadge />}
           </p>
-          <h1 className="list-title mt-2 max-w-4xl text-[1.6rem] font-semibold sm:text-[2.1rem]">
-            <span className="list-title-mark" aria-hidden="true" />
-            <span className="list-title-text">{list.title}</span>
-          </h1>
-          {list.description && <p className="mt-2 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
+          {/* Title on the left, the list's one toolbar on the right (under the title on phones). */}
+          <header className="list-titlebar mt-2">
+            <h1 className="list-title max-w-4xl text-[1.6rem] font-semibold sm:text-[2.1rem]">
+              <span className="list-title-mark" aria-hidden="true" />
+              <span className="list-title-text">{list.title}</span>
+            </h1>
+            {!preview && (
+              <div role="toolbar" aria-label="List" className="list-actions">
+                <CopyButton text={listUrl} label="Copy link" ariaLabel="Copy link to this list" className="btn-quiet" icon={<Icon name="link" />} />
+                {isWriter && (
+                  <Link to={`/app/lists/${list.id}/settings`} className="btn-quiet">
+                    <Icon name="gear" />
+                    Settings
+                  </Link>
+                )}
+                {!isWriter && !isPrivate && <ReportLink type="list" id={list.id} label="Report" />}
+              </div>
+            )}
+          </header>
+          {list.description && <p className="list-desc mt-2 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.88rem] text-ink-3">
             <span>
               <strong className="text-ink">{wanted.length}</strong> open
@@ -119,18 +135,6 @@ export function ListView(props: ListViewProps) {
             <span>
               Updated <Time ts={list.updated_at} />
             </span>
-            {!preview && (
-              // One row with the counts: the list's actions, never wrapping onto a row of their own.
-              <span className="list-actions flex flex-wrap items-center gap-2">
-                <CopyButton text={listUrl} label="Copy link" className="btn btn-ghost btn-sm" />
-                {isWriter && (
-                  <Link to={`/app/lists/${list.id}/settings`} className="btn btn-ghost btn-sm">
-                    Settings
-                  </Link>
-                )}
-                {!isPrivate && <ReportLink type="list" id={list.id} label="Report" />}
-              </span>
-            )}
           </div>
         </div>
       </section>
@@ -205,11 +209,6 @@ export function ListView(props: ListViewProps) {
           </section>
         )}
         </div>
-        {theme.fab && isWriter && !preview && (
-          <a href="#add-item" className="list-fab" aria-label={fi.addItemTitle}>
-            <span aria-hidden="true">+</span>
-          </a>
-        )}
 
         {!isWriter && !preview && (
           <aside className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -261,7 +260,6 @@ function ItemSection({
   canDeleteComment: (c: Comment) => boolean;
   eager?: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
   const canEditItem = canManage(item.created_by, user, role);
   const now = useNow();
   const entries = sortByPrice(item.entries);
@@ -283,7 +281,7 @@ function ItemSection({
   return (
     <section id={item.id} aria-labelledby={headingId} data-status={status} className={`item-section grid scroll-mt-24 gap-3 ${done ? "is-bought" : ""}`}>
       {inPanel && (
-        <a href="#list-index" className="ix-close btn btn-ghost btn-sm justify-self-end">
+        <a href="#list-index" className="ix-close btn-quiet justify-self-end">
           Close<span className="sr-only"> {item.text}</span>
         </a>
       )}
@@ -306,18 +304,32 @@ function ItemSection({
               </span>
             )
           )}
-          {editing ? (
-            <div className="flex-1">
-              <h2 id={headingId} className="sr-only">
-                Editing: {item.text}
-              </h2>
-              <EditItem item={item} onDone={() => setEditing(false)} label={`Edit ${fi.item}`} />
-            </div>
-          ) : (
-            <h2 id={headingId} className={`item-title text-[1.15rem] font-semibold sm:text-[1.35rem] ${done ? "text-ink-2" : ""}`}>
-              {item.text}
-            </h2>
-          )}
+          <h2 id={headingId} className={`item-title min-w-0 flex-1 text-[1.15rem] font-semibold sm:text-[1.35rem] ${done ? "text-ink-2" : ""}`}>
+            {item.text}
+          </h2>
+          {/* The item's actions: at the right end of its title row. */}
+          <span className="item-actions">
+            {isWriter && shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} itemText={item.text} />}
+            <Menu label={`More actions for “${item.text.slice(0, 60)}”`}>
+              {isWriter && shopping && !p && !checklist && (
+                // On phones "Mark bought" lives here, so the title keeps the row.
+                <div className="sm:hidden">
+                  <MenuSub label="Mark bought">
+                    <MarkBoughtForm itemId={item.id} />
+                  </MenuSub>
+                </div>
+              )}
+              {canEditItem && (
+                <MenuSub label={`Edit ${fi.item}`}>
+                  <EditItem item={item} onDone={() => closeMenuOf(document.getElementById(headingId)?.closest("section")?.querySelector(":popover-open"))} label={`Edit ${fi.item}`} />
+                </MenuSub>
+              )}
+              <ReportMenuItem type="item" id={item.id} />
+              {canEditItem && (
+                <MenuRemove intent="delete-item" fields={{ item_id: item.id }} label="Remove" confirmText={`Remove “${item.text.slice(0, 80)}” and everything on it?`} />
+              )}
+            </Menu>
+          </span>
         </div>
         <div className="item-meta item-indent flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem] text-ink-3 sm:pl-11">
           <span className="inline-flex items-center gap-1.5">
@@ -331,20 +343,6 @@ function ItemSection({
             </span>
           )}
           <DueChip due={item.due_at} done={done} />
-          <ReportLink type="item" id={item.id} />
-          {canEditItem && !editing && (
-            <>
-              <button type="button" className="textlink-btn text-[0.8rem]" onClick={() => setEditing(true)}>
-                Edit<span className="sr-only"> {fi.item}</span>
-              </button>
-              <RemoveButton
-                intent="delete-item"
-                fields={{ item_id: item.id }}
-                label="Remove"
-                confirmText={`Remove “${item.text.slice(0, 80)}” and everything on it?`}
-              />
-            </>
-          )}
         </div>
         {p && (
           <div className="item-indent mt-2 flex flex-wrap items-center gap-3 rounded-md border border-deal/40 bg-deal-soft px-4 py-3 text-[0.9rem] sm:ml-11">
@@ -358,7 +356,7 @@ function ItemSection({
             {isWriter && <UndoPurchase itemId={item.id} />}
           </div>
         )}
-        {!editing && <ItemDetails details={item.details} />}
+        <ItemDetails details={item.details} />
         {(!shopping || status === "waiting_on_owner") && (
           <ItemStatusBar
             itemId={item.id}
@@ -371,7 +369,7 @@ function ItemSection({
           />
         )}
         {/* SPEC 12.1: questions and answers are for writers only, on public lists too. */}
-        {isWriter && !editing && <OwnerQuestion question={item.open_question ?? null} history={item.questions ?? []} />}
+        {isWriter && <OwnerQuestion question={item.open_question ?? null} history={item.questions ?? []} />}
       </header>
 
       {accepted && <AcceptedAnswer entry={accepted} />}
@@ -475,18 +473,17 @@ function ItemSection({
         </p>
       )}
 
-      {(itemComments.length > 0 || isWriter) && (
-        <div className="item-indent grid gap-3 sm:pl-11">
-          <h3 className="eyebrow">Comments</h3>
-          <CommentList comments={itemComments} canDelete={canDeleteComment} />
-          {isWriter && <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />}
+      {isWriter && (
+        <div className="item-indent sm:pl-11">
+          <AddEntry itemId={item.id} fi={fi} />
         </div>
       )}
 
-      {isWriter && (
-        <div className="item-indent flex flex-wrap gap-2 sm:pl-11">
-          {shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} />}
-          <AddEntry itemId={item.id} fi={fi} />
+      {(itemComments.length > 0 || isWriter) && (
+        <div className="item-comments item-indent grid gap-3 sm:pl-11">
+          {itemComments.length > 0 && <h3 className="eyebrow">Comments</h3>}
+          <CommentList comments={itemComments} canDelete={canDeleteComment} />
+          {isWriter && <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />}
         </div>
       )}
     </section>
@@ -499,7 +496,7 @@ function UndoPurchase({ itemId }: { itemId: string }) {
     <fetcher.Form method="post" className="ml-auto">
       <input type="hidden" name="intent" value="unpurchase" />
       <input type="hidden" name="item_id" value={itemId} />
-      <button className="btn btn-ghost btn-xs" disabled={fetcher.state !== "idle"}>
+      <button className="btn-quiet" disabled={fetcher.state !== "idle"}>
         Undo
       </button>
     </fetcher.Form>
@@ -571,9 +568,12 @@ function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: bool
 
 function AddEntry({ itemId, fi }: { itemId: string; fi: FormatInfo }) {
   return (
-    <details className="w-full">
-      <summary className="btn btn-ghost btn-xs w-fit">{fi.addEntryLabel}</summary>
-      <div className="card mt-3 p-4">{fi.format === "shopping" ? <EntryForm itemId={itemId} /> : <TextEntryForm itemId={itemId} fi={fi} />}</div>
+    <details className="add-entry w-full">
+      <summary className="add-link">
+        <Icon name="plus" />
+        {fi.addEntryLabel}
+      </summary>
+      <div className="card mt-2 p-4">{fi.format === "shopping" ? <EntryForm itemId={itemId} /> : <TextEntryForm itemId={itemId} fi={fi} />}</div>
     </details>
   );
 }
@@ -652,10 +652,10 @@ function SuggestionCard({ entry: e, itemText }: { entry: Entry; itemText: string
       </div>
       <fetcher.Form method="post" className="mt-1 flex gap-2">
         <input type="hidden" name="entry_id" value={e.id} />
-        <button name="intent" value="promote" className="btn btn-sm" disabled={fetcher.state !== "idle"}>
+        <button name="intent" value="promote" className="btn btn-ghost btn-sm" disabled={fetcher.state !== "idle"}>
           {pendingIntent === "promote" ? "Promoting…" : "Promote to list"}
         </button>
-        <button name="intent" value="reject" className="btn btn-ghost btn-sm" disabled={fetcher.state !== "idle"}>
+        <button name="intent" value="reject" className="btn-quiet" disabled={fetcher.state !== "idle"}>
           {pendingIntent === "reject" ? "Rejecting…" : "Reject"}
         </button>
       </fetcher.Form>
@@ -745,10 +745,10 @@ export function DetailsPrompt({ itemId, fi, onDone }: { itemId: string; fi: Form
       </label>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <textarea id={`${uid}-d`} name="details" maxLength={2000} rows={1} placeholder={fi.detailsPrompt} className="textarea textarea-line flex-1" autoFocus />
-        <button className="btn" disabled={fetcher.state !== "idle"}>
+        <button className="btn btn-ghost" disabled={fetcher.state !== "idle"}>
           Save
         </button>
-        <button type="button" className="btn btn-ghost" onClick={onDone}>
+        <button type="button" className="btn-quiet" onClick={onDone}>
           Skip
         </button>
       </div>

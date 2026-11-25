@@ -10,7 +10,7 @@
   background: conic-gradient(var(--want) calc(var(--list-progress, 0) * 360deg), transparent 0); background-clip: content-box; padding: 2.5px;
 }
 .themed.tpl-today .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; font-weight: 500; }
-.themed.tpl-today .list-hero h1 + p { color: var(--ink-3); font-size: 1rem; margin-top: 0.5rem; padding-left: 2.6rem; }
+.themed.tpl-today .list-hero .list-desc { color: var(--ink-3); font-size: 1rem; margin-top: 0.5rem; padding-left: 2.6rem; }
 /* Almost nothing on the page: the counts and meta lines stay quiet, no boxes anywhere. */
 .themed.tpl-today .list-hero > .wrap > div { padding-left: 2.6rem; font-size: 0.8rem; color: var(--ink-3); }
 .themed.tpl-today .list-hero > .wrap > div strong { font-weight: 500; color: var(--ink-3); }
@@ -31,7 +31,6 @@
 }
 .themed.tpl-today button.check-toggle { position: relative; }
 .themed.tpl-today button.check-toggle::before { content: ""; position: absolute; inset: -0.75rem; }
-.themed.tpl-today .check-toggle[aria-checked="true"], .themed.tpl-today .check-toggle.is-checked { background: var(--want); border-color: var(--want); color: var(--want-ink); }
 .themed.tpl-today .item-section > header .flex.items-start { gap: 0.95rem; }
 .themed.tpl-today .text-entry, .themed.tpl-today .entry-card { background: var(--sunk); border: 0; box-shadow: none; }
 .themed.tpl-today .item-entries { gap: 0.5rem !important; }

@@ -7,7 +7,7 @@
 .themed.tpl-board .list-hero :is(p, span, strong, h1, a:not(.btn), time, button.textlink-btn) { color: var(--occ-band-ink); }
 .themed.tpl-board .list-hero .eyebrow { margin: 0; font-family: var(--font-sans); letter-spacing: 0.02em; text-transform: none; font-size: 0.8rem; font-weight: 600; }
 .themed.tpl-board .list-hero h1 { margin-top: 0.15rem; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 750; letter-spacing: -0.01em; }
-.themed.tpl-board .list-hero h1 + p { margin-top: 0.25rem; font-size: 0.95rem; max-width: 48rem; }
+.themed.tpl-board .list-hero .list-desc { margin-top: 0.25rem; font-size: 0.95rem; max-width: 48rem; }
 .themed.tpl-board .list-hero > .wrap > div { margin-top: 0.5rem; }
 .themed.tpl-board .list-hero .btn-ghost { color: var(--occ-band-ink); border-color: color-mix(in srgb, var(--occ-band-ink) 70%, transparent); background: color-mix(in srgb, var(--occ-band-ink) 12%, transparent); }
 .themed.tpl-board .list-hero .chip-live { background: #fff; color: #172b4d; border-color: #fff; }

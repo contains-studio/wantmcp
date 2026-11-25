@@ -6,12 +6,15 @@ export function CopyButton({
   label = "Copy",
   className = "btn btn-ghost btn-xs",
   ariaLabel,
+  icon,
 }: {
   text: string;
   label?: string;
   className?: string;
   /** A fuller name for screen readers when the visible label is short. */
   ariaLabel?: string;
+  /** Shown before the label (quiet toolbar controls). */
+  icon?: React.ReactNode;
 }) {
   const [state, setState] = useState<"idle" | "done" | "fail">("idle");
   return (
@@ -29,6 +32,7 @@ export function CopyButton({
         setTimeout(() => setState("idle"), 2000);
       }}
     >
+      {icon}
       <span aria-live="polite">{state === "done" ? "Copied" : state === "fail" ? "Press ⌘C" : label}</span>
     </button>
   );

@@ -29,7 +29,7 @@
 }
 .themed.tpl-default.occ-new-year .list-hero .eyebrow { color: var(--gold); letter-spacing: 0.3em; }
 .themed.tpl-default.occ-new-year .list-title { font-size: clamp(2.3rem, 5.5vw, 4rem); font-weight: 500; letter-spacing: 0.06em; max-width: 36rem; }
-.themed.tpl-default.occ-new-year .list-hero h1 + p { max-width: 32rem; }
+.themed.tpl-default.occ-new-year .list-hero .list-desc { max-width: 32rem; }
 .themed.tpl-default.occ-new-year .item-section {
   counter-increment: ny-item; padding: 1.5rem; background: var(--card); border: 1px solid var(--gold);
   box-shadow: inset 0 0 0 5px var(--card), inset 0 0 0 6px color-mix(in srgb, var(--gold) 55%, transparent);

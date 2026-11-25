@@ -53,6 +53,10 @@
   --line-strong: #8c877d;
   --want: #b5174f;
   --want-ink: #ffffff;
+  /* The primary action keeps the site's crimson in every layout: computed here, on :root, so a
+     look's own --want (set on .themed) never reaches it. Dark mode redefines --want on :root. */
+  --action: var(--want);
+  --action-ink: var(--want-ink);
   --want-soft: #f6e6ec;
   --deal: #0f7a47;
   --deal-soft: #e3f1e8;
@@ -400,13 +404,6 @@
   .ix-panel:has(:target) .ix-backdrop { right: 0; bottom: 88dvh; top: 0; }
 }
 
-/* Floating add button (Today). */
-.list-fab {
-  position: fixed; z-index: 40; right: max(1rem, env(safe-area-inset-right)); bottom: max(1.25rem, env(safe-area-inset-bottom));
-  display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 999px; text-decoration: none;
-  background: var(--want); color: var(--want-ink); font-size: 2rem; font-weight: 400; line-height: 1; box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.45);
-}
-
 /* ---- Traits: small reusable style switches a theme can opt into ---- */
 .themed.t-serif-display h1, .themed.t-serif-display h2, .themed.t-serif-display h3 { font-weight: 600; letter-spacing: -0.01em; }
 .themed.t-upper-display h1, .themed.t-upper-display .item-title { text-transform: uppercase; letter-spacing: -0.01em; }
@@ -429,7 +426,7 @@
 }
 .check-toggle[aria-checked="true"], .check-toggle.is-checked { background: var(--deal); border-color: var(--deal); color: var(--card); }
 button.check-toggle { cursor: pointer; }
-button.check-toggle:hover { border-color: var(--want); }
+button.check-toggle:hover { border-color: var(--ink); }
 
 /* ---- Layouts ---- */
 /* Doc and Checklist: one readable column of entries, thumbnail on the left. */
@@ -506,7 +503,9 @@ button.check-toggle:hover { border-color: var(--want); }
   }
   .btn:hover { filter: brightness(1.08); }
   .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; filter: none; }
-  .btn-want { background: var(--want); border-color: var(--want); color: var(--want-ink); }
+  .btn-want { background: var(--action); border-color: var(--action); color: var(--action-ink); }
+  /* Every layout uses the same button shapes: a look can't round them into pills. */
+  .themed .btn { border-radius: 4px; }
   .btn-ghost { background: var(--card); color: var(--ink); border-color: var(--ink); }
   .btn-ghost:hover { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); filter: none; }
   .btn-danger { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
@@ -519,7 +518,77 @@ button.check-toggle:hover { border-color: var(--want); }
     background: none; border: 0; padding: 0; font: inherit; color: var(--ink-3); cursor: pointer;
     text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong);
   }
-  .textlink-btn:hover { color: var(--want); }
+  .textlink-btn:hover { color: var(--ink); }
+
+  /* Quiet controls (docs/design-standards.md, "Actions"): text weight, an optional icon, no border.
+     They inherit the colour around them, so they read on banded headers too. */
+  .btn-quiet {
+    display: inline-flex; align-items: center; gap: 0.4rem; min-height: var(--ctl-sm); padding: 0 0.55rem;
+    border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-size: 0.875rem; font-weight: 500;
+    line-height: 1.2; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background 120ms ease;
+  }
+  .btn-quiet:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+  .btn-quiet:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  /* "+ Add a product": once, at the end of an item's entries; opens its form in place. */
+  .add-link {
+    display: inline-flex; align-items: center; gap: 0.4rem; min-height: var(--ctl-sm); padding: 0 0.15rem;
+    color: var(--ink-2); font-size: 0.9rem; font-weight: 500; cursor: pointer; list-style: none;
+  }
+  .add-link::-webkit-details-marker { display: none; }
+  .add-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+  /* The "⋯" menu trigger and its popover. */
+  .menu-wrap { display: inline-flex; }
+  .menu-trigger {
+    display: inline-grid; place-items: center; min-width: var(--ctl-sm); min-height: var(--ctl-sm); border: 0; border-radius: 4px;
+    background: transparent; color: var(--ink-3); font-size: 1.15rem; font-weight: 700; line-height: 1; letter-spacing: 0.02em; cursor: pointer;
+  }
+  .menu-trigger:hover, .menu-trigger:has(+ :popover-open) { background: color-mix(in srgb, currentColor 10%, transparent); color: var(--ink); }
+  .menu-panel {
+    /* A popover sits in the top layer; it is anchored under its trigger, flipping up near the bottom. */
+    position: fixed; inset: auto; margin: 4px 0 0; position-area: bottom span-left; position-try-fallbacks: flip-block, flip-inline;
+    width: max-content; min-width: 12rem; max-width: min(22rem, calc(100vw - 2rem)); max-height: min(70dvh, 32rem); overflow: auto;
+    padding: 0.25rem; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--card); color: var(--ink);
+    font-family: var(--font-sans); font-size: 0.9rem; font-weight: 400; text-align: left; text-transform: none; letter-spacing: normal;
+  }
+  .menu-panel:not(:popover-open) { display: none; }
+  .menu-panel:popover-open { display: grid; }
+  .menu-panel.menu-wide, .menu-panel:has(.menu-sub[open]) { width: min(26rem, calc(100vw - 2rem)); max-width: none; }
+  /* No anchor positioning, or a phone: a sheet along the bottom of the screen. */
+  @supports not (position-area: bottom) {
+    .menu-panel { inset: auto 1rem 1rem; width: auto; max-width: none; margin: 0; }
+  }
+  @media (max-width: 639px) {
+    .menu-panel, .menu-panel.menu-wide, .menu-panel:has(.menu-sub[open]) { inset: auto 0.75rem 0.75rem; width: auto; max-width: none; margin: 0; position-area: none; }
+  }
+  .menu-item {
+    display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: var(--ctl-sm); padding: 0 0.75rem;
+    border: 0; border-radius: 3px; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; list-style: none;
+  }
+  .menu-item::-webkit-details-marker { display: none; }
+  .menu-item:hover:not(:disabled) { background: var(--sunk); }
+  .menu-item:disabled { cursor: default; color: var(--ink-2); }
+  .menu-item[aria-current="true"] { font-weight: 600; color: var(--ink); }
+  .menu-item.is-danger { color: var(--danger); }
+  .menu-sep { border: 0; border-top: 1px solid var(--line); margin: 0.25rem 0; }
+  .menu-sub-body { padding: 0.5rem 0.75rem 0.75rem; }
+  .menu-sub-body > form, .menu-sub-body > .grid { margin-top: 0; }
+
+  /* The list header: title left, one toolbar right; on phones the toolbar is a row under the title. */
+  .list-titlebar { display: flex; flex-direction: column; gap: 0.25rem; }
+  .list-titlebar > .list-title { margin: 0; }
+  .list-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; margin-left: -0.55rem; }
+  @media (min-width: 640px) {
+    .list-titlebar { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .list-titlebar > .list-title { flex: 1 1 auto; min-width: 0; }
+    .list-actions { flex: none; flex-wrap: nowrap; margin: 0.15rem -0.55rem 0 0; }
+  }
+  /* An item's actions: at the right end of its title row. */
+  .item-actions { display: inline-flex; flex: none; align-items: center; gap: 0.25rem; margin-left: auto; margin-top: -0.3rem; }
+
+  /* A one-line box that grows as you type (comments, notes). */
+  .textarea.textarea-grow { min-height: var(--ctl-sm); padding-block: 0.45rem; field-sizing: content; max-height: 12rem; resize: none; }
 
   /* Fields: label above, control, then hint or error. */
   .field { display: grid; gap: 0.375rem; align-content: start; }
@@ -561,6 +630,8 @@ button.check-toggle:hover { border-color: var(--want); }
   @media (pointer: coarse) {
     .btn-sm, .btn-xs, .input-sm, .select.input-sm { min-height: var(--ctl); }
     .textlink-btn { min-height: var(--ctl); }
+    .btn-quiet, .menu-trigger, .menu-item, .add-link, .textarea.textarea-grow { min-height: var(--ctl); }
+    .menu-trigger { min-width: var(--ctl); }
   }
 
   /* Prices: the easiest thing on the page to read */
@@ -586,6 +657,10 @@ button.check-toggle:hover { border-color: var(--want); }
   }
   .chip-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
   .chip-live { color: var(--deal); border-color: color-mix(in srgb, var(--deal) 40%, transparent); }
+  /* A chip that is also the item's status control: same look, a chevron, a 24px target (44px on touch). */
+  .chip-btn { position: relative; min-height: 1.6rem; cursor: pointer; font: inherit; font-size: 0.78rem; font-weight: 500; }
+  .chip-btn:hover { border-color: currentColor; }
+  @media (pointer: coarse) { .chip-btn::after { content: ""; position: absolute; inset: -0.6rem -0.25rem; } }
   .coupon {
     display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-weight: 600; font-size: 0.82rem;
     padding: 0.15rem 0.25rem 0.15rem 0.5rem; border-radius: 3px; border: 1px dashed var(--line-strong); color: var(--ink); background: transparent;

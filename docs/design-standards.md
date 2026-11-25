@@ -107,6 +107,42 @@ in red). In narrow columns buttons are full width and stack. A destructive actio
 the primary one and asks for confirmation. Button text says what happens ("Add task", "Make
 private"), not "OK" or "Submit".
 
+## Actions
+
+One action system on every page and in every list layout. A layout keeps its own type and
+structure; it never brings its own button shapes, colours or accent.
+
+1. **One primary per view.** On a list page it is the add button (Add want, Add task, Add
+   question), solid crimson and rectangular. Nothing else on the page is filled with the accent:
+   no teal or blue primaries, no pills, no floating add button.
+2. **The list header has one toolbar.** The title is on the left; on the same row at the right sit
+   "Copy link" and "Settings" (or "Report" for visitors) as quiet controls: an icon and a label,
+   no border. On phones the toolbar is one row under the title. It sits in the same place in every
+   layout and never wraps onto a row of its own under the counts.
+3. **Status is one control.** An item's status chip is itself the control: it opens a small menu
+   with Open, In progress and Done (Answered on research lists), plus Release or Take over when
+   someone holds a claim. In Checklist the checkbox is still the way to finish. There are no filled
+   buttons at item level.
+4. **Row actions are quiet and at the right.** "Mark bought", "Bought this", "Accept this answer"
+   and "Done with this" are text-weight buttons at the right end of the row they act on, never
+   blocks under the content.
+5. **Everything else goes in one menu.** Report, Edit and Remove on an item; Comment, Post a new
+   price, Edit, Report and Remove on an entry or comment: one "⋯" menu at the right end of the row,
+   labelled for screen readers ("More actions for …"). Remove is red only inside the menu, and asks
+   again before it acts.
+6. **Adding is a quiet link.** "+ Add a product", "+ Post an update", "+ Post an answer" sit once at
+   the end of an item's entries and open their form in place.
+7. **Comment boxes are one line** that grows as you type; their Post button is small and plain.
+8. **Placement.** An action sits at the right end of the row it acts on. A form's submit button
+   sits at the start of the form's last row. A destructive action lives in a menu or at the far
+   end, never next to the primary. Settings pages group fields into sections with one Save each,
+   and keep deleting in its own zone at the bottom.
+
+Menus are native popovers (`popover` and `popovertarget`): they work without JavaScript, close
+on Escape or a click outside, and sit above clipped containers. On phones they open as a sheet at
+the bottom of the screen. Quiet controls look light but keep the full touch target (44px on
+touch screens).
+
 ## Colour roles
 
 | Token | Role |

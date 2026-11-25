@@ -11,9 +11,10 @@ import type { ActorRef, Comment, Entry, ItemStatus, Question } from "~/lib/types
 import { ActorTag } from "./ActorTag";
 import { CommentForm, CommentList } from "./Comments";
 import { ExtLink, Linkify } from "./ExtLink";
-import { ReportLink } from "./Report";
+import { Menu, MenuRemove, MenuSub, useCloseOnDone } from "./Actions";
+import { ReportMenuItem } from "./Report";
 import { Time } from "./Time";
-import { RemoveButton, type IntentResult } from "./WriteTools";
+import type { IntentResult } from "./WriteTools";
 
 export const actorLabel = (a: ActorRef | null | undefined) =>
   !a ? "someone" : a.kind === "user" ? a.handle : a.kind === "agent" ? a.name : a.name ?? "an outside agent";
@@ -38,43 +39,6 @@ export function ItemDetails({ details }: { details: string | undefined }) {
     <p className="item-details item-indent max-w-3xl whitespace-pre-line break-words text-[0.95rem] text-ink-2 sm:pl-11">
       <Linkify text={details} />
     </p>
-  );
-}
-
-function StatusButton({ itemId, status, label, kind = "ghost", note }: { itemId: string; status: ItemStatus; label: string; kind?: "ghost" | "solid"; note?: boolean }) {
-  const fetcher = useFetcher<IntentResult>();
-  const uid = useId();
-  const busy = fetcher.state !== "idle";
-  if (note) {
-    return (
-      <details className="relative">
-        <summary className={`btn btn-xs ${kind === "solid" ? "" : "btn-ghost"} w-fit`}>{label}</summary>
-        <fetcher.Form method="post" className="card absolute left-0 z-20 mt-2 grid w-[min(20rem,80vw)] gap-2 p-3">
-          <input type="hidden" name="intent" value="set-status" />
-          <input type="hidden" name="item_id" value={itemId} />
-          <input type="hidden" name="status" value={status} />
-          <label className="field" htmlFor={`${uid}-n`}>
-            <span className="label">Note (optional)</span>
-            <textarea id={`${uid}-n`} name="note" maxLength={1000} className="textarea min-h-14" placeholder="What was done, anything to know…" />
-          </label>
-          <button className="btn btn-sm" disabled={busy}>
-            {busy ? "Saving…" : label}
-          </button>
-          {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
-        </fetcher.Form>
-      </details>
-    );
-  }
-  return (
-    <fetcher.Form method="post">
-      <input type="hidden" name="intent" value="set-status" />
-      <input type="hidden" name="item_id" value={itemId} />
-      <input type="hidden" name="status" value={status} />
-      <button className={`btn btn-xs ${kind === "solid" ? "" : "btn-ghost"}`} disabled={busy}>
-        {busy ? "Saving…" : label}
-      </button>
-      {fetcher.data?.error && <span className="ml-2 text-[0.8rem] text-danger">{fetcher.data.error}</span>}
-    </fetcher.Form>
   );
 }
 
@@ -115,37 +79,57 @@ export function ItemStatusBar({
 }) {
   const now = useNow();
   const research = fi.format === "research";
+  const shopping = fi.format === "shopping";
   const age = claimAge(claimedAt, now);
   const stale = !!claimedAt && now - Date.parse(claimedAt) > STALE_CLAIM;
+  const doneWord = research ? "Answered" : "Done";
+  let text: React.ReactNode;
+  let tone = "";
+  if (status === "open") text = "Open";
+  else if (status === "waiting_on_owner") {
+    text = canWrite ? "Waiting on you" : "Waiting on the owner";
+    tone = "chip-warn";
+  } else if (status === "in_progress") {
+    text = (
+      <>
+        In progress
+        {claimedBy ? ` · ${actorLabel(claimedBy)}${age ? `, ${age}` : ""}` : ""}
+      </>
+    );
+    if (stale) tone = "chip-warn";
+  } else {
+    text = completion ? (
+      <>
+        {doneWord} · {actorLabel(completion.completed_by)}, <Time ts={completion.completed_at} />
+      </>
+    ) : (
+      doneWord
+    );
+    tone = "chip-live";
+  }
+  // Shopping lists finish items by marking them bought, so their status is shown, not changed here.
+  const control = canWrite && !shopping;
   return (
     <div className="item-status item-indent flex flex-wrap items-center gap-2 text-[0.88rem] sm:pl-11">
-      {status === "open" && <span className="chip">Open</span>}
-      {status === "waiting_on_owner" && <span className="chip chip-warn">{canWrite ? "Waiting on you" : "Waiting on the owner"}</span>}
-      {status === "in_progress" && (
-        <span className={`chip ${stale ? "chip-warn" : ""}`}>
-          In progress
-          {claimedBy ? (
+      {control ? (
+        <Menu
+          label={`Status: ${typeof text === "string" ? text : status.replace(/_/g, " ")}. Change status`}
+          triggerClass={`chip chip-btn ${tone}`}
+          trigger={
             <>
-              {" "}
-              · {actorLabel(claimedBy)}
-              {age ? `, ${age}` : ""}
+              {text}
+              <span className="sr-only">. Change status</span>
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="ml-0.5 shrink-0">
+                <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </>
-          ) : null}
-        </span>
+          }
+        >
+          <StatusOptions itemId={itemId} status={status} doneWord={doneWord} claimed={!!claimedBy} canTakeOver={stale && claimedBy?.kind !== "user"} />
+        </Menu>
+      ) : (
+        <span className={`chip ${tone}`}>{text}</span>
       )}
-      {status === "done" && completion && (
-        <span className="chip chip-live">
-          {research ? "Answered" : "Done"} · {actorLabel(completion.completed_by)}, <Time ts={completion.completed_at} />
-        </span>
-      )}
-      {status === "done" && !completion && <span className="chip chip-live">{research ? "Answered" : "Done"}</span>}
-      {canWrite && status === "open" && <StatusButton itemId={itemId} status="in_progress" label="Start" />}
-      {canWrite && status === "in_progress" && <StatusButton itemId={itemId} status="open" label={stale ? "Release" : "Stop"} />}
-      {/* A claim nobody has touched for a day: a person can take it over in one step. */}
-      {canWrite && status === "in_progress" && stale && claimedBy?.kind !== "user" && <StatusButton itemId={itemId} status="in_progress" label="Take over" />}
-      {canWrite && (status === "open" || status === "in_progress") && !research && <StatusButton itemId={itemId} status="done" label="Mark done" kind="solid" note />}
-      {canWrite && (status === "open" || status === "in_progress") && research && <StatusButton itemId={itemId} status="done" label="Mark answered" note />}
-      {canWrite && status === "done" && <StatusButton itemId={itemId} status="open" label="Reopen" />}
       {status === "done" && completion?.note && (
         <p className="w-full whitespace-pre-line break-words text-ink-2">
           <span className="font-semibold text-ink">Note: </span>
@@ -153,6 +137,81 @@ export function ItemStatusBar({
         </p>
       )}
     </div>
+  );
+}
+
+/** The status menu: one form, one button per state, plus Release and Take over for claims. */
+function StatusOptions({ itemId, status, doneWord, claimed, canTakeOver }: { itemId: string; status: ItemStatus; doneWord: string; claimed: boolean; canTakeOver: boolean }) {
+  const fetcher = useFetcher<IntentResult>();
+  const note = useFetcher<IntentResult>();
+  const ref = useCloseOnDone(fetcher);
+  const noteRef = useCloseOnDone(note);
+  const busy = fetcher.state !== "idle";
+  const options: Array<[ItemStatus, string]> = [
+    ["open", "Open"],
+    ["in_progress", "In progress"],
+    ["done", doneWord],
+  ];
+  const current = status === "waiting_on_owner" ? null : status;
+  return (
+    <>
+      <fetcher.Form method="post" ref={ref} className="grid">
+        <input type="hidden" name="intent" value="set-status" />
+        <input type="hidden" name="item_id" value={itemId} />
+        {options.map(([value, label]) => (
+          <button key={value} name="status" value={value} className="menu-item" aria-current={current === value ? "true" : undefined} disabled={busy || current === value}>
+            <span aria-hidden="true" className="w-4 text-ink-2">
+              {current === value ? "✓" : ""}
+            </span>
+            {label}
+          </button>
+        ))}
+        {status === "in_progress" && claimed && (
+          <>
+            <hr className="menu-sep" />
+            <button name="status" value="open" className="menu-item" disabled={busy}>
+              <span className="w-4" />
+              Release
+            </button>
+            {canTakeOver && (
+              <button name="status" value="in_progress" className="menu-item" disabled={busy}>
+                <span className="w-4" />
+                Take over
+              </button>
+            )}
+          </>
+        )}
+        {fetcher.data?.error && (
+          <p className="form-error px-3 py-2" role="alert">
+            {fetcher.data.error}
+          </p>
+        )}
+      </fetcher.Form>
+      {status !== "done" && (
+        <>
+          <hr className="menu-sep" />
+          <MenuSub label={`${doneWord}, with a note`}>
+            <note.Form method="post" ref={noteRef} className="grid gap-2">
+              <input type="hidden" name="intent" value="set-status" />
+              <input type="hidden" name="item_id" value={itemId} />
+              <input type="hidden" name="status" value="done" />
+              <label className="field">
+                <span className="label">Note</span>
+                <textarea name="note" maxLength={1000} className="textarea textarea-grow" placeholder="What was done, anything to know…" />
+              </label>
+              <button className="btn btn-ghost btn-sm w-fit" disabled={note.state !== "idle"}>
+                {note.state !== "idle" ? "Saving…" : `Mark ${doneWord.toLowerCase()}`}
+              </button>
+              {note.data?.error && (
+                <p className="form-error" role="alert">
+                  {note.data.error}
+                </p>
+              )}
+            </note.Form>
+          </MenuSub>
+        </>
+      )}
+    </>
   );
 }
 
@@ -211,41 +270,38 @@ export function TextEntryCard({
       <div className="entry-meta flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.78rem] text-ink-3">
         <ActorTag actor={entry.author} />
         <Time ts={entry.created_at} />
-        <span className="ml-auto">
-          <ReportLink type="entry" id={entry.id} />
-        </span>
-      </div>
-      {(canWrite || comments.length > 0) && (
-        <div className="flex flex-wrap items-start gap-x-4 gap-y-2 border-t border-line pt-2">
+        <span className="ml-auto flex items-center gap-1">
           {canWrite && research && !accepted && <AcceptAnswer itemId={entry.item_id} entryId={entry.id} />}
           {canWrite && !research && !itemDone && <DoneWith itemId={entry.item_id} entryId={entry.id} />}
-          <details className="group w-full">
-            <summary className="textlink-btn text-[0.8rem]">
-              {comments.length ? `${comments.length} ${comments.length === 1 ? "comment" : "comments"}` : "Comment"}{" "}
-              <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-            </summary>
-            <div className="mt-2 grid gap-3">
-              <CommentList comments={comments} canDelete={canDeleteComment} />
-              {canWrite && <CommentForm targetType="entry" targetId={entry.id} label={`Comment on this ${fi.entry}`} />}
-            </div>
-          </details>
-          {canEdit && (
-            <>
-              <details className="group w-full">
-                <summary className="textlink-btn text-[0.8rem]">
-                  Edit {fi.entry} <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-                </summary>
+          <Menu label={`More actions for “${entry.title}”`}>
+            {canWrite && (
+              <MenuSub label="Comment">
+                <CommentForm targetType="entry" targetId={entry.id} label={`Comment on this ${fi.entry}`} />
+              </MenuSub>
+            )}
+            {canEdit && (
+              <MenuSub label={`Edit ${fi.entry}`}>
                 <TextEntryForm itemId={entry.item_id} fi={fi} entry={entry} />
-              </details>
-              <RemoveButton
-                intent="delete-entry"
-                fields={{ entry_id: entry.id }}
-                label={`Remove ${fi.entry}`}
-                confirmText={`Remove “${entry.title}” and its comments?`}
-              />
-            </>
-          )}
-        </div>
+              </MenuSub>
+            )}
+            <ReportMenuItem type="entry" id={entry.id} />
+            {canEdit && (
+              <MenuRemove intent="delete-entry" fields={{ entry_id: entry.id }} label={`Remove ${fi.entry}`} confirmText={`Remove “${entry.title}” and its comments?`} />
+            )}
+          </Menu>
+        </span>
+      </div>
+      {comments.length > 0 && (
+        <details className="group border-t border-line pt-2">
+          <summary className="textlink-btn text-[0.8rem]">
+            {comments.length === 1 ? "1 comment" : `${comments.length} comments`}{" "}
+            <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+          </summary>
+          <div className="mt-2 grid gap-3">
+            <CommentList comments={comments} canDelete={canDeleteComment} />
+            {canWrite && <CommentForm targetType="entry" targetId={entry.id} label={`Comment on this ${fi.entry}`} />}
+          </div>
+        </details>
       )}
     </article>
   );
@@ -259,7 +315,7 @@ function AcceptAnswer({ itemId, entryId }: { itemId: string; entryId: string }) 
       <input type="hidden" name="item_id" value={itemId} />
       <input type="hidden" name="status" value="done" />
       <input type="hidden" name="entry_id" value={entryId} />
-      <button className="btn btn-xs" disabled={fetcher.state !== "idle"}>
+      <button className="btn-quiet" disabled={fetcher.state !== "idle"}>
         {fetcher.state !== "idle" ? "Saving…" : "Accept this answer"}
       </button>
     </fetcher.Form>
@@ -274,7 +330,7 @@ function DoneWith({ itemId, entryId }: { itemId: string; entryId: string }) {
       <input type="hidden" name="item_id" value={itemId} />
       <input type="hidden" name="status" value="done" />
       <input type="hidden" name="entry_id" value={entryId} />
-      <button className="btn btn-ghost btn-xs" disabled={fetcher.state !== "idle"}>
+      <button className="btn-quiet" disabled={fetcher.state !== "idle"}>
         {fetcher.state !== "idle" ? "Saving…" : "Done with this"}
       </button>
     </fetcher.Form>
@@ -338,7 +394,7 @@ export function TextEntryForm({ itemId, fi, entry }: { itemId: string; fi: Forma
         </p>
       )}
       <div className="flex items-center gap-3" aria-live="polite">
-        <button className="btn btn-sm w-fit" disabled={fetcher.state !== "idle"}>
+        <button className="btn btn-ghost btn-sm w-fit" disabled={fetcher.state !== "idle"}>
           {fetcher.state !== "idle" ? "Saving…" : editing ? "Save changes" : fi.addEntryLabel}
         </button>
         {done && <span className="text-[0.85rem] text-deal">{editing ? "Saved." : "Posted."}</span>}
@@ -430,7 +486,7 @@ function QuestionForm({ question }: { question: Question }) {
           placeholder={question.options.length ? "Or write an answer" : "Your answer"}
           className="textarea textarea-line flex-1"
         />
-        <button className="btn" disabled={busy}>
+        <button className="btn btn-ghost" disabled={busy}>
           {busy ? "Sending…" : "Answer"}
         </button>
       </fetcher.Form>

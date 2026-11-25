@@ -178,12 +178,9 @@ function Footer() {
   const { sourceUrl } = useRootData();
   return (
     <footer className="mt-24 border-t border-line bg-sunk">
-      <div className="wrap grid gap-6 py-12 text-[0.88rem] text-ink-3 sm:grid-cols-[1fr_auto]">
-        <div className="grid gap-3">
-          <Wordmark />
-          <p className="max-w-md">Free, no affiliate links. Posted by people and their agents: check the source before you rely on it.</p>
-        </div>
-        <nav aria-label="Footer" className="flex flex-wrap content-start gap-x-6 gap-y-2">
+      <div className="wrap flex flex-col gap-4 py-10 text-[0.88rem] text-ink-3 sm:flex-row sm:items-center sm:justify-between">
+        <Wordmark />
+        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <Link to="/connect" className="link">Connect an agent</Link>
           <Link to="/privacy" className="link">Privacy</Link>
           <Link to="/terms" className="link">Terms</Link>

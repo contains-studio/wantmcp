@@ -44,17 +44,58 @@ test("answer the questions waiting on you", async ({ page }) => {
   await expect(page.getByRole("group", { name: "Waiting on you" })).toHaveCount(0);
 });
 
-test("release a stale claim, and take over another", async ({ page }) => {
+test("release a stale claim, and take over another, from the status menu", async ({ page }) => {
   await signIn(page, DEMO);
   await page.goto("/l/lst_tasks");
   const broadband = page.locator("section#itm_t_broadband");
-  await expect(broadband.getByText(/In progress · Claude, 3 days/)).toBeVisible();
-  await broadband.getByRole("button", { name: "Release" }).click();
-  await expect(broadband.getByText("Open", { exact: true })).toBeVisible();
+  // The status chip is the control: it opens a small menu.
+  const status = broadband.getByRole("button", { name: /Change status/ });
+  await expect(status).toContainText("In progress · Claude, 3 days");
+  await status.click();
+  await page.locator(":popover-open").getByRole("button", { name: "Release" }).click();
+  await expect(status).toContainText(/^Open/);
 
   await page.goto("/l/lst_research");
   const grant = page.locator("section#itm_r_grant");
-  await expect(grant.getByText(/In progress · Codex, 2 days/)).toBeVisible();
-  await grant.getByRole("button", { name: "Take over" }).click();
-  await expect(grant.getByText(/In progress · quiet-otter-4821/)).toBeVisible();
+  const grantStatus = grant.getByRole("button", { name: /Change status/ });
+  await expect(grantStatus).toContainText("In progress · Codex, 2 days");
+  await grantStatus.click();
+  await page.locator(":popover-open").getByRole("button", { name: "Take over" }).click();
+  await expect(grantStatus).toContainText("In progress · quiet-otter-4821");
+});
+
+test("an item's ⋯ menu removes it only after asking again", async ({ page }) => {
+  await signIn(page, DEMO);
+  await page.goto("/l/lst_tasks");
+  const item = page.locator("section#itm_t_broadband");
+  await item.getByRole("button", { name: /^More actions for “Move the broadband/ }).click();
+  const menu = item.getByRole("group", { name: /^More actions for “Move the broadband/ });
+  await expect(menu).toBeVisible();
+  await menu.getByText("Remove", { exact: true }).click();
+  await expect(menu.getByText(/and everything on it\?/)).toBeVisible();
+  await menu.getByRole("button", { name: "Yes, remove" }).click();
+  await expect(page.locator("section#itm_t_broadband")).toHaveCount(0);
+});
+
+test("set an item done with a note from its status menu", async ({ page }) => {
+  await signIn(page, DEMO);
+  await page.goto("/l/lst_research");
+  const grant = page.locator("section#itm_r_grant");
+  await grant.getByRole("button", { name: /Change status/ }).click();
+  const menu = page.locator(":popover-open");
+  await menu.getByText("Answered, with a note").click();
+  await menu.getByLabel("Note").fill("Checked with the installer.");
+  await menu.getByRole("button", { name: "Mark answered" }).click();
+  await expect(grant.getByText("Checked with the installer.")).toBeVisible();
+});
+
+test("mark a want bought from the quiet action on its title row", async ({ page }) => {
+  await signIn(page, DEMO);
+  await page.goto("/l/lst_desk2026"); // Sheet layout
+  const lamp = page.locator("section#itm_lamp");
+  await lamp.getByRole("button", { name: "Mark bought" }).first().click();
+  const menu = page.locator(":popover-open");
+  await menu.getByLabel("Retailer").fill("Corner shop");
+  await menu.getByRole("button", { name: "Mark bought" }).click();
+  await expect(page.locator("section#itm_lamp").getByText(/at Corner shop/)).toBeVisible();
 });
