@@ -838,21 +838,38 @@ button.check-toggle:hover { border-color: var(--ink); }
 .theme-thumb-inner > .themed { min-height: 1600px; }
 .ix-panel .deep-target { animation: none; }
 
-/* "Works with" as one drifting line: a full pass in about 40s, paused on hover or focus,
-   still and wrapped with reduced motion. The track holds the row twice and moves by one copy. */
+/* "Works with" as one line. It drifts sideways (a full pass in about 40s) and pauses while a pointer
+   rests on it or the keyboard's focus is in it. A touch never pauses it: on a phone both "hover"
+   and plain focus stick to the logo that was tapped, which would freeze the row until the person
+   tapped somewhere else. The track holds the row twice and moves by one copy.
+   With reduced motion nothing drifts, so every logo must be reachable another way: on a touch
+   screen the line swipes sideways (the right edge fades to show there is more); with a mouse,
+   where a sideways swipe may not exist, the row wraps. */
 .marquee {
   overflow: hidden; padding-block: 0.5rem;
   mask-image: linear-gradient(90deg, transparent, #000 4rem, #000 calc(100% - 4rem), transparent);
 }
 .marquee-track { display: flex; width: max-content; animation: marquee 40s linear infinite; }
 .marquee-list { display: flex; flex: none; align-items: center; gap: 0.25rem; padding-right: 2rem; }
-.marquee:hover .marquee-track, .marquee:focus-within .marquee-track { animation-play-state: paused; }
+.marquee:has(:focus-visible) .marquee-track { animation-play-state: paused; }
+@media (hover: hover) {
+  .marquee:hover .marquee-track { animation-play-state: paused; }
+}
 @keyframes marquee { to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) {
-  .marquee { mask-image: none; }
-  .marquee-track { animation: none; width: auto; justify-content: center; }
-  .marquee-list { flex-wrap: wrap; justify-content: center; padding-right: 0; }
+  .marquee {
+    overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 calc(100% - 3rem), transparent);
+  }
+  .marquee::-webkit-scrollbar { display: none; }
+  .marquee-track { animation: none; }
+  .marquee-list { padding-right: 3rem; }
   .marquee-list[aria-hidden] { display: none; }
+}
+@media (prefers-reduced-motion: reduce) and (hover: hover) {
+  .marquee { overflow: hidden; mask-image: none; }
+  .marquee-track { width: auto; justify-content: center; }
+  .marquee-list { flex: 0 1 auto; flex-wrap: wrap; justify-content: center; padding-right: 0; }
 }
 
 /* "Works with" tiles on the home page: 52px tall, logos shown unmodified at their own aspect ratio. */
