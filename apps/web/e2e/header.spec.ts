@@ -24,12 +24,20 @@ test("header: the logo and the links sit on the same line @phone", async ({ page
   }
 });
 
-test("home, signed out: the hero has one action, Start a list @phone", async ({ page }) => {
+test("home, signed out: the hero has one action, and the words to give an agent copy on a tap @phone", async ({ page, context, browserName }) => {
+  if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   const hero = page.locator("section", { has: page.getByRole("heading", { level: 1 }) }).first();
   await expect(hero.getByRole("link", { name: "Start a list" })).toBeVisible();
   await expect(hero.getByRole("link")).toHaveCount(1);
-  // The other way in, in the owner's words, right under the button.
-  await expect(hero.getByText("Or just tell your agent to set up wantmcp.com for the things you want")).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: "Connect an agent" })).toHaveCount(0);
+
+  // The other way in, in the owner's words, right under the button.
+  const words = "set up wantmcp.com for keeping track of the things I want";
+  await expect(hero.getByText("Or just tell your agent:")).toBeVisible();
+  const copy = hero.getByRole("button", { name: new RegExp(words) });
+  await expect(copy).toBeVisible();
+  await copy.click();
+  await expect(hero.getByText("Copied. Now share with your agent.")).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(words);
 });
