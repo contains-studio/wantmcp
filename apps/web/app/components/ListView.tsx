@@ -72,6 +72,7 @@ export function ListView(props: ListViewProps) {
   const isDone = (i: ItemWithEntries) => (shopping ? !!i.purchase : i.status === "done");
   const wanted = items.filter((i) => !isDone(i)).slice(0, previewItems ?? Infinity);
   const bought = previewItems ? [] : items.filter(isDone);
+  const listCurrency = items.flatMap((i) => i.entries).find((e) => e.current_price)?.current_price?.currency;
   const productCount = items.reduce((n, i) => n + i.entries.length, 0);
   // The Sheet table compares prices, so it only applies to shopping lists.
   const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
@@ -150,7 +151,7 @@ export function ListView(props: ListViewProps) {
           </div>
         )}
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
-        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={items.flatMap((i) => i.entries).find((e) => e.current_price)?.current_price?.currency} />}
+        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={listCurrency} />}
         {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">No {fi.items} yet.</p>}
 
         {indexKind && (
@@ -182,6 +183,7 @@ export function ListView(props: ListViewProps) {
             eager={i === 0}
             inPanel={!!indexKind}
             ownerHandle={list.owner_handle}
+            listCurrency={listCurrency}
           />
         ))}
 
@@ -207,6 +209,7 @@ export function ListView(props: ListViewProps) {
                 canDeleteComment={canDeleteComment}
                 inPanel={!!indexKind}
                 ownerHandle={list.owner_handle}
+                listCurrency={listCurrency}
               />
             ))}
           </section>
@@ -248,8 +251,10 @@ function ItemSection({
   inPanel = false,
   cards = false,
   ownerHandle,
+  listCurrency,
 }: {
   ownerHandle: string;
+  listCurrency?: string;
   inPanel?: boolean;
   cards?: boolean;
   fi: FormatInfo;
@@ -277,6 +282,7 @@ function ItemSection({
   const acceptedId = !shopping && status === "done" ? item.completion?.entry_id ?? null : null;
   const accepted = acceptedId ? item.entries.find((e) => e.id === acceptedId) : undefined;
   const cheapest = entries.find((e) => e.current_price)?.current_price;
+  const currencyHint = cheapest?.currency ?? listCurrency;
   // Older purchases may only record the entry; fall back to its price and retailer.
   const boughtEntry = p?.entry_id ? entries.find((e) => e.id === p.entry_id) : undefined;
   const boughtPrice = p?.price ? { price: p.price, currency: p.currency } : boughtEntry?.current_price ?? null;
@@ -314,13 +320,13 @@ function ItemSection({
           </h2>
           {/* The item's actions: at the right end of its title row. */}
           <span className="item-actions">
-            {isWriter && shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} itemText={item.text} />}
+            {isWriter && shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} itemText={item.text} currency={currencyHint} />}
             <Menu label={`More actions for “${item.text.slice(0, 60)}”`}>
               {isWriter && shopping && !p && !checklist && (
                 // On phones "Mark bought" lives here, so the title keeps the row.
                 <div className="sm:hidden">
                   <MenuSub label="Mark bought">
-                    <MarkBoughtForm itemId={item.id} currency={cheapest?.currency} />
+                    <MarkBoughtForm itemId={item.id} currency={currencyHint} />
                   </MenuSub>
                 </div>
               )}
@@ -476,7 +482,7 @@ function ItemSection({
 
       {isWriter && (
         <div className="item-indent sm:pl-11">
-          <AddEntry itemId={item.id} fi={fi} />
+          <AddEntry itemId={item.id} fi={fi} currency={currencyHint} />
         </div>
       )}
 
@@ -568,14 +574,14 @@ function AddItem({ listId, empty, fi, isPrivate, currency: hint }: { listId: str
   );
 }
 
-function AddEntry({ itemId, fi }: { itemId: string; fi: FormatInfo }) {
+function AddEntry({ itemId, fi, currency }: { itemId: string; fi: FormatInfo; currency?: string }) {
   return (
     <details className="add-entry w-full">
       <summary className="add-link">
         <Icon name="plus" />
         {fi.addEntryLabel}
       </summary>
-      <div className="card mt-2 p-4">{fi.format === "shopping" ? <EntryForm itemId={itemId} /> : <TextEntryForm itemId={itemId} fi={fi} />}</div>
+      <div className="card mt-2 p-4">{fi.format === "shopping" ? <EntryForm itemId={itemId} currency={currency} /> : <TextEntryForm itemId={itemId} fi={fi} />}</div>
     </details>
   );
 }

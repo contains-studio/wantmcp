@@ -76,7 +76,7 @@ const dateOnly = (ts: string | null | undefined) => (ts ? ts.slice(0, 10) : "");
  * Add a product to an item, or edit one. Prices are not edited here: a new price is a new
  * observation, posted with <PostPrice>.
  */
-export function EntryForm({ itemId, entry, onDone }: { itemId: string; entry?: Entry; onDone?: () => void }) {
+export function EntryForm({ itemId, entry, onDone, currency: hint }: { itemId: string; entry?: Entry; onDone?: () => void; currency?: string | null }) {
   const fetcher = useFetcher<IntentResult>();
   const uid = useId();
   const editing = Boolean(entry);
@@ -87,7 +87,7 @@ export function EntryForm({ itemId, entry, onDone }: { itemId: string; entry?: E
   }, [done, onDone]);
   const f = (name: string) => `${uid}-${name}`;
   const cur = entry?.current_price;
-  const currency = useCurrency(cur?.currency);
+  const currency = useCurrency(cur?.currency ?? hint);
 
   if (done && !editing) {
     return (
@@ -287,12 +287,12 @@ export function MarkBoughtForm({ itemId, currency: hint }: { itemId: string; cur
 }
 
 /** "Mark bought" as a quiet action at the right end of an item's title row (wider screens). */
-export function MarkBoughtElsewhere({ itemId, itemText }: { itemId: string; itemText: string }) {
+export function MarkBoughtElsewhere({ itemId, itemText, currency }: { itemId: string; itemText: string; currency?: string | null }) {
   return (
     <span className="hidden sm:inline-flex">
       <Menu label={`Mark “${itemText.slice(0, 60)}” bought`} wide triggerClass="btn-quiet" trigger="Mark bought">
         <div className="p-3">
-          <MarkBoughtForm itemId={itemId} />
+          <MarkBoughtForm itemId={itemId} currency={currency} />
         </div>
       </Menu>
     </span>
