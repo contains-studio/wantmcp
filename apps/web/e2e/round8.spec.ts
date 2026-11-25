@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { DEMO, freshEmail, signIn } from "./helpers";
 
-test("a Sheet leaves out columns that are empty for every product of a want", async ({ page }) => {
+test("a Sheet says only what a product has: a coupon shows on the product that has one", async ({ page }) => {
+  // The Sheet's columns became one quiet line per product (owner review, 25 Nov); the principle stays: nothing empty.
   await page.goto("/l/lst_desk2026");
-  // The monitor's products have no coupon: no Coupon column in its table; the chair's have one.
-  const monitor = page.locator("section#itm_monitor");
-  await expect(monitor.getByRole("columnheader", { name: "Coupon" })).toHaveCount(0);
-  await expect(page.locator("section#itm_chair").getByRole("columnheader", { name: "Coupon" })).toHaveCount(1);
+  await expect(page.locator("section#itm_monitor .sheet-meta", { hasText: /Code [A-Z0-9]/ })).toHaveCount(0);
+  await expect(page.locator("#ent_chair1 .sheet-meta")).toContainText("Code BF15");
 });
 
 test("new list: both visibility radios are the same size, in 44px rows", async ({ page }) => {

@@ -2,7 +2,7 @@
  * Items on task and research lists (SPEC 11): status (open, in progress, done), details and due
  * dates, text entries (updates and answers with links) and accepted answers.
  */
-import { useContext, useEffect, useId, useRef } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 import { HeadingBase, headingTag } from "./preview";
 import { useFetcher } from "react-router";
 import { formatDate } from "~/lib/format";
@@ -40,12 +40,22 @@ export function DueChip({ due, done }: { due: string | null | undefined; done: b
 }
 
 /** The item's longer description, written by a list writer. */
-export function ItemDetails({ details }: { details: string | undefined }) {
+export function ItemDetails({ details, fold = false }: { details: string | undefined; fold?: boolean }) {
+  const [open, setOpen] = useState(false);
   if (!details) return null;
+  // Folded (the Sheet): an agent's long notes take two quiet lines until asked for; the products come first.
+  const long = fold && (details.length > 150 || details.includes("\n"));
   return (
-    <p className="item-details item-indent max-w-3xl whitespace-pre-line break-words text-[0.95rem] text-ink-2 sm:pl-11">
-      <Linkify text={details} />
-    </p>
+    <div className={`item-details-wrap item-indent max-w-3xl sm:pl-11 ${fold ? "is-folded" : ""}`}>
+      <p className={`item-details whitespace-pre-line break-words text-[0.95rem] text-ink-2 ${long && !open ? "line-clamp-2" : ""}`}>
+        <Linkify text={details} />
+      </p>
+      {long && (
+        <button type="button" className="textlink-btn text-[0.82rem] text-ink-3" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Show less" : "Show all"}
+        </button>
+      )}
+    </div>
   );
 }
 

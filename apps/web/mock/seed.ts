@@ -157,6 +157,26 @@ export function seedStore(now = Date.now()): Store {
     { id: "itm_vest", list_id: "lst_trail", text: "Running vest, 10–12L, with soft flasks", created_by: lynx, created_at: at(4 * DAY), purchase: null },
   );
 
+  // ---- A real-looking shopping list in the default Sheet look, modelled on the owner's (review fixture): long
+  // agent-written details, one product on one want and six on another, a want with none, a bought one, products with
+  // and without photos, a broken photo link, a long product title. Sign in as tesla@example.com to see it.
+  s.users.push({ id: "usr_tesla", email: "tesla@example.com", handle: "steady-otter-5150", updates_opt_in: false, created_at: at(20 * DAY) });
+  s.lists.push({ id: "lst_tesla", title: "Tesla Model Y accessories", description: "", owner_id: "usr_tesla", allow_outside_suggestions: false, format: "shopping", visibility: "private", created_at: at(DAY), updated_at: at(HOUR) });
+  s.members.push({ id: "mem_lst_tesla", list_id: "lst_tesla", user_id: "usr_tesla", invited_email: null, role: "owner", status: "active", token: null, created_at: at(DAY) });
+  s.items.push(
+    {
+      id: "itm_ty_chains", list_id: "lst_tesla", text: "Snow chains that fit the 19-inch wheels", created_by: muse, created_at: at(5 * HOUR), purchase: null,
+      details: "The owner's manual approves only the König K-Summit XXL K66 for the six-seat 19-inch car; other chains can hit the suspension at full lock. Tesla's own Snow Chains are listed for the 19-inch Gemini wheel too, but they are out of stock in most regions until January. I'd go with the König unless you already have a Tesla service visit booked, in which case ask them to fit the Tesla set.",
+    },
+    { id: "itm_ty_mats", list_id: "lst_tesla", text: "All-weather floor mats, front and rear, plus the frunk and trunk", created_by: muse, created_at: at(5 * HOUR), purchase: null,
+      details: "Six options below: the 3D MAXpider set is the only one that covers the third row." },
+    { id: "itm_ty_tyres", list_id: "lst_tesla", text: "Winter tyres, 255/45 R19", created_by: muse, created_at: at(5 * HOUR), purchase: null },
+    { id: "itm_ty_shade", list_id: "lst_tesla", text: "A glass roof sunshade that folds into the frunk", created_by: muse, created_at: at(5 * HOUR), purchase: null },
+    { id: "itm_ty_charger", list_id: "lst_tesla", text: "A wall charger for the garage", created_by: muse, created_at: at(5 * HOUR),
+      purchase: { purchased_by: { kind: "user", handle: "steady-otter-5150" }, purchased_at: at(2 * HOUR), entry_id: "ent_ty_wc", price: "420.00", currency: "USD", retailer: "Tesla" } },
+  );
+
+
   // ---- entries (+ prices)
   type Seed = {
     id: string; item: string; list: string; author: ActorRef; title: string; description: string;
@@ -247,6 +267,33 @@ export function seedStore(now = Date.now()): Store {
       title: "Race vest 12L with two 500ml flasks", description: "",
       url: "https://example.com/run/vest-12", image: "/mock-images/vest.svg", retailer: "Example Runner",
       ago: 3 * DAY, prices: [[3 * DAY, "140.00", null, openclaw]],
+    },
+    // The Tesla review list: one product with a photo on the chains; six on the mats (photos on some, one broken).
+    {
+      id: "ent_ty_konig", item: "itm_ty_chains", list: "lst_tesla", author: muse,
+      title: "König K-Summit XXL K66 snow chains", description: "The only chain the owner's manual approves for the 19-inch wheel.",
+      url: "https://example.com/konig-k66", image: "/mock-images/shoe.svg", retailer: "Amazon", ago: 5 * HOUR, prices: [[5 * HOUR, "289.95", "329.95", muse]],
+    },
+    ...([
+      ["ent_ty_m1", "3D MAXpider Kagu all-weather floor mats, 3 rows, black, custom fit for Model Y 7-seat 2022–2025 with frunk and trunk liner", "3D MAXpider", "/mock-images/chair-a.svg", "289.99", "329.99"],
+      ["ent_ty_m2", "TESLA Model Y all-weather interior liners, 2 rows", "Tesla", null, "225.00", null],
+      ["ent_ty_m3", "WeatherTech FloorLiner HP, front and rear", "WeatherTech", "/mock-images/monitor.svg", "239.95", null],
+      ["ent_ty_m4", "TAPTES all-weather mats, 6 pieces", "Amazon", "https://images.example.invalid/taptes.jpg", "129.99", "159.99"],
+      ["ent_ty_m5", "Husky Liners X-act Contour, rows 1–2", "AutoZone", null, "199.95", null],
+      ["ent_ty_m6", "Generic rubber mats, trim to fit", "Walmart", null, "39.97", null],
+    ] as const).map(([id, title, retailer, image, price, was], n) => ({
+      id, item: "itm_ty_mats", list: "lst_tesla", author: muse, title, description: "", url: `https://example.com/mats/${id}`,
+      image, retailer, ago: 4 * HOUR - n * 600_000, prices: [[4 * HOUR - n * 600_000, price, was, muse]] as Seed["prices"],
+    })),
+    {
+      id: "ent_ty_tyre1", item: "itm_ty_tyres", list: "lst_tesla", author: muse,
+      title: "Michelin X-Ice Snow, 255/45 R19 (set of four)", description: "", url: "https://example.com/tyres/x-ice",
+      image: null, retailer: "Tire Rack", ago: 4 * HOUR, prices: [[4 * HOUR, "1196.00", null, muse]],
+    },
+    {
+      id: "ent_ty_wc", item: "itm_ty_charger", list: "lst_tesla", author: muse,
+      title: "Tesla Wall Connector, Gen 3", description: "", url: "https://example.com/tesla-wall-connector",
+      image: "/mock-images/grinder.svg", retailer: "Tesla", ago: 5 * HOUR, prices: [[5 * HOUR, "420.00", null, muse]],
     },
   ];
 

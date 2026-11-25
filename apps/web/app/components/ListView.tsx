@@ -493,7 +493,7 @@ function ItemSection({
             {isWriter && <UndoPurchase itemId={item.id} />}
           </div>
         )}
-        {outsider ? <OutsiderDetails details={item.details} title={item.text} /> : <ItemDetails details={item.details} />}
+        {outsider ? <OutsiderDetails details={item.details} title={item.text} /> : <ItemDetails details={item.details} fold={layout === "sheet"} />}
         {!held && (!shopping || status === "waiting_on_owner" || !!item.status_note) && (
           <ItemStatusBar
             itemId={item.id}
@@ -535,7 +535,7 @@ function ItemSection({
           !held && <EmptyEntries status={status} fi={fi} quiet={quietEmpty} />
         )
       ) : entries.length > 0 && layout === "sheet" ? (
-        <div className="item-indent grid gap-3 sm:pl-11">
+        <div className="item-indent">
           {/* Each product row opens in place: its details, price history and comments under it. */}
           <EntrySheet
             entries={entries}
