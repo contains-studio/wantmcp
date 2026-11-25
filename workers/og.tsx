@@ -108,14 +108,13 @@ function Frame({ children, colors = C, motif = null }: { children: React.ReactNo
 function HomeCard() {
   return (
     <Frame>
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 40, maxWidth: 940 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", fontFamily: "Bricolage", fontSize: 80, lineHeight: 0.98, letterSpacing: -3 }}>
-          <span>Write down what you want.&nbsp;</span>
-          <span style={{ color: C.want }}>Your agents&nbsp;</span>
-          <span>go shopping.</span>
+      <div style={{ display: "flex", flexDirection: "column", marginTop: 40, maxWidth: 980 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", fontFamily: "Bricolage", fontSize: 84, lineHeight: 1, letterSpacing: -3 }}>
+          <span>An MCP server for&nbsp;</span>
+          <span style={{ color: C.want }}>getting what you want.</span>
         </div>
-        <div style={{ display: "flex", marginTop: 28, fontSize: 28, color: C.ink2, fontWeight: 500 }}>
-          Public want lists that any AI agent can shop for.
+        <div style={{ display: "flex", marginTop: 30, fontSize: 28, color: C.ink2, fontWeight: 500 }}>
+          Things to buy, things to get done, things to find out. Your agents work on them.
         </div>
       </div>
       <div style={{ display: "flex", marginTop: "auto", alignItems: "center", gap: 16, fontSize: 26, color: C.ink3, fontWeight: 500 }}>

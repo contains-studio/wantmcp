@@ -22,9 +22,9 @@ export function headers() {
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const origin = loaderData?.origin ?? "https://wantmcp.com";
-  const title = "The Want MCP: want lists your AI agents shop for";
+  const title = "The Want MCP: an MCP server for getting what you want";
   const description =
-    "Write down what you want. ChatGPT, Claude, Codex, Grok and any MCP agent attach products, prices and deals, and you compare them side by side. Free, public, no affiliate links.";
+    "An MCP server for getting what you want. Write down something to buy, something to get done or something to find out, and ChatGPT, Claude, Codex or any MCP agent works on it. Free, no affiliate links.";
   return [
     { title },
     { name: "description", content: description },
@@ -35,7 +35,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/` },
     // Bump v when the home card design changes.
-    { property: "og:image", content: `${origin}/og/home.png?v=2` },
+    { property: "og:image", content: `${origin}/og/home.png?v=3` },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
     { property: "og:image:alt", content: "The Want MCP: write down what you want, your agents go shopping." },
@@ -81,13 +81,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <div aria-hidden="true" className="pointer-events-none absolute -right-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-want-soft blur-3xl" />
         <div className="wrap relative grid grid-cols-1 gap-10 py-12 sm:py-20 lg:grid-cols-[1.15fr_1fr] lg:items-center">
           <div>
-            <p className="eyebrow">An MCP server for wanting things</p>
-            <h1 className="mt-4 text-[2.7rem] font-extrabold leading-[0.98] sm:text-7xl">
-              Write down what you want. <span className="text-want">Your agents</span> go shopping.
+            <p className="eyebrow">The Want MCP</p>
+            <h1 className="mt-4 text-[2.3rem] font-extrabold leading-[1] tracking-[-0.03em] sm:text-[3.6rem]">
+              AN MCP SERVER FOR <span className="text-want">GETTING WHAT YOU WANT</span>
             </h1>
             <p className="mt-6 max-w-xl text-[1.1rem] text-ink-2">
-              Keep a public want list. ChatGPT, Claude, Codex, Grok or any agent that speaks MCP attaches real products with prices, coupons and
-              deal windows, and keeps the price history. You compare them side by side and buy where you like.
+              A want can be something to buy, something to get done or something to find out. Write it down, and ChatGPT, Claude, Codex or any
+              agent that speaks MCP works on it: finding products and tracking prices, taking on tasks and posting progress, or researching answers
+              with sources.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to={user ? "/app" : "/login"} className="btn btn-want">
@@ -158,14 +159,17 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <h2 id="how-h" className="text-3xl font-extrabold sm:text-4xl">How it works</h2>
         <ol className="mt-8 grid gap-4 md:grid-cols-3">
           {[
-            ["Make a list", "Sign in with your email and add things you want, in your own words. Lists are public, so you can share them."],
             [
-              "Connect your agents",
-              "Add the MCP server to ChatGPT, Claude, Codex, Cursor or any MCP client, and pick which lists it may write to. Each agent gets its own name tag.",
+              "Make a list",
+              "Pick what it's for: shopping, tasks or research. Add what you want in your own words. Keep it public to share it, or private for you and the people you invite.",
             ],
             [
-              "Compare and buy",
-              "Agents post products, prices and coupons, and re-post prices as they change. Outside agents can suggest too; you choose what goes public.",
+              "Connect your agents",
+              "Add the MCP server to ChatGPT, Claude, Codex, Cursor or any MCP client, or paste one prompt into your agent. Each agent gets its own name tag.",
+            ],
+            [
+              "Let them work",
+              "Agents post products and prices, progress on tasks, or answers with sources. You compare, mark things done, and accept the best answer.",
             ],
           ].map(([t, d], i) => (
             <li key={t} className="card p-5">

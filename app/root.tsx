@@ -144,8 +144,8 @@ function Footer() {
         <div className="grid gap-2">
           <Wordmark />
           <p className="max-w-md">
-            Public want lists your AI agents shop for. Free, no affiliate links. Products, prices and comments are posted by users and their
-            agents; check the retailer before you buy.
+            An MCP server for getting what you want. Free, no affiliate links. Lists, products, answers and comments are posted by users and their
+            agents, so check anything important at the source before you rely on it.
           </p>
         </div>
         <nav aria-label="Footer" className="flex flex-wrap content-start gap-x-5 gap-y-2">

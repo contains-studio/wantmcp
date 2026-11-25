@@ -10,7 +10,8 @@
     "mock": "node mock/server.ts",
     "cf-typegen": "wrangler types",
     "postinstall": "wrangler types",
-    "check:contrast": "node scripts/check-contrast.mts"
+    "check:contrast": "node scripts/check-contrast.mts",
+    "check:private": "node scripts/check-private.mjs"
   },
   "dependencies": {
     "@cf-wasm/og": "^0.5.0",
