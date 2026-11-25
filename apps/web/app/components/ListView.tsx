@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useFetcher, useLocation } from "react-router";
 import { ActorTag } from "~/components/ActorTag";
 import { CommentForm, CommentList } from "~/components/Comments";
@@ -512,8 +512,10 @@ function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: bool
   const busy = fetcher.state !== "idle";
   const added = fetcher.state === "idle" && fetcher.data?.ok && fetcher.data.itemId ? fetcher.data.itemId : null;
   const [promptFor, setPromptFor] = useState<string | null>(null);
+  // Details already written on the add form: no need to ask again.
+  const hadDetails = useRef(false);
   useEffect(() => {
-    if (added) setPromptFor(added);
+    if (added && !hadDetails.current) setPromptFor(added);
   }, [added]);
   return (
     <section id="add-item" aria-labelledby="add-item-h" className={`add-item scroll-mt-24 ${empty ? "card p-5" : ""}`}>
@@ -532,6 +534,8 @@ function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: bool
         className={`${empty ? "mt-4" : ""} grid gap-2`}
         onSubmit={(e) => {
           const form = e.currentTarget;
+          const d = form.elements.namedItem("details") as HTMLTextAreaElement | null;
+          hadDetails.current = !!d?.value.trim();
           requestAnimationFrame(() => form.reset());
         }}
       >

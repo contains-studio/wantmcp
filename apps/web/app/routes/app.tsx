@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import { PrivateBadge } from "~/components/ListView";
 import { FORMATS, formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
@@ -239,8 +239,10 @@ function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string 
   const busy = fetcher.state !== "idle";
   const added = fetcher.state === "idle" && fetcher.data?.ok && fetcher.data.itemId ? fetcher.data.itemId : null;
   const [promptFor, setPromptFor] = useState<string | null>(null);
+  // Details already written on the add form: no need to ask again.
+  const hadDetails = useRef(false);
   useEffect(() => {
-    if (added) setPromptFor(added);
+    if (added && !hadDetails.current) setPromptFor(added);
   }, [added]);
   const [target, setTarget] = useState(listId ?? lists[0]?.id ?? "");
   const fi = formatInfo(lists.find((l) => l.id === target));
@@ -251,6 +253,8 @@ function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string 
         className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end"
         onSubmit={(e) => {
           const form = e.currentTarget;
+          const d = form.elements.namedItem("details") as HTMLTextAreaElement | null;
+          hadDetails.current = !!d?.value.trim();
           requestAnimationFrame(() => {
             const input = form.elements.namedItem("text") as HTMLInputElement | null;
             const details = form.elements.namedItem("details") as HTMLTextAreaElement | null;

@@ -1,5 +1,6 @@
 import { data } from "react-router";
 import { api, formError } from "./api.server";
+import { detailsPatch } from "./details";
 import { assertSameOrigin } from "./session.server";
 
 const str = (f: FormData, k: string) => {
@@ -112,8 +113,8 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
       case "add-details": {
         // The light prompt after adding an item: what an agent would need, stored in details.
         // Empty means "nothing to add": keep any details already saved on the add form.
-        const details = str(form, "details");
-        if (details) await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}`, { method: "PATCH", body: { details } });
+        const patch = detailsPatch(str(form, "details"));
+        if (patch) await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}`, { method: "PATCH", body: patch });
         return { ok: true, intent };
       }
       case "set-status": {
