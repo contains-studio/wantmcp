@@ -149,14 +149,40 @@ function Frame({ children, colors = C, motif = null }: { children: React.ReactNo
   );
 }
 
+/**
+ * What the home card shows (owner, 25 Nov 2026: no line that the link preview already prints under
+ * the image, and "actionable based on the most common findings from persona research").
+ * The preview's own title carries the name and the tagline, so the card carries what to do and
+ * what you get. The three examples are the jobs the persona research found most often and ranked
+ * as the clearest proof for people who do not build software: one big purchase compared (to buy),
+ * a deadline project handed off (to do), an everyday decision researched with sources (to find
+ * out). Its messaging rules apply: lead with the want, say what the agent did, promise no buying.
+ */
+const EXAMPLES: Array<{ kind: string; want: string; result: string; by: string }> = [
+  { kind: "To buy", want: "A 65-inch TV under $900", result: "$649.99, was $799.99", by: "found by Claude" },
+  { kind: "To do", want: "Get three quotes from movers", result: "2 of 3 in", by: "ChatGPT is on it" },
+  { kind: "To find out", want: "Is a heat pump worth it for our house?", result: "Answered, 4 sources", by: "by Gemini" },
+];
+
 function HomeCard() {
   return (
     <Frame>
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 64, maxWidth: 1056 }}>
-        <div style={{ display: "flex", fontSize: 78, fontWeight: 600, lineHeight: 1.06, letterSpacing: -2.2 }}>An MCP server for getting what you want.</div>
-        <div style={{ display: "flex", marginTop: 32, fontSize: 30, color: C.ink2, fontWeight: 400 }}>
-          Things to buy, to get done, to find out. Your agents work on them.
-        </div>
+      <div style={{ display: "flex", flexDirection: "column", marginTop: 22 }}>
+        <div style={{ display: "flex", fontSize: 64, fontWeight: 600, lineHeight: 1.05, letterSpacing: -2 }}>Tell your agent what you want.</div>
+        <div style={{ display: "flex", marginTop: 10, fontSize: 28, color: C.ink2, fontWeight: 400 }}>It finds it, does it or looks it up, and keeps the list.</div>
+      </div>
+      <div style={{ display: "flex", gap: 20, marginTop: 24 }}>
+        {EXAMPLES.map((e) => (
+          <div
+            key={e.kind}
+            style={{ display: "flex", flexDirection: "column", flex: 1, background: C.card, borderRadius: 22, border: `1px solid ${C.line}`, padding: "16px 22px 18px" }}
+          >
+            <div style={{ display: "flex", fontSize: 19, fontWeight: 600, color: C.want, letterSpacing: 0.2 }}>{e.kind}</div>
+            <div style={{ display: "flex", marginTop: 6, fontSize: 27, fontWeight: 600, lineHeight: 1.18, letterSpacing: -0.5, height: 64 }}>{e.want}</div>
+            <div style={{ display: "flex", marginTop: 10, fontSize: 24, fontWeight: 500 }}>{e.result}</div>
+            <div style={{ display: "flex", marginTop: 2, fontSize: 21, color: C.ink3, fontWeight: 400 }}>{e.by}</div>
+          </div>
+        ))}
       </div>
       <LogoRow />
     </Frame>

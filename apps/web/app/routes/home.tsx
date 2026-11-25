@@ -84,12 +84,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/` },
     // Bump v when the home card design changes.
-    { property: "og:image", content: `${origin}/og/home.png?v=8` },
+    { property: "og:image", content: `${origin}/og/home.png?v=9` },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
     {
       property: "og:image:alt",
-      content: "The Want MCP: an MCP server for getting what you want.",
+      content: "Tell your agent what you want. Three examples: a 65-inch TV under $900, found for $649.99; three quotes from movers, two in; is a heat pump worth it, answered with four sources. Logos of the AI apps it works with.",
     },
     { name: "twitter:card", content: "summary_large_image" },
     // Instructions for agents reading the site (SPEC 13.4).
