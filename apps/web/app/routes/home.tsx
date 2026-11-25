@@ -84,12 +84,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/` },
     // Bump v when the home card design changes.
-    { property: "og:image", content: `${origin}/og/home.png?v=12` },
+    { property: "og:image", content: `${origin}/og/home.png?v=13` },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
     {
       property: "og:image:alt",
-      content: "The marks of ChatGPT, Claude, Grok Bot, Muse, OpenClaw, Hermes Agent, Instinct and Gemini. Three stickers: To buy, To do, To find out. Tell your agent \u201cset up wantmcp.com for the things I want\u201d and it will take care of the rest.",
+      content: "The marks of ChatGPT, Claude, Grok Bot, Muse, OpenClaw, Hermes Agent, Instinct and Gemini. What do you want? Three stickers: To buy, To do, To find out. Tell your agent \u201cset up wantmcp.com for the things I want\u201d and it will take care of the rest.",
     },
     { name: "twitter:card", content: "summary_large_image" },
     // Instructions for agents reading the site (SPEC 13.4).

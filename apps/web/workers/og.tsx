@@ -140,8 +140,10 @@ function Frame({ children, colors = C, motif = null, brand = true }: { children:
  * The home card (owner, 25 Nov 2026). It exists to get a click, and the link preview prints the name, the tagline
  * and the address under it, so the card repeats none of them and carries no logo of ours:
  *  - the marks of the apps it works with, where our lockup used to be;
- *  - the three kinds of list as stickers, the loudest thing on the card;
+ *  - the question, "What Do You Want?", on one line;
+ *  - the three kinds of list as stickers;
  *  - the one thing to do, in the owner's words.
+ * Nothing sits in the bottom fifth: X lays the link's title over it, and the line there was covered.
  */
 const STICKERS: Array<{ text: string; color: string; tilt: number }> = [
   { text: "TO BUY", color: "#0a6fe0", tilt: -3 },
@@ -152,37 +154,44 @@ const STICKERS: Array<{ text: string; color: string; tilt: number }> = [
 function HomeCard() {
   return (
     <Frame brand={false}>
-      <MarkRow />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, margin: "auto -24px 0" }}>
-        {STICKERS.map((k) => (
-          <div
-            key={k.text}
-            style={{
-              display: "flex",
-              background: k.color,
-              color: "#ffffff",
-              fontSize: 58,
-              whiteSpace: "nowrap",
-              fontWeight: 600,
-              letterSpacing: 0.5,
-              lineHeight: 1,
-              padding: "50px 30px",
-              borderRadius: 30,
-              border: "7px solid #ffffff",
-              boxShadow: "0 10px 26px rgba(0,0,0,0.16), 0 2px 5px rgba(0,0,0,0.12)",
-              transform: `rotate(${k.tilt}deg)`,
-            }}
-          >
-            {k.text}
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", marginTop: "auto", alignItems: "center", gap: 6 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12, fontSize: 36, letterSpacing: -0.6 }}>
-          <span style={{ color: C.ink2, fontWeight: 400 }}>Tell your agent</span>
-          <span style={{ fontWeight: 600 }}>“set up wantmcp.com for the things I want”</span>
+      {/* Everything sits in the top four fifths: X lays the link's title over the bottom edge of the image, and
+          other apps crop it (owner's screenshot, 25 Nov 2026: the last line was covered). */}
+      <div style={{ display: "flex", flexDirection: "column", marginTop: -8 }}>
+        <MarkRow size={68} />
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 24, fontSize: 84, fontWeight: 600, letterSpacing: -2.6, lineHeight: 1.05, whiteSpace: "nowrap" }}>
+          What Do You Want?
         </div>
-        <div style={{ display: "flex", fontSize: 36, color: C.ink2, fontWeight: 400, letterSpacing: -0.6 }}>and it will take care of the rest.</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 30 }}>
+          {STICKERS.map((k) => (
+            <div
+              key={k.text}
+              style={{
+                display: "flex",
+                background: k.color,
+                color: "#ffffff",
+                fontSize: 46,
+                whiteSpace: "nowrap",
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                lineHeight: 1,
+                padding: "24px 30px",
+                borderRadius: 22,
+                border: "6px solid #ffffff",
+                boxShadow: "0 8px 20px rgba(0,0,0,0.16), 0 2px 5px rgba(0,0,0,0.12)",
+                transform: `rotate(${k.tilt}deg)`,
+              }}
+            >
+              {k.text}
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 38, alignItems: "center", gap: 4 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, fontSize: 36, letterSpacing: -0.6 }}>
+            <span style={{ color: C.ink2, fontWeight: 400 }}>Tell your agent</span>
+            <span style={{ fontWeight: 600 }}>“set up wantmcp.com for the things I want”</span>
+          </div>
+          <div style={{ display: "flex", fontSize: 36, color: C.ink2, fontWeight: 400, letterSpacing: -0.6 }}>and it will take care of the rest.</div>
+        </div>
       </div>
     </Frame>
   );
