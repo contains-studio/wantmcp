@@ -39,7 +39,7 @@ test("answer the questions waiting on you", async ({ page }) => {
   // A written answer, on the list page.
   await page.goto("/l/lst_tasks");
   const q = page.getByRole("group", { name: "Waiting on you" });
-  await q.getByLabel("Your answer").fill("Yes, book the £420 one.");
+  await q.getByLabel("Your answer").fill("Yes, book the $1,180 one.");
   await q.getByRole("button", { name: "Answer" }).click();
   await expect(page.getByRole("group", { name: "Waiting on you" })).toHaveCount(0);
 });
@@ -68,8 +68,8 @@ test("an item's ⋯ menu removes it only after asking again", async ({ page }) =
   await signIn(page, DEMO);
   await page.goto("/l/lst_tasks");
   const item = page.locator("section#itm_t_broadband");
-  await item.getByRole("button", { name: /^More actions for “Move the broadband/ }).click();
-  const menu = item.getByRole("group", { name: /^More actions for “Move the broadband/ });
+  await item.getByRole("button", { name: /^More actions for “Move the internet/ }).click();
+  const menu = item.getByRole("group", { name: /^More actions for “Move the internet/ });
   await expect(menu).toBeVisible();
   await menu.getByText("Remove", { exact: true }).click();
   await expect(menu.getByText(/and everything on it\?/)).toBeVisible();

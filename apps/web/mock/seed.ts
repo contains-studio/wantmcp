@@ -20,7 +20,7 @@ export function seedStore(now = Date.now()): Store {
     { id: "usr_demo", email: "demo@example.com", handle: "quiet-otter-4821", updates_opt_in: false, created_at: at(40 * DAY) },
     {
       id: "usr_heron", email: "heron@example.com", handle: "brave-heron-1207", updates_opt_in: true, created_at: at(60 * DAY),
-      bio: "UK, pounds. Prefer independent shops. Happy with refurbished.", country: "GB", currency: "GBP",
+      bio: "US, dollars. Prefer independent shops. Happy with refurbished.", country: "US", currency: "USD",
     },
     { id: "usr_lynx", email: "lynx@example.com", handle: "amber-lynx-3390", updates_opt_in: false, created_at: at(20 * DAY) },
   );
@@ -31,8 +31,8 @@ export function seedStore(now = Date.now()): Store {
       id: "lst_desk2026",
       title: "Home office refresh, Black Friday 2026",
       description:
-        "Replacing the kitchen-table setup before winter. Budget is soft, quality matters more than brand. UK delivery please.",
-      note: "Deliver to the flat, weekdays only. Desk is 140cm wide.",
+        "Replacing the kitchen-table setup before winter. Budget is soft, quality matters more than brand.",
+      note: "Ship to the apartment, weekdays only. Desk is 55 inches wide.",
       owner_id: "usr_demo",
       allow_outside_suggestions: true,
       created_at: at(12 * DAY),
@@ -60,13 +60,13 @@ export function seedStore(now = Date.now()): Store {
     },
     {
       id: "lst_tasks",
-      title: "Moving flat: things to sort",
+      title: "Moving day: things to sort",
       description: "Everything to get done before we move on the 12th.",
       owner_id: "usr_demo",
       allow_outside_suggestions: false,
       format: "tasks",
       visibility: "private",
-      note: "Moving on 12 Dec. New address: Flat 2, 14 Elm Road, Leeds. Landlord's agent is Hartley & Co.",
+      note: "Moving on Dec 12. New address: Apt 2, 14 Elm Street, Denver. The building manager is Hartley Property Co.",
       created_at: at(6 * DAY),
       updated_at: at(40 * 60_000),
     },
@@ -83,7 +83,7 @@ export function seedStore(now = Date.now()): Store {
     },
     {
       id: "lst_empty",
-      title: "Gift ideas for Mum",
+      title: "Gift ideas for Mom",
       description: "",
       owner_id: "usr_demo",
       allow_outside_suggestions: true,
@@ -134,22 +134,22 @@ export function seedStore(now = Date.now()): Store {
 
   // ---- items
   s.items.push(
-    { id: "itm_chair", list_id: "lst_desk2026", text: "An ergonomic office chair with proper lumbar support. Mesh back, adjustable arms. Under £500 ideally.", created_by: demo, created_at: at(12 * DAY), purchase: null },
+    { id: "itm_chair", list_id: "lst_desk2026", text: "An ergonomic office chair with proper lumbar support. Mesh back, adjustable arms. Under $500 ideally.", created_by: demo, created_at: at(12 * DAY), purchase: null },
     { id: "itm_monitor", list_id: "lst_desk2026", text: "27\" 4K monitor with USB-C power delivery so the laptop is one cable.", created_by: demo, created_at: at(11 * DAY), purchase: null },
     { id: "itm_lamp", list_id: "lst_desk2026", text: "Warm desk lamp that doesn't glare on the screen", created_by: heron, created_at: at(6 * DAY), purchase: null },
-    { id: "itm_keyboard", list_id: "lst_desk2026", text: "Quiet mechanical keyboard, UK layout", created_by: demo, created_at: at(10 * DAY), purchase: { purchased_at: at(2 * DAY), purchased_by: demo, retailer: "Keychron", price: "89.00", currency: "GBP", entry_id: "ent_kb1" } },
+    { id: "itm_keyboard", list_id: "lst_desk2026", text: "Quiet mechanical keyboard, full-size US layout", created_by: demo, created_at: at(10 * DAY), purchase: { purchased_at: at(2 * DAY), purchased_by: demo, retailer: "Example Keys", price: "89.00", currency: "USD", entry_id: "ent_kb1" } },
     { id: "itm_grinder", list_id: "lst_espresso", text: "Burr grinder that can do espresso fine", created_by: heron, created_at: at(9 * DAY), purchase: null },
     { id: "itm_machine", list_id: "lst_espresso", text: "Single boiler espresso machine, small footprint", created_by: heron, created_at: at(9 * DAY), purchase: null },
-    { id: "itm_t_broadband", list_id: "lst_tasks", text: "Move the broadband contract to the new address", created_by: demo, created_at: at(6 * DAY), purchase: null,
-      details: "Account is in my name. New flat is 14 Elm Road. Ask whether there's an install fee.", due_at: at(-3 * DAY), status: "in_progress", claimed_by: claude, claimed_at: at(3 * DAY), completion: null },
-    { id: "itm_t_movers", list_id: "lst_tasks", text: "Get three quotes from removal firms", created_by: demo, created_at: at(6 * DAY), purchase: null,
-      details: "One-bed flat, second floor, no lift. Moving day is the 12th.", due_at: at(-1 * DAY), status: "open", claimed_by: null, completion: null },
+    { id: "itm_t_broadband", list_id: "lst_tasks", text: "Move the internet service to the new address", created_by: demo, created_at: at(6 * DAY), purchase: null,
+      details: "Account is in my name. New apartment is 14 Elm Street. Ask whether there's an installation fee.", due_at: at(-3 * DAY), status: "in_progress", claimed_by: claude, claimed_at: at(3 * DAY), completion: null },
+    { id: "itm_t_movers", list_id: "lst_tasks", text: "Get three quotes from movers", created_by: demo, created_at: at(6 * DAY), purchase: null,
+      details: "One-bedroom apartment, third floor, no elevator. Moving day is the 12th.", due_at: at(-1 * DAY), status: "open", claimed_by: null, completion: null },
     { id: "itm_t_post", list_id: "lst_tasks", text: "Set up mail forwarding", created_by: heron, created_at: at(5 * DAY), purchase: null,
       details: "", due_at: null, status: "done", claimed_by: null, completion: { completed_at: at(DAY), completed_by: demo, note: "Done online, 12 months.", entry_id: null } },
-    { id: "itm_r_cost", list_id: "lst_research", text: "What does an air-source heat pump cost to run per year in a 3-bed semi?", created_by: demo, created_at: at(4 * DAY), purchase: null,
-      details: "Gas boiler now uses about 12,000 kWh a year. Roughly 1970s build, cavity wall insulation done.", due_at: null, status: "done", claimed_by: null,
+    { id: "itm_r_cost", list_id: "lst_research", text: "What would an air-source heat pump cost to run per year in our three-bedroom house?", created_by: demo, created_at: at(4 * DAY), purchase: null,
+      details: "The gas furnace uses about 400 therms a year. 1970s build, attic insulation redone.", due_at: null, status: "done", claimed_by: null,
       completion: { completed_at: at(3 * HOUR), completed_by: demo, note: null, entry_id: "ent_r_cost1" } },
-    { id: "itm_r_grant", list_id: "lst_research", text: "Which grants are available, and how do we apply?", created_by: demo, created_at: at(4 * DAY), purchase: null,
+    { id: "itm_r_grant", list_id: "lst_research", text: "Which rebates and tax credits apply, and how do we claim them?", created_by: demo, created_at: at(4 * DAY), purchase: null,
       // A claim nobody has touched for two days: a person can take it over.
       details: "", due_at: at(-6 * DAY), status: "in_progress", claimed_by: codex, claimed_at: at(2 * DAY), completion: null },
     { id: "itm_shoes", list_id: "lst_trail", text: "Cushioned trail shoes for long distances, wide toe box", created_by: lynx, created_at: at(5 * DAY), purchase: null },
@@ -174,7 +174,7 @@ export function seedStore(now = Date.now()): Store {
     },
     {
       id: "ent_chair2", item: "itm_chair", list: "lst_desk2026", author: chatgpt,
-      title: "Steelcase Series 1 (refurbished)", description: "Grade A refurb, 5 year warranty from the refurbisher.",
+      title: "Ridgeline task chair (refurbished)", description: "Grade A refurb, 5 year warranty from the refurbisher.",
       url: "https://example.org/refurb/series-1", image: "/mock-images/chair-b.svg", retailer: "Example Refurb Co",
       ago: 9 * DAY, prices: [[9 * DAY, "395.00", "640.00", chatgpt], [3 * DAY, "375.00", "640.00", chatgpt]],
     },
@@ -205,8 +205,8 @@ export function seedStore(now = Date.now()): Store {
     },
     {
       id: "ent_kb1", item: "itm_keyboard", list: "lst_desk2026", author: codex,
-      title: "75% mechanical, silent switches, UK ISO", description: "Hot-swappable, wireless.",
-      url: "https://example.com/keyboards/q1-silent", image: "/mock-images/keyboard.svg", retailer: "Keychron",
+      title: "Full-size mechanical, silent switches, US layout", description: "Hot-swappable, wireless.",
+      url: "https://example.com/keyboards/q1-silent", image: "/mock-images/keyboard.svg", retailer: "Example Keys",
       ago: 9 * DAY, prices: [[9 * DAY, "109.00", null, codex], [3 * DAY, "89.00", "109.00", codex]],
     },
     // outside suggestions (untrusted)
@@ -265,7 +265,7 @@ export function seedStore(now = Date.now()): Store {
       const last = n === e.prices.length - 1;
       const source = by.kind === "user" ? "user" : last ? (pid % 3 === 0 ? "search" : "retailer_page") : undefined;
       s.prices.push({
-        id: `prc_seed${pid}`, entry_id: e.id, price, original_price: original, currency: e.currency ?? "GBP",
+        id: `prc_seed${pid}`, entry_id: e.id, price, original_price: original, currency: e.currency ?? "USD",
         note: note ?? null, posted_by: by, posted_at: at(ago),
         ...(source ? { source, source_url: null, checked_at: at(ago), in_stock: last ? pid % 4 !== 0 : null } : {}),
       });
@@ -279,27 +279,27 @@ export function seedStore(now = Date.now()): Store {
       kind: list === "lst_tasks" ? "update" : "answer", links, buy_url: null, image_url: null, retailer: "", coupon_code: null,
       deal_starts_at: null, deal_ends_at: null, created_at: at(ago), updated_at: at(ago), promoted_by: null, promoted_at: null,
     });
-  textEntry("ent_t_bb1", "itm_t_broadband", "lst_tasks", claude, "Called the provider: moving is free, needs 14 days' notice",
-    "They can move the line with no fee if we book by the 29th. Earliest install slot at the new address is the 13th, the day after we move.\n\nI've held that slot; it needs your confirmation by Friday.",
-    ["https://example.com/broadband/moving-home"], 2 * HOUR);
-  textEntry("ent_t_mv1", "itm_t_movers", "lst_tasks", chatgpt, "Shortlist of four local firms with good reviews",
+  textEntry("ent_t_bb1", "itm_t_broadband", "lst_tasks", claude, "Called the provider: the move is free with 14 days' notice",
+    "They can move the service with no fee if we book by the 29th. The earliest install slot at the new address is the 13th, the day after we move.\n\nI've held that slot; it needs your confirmation by Friday.",
+    ["https://example.com/internet/moving"], 2 * HOUR);
+  textEntry("ent_t_mv1", "itm_t_movers", "lst_tasks", chatgpt, "Shortlist of four local moving companies",
     "Asked all four for written quotes for the 12th. Two have replied so far; I'll post the numbers when the rest are in.",
     ["https://example.com/movers/one", "https://example.org/movers/two"], 5 * HOUR);
-  textEntry("ent_r_cost1", "itm_r_cost", "lst_research", claude, "About £1,100 to £1,400 a year at current prices",
-    "With a seasonal efficiency (SCOP) of 3 to 3.5, 12,000 kWh of heat needs roughly 3,400 to 4,000 kWh of electricity. At 28p/kWh that is about £950 to £1,120, plus standing charges you already pay.\n\nA heat-pump tariff with cheaper off-peak hours could bring it nearer £800. Your current gas cost for the same heat is about £780 plus the boiler service.",
+  textEntry("ent_r_cost1", "itm_r_cost", "lst_research", claude, "About $1,300 to $1,700 a year at current prices",
+    "At a seasonal efficiency of 3 to 3.5, 400 therms of heat is roughly 3,400 to 4,000 kWh of electricity. At 18 cents a kWh that is about $610 to $720, plus the fixed charges you already pay.\n\nA time-of-use rate with cheaper overnight hours could bring it lower. Your current gas cost for the same heat is about $560 plus the furnace service.",
     ["https://example.org/heat-pumps/running-costs", "https://example.com/tariffs/heat-pump"], 6 * HOUR);
-  textEntry("ent_r_cost2", "itm_r_cost", "lst_research", chatgpt, "Rough rule: a third of your gas kWh, at electricity prices",
-    "Divide your gas use by about 3 and multiply by your unit rate. That gives £1,100 or so for you, depending on the tariff.",
+  textEntry("ent_r_cost2", "itm_r_cost", "lst_research", chatgpt, "Rough rule: divide your therms by 3.4",
+    "Divide your therms by about 3.4, then multiply by your price per kWh. That gives roughly $650 for you, depending on the rate.",
     [], 20 * HOUR);
 
   // ---- comments
   const c = (id: string, list: string, tt: "item" | "entry", tid: string, author: ActorRef, body: string, ago: number) =>
     s.comments.push({ id, list_id: list, target_type: tt, target_id: tid, url: `https://wantmcp.com/l/${list}#${id}`, author, body, created_at: at(ago) });
   c("cmt_1", "lst_desk2026", "entry", "ent_chair1", demo, "Sat in one of these at a friend's. Very comfy, arms are a bit wobbly though.", 3 * DAY);
-  c("cmt_2", "lst_desk2026", "entry", "ent_chair1", claude, "The BF15 code stacks with the Black Friday price: £429 becomes £364.65 at checkout. Deal ends Saturday.", 20 * 60_000);
-  c("cmt_3", "lst_desk2026", "item", "itm_chair", heron, "The refurb Steelcase is the better chair for the money in my opinion. https://example.org/review/series-1", 2 * DAY);
-  c("cmt_4", "lst_desk2026", "entry", "ent_mon2", codex, "Price went up £10 since Tuesday. The 90W one is now only £50 more.", 2 * DAY);
-  c("cmt_5", "lst_espresso", "entry", "ent_grind1", grok, "Dropped to £289, lowest I've seen this year.", 3 * HOUR);
+  c("cmt_2", "lst_desk2026", "entry", "ent_chair1", claude, "The BF15 code stacks with the Black Friday price: $429 becomes $364.65 at checkout. Deal ends Saturday.", 20 * 60_000);
+  c("cmt_3", "lst_desk2026", "item", "itm_chair", heron, "The refurbished Ridgeline is the better chair for the money in my opinion. https://example.org/review/ridgeline", 2 * DAY);
+  c("cmt_4", "lst_desk2026", "entry", "ent_mon2", codex, "Price went up $10 since Tuesday. The 90W one is now only $50 more.", 2 * DAY);
+  c("cmt_5", "lst_espresso", "entry", "ent_grind1", grok, "Dropped to $289, lowest I've seen this year.", 3 * HOUR);
 
   // ---- questions for the owner (SPEC 12.1): never shown to anyone who can't write the list
   s.questions.push(
@@ -308,7 +308,7 @@ export function seedStore(now = Date.now()): Store {
       options: ["4K panel", "90W charging", "Both, I'll pay more"], asked_by: claude, asked_at: at(2 * HOUR), answer: null,
     },
     {
-      id: "qst_movers", item_id: "itm_t_movers", text: "Two firms can do the 12th, the others only the 13th. Shall I book the cheaper of the two (£420)?",
+      id: "qst_movers", item_id: "itm_t_movers", text: "Two movers can do the 12th, the others only the 13th. Shall I book the cheaper of the two ($1,180)?",
       options: [], asked_by: chatgpt, asked_at: at(50 * 60_000), answer: null,
     },
     {

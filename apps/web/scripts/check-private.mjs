@@ -14,7 +14,7 @@
 const env = process.env;
 const BASE = process.argv[2] ?? "http://localhost:5173";
 const PRIVATE = env.PRIVATE_LIST ?? "lst_tasks"; // mock: private task list, owner demo@, member heron@
-const PRIVATE_TITLE = env.PRIVATE_TITLE ?? "Moving flat: things to sort";
+const PRIVATE_TITLE = env.PRIVATE_TITLE ?? "Moving day: things to sort";
 const PRIVATE_SNIPPET = env.PRIVATE_SNIPPET ?? "Called the provider";
 const PUBLIC = env.PUBLIC_LIST ?? "lst_desk2026";
 // SPEC 12: a public list with an open question and a list note, and a member with a bio (mock data).
