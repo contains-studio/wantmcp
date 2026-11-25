@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The "Works with" row on the home page. Whatever the device and its motion setting, every app in
- * the row must be reachable: by waiting (it drifts, on a phone even with reduced motion) or
- * because it wraps (reduced motion with a mouse).
+ * the row must be reachable by waiting: it is one line that drifts, on every device, with or
+ * without reduced motion.
  */
 const row = (page: Page) => page.getByRole("navigation", { name: "Works with" });
 
@@ -73,14 +73,17 @@ test.describe("with reduced motion", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   });
 
-  test("with a mouse: the row wraps and shows every app", async ({ page }) => {
+  test("with a mouse: still one row, still drifting", async ({ page, isMobile }) => {
+    test.skip(isMobile, "a mouse only");
     await page.setViewportSize({ width: 700, height: 800 });
     await page.goto("/");
-    const m = await measure(page);
-    expect(m.shown).toBe(m.total);
-    expect(m.canScroll).toBeLessThanOrEqual(0);
-    // Only one copy of the row is left.
-    await expect(row(page).getByRole("link", { name: "Other apps" })).toHaveCount(1);
+    const start = await measure(page);
+    // One row: every item of the visible copy sits on one centre line, and the strip is one line tall.
+    const mids = await row(page).locator(".marquee-list:not([aria-hidden]) li").evaluateAll((lis) => lis.map((li) => { const r = li.getBoundingClientRect(); return (r.top + r.bottom) / 2; }));
+    expect(Math.max(...mids) - Math.min(...mids)).toBeLessThan(6);
+    expect(start.height).toBeLessThan(80);
+    await page.waitForTimeout(1500);
+    expect((await measure(page)).trackLeft).toBeLessThan(start.trackLeft - 10);
   });
 });
 
