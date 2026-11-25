@@ -830,7 +830,8 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 .look-occasions::-webkit-scrollbar { display: none; }
 .look-occasions > * { scroll-snap-align: start; }
 .look-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 0.75rem; }
-@media (min-width: 640px) { .look-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } .look-occasions { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; } }
+/* One row at every width, as the logo row (owner, 25 Nov): it swipes or scrolls sideways when it doesn't fit. */
+@media (min-width: 640px) { .look-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } .look-occasions { margin-inline: -1.5rem; padding-inline: 1.5rem; scroll-padding-inline: 1.5rem; } }
 @media (min-width: 1024px) { .look-gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .look-choice { display: grid; gap: 0.45rem; cursor: pointer; }
 .look-choice-frame { position: relative; display: block; border-radius: 18px; }
@@ -841,9 +842,9 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 .look-choice.is-on .look-name { color: var(--ink); }
 @media (hover: hover) { .look-choice:not(.is-on):hover .look-frame { border-color: var(--line-strong); } }
 /* The collapsed section's picture of the current look. */
-.look-mini { display: block; width: 4.5rem; height: 2.75rem; flex: none; }
-.look-mini .look-frame { height: 100%; border-radius: 8px; }
-.look-mini .theme-thumb-inner { --z: 0.12; }
+.look-mini { display: block; width: 7rem; height: 4.25rem; flex: none; }
+.look-mini .look-frame { height: 100%; border-radius: 10px; }
+.look-mini .theme-thumb-inner { --z: 0.2; }
 
 /* Theme gallery thumbnails: a whole list page, scaled down. */
 .theme-thumb-fade { position: absolute; inset: auto 0 0; z-index: 1; height: 2.25rem; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--card)); }
