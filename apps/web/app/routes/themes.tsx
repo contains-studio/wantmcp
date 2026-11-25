@@ -46,7 +46,7 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
     ...(location.search ? [{ name: "robots", content: "noindex, follow" }] : []),
     { property: "og:title", content: "List themes" },
     { property: "og:description", content: description },
-    { property: "og:image", content: `${origin}/og/home.png?v=6` },
+    { property: "og:image", content: `${origin}/og/home.png?v=7` },
   ];
 }
 

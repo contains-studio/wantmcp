@@ -13,6 +13,16 @@ import inter300 from "@fontsource/inter/files/inter-latin-300-normal.woff?inline
 import inter400 from "@fontsource/inter/files/inter-latin-400-normal.woff?inline";
 import inter500 from "@fontsource/inter/files/inter-latin-500-normal.woff?inline";
 import inter600 from "@fontsource/inter/files/inter-latin-600-normal.woff?inline";
+import openaiSvg from "../public/brands/openai-blossom-on-light.svg?raw";
+import claudeSvg from "../public/brands/claude-on-light.svg?raw";
+import grokBotSvg from "../public/brands/grok-bot-on-light.svg?raw";
+import openclawSvg from "../public/brands/openclaw-on-light.svg?raw";
+import cursorSvg from "../public/brands/cursor-on-light.svg?raw";
+import grokSvg from "../public/brands/grok-mark.svg?raw";
+// Drawn from public/brands by scripts/make-og-art.mjs: resvg cannot render these two as SVG.
+import musePng from "./og-art/muse-mark.png?inline";
+import geminiPng from "./og-art/gemini-sparkle.png?inline";
+import { LIVE_BRANDS } from "../app/lib/brands";
 import { api } from "../app/lib/api.server";
 import { formatMoney } from "../app/lib/format";
 import type { ListDetail } from "../app/lib/types";
@@ -30,6 +40,47 @@ const TAG_SVG =
   btoa(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h9.36a2.5 2.5 0 0 1 1.77.73l10.6 10.6a2.5 2.5 0 0 1 0 3.54l-9.36 9.36a2.5 2.5 0 0 1-3.54 0L4.73 17.63A2.5 2.5 0 0 1 4 15.86Z" fill="${C.want}"/><path d="M10.4 8.2c.9 0 1.6.6 1.9 1.3.3-.7 1-1.3 1.9-1.3 1.2 0 2 .9 2 2.1 0 1.9-2.4 3.3-3.9 4.4-1.5-1.1-3.9-2.5-3.9-4.4 0-1.2.8-2.1 2-2.1Z" fill="#fff"/></svg>`,
   );
+
+const svgUrl = (svg: string) => "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+
+/** The light-background marks from public/brands, by the path the site uses for them. */
+const BRAND_ART: Record<string, string> = {
+  "/brands/openai-blossom-on-light.svg": svgUrl(openaiSvg),
+  "/brands/claude-on-light.svg": svgUrl(claudeSvg),
+  "/brands/grok-bot-on-light.svg": svgUrl(grokBotSvg),
+  "/brands/muse-mark.svg": musePng,
+  "/brands/openclaw-on-light.svg": svgUrl(openclawSvg),
+  "/brands/cursor-on-light.svg": svgUrl(cursorSvg),
+  "/brands/grok-mark.svg": svgUrl(grokSvg),
+  "/brands/gemini-sparkle.svg": geminiPng,
+};
+
+/**
+ * "Works with", as on the home page: every live client on one line, in the site's order and at
+ * the site's optical sizes (brands.ts), spread across the card. A brand whose art is not listed
+ * above is left out rather than drawn as a gap.
+ */
+function WorksWithRow({ scale = 17 }: { scale?: number }) {
+  const brands = LIVE_BRANDS.filter((b) => b.logo && BRAND_ART[b.logo.light]);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", marginTop: "auto", gap: 20 }}>
+      <div style={{ display: "flex", fontSize: 20, color: C.ink3, fontWeight: 500 }}>Works with</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {brands.map((b) => {
+          const logo = b.logo!;
+          const h = Math.round((logo.optical ?? 1.4) * scale);
+          const w = Math.round((h * logo.width) / logo.height);
+          return (
+            <div key={b.id} style={{ display: "flex", alignItems: "center", gap: Math.round(scale * 0.45) }}>
+              <img src={BRAND_ART[logo.light]} width={w} height={h} />
+              {logo.nameBeside && <div style={{ display: "flex", fontSize: Math.round(scale * 1.2), fontWeight: 600, letterSpacing: -0.3 }}>{b.name}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function dataUrlToBuffer(dataUrl: string): ArrayBuffer {
   const b64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
@@ -94,11 +145,7 @@ function HomeCard() {
           Things to buy, to get done, to find out. Your agents work on them.
         </div>
       </div>
-      <div style={{ display: "flex", marginTop: "auto", alignItems: "center", gap: 16, fontSize: 24, color: C.ink3, fontWeight: 500 }}>
-        <span>wantmcp.com</span>
-        <span>·</span>
-        <span>Free, no affiliate links</span>
-      </div>
+      <WorksWithRow />
     </Frame>
   );
 }
