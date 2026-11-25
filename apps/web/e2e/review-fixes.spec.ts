@@ -1,13 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createList, DEMO, freshEmail, signIn } from "./helpers";
 
+// Each test signs in as a fresh person and works on its own lists; seeded lists are only read.
+
 const OFFERED = ["black-friday", "cyber-monday", "chanukah", "christmas", "kwanzaa", "new-year", "birthday"];
 
-/** Sets a list's look the way list settings does. */
+/** Sets a list's look the way list settings does (the page must already be on this site). */
 async function setLook(page: Page, id: string, look: string) {
-  await page.goto(`/app/lists/${id}/settings`);
   const res = await page.request.post(`/app/lists/${id}/settings`, { form: { intent: "theme", theme: look }, headers: { origin: new URL(page.url()).origin } });
-  expect(res.ok()).toBe(true);
+  expect(res.ok(), look).toBe(true);
 }
 
 test("a done task's box is visibly ticked in every layout, light and dark", async ({ page }) => {
@@ -32,56 +33,52 @@ test("a done task's box is visibly ticked in every layout, light and dark", asyn
   }
 });
 
-test("occasion art never covers the title or the header controls", async ({ page }) => {
-  await signIn(page, DEMO);
-  const before: Record<string, string> = {};
-  for (const id of ["lst_tasks", "lst_research", "lst_desk2026"]) {
-    await page.goto(`/app/lists/${id}/settings`);
-    before[id] = (await page.locator('input[name="theme"]').first().getAttribute("value")) ?? "default";
-  }
-  try {
-    for (const [id, tpl] of [
-      ["lst_tasks", "today"],
-      ["lst_research", "doc"],
-      ["lst_desk2026", "sheet"],
-      ["lst_tasks", "tracker"],
-      ["lst_tasks", "heat"],
-      ["lst_tasks", "board"],
-    ] as const) {
-      for (const occ of OFFERED) {
-        await setLook(page, id, `${tpl}--${occ}`);
-        for (const width of [390, 1280]) {
-          await page.setViewportSize({ width, height: 900 });
-          await page.goto(`/l/${id}`);
-          const problems = await page.evaluate(() => {
-            const out: string[] = [];
-            // The art is drawn in its own band: never positioned over the header's content.
-            for (const el of document.querySelectorAll(".list-hero, .list-hero > .wrap")) {
-              for (const ps of ["::before", "::after"]) {
-                const st = getComputedStyle(el, ps);
-                if (st.content !== "none" && st.position === "absolute") out.push(`${el.className.toString().slice(0, 30)}${ps} is absolute`);
-              }
+// One test per layout, each on its own list, so no test leans on another's leftovers or nears the timeout.
+const LAYOUTS = [
+  ["sheet", "Shopping"],
+  ["today", "Tasks"],
+  ["sections", "Tasks"],
+  ["board", "Tasks"],
+  ["heat", "Tasks"],
+  ["tracker", "Tasks"],
+  ["doc", "Research"],
+] as const;
+
+for (const [tpl, format] of LAYOUTS) {
+  test(`occasion art never covers the title or the header controls: ${tpl}`, async ({ page }) => {
+    await signIn(page, freshEmail(`art-${tpl}`));
+    const id = await createList(page, { format, title: `Art check ${tpl}` });
+    for (const occ of OFFERED) {
+      await setLook(page, id, `${tpl}--${occ}`);
+      for (const width of [390, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(`/l/${id}`);
+        const problems = await page.evaluate(() => {
+          const out: string[] = [];
+          // The art is drawn in its own band: never positioned over the header's content.
+          for (const el of document.querySelectorAll(".list-hero, .list-hero > .wrap")) {
+            for (const ps of ["::before", "::after"]) {
+              const st = getComputedStyle(el, ps);
+              if (st.content !== "none" && st.position === "absolute") out.push(`${el.className.toString().slice(0, 30)}${ps} is absolute`);
             }
-            const hero = document.querySelector(".list-hero") as HTMLElement;
-            const heroStyle = getComputedStyle(hero);
-            if (heroStyle.backgroundImage.includes("url(")) out.push("art painted behind the header");
-            for (const el of document.querySelectorAll<HTMLElement>(".list-actions a, .list-actions button, .list-title-text")) {
-              el.scrollIntoView({ block: "center" });
-              const r = el.getBoundingClientRect();
-              const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-              if (!hit || !(el === hit || el.contains(hit))) out.push(`${el.className || el.tagName} covered`);
-            }
-            return out;
-          });
-          expect(problems, `${tpl}--${occ} at ${width}`).toEqual([]);
-        }
+          }
+          const hero = document.querySelector(".list-hero") as HTMLElement;
+          if (getComputedStyle(hero).backgroundImage.includes("url(")) out.push("art painted behind the header");
+          const controls = document.querySelectorAll<HTMLElement>(".list-actions a, .list-actions button, .list-title-text");
+          if (!controls.length) out.push("no header controls found");
+          for (const el of controls) {
+            el.scrollIntoView({ block: "center" });
+            const r = el.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            if (!hit || !(el === hit || el.contains(hit))) out.push(`${el.className || el.tagName} covered`);
+          }
+          return out;
+        });
+        expect(problems, `${tpl}--${occ} at ${width}`).toEqual([]);
       }
     }
-  } finally {
-    // Other tests share the mock's lists: put their looks back.
-    for (const [id, look] of Object.entries(before)) await setLook(page, id, look);
-  }
-});
+  });
+}
 
 test("a bad invite link says so before anyone signs in", async ({ page }) => {
   await page.goto("/invite/inv_not_a_real_token");
