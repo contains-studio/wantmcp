@@ -276,8 +276,25 @@ const CLIENT_LIST: Client[] = [
           On claude.ai or the desktop app: <strong>Customize › Connectors › + Add › Add custom connector</strong>.
         </li>
         <li>
-          Name it The Want MCP, paste the server URL and press <strong>Continue</strong> twice.
+          Name it The Want MCP, paste the server URL and press <strong>Continue</strong>.
           <UrlCopy mcp={c.mcp} />
+        </li>
+        <li>
+          Under Authentication choose <strong>Sign in now</strong>. Claude pre-selects <strong>No sign-in</strong>, and with that it can't see your
+          private lists.
+          {/* Owner's screenshot of the Claude desktop app, 25 Nov 2026: the step where the wrong choice is the default. */}
+          <figure className="mt-2 grid max-w-[26rem] gap-1.5">
+            <img
+              src="/shots/claude-add-custom-connector.webp"
+              alt="Claude's Add custom connector screen for The Want MCP. Under Authentication there are three choices: Sign in now, Sign in when needed, and No sign-in, which is selected and marked Detected. Below is a Request headers section with an authorization header."
+              width={820}
+              height={1061}
+              loading="lazy"
+              decoding="async"
+              className="h-auto w-full rounded-xl border border-line"
+            />
+            <figcaption className="text-[0.82rem] text-ink-3">The screen as Claude first shows it. Change the choice to Sign in now.</figcaption>
+          </figure>
         </li>
         <li>
           Press <strong>Add</strong>, sign in and tick the lists Claude can work on. It then works on mobile too.
@@ -286,8 +303,10 @@ const CLIENT_LIST: Client[] = [
     ),
     more: () => (
       <p>
-        Leave <strong>Use Claude's published identity (Recommended)</strong> selected. Free (one custom connector), Pro, Max, Team, Enterprise. Team and
-        Enterprise: an owner adds it in <strong>Organization settings › Connectors</strong> (Add › Custom › Web), then members press <strong>Connect</strong>.
+        Leave <strong>Use Claude's published identity (Recommended)</strong> selected. Prefer a key to signing in? Keep <strong>No sign-in</strong> and add
+        a request header named <strong>authorization</strong> with the value <code>Bearer wk_your_key</code> (a list's key, from its settings): Claude can
+        then work on that one list. Free (one custom connector), Pro, Max, Team, Enterprise. Team and Enterprise: an owner adds it in{" "}
+        <strong>Organization settings › Connectors</strong> (Add › Custom › Web), then members press <strong>Connect</strong>.
       </p>
     ),
   },
