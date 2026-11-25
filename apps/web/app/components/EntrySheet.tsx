@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { dealState, discountPercent, formatDateTime, formatMoney, timeAgo } from "~/lib/format";
 import { useNow } from "~/lib/hooks";
+import { checkedAt, isFresh, isVerified, SOURCE_LABEL } from "~/lib/prices";
 import type { Entry } from "~/lib/types";
 import { ActorTag } from "./ActorTag";
 import { ExtLink } from "./ExtLink";
@@ -10,7 +11,7 @@ type Sort = { key: SortKey; dir: "asc" | "desc" };
 
 const priceOf = (e: Entry) => (e.current_price ? Number(e.current_price.price) : Number.POSITIVE_INFINITY);
 const discountOf = (e: Entry) => discountPercent(e.current_price) ?? -1;
-const updatedOf = (e: Entry) => Date.parse(e.current_price?.posted_at ?? e.updated_at) || 0;
+const updatedOf = (e: Entry) => Date.parse(e.current_price ? checkedAt(e.current_price) : e.updated_at) || 0;
 
 /**
  * The Sheet layout: one comparison table per item, sortable by price, discount and
@@ -62,7 +63,7 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
   return (
     <div className="card overflow-hidden p-0">
       <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label={`Price comparison for ${itemText}`}>
-        <table className="w-full min-w-[46rem] border-collapse text-[0.88rem] tabular-nums">
+        <table className="w-full min-w-[52rem] border-collapse text-[0.88rem] tabular-nums">
           <caption className="px-3 pt-3 pb-1 text-left text-[0.8rem] text-ink-3">
             {entries.length} {entries.length === 1 ? "product" : "products"} compared
             {currencies.size > 1 && " · mixed currencies, compare with care"}
@@ -90,7 +91,10 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
               <th scope="col" className={th}>
                 Posted by
               </th>
-              <th scope="col" className={th} {...header("updated", "Updated", "desc")} />
+              <th scope="col" className={th} {...header("updated", "Checked", "desc")} />
+              <th scope="col" className={th}>
+                Source
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -98,10 +102,11 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
               const p = e.current_price;
               const pct = discountPercent(p);
               const deal = dealState(e.deal_starts_at, e.deal_ends_at, now);
-              const updated = p?.posted_at ?? e.updated_at;
+              const updated = p ? checkedAt(p) : e.updated_at;
+              const stale = !!p && !isFresh(p, now);
               const highlight = e.id === boughtId ? "bg-deal-soft" : e.id === lowestId ? "bg-want-soft" : "";
               return (
-                <tr key={e.id} id={e.id} className={`scroll-mt-24 ${highlight}`}>
+                <tr key={e.id} id={e.id} className={`scroll-mt-24 ${highlight} ${stale ? "is-stale" : ""}`}>
                   <th scope="row" className={`${td} ${stickyA} ${highlight || "bg-card"} text-left font-normal`}>
                     <ExtLink href={e.product_url ?? ""} className="link line-clamp-3 font-semibold leading-snug">
                       {e.title}
@@ -134,6 +139,19 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
                     <time dateTime={updated} title={formatDateTime(updated)}>
                       {timeAgo(updated, now)}
                     </time>
+                    {stale && <span className="block text-[0.75rem] text-ink-3">not checked today</span>}
+                  </td>
+                  <td className={`${td} whitespace-nowrap text-ink-2`}>
+                    {p ? (
+                      <>
+                        {SOURCE_LABEL[p.source ?? "unknown"]}
+                        {!isVerified(p) && <span className="block text-[0.75rem] text-ink-3">unverified</span>}
+                        {p.in_stock === true && <span className="block text-[0.75rem] text-ink-3">in stock</span>}
+                        {p.in_stock === false && <span className="block text-[0.75rem] text-warn">out of stock</span>}
+                      </>
+                    ) : (
+                      <span className="text-ink-3">–</span>
+                    )}
                   </td>
                 </tr>
               );

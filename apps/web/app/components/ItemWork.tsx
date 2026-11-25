@@ -390,7 +390,7 @@ function QuestionForm({ question }: { question: Question }) {
   const busy = fetcher.state !== "idle";
   const pending = fetcher.formData?.get("text");
   return (
-    <section aria-labelledby={`${uid}-h`} className="grid gap-3 rounded-md border border-ink p-4">
+    <div role="group" aria-labelledby={`${uid}-h`} className="grid gap-3 rounded-md border border-ink p-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h3 id={`${uid}-h`} className="eyebrow text-ink">
           Waiting on you
@@ -439,6 +439,6 @@ function QuestionForm({ question }: { question: Question }) {
           {fetcher.data.error}
         </p>
       )}
-    </section>
+    </div>
   );
 }

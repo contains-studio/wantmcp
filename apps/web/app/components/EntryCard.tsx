@@ -9,6 +9,7 @@ import { ExtLink } from "./ExtLink";
 import { PriceSparkline, PriceTable } from "./PriceHistory";
 import { ProductImage } from "./ProductImage";
 import { ReportLink } from "./Report";
+import { Provenance } from "./Provenance";
 import { Time } from "./Time";
 import { EntryForm, PostPrice, RemoveButton } from "./WriteTools";
 
@@ -95,6 +96,7 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
         </h3>
 
         <PriceBlock price={cur} />
+        <Provenance price={cur} />
 
         {(entry.coupon_code || entry.deal_starts_at || entry.deal_ends_at) && (
           <div className="flex flex-wrap items-center gap-2">

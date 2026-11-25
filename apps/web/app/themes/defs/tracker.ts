@@ -10,6 +10,7 @@ const p = {
 export const tracker: Theme = {
   slug: "tracker",
   name: "Tracker",
+  caption: "Dark issue tracker",
   group: "workspace",
   natural: "tasks",
   scheme: "dark",

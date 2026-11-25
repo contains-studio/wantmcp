@@ -8,13 +8,13 @@ import { sampleList } from "~/themes/sample.server";
 import type { ThemeView } from "~/themes/view";
 
 /**
- * The look gallery: pick a template (how a list is laid out) and an occasion (how it is dressed),
- * see the result, and link to it. ?template=board&occasion=christmas; every combination also has
+ * The look gallery: pick a layout (code: template) and an occasion, see the result, and link to
+ * it. ?layout=board&occasion=christmas (?template= also works); every combination also has
  * its own full preview at /themes/{slug}.
  */
 export function loader({ request }: Route.LoaderArgs) {
   const q = new URL(request.url).searchParams;
-  const template = resolveLook(q.get("template") ?? "default").template.slug;
+  const template = resolveLook(q.get("layout") ?? q.get("template") ?? "default").template.slug;
   const occasion = q.get("occasion") ? (resolveLook(q.get("occasion")).occasion?.slug ?? null) : null;
   const slug = lookSlug(template, occasion);
   const chosen = getThemeView(slug);
@@ -29,9 +29,9 @@ export function headers() {
 
 export function meta({ loaderData, location }: Route.MetaArgs) {
   const origin = loaderData?.origin ?? "https://wantmcp.com";
-  const description = "Every look a list can have: a template for how it's laid out, from cards to a board, and an occasion to dress it, from Black Friday to birthdays.";
+  const description = "Layouts from Board to Sheet, and occasions from Black Friday to birthdays.";
   return [
-    { title: "Themes · The Want MCP" },
+    { title: "Layouts and occasions · The Want MCP" },
     { name: "description", content: description },
     { tagName: "link", rel: "canonical", href: `${origin}/themes` },
     ...(location.search ? [{ name: "robots", content: "noindex, follow" }] : []),
@@ -75,18 +75,19 @@ function Choice({ to, current, view, sample, origin, label, note }: { to: string
 export default function Themes({ loaderData }: Route.ComponentProps) {
   const { templates, occasions, chosen, template, occasion, samples, origin } = loaderData;
   const sample = samples[chosen.natural];
-  const q = (t: string, o: string | null) => `?template=${t}${o ? `&occasion=${o}` : ""}`;
+  const q = (t: string, o: string | null) => `?layout=${t}${o ? `&occasion=${o}` : ""}`;
   return (
     <div className="wrap grid gap-10 py-10">
       <header className="max-w-3xl">
-        <p className="eyebrow">Themes</p>
-        <h1 className="mt-2 text-4xl font-semibold sm:text-5xl">Lay it out. Dress it up.</h1>
-        <p className="mt-3 text-[1.05rem] text-ink-2">Pick a template, then an occasion. Any pair works.</p>
+        <h1 className="serif text-[2.2rem] sm:text-[2.6rem]">Layouts and occasions</h1>
+        <p className="mt-2 text-ink-2">
+          Choose in <Link to="/app" className="link">list settings</Link>.
+        </p>
       </header>
 
       <section aria-labelledby="tpl-h" className="grid gap-3">
-        <h2 id="tpl-h" className="text-2xl font-semibold">
-          Template
+        <h2 id="tpl-h" className="text-xl font-semibold">
+          Layout
         </h2>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {templates.map((t) => (
@@ -98,14 +99,14 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
               sample={samples[t.natural]}
               origin={origin}
               label={t.name}
-              note={t.scheme === "dark" ? "Always dark" : undefined}
+              note={t.caption}
             />
           ))}
         </ul>
       </section>
 
       <section aria-labelledby="occ-h" className="grid gap-3">
-        <h2 id="occ-h" className="text-2xl font-semibold">
+        <h2 id="occ-h" className="text-xl font-semibold">
           Occasion
         </h2>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -129,7 +130,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
               sample={samples[o.natural]}
               origin={origin}
               label={o.name.split(" · ").pop()!}
-              note={o.scheme === "dark" ? "Always dark" : undefined}
+              note={o.caption}
             />
           ))}
         </ul>
@@ -142,12 +143,12 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
           </h2>
           <div className="flex items-center gap-3">
             <Swatch theme={chosen} />
-            <Link to={`/themes/${chosen.slug}`} className="btn btn-want">
-              Open the full preview
+            <Link to={`/themes/${chosen.slug}`} className="btn btn-ghost">
+              Full preview
             </Link>
           </div>
         </div>
-        <p className="text-[0.92rem] text-ink-2">{chosen.idea}</p>
+        <p className="text-[0.92rem] text-ink-3">{chosen.scheme === "dark" ? "Always dark" : "Light and dark"}</p>
         <div className="overflow-hidden rounded-md border border-line" aria-hidden="true" inert>
           <div className="max-h-[34rem] overflow-hidden">
             <ListView

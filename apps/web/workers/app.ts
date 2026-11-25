@@ -57,6 +57,17 @@ export default {
       const og = await import("./og");
       if (og.isOgPath(url.pathname)) return og.handleOg(request, ctx);
     }
+    // RFC 9116 security contact.
+    if (url.pathname === "/.well-known/security.txt") {
+      const body = [
+        "Contact: mailto:hello@wantmcp.com",
+        "Expires: 2027-11-26T00:00:00.000Z",
+        "Preferred-Languages: en",
+        "Canonical: https://wantmcp.com/.well-known/security.txt",
+        "",
+      ].join("\n");
+      return new Response(body, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=86400" } });
+    }
     // Domain discovery for AI clients lives on the MCP host.
     if (url.pathname === "/.well-known/ai-catalog.json") {
       const mcpOrigin = new URL(env.MCP_URL || "https://mcp.wantmcp.com/mcp").origin;

@@ -14,6 +14,9 @@ import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin } from "~/lib/session.server";
 import { LiveUpdates } from "~/components/LiveUpdates";
 import { DetailsPrompt } from "~/components/ListView";
+import { waitingQuestions, type WaitingQuestion } from "~/lib/waiting.server";
+import { BIO_PLACEHOLDER } from "~/lib/locales";
+import { OwnerQuestion } from "~/components/ItemWork";
 import { Button, Field, Input, Select, Textarea } from "~/components/ui";
 import type { AgentInfo, FeedEntry, ListFormat, ListSummary, ListVisibility, Page, PendingInvite } from "~/lib/types";
 
@@ -32,10 +35,12 @@ export async function loader({ request }: Route.LoaderArgs) {
     // Older API servers don't have pending invites yet: show none.
     apiOptional<PendingInvite[]>(request, "/me/invites").then((r) => r ?? []),
   ]);
+  // SPEC 12.1: every open question across the person's lists comes first on this page.
+  const waiting = await waitingQuestions(request, lists);
   // First run: work out which getting-started steps are done.
   const firstRun = !listId && !cursor && feed.data.length === 0;
   const agentCount = firstRun ? (await api<AgentInfo[]>(request, "/me/agents").catch(() => [])).length : 0;
-  return data({ user, lists, feed, listId, cursor, invites, firstRun, agentCount }, { headers: { "Cache-Control": "private, no-store" } });
+  return data({ user, lists, feed, listId, cursor, invites, firstRun, agentCount, waiting }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -52,8 +57,12 @@ export async function action({ request }: Route.ActionArgs) {
           description: String(form.get("description") ?? "").trim() || undefined,
           format: ["shopping", "tasks", "research"].includes(String(form.get("format"))) ? form.get("format") : "shopping",
           visibility: form.get("visibility") === "private" ? "private" : form.get("visibility") === "public" ? "public" : undefined,
+          note: String(form.get("note") ?? "").trim() || undefined,
         },
       });
+      // Offered once, with the first list: the bio for the person's own agents (SPEC 12.2).
+      const bio = String(form.get("bio") ?? "").trim();
+      if (bio) await api(request, "/me", { method: "PATCH", body: { bio } }).catch(() => null);
       return redirect(`/l/${list.id}`);
     } catch (err) {
       return data(formError(err), 400);
@@ -72,18 +81,21 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function AppHome({ loaderData }: Route.ComponentProps) {
-  const { user, lists, feed, listId, cursor, invites, firstRun, agentCount } = loaderData;
+  const { user, lists, feed, listId, cursor, invites, firstRun, agentCount, waiting } = loaderData;
   const current = lists.find((l) => l.id === listId) ?? null;
 
   return (
     <div className="wrap grid grid-cols-1 gap-8 py-8 lg:grid-cols-[19rem_1fr] lg:gap-10">
 
       <section aria-labelledby="feed-h" className="grid content-start gap-5">
+        <h1 className="sr-only">My lists</h1>
+        {waiting.length > 0 && <WaitingOnYou waiting={waiting} />}
+        {!user.bio && <BioPrompt />}
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 id="feed-h" className="serif mt-2 text-[2rem] sm:text-[2.4rem]">
+            <h2 id="feed-h" className="serif text-[1.75rem]">
               {current ? current.title : "Latest"}
-            </h1>
+            </h2>
           </div>
           {lists.length > 1 && <ListFilter lists={lists} listId={listId} />}
         </div>
@@ -189,7 +201,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
           </ul>
         </nav>
 
-        <CreateList first={lists.length === 0} />
+        <CreateList first={lists.length === 0} hasBio={!!user.bio} />
       </aside>
     </div>
   );
@@ -282,7 +294,7 @@ function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string 
   );
 }
 
-function CreateList({ first }: { first: boolean }) {
+function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
   const nav = useNavigation();
   const result = useActionData<typeof action>() as { error?: string } | undefined;
   const busy = nav.state === "submitting" && nav.formData?.get("intent") === "create-list";
@@ -329,6 +341,23 @@ function CreateList({ first }: { first: boolean }) {
           <span className="label">Description (optional)</span>
           <textarea name="description" maxLength={500} className="textarea" placeholder={fi.detailsPlaceholder} />
         </label>
+        <details className="group">
+          <summary className="textlink-btn text-[0.85rem]">
+            Note for agents <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+          </summary>
+          <label className="field mt-2">
+            <span className="label">Note for agents (optional)</span>
+            <textarea name="note" maxLength={600} className="textarea min-h-16" placeholder="Gifts for Dad, about £50 each, deliver to Leeds" />
+            <span className="hint">Everyone who can write this list, and their agents, can see it. Never public.</span>
+          </label>
+        </details>
+        {first && !hasBio && (
+          <label className="field">
+            <span className="label">Tell your agents about you (optional)</span>
+            <textarea name="bio" maxLength={600} className="textarea min-h-16" placeholder={BIO_PLACEHOLDER} />
+            <span className="hint">Only your own agents see this. Change it any time in Account.</span>
+          </label>
+        )}
         <fieldset className="grid gap-2">
           <legend className="label mb-1">Who can see it?</legend>
           {(["public", "private"] as const).map((v) => (
@@ -460,5 +489,44 @@ function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCoun
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * SPEC 12.1: every open question across the person's lists, first on the page. Answering here posts
+ * the answer and puts the item back to open.
+ */
+function WaitingOnYou({ waiting }: { waiting: WaitingQuestion[] }) {
+  return (
+    <section aria-labelledby="waiting-h" className="grid gap-3">
+      <h2 id="waiting-h" className="serif text-[1.75rem]">
+        Waiting on you <span className="font-sans text-[1rem] text-ink-3">{waiting.length}</span>
+      </h2>
+      <ul className="grid gap-3">
+        {waiting.map((w) => (
+          <li key={w.item.open_question!.id} className="grid gap-2">
+            <p className="text-[0.85rem] text-ink-3">
+              <Link to={`/l/${w.list.id}#${w.item.id}`} className="link font-medium text-ink">
+                {w.item.text}
+              </Link>{" "}
+              · {w.list.title}
+            </p>
+            <OwnerQuestion question={w.item.open_question} compact />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** A quiet prompt until the person has told their agents about themselves (SPEC 12.2). */
+function BioPrompt() {
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-y border-line py-3 text-[0.9rem] text-ink-2">
+      Tell your agents about you: country, currency, sizes, shops you avoid.
+      <Link to="/app/account#bio" className="link font-medium text-ink">
+        Add a bio
+      </Link>
+    </p>
   );
 }

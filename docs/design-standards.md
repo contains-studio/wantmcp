@@ -143,8 +143,8 @@ off. Live updates announce themselves in a polite live region, not with animatio
 
 ## Themes
 
-The default list look is the plain style above: hairline rows, no cards. Templates (Board,
-Sections, Today, Heat, Sheet, Doc, Tracker) and occasions are dressed versions of it. A theme may
+A list's look is a layout (Cards, Board, Sections, Checklist, Heat, Sheet, Doc, Tracker) and an
+optional occasion. Every layout shares this system's type, controls and spacing. A theme may
 change colours, fonts, radius, card style, page layout and decoration. It may not
 change control heights, spacing rhythm, label placement, the focus ring or contrast, and it
 keeps the heading order and the item and entry anchors (`#itm_`, `#ent_` on the web). The contrast

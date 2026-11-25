@@ -4,6 +4,7 @@ import type { Theme } from "../types.ts";
 export const sheet: Theme = {
   slug: "sheet",
   name: "Sheet",
+  caption: "Price table",
   group: "workspace",
   natural: "shopping",
   stylesheet: true,

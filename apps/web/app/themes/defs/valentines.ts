@@ -5,6 +5,7 @@ import type { Theme } from "../types.ts";
 export const valentines: Theme = {
   slug: "valentines",
   name: "Valentine's Day",
+  caption: "Love letters",
   group: "occasion",
   stylesheet: true,
   art: ART.valentines,

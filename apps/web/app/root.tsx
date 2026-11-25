@@ -10,6 +10,7 @@ import {
   Scripts,
   ScrollRestoration,
   useFetcher,
+  useLocation,
   useNavigation,
   useRouteLoaderData,
 } from "react-router";
@@ -102,6 +103,30 @@ function ThemeToggle() {
   );
 }
 
+/** "My lists", with how many questions wait on the person (SPEC 12.1). Loaded after the page so it never slows it. */
+function MyListsLink({ className }: { className: (s: { isActive: boolean }) => string }) {
+  const fetcher = useFetcher<{ count: number }>();
+  const location = useLocation();
+  useEffect(() => {
+    fetcher.load("/waiting");
+    // Reload on navigation: answering a question changes the count.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
+  const count = fetcher.data?.count ?? 0;
+  return (
+    <NavLink to="/app" className={className} end={false}>
+      My lists
+      {count > 0 && (
+        <>
+          <span className="sr-only">,</span>
+          <span className="ml-1.5 inline-grid min-w-5 place-items-center rounded-[3px] bg-ink px-1 text-[0.72rem] font-semibold text-paper">{count}</span>
+          <span className="sr-only"> waiting on you</span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
 function Header() {
   const { user } = useRootData();
   const nav = useNavigation();
@@ -122,9 +147,7 @@ function Header() {
             Connect
           </NavLink>
           {user ? (
-            <NavLink to="/app" className={navCls} end={false}>
-              My lists
-            </NavLink>
+            <MyListsLink className={navCls} />
           ) : (
             <NavLink to="/login" className={navCls}>
               Sign in

@@ -4,6 +4,7 @@ import type { Theme } from "../types.ts";
 export const board: Theme = {
   slug: "board",
   name: "Board",
+  caption: "Kanban columns",
   group: "workspace",
   natural: "tasks",
   stylesheet: true,

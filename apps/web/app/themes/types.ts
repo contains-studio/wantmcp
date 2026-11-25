@@ -88,6 +88,8 @@ export interface Theme {
   /** Extra pairs for `pnpm check:contrast`, per mode, given the combined palette and accents. */
   contrast?: (p: Palette, a: Accents, mode: "light" | "dark") => ContrastPair[];
   name: string;
+  /** Three words or fewer, under the thumbnail. */
+  caption: string;
   /** Templates are "default" and "workspace"; occasions dress any template. */
   group: "default" | "occasion" | "workspace";
   /** Accents per mode (missing ones fall back to the template's, then to the palette). */

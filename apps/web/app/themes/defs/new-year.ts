@@ -10,7 +10,8 @@ const p = {
 /** Black and gold, art deco numerals and still confetti. */
 export const newYear: Theme = {
   slug: "new-year",
-  name: "New Year's",
+  name: "New Year",
+  caption: "Black and gold",
   group: "occasion",
   scheme: "dark",
   stylesheet: true,

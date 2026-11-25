@@ -11,6 +11,7 @@ const p = {
 export const halloween: Theme = {
   slug: "halloween",
   name: "Halloween",
+  caption: "Pumpkin and moon",
   group: "occasion",
   scheme: "dark",
   stylesheet: true,

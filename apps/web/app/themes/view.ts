@@ -5,6 +5,8 @@ export interface ThemeView {
   /** The look's slug as stored on a list: `board`, `christmas`, `board--christmas`. */
   slug: string;
   name: string;
+  /** Three words or fewer, for thumbnails. */
+  caption: string;
   template: string;
   occasion: string | null;
   group: Theme["group"];
@@ -109,6 +111,7 @@ export function lookView(template: Theme, occasion: Theme | null, slug: string):
   return {
     slug,
     name: occasion ? (template.slug === "default" ? occasion.name : `${template.name} · ${occasion.name}`) : template.name,
+    caption: occasion ? occasion.caption : template.caption,
     template: template.slug,
     occasion: occasion?.slug ?? null,
     group: occasion ? "occasion" : template.group,

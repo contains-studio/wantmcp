@@ -5,6 +5,7 @@ import type { Theme } from "../types.ts";
 export const birthday: Theme = {
   slug: "birthday",
   name: "Birthday",
+  caption: "Bunting and sprinkles",
   group: "occasion",
   stylesheet: true,
   art: ART.birthday,

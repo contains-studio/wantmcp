@@ -11,6 +11,7 @@ const p = {
 export const blackFriday: Theme = {
   slug: "black-friday",
   name: "Black Friday",
+  caption: "Sale tags",
   group: "occasion",
   scheme: "dark",
   stylesheet: true,

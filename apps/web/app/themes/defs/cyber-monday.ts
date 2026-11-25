@@ -5,6 +5,7 @@ import type { Theme } from "../types.ts";
 export const cyberMonday: Theme = {
   slug: "cyber-monday",
   name: "Cyber Monday",
+  caption: "Neon grid",
   group: "occasion",
   stylesheet: true,
   art: ART.cyberMonday,

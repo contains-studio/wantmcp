@@ -5,6 +5,7 @@ import type { Theme } from "../types.ts";
 export const christmas: Theme = {
   slug: "christmas",
   name: "Christmas",
+  caption: "Evergreen and gold",
   group: "occasion",
   stylesheet: true,
   art: ART.christmas,

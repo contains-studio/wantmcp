@@ -12,6 +12,7 @@ export const chanukah: Theme = {
   slug: "chanukah",
   aliases: ["hanukkah"],
   name: "Chanukah",
+  caption: "Menorah, blue and silver",
   group: "occasion",
   scheme: "dark",
   stylesheet: true,

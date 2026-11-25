@@ -32,6 +32,7 @@ export function seedStore(now = Date.now()): Store {
       title: "Home office refresh, Black Friday 2026",
       description:
         "Replacing the kitchen-table setup before winter. Budget is soft, quality matters more than brand. UK delivery please.",
+      note: "Deliver to the flat, weekdays only. Desk is 140cm wide.",
       owner_id: "usr_demo",
       allow_outside_suggestions: true,
       created_at: at(12 * DAY),

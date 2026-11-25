@@ -1,6 +1,6 @@
 export const CONTACT_EMAIL = "hello@wantmcp.com";
 export const EFFECTIVE_DATE = "24 November 2026";
-export const UPDATED_DATE = "25 November 2026";
+export const UPDATED_DATE = "26 November 2026";
 
 export function ContactLink() {
   return (

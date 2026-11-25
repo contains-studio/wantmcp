@@ -3,7 +3,8 @@ import type { Theme } from "../types.ts";
 /** The site's own look: warm near-white, near-black type, hairlines, one crimson accent. */
 export const defaultTheme: Theme = {
   slug: "default",
-  name: "The Want MCP",
+  name: "Cards",
+  caption: "House look",
   group: "default",
   idea: "The plain look: warm near-white, near-black type, hairline rows and one crimson accent.",
   light: {

@@ -18,6 +18,7 @@ const mix = (a: string, b: string, t: number) => {
 export const heat: Theme = {
   slug: "heat",
   name: "Heat",
+  caption: "Hot to cool",
   group: "workspace",
   natural: "tasks",
   scheme: "dark",

@@ -740,3 +740,5 @@ button.check-toggle:hover { border-color: var(--want); }
   .entry-row { grid-template-columns: 2.5rem minmax(0, 1fr) auto; }
   .entry-row-meta { grid-column: 2 / -1; }
 }
+/* A price nobody has checked today: muted, and it says so in words. */
+tr.is-stale .price { color: var(--ink-3); }

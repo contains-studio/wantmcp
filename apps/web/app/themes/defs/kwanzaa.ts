@@ -5,6 +5,7 @@ import type { Theme } from "../types.ts";
 export const kwanzaa: Theme = {
   slug: "kwanzaa",
   name: "Kwanzaa",
+  caption: "Kinara, red and green",
   group: "occasion",
   stylesheet: true,
   art: ART.kwanzaa,

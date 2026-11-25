@@ -4,6 +4,7 @@ import type { Theme } from "../types.ts";
 export const sections: Theme = {
   slug: "sections",
   name: "Sections",
+  caption: "Collapsible sections",
   group: "workspace",
   natural: "tasks",
   stylesheet: true,

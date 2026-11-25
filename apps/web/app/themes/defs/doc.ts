@@ -4,6 +4,7 @@ import type { Theme } from "../types.ts";
 export const doc: Theme = {
   slug: "doc",
   name: "Doc",
+  caption: "A quiet page",
   group: "workspace",
   natural: "research",
   stylesheet: true,

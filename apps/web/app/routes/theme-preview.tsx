@@ -45,7 +45,7 @@ export default function ThemePreview({ loaderData }: Route.ComponentProps) {
           ← All themes
         </Link>
         <span className="text-ink-2">
-          Previewing <strong className="text-ink">{theme.name}</strong> on a sample list. {theme.idea}
+          <strong className="text-ink">{theme.name}</strong>
         </span>
         <nav aria-label="Sample list format" className="flex gap-1">
           {Object.values(FORMATS).map((f) => (

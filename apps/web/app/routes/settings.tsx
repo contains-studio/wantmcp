@@ -75,6 +75,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   const s = (k: string) => String(form.get(k) ?? "").trim();
   try {
     switch (intent) {
+      case "note":
+        // SPEC 12.2: what is true of this list only. Writers and their agents see it; never public.
+        await api(request, `/lists/${id}`, { method: "PATCH", body: { note: s("note") } });
+        return { ok: true, intent } satisfies ActionData;
       case "rename":
         await api(request, `/lists/${id}`, { method: "PATCH", body: { title: s("title"), description: s("description") } });
         return { ok: true, intent } satisfies ActionData;
@@ -291,11 +295,10 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         <>
           <Section
             id="theme-h"
-            title="Theme"
+            title="Look"
             desc={
               <>
-                Dress the list for its occasion, or in the style of the tools you work in. Everyone who opens the list sees it, in their own light
-                or dark mode. <Link to="/themes" className="link">Browse all themes</Link>
+                Everyone who opens the list sees it. <Link to="/themes" className="link">All layouts and occasions</Link>
               </>
             }
           >
@@ -322,6 +325,24 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               <OutsideToggle allow={list.allow_outside_suggestions} />
             </Section>
           ) : null}
+
+          <Section id="note-h" title="Note for agents">
+            <Form method="post" className="grid gap-3">
+              <input type="hidden" name="intent" value="note" />
+              <label className="field">
+                <span className="label">What's true of this list only</span>
+                <textarea name="note" maxLength={600} defaultValue={list.note ?? ""} className="textarea min-h-20" placeholder="Gifts for Dad, about £50 each, deliver to Leeds" />
+                <span className="hint">Everyone who can write this list, and their agents, can see this. It's never public.</span>
+              </label>
+              <div aria-live="polite">
+                {err("note")}
+                {result?.intent === "note" && result.ok && <p className="form-ok">Saved.</p>}
+              </div>
+              <button className="btn w-fit" disabled={busy("note")}>
+                {busy("note") ? "Saving…" : "Save"}
+              </button>
+            </Form>
+          </Section>
 
           <Section id="rename-h" title="Title and description">
             <Form method="post" className="grid gap-3">
@@ -529,7 +550,7 @@ function ThemePicker({
       <input type="hidden" name="intent" value="theme" />
       <input type="hidden" name="theme" value={slug} />
       <fieldset className="grid gap-2">
-        <legend className="label mb-1">Template: how the list is laid out</legend>
+        <legend className="label mb-1">Layout</legend>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {templates.map((t) => (
             <LookOption
@@ -540,13 +561,13 @@ function ThemePicker({
               view={t}
               sample={sample}
               origin={origin}
-              note={t.template === defaultTemplate ? "Default for this format" : fi.suits.includes(t.template) ? `Made for ${fi.label.toLowerCase()}` : t.scheme === "dark" ? "Always dark" : ""}
+              note={t.template === defaultTemplate ? "Default" : t.caption}
             />
           ))}
         </div>
       </fieldset>
       <fieldset className="grid gap-2">
-        <legend className="label mb-1">Occasion: how it is dressed</legend>
+        <legend className="label mb-1">Occasion</legend>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <label className={`grid cursor-pointer place-items-center gap-2 rounded-md border-2 p-3 text-center ${occasion === null ? "border-want" : "border-line"}`}>
             <span className="grid h-20 w-full place-items-center rounded-lg bg-sunk text-[0.85rem] text-ink-3" aria-hidden="true">
@@ -567,7 +588,7 @@ function ThemePicker({
               sample={sample}
               origin={origin}
               label={o.name.split(" · ").pop()!}
-              note={o.scheme === "dark" ? "Always dark" : ""}
+              note={o.caption}
               small
             />
           ))}
@@ -596,7 +617,7 @@ function ThemePicker({
       </div>
       <div className="flex flex-wrap items-center gap-3" aria-live="polite">
         <button className="btn btn-want" disabled={saving || slug === current}>
-          {saving ? "Saving…" : slug === current ? "Current look" : `Use ${view.name}`}
+          {saving ? "Saving…" : "Save"}
         </button>
         {currentTemplate !== template || currentOccasion !== occasion ? (
           <span className="text-[0.85rem] text-ink-3">Not saved yet.</span>

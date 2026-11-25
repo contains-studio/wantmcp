@@ -100,9 +100,11 @@ Agents connect to `MCP_URL` (`https://mcp.wantmcp.com/mcp`). Clients that only s
 
 ## List themes
 
-A list owner can dress a list in a theme (list settings → Theme); everyone who opens it sees that theme.
-`/themes` shows every theme on a sample list of the kind it suits; `/themes/{slug}?format=tasks` previews any
-theme with any format.
+A list's look is two choices in list settings → Look: a **layout** (Cards, Board, Sections, Checklist, Heat,
+Sheet, Doc, Tracker; called a template in the code) and an optional **occasion** (Black Friday, Christmas…). It
+is stored as one slug: `board`, `christmas` (an occasion on Cards) or `board--christmas`. An undressed list uses
+Sheet for shopping, Checklist for tasks and Doc for research. `/themes?layout=board&occasion=christmas` shows any
+pair; `/themes/{slug}?format=tasks` previews it with any format.
 
 A theme is a definition in `app/themes/defs/` (a `Theme`, see `app/themes/types.ts`) plus, usually, its own
 stylesheet in `public/theme-css/{slug}.css`:

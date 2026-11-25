@@ -4,7 +4,8 @@ import type { Theme } from "../types.ts";
 export const today: Theme = {
   slug: "today",
   aliases: ["checklist"],
-  name: "Today",
+  name: "Checklist",
+  caption: "Calm to-do",
   group: "workspace",
   natural: "tasks",
   stylesheet: true,

@@ -1,4 +1,6 @@
 import { data, Form, redirect, useActionData, useNavigation } from "react-router";
+import { Field, Select, Textarea } from "~/components/ui";
+import { BIO_PLACEHOLDER, COUNTRIES, CURRENCIES } from "~/lib/locales";
 import type { Route } from "./+types/account";
 import { api, formError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
@@ -25,6 +27,18 @@ export async function action({ request }: Route.ActionArgs) {
       });
       return { ok: true, intent };
     }
+    if (intent === "bio") {
+      // SPEC 12.2: the bio and where the person shops from. Only their own agents see it.
+      await api(request, "/me", {
+        method: "PATCH",
+        body: {
+          bio: String(form.get("bio") ?? "").trim(),
+          country: String(form.get("country") ?? "") || null,
+          currency: String(form.get("currency") ?? "") || null,
+        },
+      });
+      return { ok: true, intent };
+    }
     if (intent === "delete") {
       if (String(form.get("confirm") ?? "").trim().toLowerCase() !== "delete my account") {
         return data({ error: "Type “delete my account” to confirm.", intent }, 400);
@@ -46,7 +60,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
     <div className="wrap grid max-w-2xl gap-6 py-8">
       <div>
         <p className="eyebrow">Account</p>
-        <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{user.handle}</h1>
+        <h1 className="mt-1 text-[1.75rem] font-semibold">{user.handle}</h1>
       </div>
 
       <section aria-labelledby="profile-h" className="card grid gap-4 p-5 sm:p-6">
@@ -70,6 +84,54 @@ export default function Account({ loaderData }: Route.ComponentProps) {
           <div aria-live="polite">
             {result?.intent === "profile" && result.error && <p className="form-error">{result.error}</p>}
             {result?.intent === "profile" && result.ok && <p className="form-ok">Saved.</p>}
+          </div>
+          <button className="btn w-fit" disabled={nav.state !== "idle"}>
+            Save
+          </button>
+        </Form>
+      </section>
+
+      <section id="bio" aria-labelledby="bio-h" className="card grid scroll-mt-24 gap-4 p-5 sm:p-6">
+        <div>
+          <h2 id="bio-h" className="text-xl font-semibold">
+            For your agents
+          </h2>
+          <p className="hint mt-1">Only your own agents see this. It's never shown on a list.</p>
+        </div>
+        <Form method="post" className="grid gap-4">
+          <input type="hidden" name="intent" value="bio" />
+          <Field label="About you">
+            {(p) => <Textarea {...p} name="bio" maxLength={600} defaultValue={user.bio ?? ""} placeholder={BIO_PLACEHOLDER} className="min-h-24" />}
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+            <Field label="Country">
+              {(p) => (
+                <Select {...p} name="country" defaultValue={user.country ?? ""}>
+                  <option value="">Not set</option>
+                  {COUNTRIES.map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label="Currency">
+              {(p) => (
+                <Select {...p} name="currency" defaultValue={user.currency ?? ""}>
+                  <option value="">Not set</option>
+                  {CURRENCIES.map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          </div>
+          <div aria-live="polite">
+            {result?.intent === "bio" && result.error && <p className="form-error">{result.error}</p>}
+            {result?.intent === "bio" && result.ok && <p className="form-ok">Saved.</p>}
           </div>
           <button className="btn w-fit" disabled={nav.state !== "idle"}>
             Save

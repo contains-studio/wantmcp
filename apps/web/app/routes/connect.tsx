@@ -174,13 +174,21 @@ const CLIENT_LIST: Client[] = [
     id: "codex",
     name: "Codex",
     status: "confirmed",
-    sources: [["OpenAI: Codex MCP", "https://developers.openai.com/codex/mcp"]],
+    sources: [
+      ["OpenAI: Codex MCP", "https://learn.chatgpt.com/docs/extend/mcp"],
+      ["OpenAI: Codex config reference", "https://learn.chatgpt.com/docs/config-file/config-reference"],
+    ],
     body: (mcp) => (
       <>
         <p>CLI, with OAuth:</p>
         <Code>{`codex mcp add wantmcp --url ${mcp}\ncodex mcp login wantmcp`}</Code>
         <p>Or with a write key, in <code>~/.codex/config.toml</code>:</p>
         <Code>{`[mcp_servers.wantmcp]\nurl = "${mcp}"\nbearer_token_env_var = "WANTMCP_TOKEN"`}</Code>
+        <p>
+          Runs without you there (<code>codex exec</code>, scheduled tasks) can't stop to ask before each tool call. Let this server's tools run
+          without asking:
+        </p>
+        <Code>{`[mcp_servers.wantmcp]\ndefault_tools_approval_mode = "approve"`}</Code>
         <p>
           IDE extension: gear menu › <strong>MCP servers</strong> › <strong>Add server</strong>, choose <strong>Streamable HTTP</strong>, enter the URL,
           save, <strong>Restart extension</strong>, then <strong>Authenticate</strong>.
@@ -408,6 +416,8 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
           </section>
         ))}
 
+        <AwaySection />
+
         <section aria-labelledby="tools-h" className="card grid gap-4 p-5 sm:p-6">
           <div>
             <h2 id="tools-h" className="text-xl font-semibold">What your agent can do</h2>
@@ -437,5 +447,45 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
         </section>
       </div>
     </div>
+  );
+}
+
+const AWAY_PROMPT = "Every morning, call get_updates on my Want MCP lists, re-check the prices you posted, and answer what is new.";
+
+/** Clients whose own docs confirm scheduled runs that can use MCP tools (checked 26 Nov 2026). */
+const SCHEDULERS: Array<[name: string, feature: string, href: string]> = [
+  ["ChatGPT", "Scheduled tasks", "https://learn.chatgpt.com/docs/automations"],
+  ["Claude", "Scheduled tasks", "https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork"],
+  ["Claude Code", "Scheduled tasks", "https://code.claude.com/docs/en/routines"],
+  ["Codex", "Scheduled tasks in the desktop app", "https://learn.chatgpt.com/docs/automations"],
+  ["Cursor", "Automations", "https://cursor.com/docs/cloud-agent/automations"],
+  ["Grok Bot", "Routines", "https://docs.x.ai/grok-bot/skills-routines-and-automations"],
+];
+
+function AwaySection() {
+  return (
+    <section aria-labelledby="away-h" className="card grid gap-4 p-5 sm:p-6">
+      <h2 id="away-h" className="text-xl font-semibold">
+        Keep it working when you're away
+      </h2>
+      <p className="text-ink-2">Schedule a run in your agent with this instruction:</p>
+      <div className="grid gap-2">
+        <pre className="codeblock" tabIndex={0} role="region" aria-label="Instruction for a scheduled run">
+          {AWAY_PROMPT}
+        </pre>
+        <CopyButton text={AWAY_PROMPT} label="Copy" className="btn btn-sm w-fit" />
+      </div>
+      <ul className="grid border-t border-line">
+        {SCHEDULERS.map(([name, feature, href]) => (
+          <li key={name} className="flex flex-wrap items-baseline justify-between gap-x-4 border-b border-line py-2 text-[0.92rem]">
+            <span className="font-medium">{name}</span>
+            <a href={href} className="link text-ink-2" rel="noopener noreferrer">
+              {feature}
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p className="hint">Codex and Gemini CLI also run without you (codex exec, gemini -p); schedule them with cron.</p>
+    </section>
   );
 }

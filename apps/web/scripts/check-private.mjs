@@ -17,6 +17,10 @@ const PRIVATE = env.PRIVATE_LIST ?? "lst_tasks"; // mock: private task list, own
 const PRIVATE_TITLE = env.PRIVATE_TITLE ?? "Moving flat: things to sort";
 const PRIVATE_SNIPPET = env.PRIVATE_SNIPPET ?? "Called the provider";
 const PUBLIC = env.PUBLIC_LIST ?? "lst_desk2026";
+// SPEC 12: a public list with an open question and a list note, and a member with a bio (mock data).
+const QUESTION_SNIPPET = env.QUESTION_SNIPPET ?? "4K panel or 90W charging";
+const NOTE_SNIPPET = env.NOTE_SNIPPET ?? "Desk is 140cm wide";
+const BIO_SNIPPET = env.BIO_SNIPPET ?? "Prefer independent shops";
 const OWNER = env.OWNER ?? "demo@example.com";
 const MEMBER = env.MEMBER ?? "heron@example.com";
 const OTHER = env.OTHER ?? "lynx@example.com";
@@ -32,7 +36,7 @@ async function signIn(email) {
   const h = { "content-type": "application/x-www-form-urlencoded", accept: "text/html" };
   const step1 = await (await fetch(`${BASE}/login?next=/app`, { method: "POST", headers: h, body: form({ email, next: "/app" }) })).text();
   // A dev API echoes the code and the dev build shows it; the mock always accepts 123456.
-  const code = step1.match(/"devCode","(\d{6})"/)?.[1] ?? "123456";
+  const code = step1.match(/devCode\\?",\\?"(\d{6})/)?.[1] ?? "123456";
   const res = await fetch(`${BASE}/login?next=/app`, {
     method: "POST",
     headers: h,
@@ -114,6 +118,29 @@ for (const path of ["/", "/themes", `/l/${PUBLIC}`]) {
   const cc = res.headers.get("cache-control") ?? "";
   ok(!/\bpublic\b/.test(cc) || /\bcookie\b/i.test(res.headers.get("vary") ?? ""), `signed out ${path}: public only with Vary: Cookie (got ${cc}; vary ${res.headers.get("vary")})`);
 }
+
+// SPEC 12: questions, answers, bios and list notes are never public, whatever the list's visibility.
+for (const [who, cookie] of [["signed out", anon], ["other signed-in user", other]]) {
+  const body = await (await get(`/l/${PUBLIC}`, cookie)).text();
+  ok(!body.includes(QUESTION_SNIPPET), `${who}: public list shows no question text`);
+  ok(body.includes("Waiting on the owner"), `${who}: public list shows only the status`);
+  ok(!body.includes(NOTE_SNIPPET), `${who}: public list shows no list note`);
+  ok(!body.includes(BIO_SNIPPET), `${who}: no bio on a public list`);
+}
+for (const [who, path] of [["home", "/"], ["sitemap", "/sitemap.xml"]]) {
+  const body = await (await get(path, anon)).text();
+  ok(!body.includes(QUESTION_SNIPPET) && !body.includes(NOTE_SNIPPET) && !body.includes(BIO_SNIPPET), `${who}: no questions, notes or bios`);
+}
+for (const [who, cookie] of [["owner", owner], ["member", member]]) {
+  const body = await (await get(`/l/${PUBLIC}`, cookie)).text();
+  ok(body.includes(QUESTION_SNIPPET), `${who}: sees the question on the item`);
+}
+const waitingAnon = await (await get("/waiting", anon)).json();
+ok(waitingAnon.count === 0, "signed out: no waiting count");
+const waitingOther = await get("/waiting", other);
+ok(/no-store/.test(waitingOther.headers.get("cache-control") ?? ""), "waiting count is private, no-store");
+const appOwner = await (await get("/app", owner)).text();
+ok(appOwner.includes(QUESTION_SNIPPET) && appOwner.includes("Waiting on you"), "owner: /app gathers the open questions");
 
 const pub = await get(`/l/${PUBLIC}`, anon);
 ok(pub.status === 200 && noSharedCache(pub), `public list: shared caches must revalidate (${pub.headers.get("cache-control")})`);
