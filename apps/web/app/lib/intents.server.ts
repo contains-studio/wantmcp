@@ -143,6 +143,10 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
         }
         return { ok: true, intent };
       }
+      case "accept-item":
+        // SPEC 16.2: an outsider's item, held for review, becomes an ordinary one (a person writer only).
+        await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}/accept`, { method: "POST" });
+        return { ok: true, intent };
       case "delete-item":
         await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}`, { method: "DELETE" });
         return { ok: true, intent };

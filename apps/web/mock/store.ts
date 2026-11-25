@@ -75,7 +75,9 @@ export interface ItemRow {
   completion?: Completion | null;
   status_note?: string | null;
   status_note_at?: Timestamp | null;
-  text_by?: "person" | "agent";
+  text_by?: "person" | "agent" | "outsider";
+  /** SPEC 16.2: an outsider's item (a feedback task) no writer has accepted yet. */
+  pending_review?: boolean;
 }
 
 export interface EntryRow {
@@ -141,6 +143,10 @@ export interface Store {
   comments: Comment[];
   events: WantEvent[];
   reports: Array<{ target_type: string; target_id: string; reason: string; created_at: Timestamp }>;
+  /** SPEC 16.1: what POST /feedback received (mock only keeps it to test against). */
+  /** SPEC 16.2: the list feedback lands on (set by the admin on the server). */
+  feedback_list: string | null;
+  feedback: Array<{ id: string; kind: string; text: string; expected: string | null; about: string | null; list: string | null; created_at: Timestamp }>;
   claims: ClaimRow[];
   skills: SkillRow[];
 }
@@ -177,6 +183,8 @@ export function emptyStore(): Store {
     comments: [],
     events: [],
     reports: [],
+    feedback: [],
+    feedback_list: null,
     claims: [],
     skills: [],
   };

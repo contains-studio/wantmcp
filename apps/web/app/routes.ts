@@ -24,6 +24,7 @@ export default [
   route("privacy", "routes/privacy.tsx"),
   route("terms", "routes/terms.tsx"),
   route("report", "routes/report.tsx"),
+  route("feedback", "routes/feedback.tsx"),
   route("theme", "routes/theme.tsx"),
   route("live", "routes/live.ts"),
   route("waiting", "routes/waiting.ts"),

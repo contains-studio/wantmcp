@@ -254,7 +254,8 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
     title: l.title,
     description: l.description,
     owner_handle: owner.handle,
-    item_count: store.items.filter((i) => i.list_id === l.id).length,
+    // An outsider's item counts once a writer accepts it (SPEC 16.2), as on the server.
+    item_count: store.items.filter((i) => i.list_id === l.id && !i.pending_review).length,
     allow_outside_suggestions: l.allow_outside_suggestions,
     theme: l.theme ?? null,
     format: fmt(l),
@@ -382,6 +383,7 @@ function itemOut(i: ItemRow, c: Caller): Item {
     status_note: i.status_note ?? null,
     status_note_at: i.status_note ? (i.status_note_at ?? i.claimed_at ?? null) : null,
     text_by: i.text_by ?? (i.created_by.kind === "agent" ? "agent" : "person"),
+    pending_review: !!i.pending_review,
     completion:
       i.completion ??
       (i.purchase ? { completed_at: i.purchase.purchased_at, completed_by: i.purchase.purchased_by, note: null, entry_id: i.purchase.entry_id } : null),
@@ -740,7 +742,7 @@ route("GET", "/feed", ({ url }) => {
 route("GET", "/lists", ({ url, caller }) => {
   const q = (url.searchParams.get("q") ?? "").toLowerCase();
   const rows = store.lists
-    .filter((l) => vis(l) === "public" && store.items.some((i) => i.list_id === l.id))
+    .filter((l) => vis(l) === "public" && store.items.some((i) => i.list_id === l.id && !i.pending_review))
     .filter((l) => !q || l.title.toLowerCase().includes(q) || l.description.toLowerCase().includes(q))
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .map((l) => listSummary(l, caller));
@@ -766,7 +768,8 @@ route("POST", "/lists", ({ caller, body }) => {
 route("GET", "/lists/{id}", ({ caller, params }) => {
   const l = readableList(params[0], caller);
   const writer = canWrite(caller, l.id);
-  const items = store.items.filter((i) => i.list_id === l.id).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  // SPEC 16.2: an outsider's item no writer has accepted is for writers only.
+  const items = store.items.filter((i) => i.list_id === l.id && (writer || !i.pending_review)).sort((a, b) => a.created_at.localeCompare(b.created_at));
   if (!items.length && !writer) throw notFound("List not found");
   const detail: ListDetail = {
     ...listSummary(l, caller),
@@ -1190,6 +1193,19 @@ route("POST", "/lists/{id}/items", ({ caller, params, body }) => {
   touch(i.list_id);
   emit("item.created", i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text } });
   return created(itemOut(i, c));
+});
+
+// SPEC 16.2: a person who can write the list accepts an outsider's item; it then shows like any other. Agents may not.
+route("POST", "/items/{id}/accept", ({ caller, params }) => {
+  const i = getItem(params[0]);
+  const c = requireWriter(caller, i.list_id);
+  if (c.kind !== "user") throw new HttpError(403, "forbidden", "Only a person, signed in on the web, can accept an outsider's item.");
+  if (i.pending_review) {
+    i.pending_review = false;
+    touch(i.list_id);
+    emit("item.created", i.list_id, i.created_by, `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text } });
+  }
+  return itemOut(i, c);
 });
 
 route("PATCH", "/items/{id}", ({ caller, params, body }) => {
@@ -1654,8 +1670,32 @@ route("POST", "/reports", ({ body }) => {
   return NO_CONTENT;
 });
 
+// SPEC 16.1: feedback, from anyone. Mock only: text "mock: rate limit" answers as the daily limit would.
+route("POST", "/feedback", ({ body }) => {
+  const kind = String(body.kind ?? "");
+  if (kind !== "bug" && kind !== "expectation" && kind !== "request") throw invalid("kind must be bug, expectation or request");
+  const t = text("text", body.text, 2000, true);
+  if (t === "mock: rate limit") throw new HttpError(429, "rate_limited", "That's a lot of feedback from one network today. Try again tomorrow.", { limit: "feedback.per_network_per_day" });
+  const expected = text("expected", body.expected, 1000) || null;
+  const about = text("about", body.about, 80) || null;
+  const list = typeof body.list === "string" && body.list ? body.list : null;
+  const id = newId("fbk");
+  store.feedback.push({ id, kind, text: t, expected, about, list, created_at: nowIso() });
+  // SPEC 16.2: a task on the feedback list, written by an outsider and held until a writer accepts it.
+  if (store.feedback_list) {
+    const prefix = kind === "bug" ? "Bug" : kind === "expectation" ? "Expected" : "Request";
+    store.items.push({
+      id: newId("itm"), list_id: store.feedback_list, text: `${prefix}: ${t.replace(/\s+/g, " ").slice(0, 120)}`,
+      details: [t, expected ? `Expected: ${expected}` : "", `From someone on the web${about ? `, about ${about}` : ""}`].filter(Boolean).join("\n\n"),
+      created_by: { kind: "outside", name: null }, created_at: nowIso(), purchase: null, status: "open", claimed_by: null, completion: null,
+      text_by: "outsider", pending_review: true,
+    });
+  }
+  return created({ id, received: true as const });
+});
+
 route("GET", "/sitemap", () => ({
-  lists: store.lists.filter((l) => vis(l) === "public" && store.items.some((i) => i.list_id === l.id)).map((l) => ({ id: l.id, updated_at: l.updated_at })),
+  lists: store.lists.filter((l) => vis(l) === "public" && store.items.some((i) => i.list_id === l.id && !i.pending_review)).map((l) => ({ id: l.id, updated_at: l.updated_at })),
 }));
 
 route("GET", "/health", () => ({ ok: true, mock: true }));

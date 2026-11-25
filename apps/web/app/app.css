@@ -934,3 +934,7 @@ tr.is-stale .price { color: var(--ink-3); }
   padding: 0.5rem 0.65rem; border: 1px solid var(--danger); border-radius: 4px; background: var(--card); color: var(--ink);
   font-size: 0.85rem; line-height: 1.35;
 }
+
+/* Feedback: the boxes grow with the text (no inner scrolling), like the skills editor. */
+.feedback-text { field-sizing: content; min-height: 7.5rem; max-height: none; overflow: hidden; resize: none; }
+.feedback-text.feedback-short { min-height: 4.5rem; }

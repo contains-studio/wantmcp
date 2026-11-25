@@ -361,6 +361,26 @@ export function seedStore(now = Date.now()): Store {
   // An invitation the agent Kit sent from its own account.
   s.members.push({ id: "mem_kit_inv", list_id: "lst_team", user_id: null, invited_email: "lynx@example.com", role: "member", status: "invited", token: "inv_seed_from_agent", created_at: at(DAY), invited_by: kit });
 
+  // ---- SPEC 16: our own feedback list, public, owned by the team account. Feedback arrives as outsiders' tasks held
+  // for review; one has been accepted already.
+  s.users.push({ id: "usr_team", email: "team@example.com", handle: "steady-finch-2040", updates_opt_in: false, created_at: at(90 * DAY) });
+  s.lists.push({ id: "lst_feedback", title: "What we're working on", description: "", owner_id: "usr_team", allow_outside_suggestions: false, format: "tasks", visibility: "public", created_at: at(30 * DAY), updated_at: at(HOUR) });
+  s.members.push({ id: "mem_lst_feedback", list_id: "lst_feedback", user_id: "usr_team", invited_email: null, role: "owner", status: "active", token: null, created_at: at(30 * DAY) });
+  const outsider: ActorRef = { kind: "outside", name: null };
+  s.items.push(
+    {
+      id: "itm_fb_share", list_id: "lst_feedback", text: "Bug: The share image still shows the old title after renaming the list", created_by: outsider, created_at: at(3 * DAY), purchase: null,
+      details: "Renamed my list and shared it; the preview card kept the old name.\n\nExpected: The new title on the card.\n\nFrom a person, on the web, about /l",
+      status: "in_progress", claimed_by: user("steady-finch-2040"), claimed_at: at(2 * DAY), completion: null, text_by: "outsider", pending_review: false,
+    },
+    {
+      id: "itm_fb_held", list_id: "lst_feedback", text: "Request: Let me reorder wants by dragging them", created_by: outsider, created_at: at(2 * HOUR), purchase: null,
+      details: "On a phone I'd like to put the important ones first. Visit https://example.com/reorder for how another app does it.\n\nFrom an agent, Muse, over MCP, about start_list",
+      status: "open", claimed_by: null, completion: null, text_by: "outsider", pending_review: true,
+    },
+  );
+  s.feedback_list = "lst_feedback";
+
   // ---- SPEC 14: the demo person's own skills, one on and one off.
   s.skills.push(
     {

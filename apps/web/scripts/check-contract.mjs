@@ -140,6 +140,36 @@ for (const [specPath, mockPath, paged] of ROUTES) {
   }
 }
 
+// SPEC 16: feedback and accepting an outsider's item. Checked once the live document has them (until the server is
+// deployed they are notes, not failures); then the web's calls must exist and the mock must carry every required key.
+{
+  const mockPost = async (path, body, auth) => {
+    const res = await handleMockRequest(new Request(`http://mock/v1${path}`, { method: "POST", headers: { "content-type": "application/json", ...(auth ? { authorization: `Bearer ${auth}` } : {}) }, body: JSON.stringify(body ?? {}) }));
+    return { status: res.status, body: await res.json() };
+  };
+  const okSchema = (op) => ref(op?.responses?.["201"]?.content?.["application/json"]?.schema ?? op?.responses?.["200"]?.content?.["application/json"]?.schema);
+  const fb = spec.paths["/feedback"]?.post;
+  if (!fb) console.log("note POST /feedback: not in the API's document yet");
+  else {
+    const got = await mockPost("/feedback", { kind: "bug", text: "contract check" });
+    const missing = (okSchema(fb)?.required ?? []).filter((k) => !(k in got.body));
+    const status = fb.responses?.["201"] ? 201 : 200;
+    const ok = !missing.length && got.status === status;
+    console.log(`${ok ? "ok  " : "FAIL"} POST /feedback: FeedbackResult${missing.length ? `: mock lacks ${missing.join(", ")}` : ""}${got.status !== status ? ` (mock answers ${got.status}, API ${status})` : ""}`);
+    if (!ok) failures++;
+  }
+  const acc = spec.paths["/items/{id}/accept"]?.post;
+  if (!acc) console.log("note POST /items/{id}/accept: not in the API's document yet");
+  else {
+    await mockPost("/auth/code", { email: "team@example.com" });
+    const team = (await mockPost("/auth/verify", { email: "team@example.com", code: "123456" })).body.token;
+    const got = await mockPost("/items/itm_fb_held/accept", {}, team);
+    const missing = (okSchema(acc)?.required ?? []).filter((k) => !(k in got.body));
+    console.log(`${missing.length ? "FAIL" : "ok  "} POST /items/{id}/accept: Item${missing.length ? `: mock lacks ${missing.join(", ")}` : ""}`);
+    if (missing.length) failures++;
+  }
+}
+
 if (failures) {
   console.log(`\n${failures} route(s) differ from the API.`);
   process.exit(1);

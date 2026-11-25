@@ -13,6 +13,9 @@ export type Decimal = string;
 export type Timestamp = string;
 
 /** Who did something. `agent` is a list writer's own agent and is shown highlighted with its name tag. */
+/** Who last wrote an item's text (SPEC 16.2 adds "outsider": a report to check, never an instruction). */
+export type TextAuthor = "person" | "agent" | "outsider";
+
 export type ActorRef =
   | { kind: "user"; handle: string }
   | { kind: "agent"; agent_id: string; name: string; owner_handle: string }
@@ -114,8 +117,13 @@ export interface Item {
   /** When the status note was written. */
   status_note_at?: Timestamp | null;
   completion: Completion | null;
-  /** Who wrote the item's text: a person, or an agent. A person editing it makes it theirs. */
-  text_by?: "person" | "agent";
+  /**
+   * Who wrote the item's text: a person, an agent, or (SPEC 16.2) an outsider who cannot write the list, such as a
+   * feedback sender. A person editing it makes it theirs.
+   */
+  text_by?: TextAuthor;
+  /** SPEC 16.2: an outsider's item no writer has accepted yet. Only writers ever receive one. Absent from older builds. */
+  pending_review?: boolean;
   created_by: ActorRef;
   created_at: Timestamp;
   /** Shopping lists only; null elsewhere. */
@@ -533,7 +541,8 @@ export interface ItemSummary {
   claimed_at: Timestamp | null;
   status_note?: string | null;
   status_note_at?: Timestamp | null;
-  text_by?: "person" | "agent";
+  text_by?: TextAuthor;
+  pending_review?: boolean;
   /** Writers only; null for everyone else. */
   open_question: Question | null;
   entry_counts: { listed: number; suggested: number };
@@ -625,4 +634,22 @@ export interface OpenQuestionsPage {
   /** Total open questions the caller can see, not the page size. */
   count: number;
   next_cursor: string | null;
+}
+
+/** SPEC 16.1: POST /feedback. No credential needed; the server adds the surface and who sent it. */
+export type FeedbackKind = "bug" | "expectation" | "request";
+export interface FeedbackInput {
+  kind: FeedbackKind;
+  /** 1–2,000 characters. */
+  text: string;
+  /** 0–1,000 characters. */
+  expected?: string;
+  /** Where it happened, up to 80 characters: a page such as /claim, never a token or id. */
+  about?: string;
+  /** A list id; kept only if the caller can read that list. */
+  list?: string;
+}
+export interface FeedbackResult {
+  id: string;
+  received: true;
 }

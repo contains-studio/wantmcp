@@ -391,6 +391,9 @@ function ItemSection({
   const boughtPrice = p?.price ? { price: p.price, currency: p.currency } : boughtEntry?.current_price ?? null;
   const boughtRetailer = p?.retailer ?? boughtEntry?.retailer ?? null;
   const headingId = `${item.id}-h`;
+  // SPEC 16.2: someone outside the list wrote it (a feedback task); held until a person who can write the list accepts it.
+  const outsider = item.text_by === "outsider";
+  const held = !!item.pending_review;
 
   return (
     <section id={item.id} aria-labelledby={headingId} data-status={status} className={`item-section grid scroll-mt-24 gap-3 ${done ? "is-bought" : ""}`}>
@@ -423,6 +426,7 @@ function ItemSection({
           </H2>
           {/* The item's actions: at the right end of its title row. */}
           <span className="item-actions">
+            {isWriter && held && <AcceptItem itemId={item.id} itemText={item.text} />}
             {isWriter && shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} itemText={item.text} currency={currencyHint} />}
             {/* Visitors: nothing here but Report, which the list's own flag in the header covers. */}
             {isWriter && (
@@ -460,8 +464,11 @@ function ItemSection({
         </div>
         <div className="item-meta item-indent flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem] text-ink-3 sm:pl-11">
           {/* Who added it, only when that tells the owner something: an agent or another person. Once a person rewrites an
-              agent's want (text_by "person"), the words are theirs and the line goes. */}
-          {!(item.created_by.kind === "user" && item.created_by.handle === ownerHandle) && !(item.text_by === "person" && item.created_by.kind === "agent") && (
+              agent's want (text_by "person"), the words are theirs and the line goes. An outsider's item (SPEC 16.2, a
+              feedback task) always says so, and while it is held, that readers can't see it yet and how to let them. */}
+          {outsider ? (
+            <OutsiderLine held={held && isWriter} />
+          ) : !(item.created_by.kind === "user" && item.created_by.handle === ownerHandle) && !(item.text_by === "person" && item.created_by.kind === "agent") && (
             <span className="inline-flex items-center gap-1.5">
               Added by <ActorTag actor={item.created_by} compact /> <Time ts={item.created_at} />
             </span>
@@ -479,8 +486,8 @@ function ItemSection({
             {isWriter && <UndoPurchase itemId={item.id} />}
           </div>
         )}
-        <ItemDetails details={item.details} />
-        {(!shopping || status === "waiting_on_owner" || !!item.status_note) && (
+        {outsider ? <OutsiderDetails details={item.details} /> : <ItemDetails details={item.details} />}
+        {!held && (!shopping || status === "waiting_on_owner" || !!item.status_note) && (
           <ItemStatusBar
             itemId={item.id}
             status={status}
@@ -517,7 +524,7 @@ function ItemSection({
             ))}
           </div>
         ) : (
-          <EmptyEntries status={status} fi={fi} quiet={quietEmpty} />
+          !held && <EmptyEntries status={status} fi={fi} quiet={quietEmpty} />
         )
       ) : entries.length > 0 && layout === "sheet" ? (
         <div className="item-indent grid gap-3 sm:pl-11">
@@ -564,7 +571,7 @@ function ItemSection({
           ))}
         </div>
       ) : (
-        <EmptyEntries status={status} fi={fi} quiet={quietEmpty} />
+        !held && <EmptyEntries status={status} fi={fi} quiet={quietEmpty} />
       )}
 
       {/* An empty want stays one row: adding the first product is in its ⋯ menu. Once it has some, the add link shows. */}
@@ -589,6 +596,57 @@ function ItemSection({
 function EmptyEntries({ status, fi, quiet }: { status: string; fi: FormatInfo; quiet: boolean }) {
   if (quiet || status !== "open") return null;
   return <p className="entries-empty item-indent text-[0.88rem] text-ink-3 sm:pl-11">{fi.waiting}</p>;
+}
+
+/**
+ * SPEC 16.2: an outsider's item (a feedback task). Held: one quiet Accept, in the row, no menu to open. Accepted: the
+ * words are still marked as someone else's.
+ */
+function OutsiderLine({ held }: { held: boolean }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="chip chip-warn">From outside</span>
+      {held && <span>Hidden from visitors until you accept it</span>}
+    </span>
+  );
+}
+
+/** One quiet action in the item's title row, no menu to open: the held item becomes an ordinary one. */
+function AcceptItem({ itemId, itemText }: { itemId: string; itemText: string }) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const busy = fetcher.state !== "idle";
+  return (
+    <fetcher.Form method="post" className="inline-flex items-center gap-2">
+      <input type="hidden" name="intent" value="accept-item" />
+      <input type="hidden" name="item_id" value={itemId} />
+      {fetcher.data?.error && <span className="form-error text-[0.8rem]">{fetcher.data.error}</span>}
+      <button className="btn btn-sm" disabled={busy} aria-label={`Accept “${itemText.slice(0, 60)}”`}>
+        {busy ? "Accepting…" : "Accept"}
+      </button>
+    </fetcher.Form>
+  );
+}
+
+/** Someone else's words: plain text, never links (SPEC 8 and 16.2). Long ones fold to three lines. */
+function OutsiderDetails({ details }: { details: string | undefined }) {
+  const [open, setOpen] = useState(false);
+  if (!details) return null;
+  const long = details.length > 240 || details.split("\n").length > 4;
+  return (
+    <div className="item-indent grid max-w-3xl justify-items-start gap-1 sm:pl-11">
+      {long && !open ? (
+        // Folded: one paragraph, so blank lines don't spend the three lines.
+        <p className="item-details line-clamp-3 break-words text-[0.95rem] text-ink-2">{details.replace(/\s*\n+\s*/g, " · ")}</p>
+      ) : (
+        <p className="item-details whitespace-pre-line break-words text-[0.95rem] text-ink-2">{details}</p>
+      )}
+      {long && (
+        <button type="button" className="textlink-btn text-[0.85rem] text-ink-3" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Show less" : "Show all"}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function UndoPurchase({ itemId }: { itemId: string }) {
