@@ -43,3 +43,19 @@ export function AgentPromptBuilder({ mcpUrl, lists }: { mcpUrl: string; lists: A
     </div>
   );
 }
+
+/**
+ * The write-key prompt with placeholders, for agents that configure themselves (Grok Bot, Muse).
+ * The real key is never shown here: list settings fills it in right after a key is created.
+ */
+export function KeyPromptExample({ mcpUrl, agent }: { mcpUrl: string; agent: string }) {
+  const text = fillPrompt(AGENT_PROMPT_WITH_KEY, { mcpUrl, listUrl: "https://wantmcp.com/l/YOUR_LIST", key: "wk_YOUR_WRITE_KEY" });
+  return (
+    <div className="grid gap-2">
+      <pre className="codeblock max-h-72 overflow-y-auto text-[0.78rem]" tabIndex={0} role="region" aria-label={`Prompt for ${agent}, with a write key`}>{text}</pre>
+      <p className="text-[0.85rem] text-ink-2">
+        Create a write key in your list's settings (<strong>Agents and write keys</strong>): this same prompt appears there with your list and key filled in, ready to copy.
+      </p>
+    </div>
+  );
+}

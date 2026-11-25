@@ -677,3 +677,5 @@ button.check-toggle:hover { border-color: var(--want); }
 }
 :root[data-theme="dark"] .brand-logo-light { display: none; }
 :root[data-theme="dark"] .brand-logo-dark { display: block; }
+/* A square mark beside a name is drawn smaller than a wordmark so the two read at the same weight. */
+.brand-tile .brand-mark { height: 1.9rem; }

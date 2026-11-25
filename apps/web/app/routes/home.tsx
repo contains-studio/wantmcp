@@ -222,10 +222,10 @@ function BrandLink({ brand }: { brand: Brand }) {
     <Link to={`/connect#${brand.id}`} className="brand-tile" aria-label={`${brand.name}: set up`} title={brand.name}>
       {l ? (
         <>
-          <img src={l.light} alt="" width={l.width} height={l.height} className={`brand-logo ${l.dark ? "brand-logo-light" : ""}`} decoding="async" />
-          {l.dark && <img src={l.dark} alt="" width={l.width} height={l.height} className="brand-logo brand-logo-dark" decoding="async" />}
-          {/* A square app icon doesn't carry the name, so show it. */}
-          {l.width === l.height && <span className="text-[0.95rem] font-bold">{brand.name}</span>}
+          <img src={l.light} alt="" width={l.width} height={l.height} className={`brand-logo ${l.nameBeside ? "brand-mark" : ""} ${l.dark ? "brand-logo-light" : ""}`} decoding="async" />
+          {l.dark && <img src={l.dark} alt="" width={l.width} height={l.height} className={`brand-logo brand-logo-dark ${l.nameBeside ? "brand-mark" : ""}`} decoding="async" />}
+          {/* A company mark or symbol doesn't spell the product's name, so it is set beside it in our type. */}
+          {l.nameBeside && <span className="text-[0.95rem] font-bold">{brand.name}</span>}
         </>
       ) : (
         <span className="text-[0.95rem] font-bold">{brand.name}</span>

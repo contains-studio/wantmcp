@@ -1,5 +1,5 @@
 import { data, Link } from "react-router";
-import { AgentPromptBuilder } from "~/components/AgentPrompt";
+import { AgentPromptBuilder, KeyPromptExample } from "~/components/AgentPrompt";
 import { api } from "~/lib/api.server";
 import { getSessionToken } from "~/lib/session.server";
 import type { ListSummary } from "~/lib/types";
@@ -63,7 +63,52 @@ function Steps({ children }: { children: React.ReactNode }) {
 
 const b64 = (s: string) => (typeof btoa === "function" ? btoa(s) : Buffer.from(s).toString("base64"));
 
-const CLIENTS: Client[] = [
+const CLIENT_LIST: Client[] = [
+  {
+    id: "grok-bot",
+    name: "Grok Bot",
+    status: "partial",
+    sources: [
+      ["xAI: Grok Bot computer and apps", "https://docs.x.ai/grok-bot/computer-and-apps"],
+      ["xAI: Grok Bot overview", "https://docs.x.ai/grok-bot/overview"],
+    ],
+    body: (mcp) => (
+      <>
+        <p>Grok Bot can add a server itself: paste the prompt below in a chat with it. It sends your write key as a header.</p>
+        <KeyPromptExample mcpUrl={mcp} agent="Grok Bot" />
+        <p>Or add it by hand in the Grok Bot desktop app:</p>
+        <Steps>
+          <li>
+            Choose <strong>Add a custom connector</strong>, then <strong>Remote HTTPS</strong>.
+          </li>
+          <li>
+            Server URL: <code>{mcp}</code>
+          </li>
+          <li>
+            HTTP header: <code>Authorization: Bearer wk_…</code> with a write key from your list settings. Leave the OAuth fields empty.
+          </li>
+        </Steps>
+        <p className="hint">The steps are from xAI's docs; we haven't tested the prompt in Grok Bot yet. A team admin's MCP policy can block new servers.</p>
+      </>
+    ),
+  },
+  {
+    id: "muse",
+    name: "Muse",
+    status: "generic",
+    sources: [["Meta: How Muse works with Connectors", "https://www.meta.com/help/superintelligence/1687253048996149/"]],
+    body: (mcp) => (
+      <>
+        <p>
+          Muse has no "add server" setting. Ask it to create a custom connector: paste the prompt below in a chat with Muse. It keeps your write
+          key in its secure credential store.
+        </p>
+        <KeyPromptExample mcpUrl={mcp} agent="Muse" />
+        <p className="hint">Meta's docs describe custom connectors but don't mention MCP servers; we haven't tested this in Muse yet.</p>
+      </>
+    ),
+  },
+
   {
     id: "chatgpt",
     name: "ChatGPT",
@@ -262,6 +307,10 @@ const CLIENTS: Client[] = [
     ),
   },
 ];
+
+/** The order the owner uses: ChatGPT, Codex, Claude, Grok Bot, Muse, OpenClaw, then the rest. */
+const ORDER = ["chatgpt", "codex", "claude", "claude-code", "grok-bot", "muse", "openclaw", "cursor", "grok", "gemini", "msgblast", "other"];
+const CLIENTS = [...CLIENT_LIST].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
 const TOOLS: Array<[string, string[]]> = [
   ["Read, no sign-in", ["search_lists", "get_list", "get_item_entries", "get_price_history", "get_comments", "suggest_entry"]],
