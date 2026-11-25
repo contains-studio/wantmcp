@@ -19,6 +19,7 @@ import "./app.css";
 import { Wordmark } from "./components/Logo";
 import { getUser } from "./lib/auth.server";
 import { mcpUrl, siteOrigin, sourceUrl } from "./lib/config.server";
+import { forgetTarget, installBuildGuard, rememberTarget } from "./lib/build";
 import { useRootData } from "./lib/hooks";
 import { clearSessionCookie, getSessionToken, readCookie } from "./lib/session.server";
 
@@ -163,6 +164,18 @@ function Footer() {
   );
 }
 
+/** See app/lib/build.ts: keeps a tab that was open across a deploy off the error page. */
+function BuildGuard() {
+  const navigation = useNavigation();
+  useEffect(() => installBuildGuard(), []);
+  useEffect(() => {
+    const to = navigation.location;
+    if (navigation.state === "loading" && to) rememberTarget(to.pathname + to.search + to.hash);
+    else if (navigation.state === "idle") forgetTarget();
+  }, [navigation.state, navigation.location]);
+  return null;
+}
+
 export default function App() {
   return (
     <>
@@ -171,6 +184,7 @@ export default function App() {
         <Outlet />
       </main>
       <Footer />
+      <BuildGuard />
     </>
   );
 }
@@ -183,7 +197,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     status = error.status;
     if (status === 404) {
       title = "Nothing here";
-      details = "This page doesn't exist, or the list is private until it has items.";
+      details = "This page doesn't exist, or it isn't shared with you.";
     } else if (status === 503) {
       title = "We can't reach the API";
       details = typeof error.data === "string" ? error.data : details;

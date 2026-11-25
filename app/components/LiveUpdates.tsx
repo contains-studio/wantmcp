@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useFetchers, useNavigation, useRevalidator } from "react-router";
+import { checkBuild, isStale } from "~/lib/build";
 
 const INTERVAL = 15_000;
+const MAX_INTERVAL = 5 * 60_000;
 
 type LiveResult = { next?: number; changed?: boolean; disabled?: boolean; error?: string };
 
 /**
  * Polls /live every 15 seconds while the tab is visible and revalidates the page's data
  * when something new happened. Shows a small "Updated" cue for changes made elsewhere.
+ *
+ * A background refresh must never put the reader on an error page: failures are swallowed and
+ * the interval backs off, and once the server turns out to be a newer build the page is left
+ * alone (app/lib/build.ts reloads it quietly when the tab is next focused).
  */
 export function LiveUpdates({ query }: { query: string }) {
   const revalidator = useRevalidator();
@@ -26,13 +32,24 @@ export function LiveUpdates({ query }: { query: string }) {
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let delay = INTERVAL;
     cursor.current = null;
 
     async function poll() {
       if (stopped || document.visibilityState !== "visible") return;
+      if (isStale()) {
+        stopped = true;
+        return;
+      }
       try {
         const after = cursor.current === null ? "" : `&after=${cursor.current}`;
         const res = await fetch(`/live?${query}${after}`, { headers: { accept: "application/json" } });
+        checkBuild(res);
+        if (isStale()) {
+          stopped = true;
+          return;
+        }
+        if (!res.ok) throw new Error(`live ${res.status}`);
         const body = (await res.json()) as LiveResult;
         if (body.disabled) {
           stopped = true;
@@ -42,22 +59,24 @@ export function LiveUpdates({ query }: { query: string }) {
           const first = cursor.current === null;
           cursor.current = body.next;
           if (!first && body.changed) {
-            revalidator.revalidate();
+            revalidator.revalidate().catch(() => {});
             if (Date.now() - lastLocalWrite.current > 10_000) {
               setCue(true);
               setTimeout(() => setCue(false), 4000);
             }
           }
         }
+        delay = INTERVAL;
       } catch {
-        // Offline or a blip: try again next tick.
+        // Offline, a blip or a server error: wait longer each time, up to five minutes.
+        delay = Math.min(delay * 2, MAX_INTERVAL);
       }
       schedule();
     }
 
     function schedule() {
       clearTimeout(timer);
-      if (!stopped && document.visibilityState === "visible") timer = setTimeout(poll, INTERVAL);
+      if (!stopped && document.visibilityState === "visible") timer = setTimeout(poll, delay);
     }
 
     function onVisibility() {

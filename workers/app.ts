@@ -35,6 +35,13 @@ export default {
     const res = new Response(response.body, response);
     for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (!res.headers.has(k)) res.headers.set(k, v);
     if (NOINDEX.test(url.pathname) || res.status === 404) res.headers.set("X-Robots-Tag", "noindex");
+    // Lets an open tab notice it is running an older build than the server (app/lib/build.ts).
+    res.headers.set("X-Build-Id", __BUILD_ID__);
+    // Browsers never keep an HTML page: a cached page can point at script chunks a later deploy removed.
+    const cc = res.headers.get("cache-control");
+    if (cc && (res.headers.get("content-type") ?? "").startsWith("text/html")) {
+      res.headers.set("cache-control", cc.replace(/(^|[\s,])max-age=\d+/, "$1max-age=0"));
+    }
     return res;
   },
 } satisfies ExportedHandler<Env>;
