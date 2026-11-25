@@ -104,8 +104,8 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
         <fieldset className="grid gap-1.5">
           <legend className="label mb-1">What is it for?</legend>
           {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
-            <label key={f.format} className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 ${format === f.format ? "border-ink-3 bg-sunk" : "border-line"}`}>
-              <input type="radio" name="format" value={f.format} checked={format === f.format} onChange={() => setFormat(f.format)} className="accent-[var(--ink)]" />
+            <label key={f.format} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 ${format === f.format ? "border-ink-3 bg-sunk" : "border-line"}`}>
+              <input type="radio" name="format" value={f.format} checked={format === f.format} onChange={() => setFormat(f.format)} className="h-5 w-5 flex-none accent-[var(--ink)]" />
               <span className="min-w-0">
                 <span className="font-semibold">{f.label}</span>
                 <span className="text-[0.85rem] text-ink-3"> · {f.format === "shopping" ? "things to buy" : f.format === "tasks" ? "things to get done" : "questions to answer"}</span>
@@ -116,8 +116,9 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
         <fieldset className="grid gap-1.5">
           <legend className="label mb-1">Who can see it?</legend>
           {(["private", "public"] as const).map((v) => (
-            <label key={v} className="flex cursor-pointer items-start gap-2 text-[0.88rem]">
-              <input type="radio" name="visibility" value={v} checked={vis === v} onChange={() => setVisibility(v)} className="mt-1 accent-[var(--ink)]" />
+            <label key={v} className="flex min-h-11 cursor-pointer items-center gap-3 text-[0.88rem]">
+              {/* A fixed size that never shrinks: a long line beside it used to squeeze the radio. */}
+              <input type="radio" name="visibility" value={v} checked={vis === v} onChange={() => setVisibility(v)} className="h-5 w-5 flex-none accent-[var(--ink)]" />
               <span>
                 <span className="font-semibold">{v === "public" ? "Public" : "Private"}</span>
                 <span className="text-ink-3">

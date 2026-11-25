@@ -1,6 +1,6 @@
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { SEASON, seasonActive } from "~/lib/season";
-import { MetaLine } from "~/components/MetaLine";
+import { MetaLine, type MetaItem } from "~/components/MetaLine";
 import { GiveToAgent } from "~/components/GiveToAgent";
 import { HeadingBase, headingTag } from "~/components/preview";
 import { Form, Link, useFetcher, useLocation } from "react-router";
@@ -108,10 +108,11 @@ export function ListView(props: ListViewProps) {
   // Row 2 of the header: counts, and for anyone but the owner, whose list it is and (if over a day) its age.
   const now = useNow();
   // Zero counts say nothing: they're left out.
-  const meta: React.ReactNode[] = props.sample ? [<span className="chip">Sample</span>] : [
+  const meta: MetaItem[] = props.sample ? [<span className="chip">Sample</span>] : [
     ...(wanted.length ? [<>{wanted.length} open</>] : []),
     ...(bought.length ? [<>{bought.length} {fi.done}</>] : []),
-    ...(productCount ? [<>{productCount} {productCount === 1 ? fi.entry : fi.entries}</>] : []),
+    // On a phone the products count is the one that goes, rather than wrap alone onto a second line.
+    ...(productCount ? [{ node: <>{productCount} {productCount === 1 ? fi.entry : fi.entries}</>, className: "max-sm:hidden" }] : []),
   ];
   if (role !== "owner" && !props.sample) meta.push(<>by {list.owner_handle}</>);
   if (!isWriter && !props.sample && now - Date.parse(list.updated_at) > 24 * 3600_000) meta.push(<>updated <Time ts={list.updated_at} /></>);

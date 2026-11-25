@@ -72,6 +72,14 @@ export function EntrySheet({
   const td = "border-b border-line px-3 py-2 align-top sm:py-2.5";
   // On a phone: product, price and saving; the rest opens under each row.
   const wide = "hidden sm:table-cell";
+  // A column with nothing in it for any product is left out (a column of dashes says nothing).
+  const has = {
+    was: entries.some((e) => e.current_price?.original_price && discountPercent(e.current_price) !== null),
+    off: entries.some((e) => discountPercent(e.current_price) !== null),
+    coupon: entries.some((e) => !!e.coupon_code),
+    deal: entries.some((e) => !!dealState(e.deal_starts_at, e.deal_ends_at, now)),
+  };
+  const cols = 6 + Number(has.was) + Number(has.off) + Number(has.coupon) + Number(has.deal);
   const stickyA = "sm:sticky sm:left-0 z-[1] bg-card sm:w-[15rem] sm:min-w-[15rem]";
   const stickyB = "sm:sticky sm:left-[15rem] z-[1] bg-card sm:shadow-[inset_-1px_0_0_var(--line)]";
 
@@ -79,7 +87,7 @@ export function EntrySheet({
     <div className="card overflow-hidden p-0">
       {/* Wider than its column on a tablet: the edge fades to show there's more to the right. */}
       <div className="sheet-scroll relative overflow-x-auto" tabIndex={0} role="region" aria-label={`Price comparison for ${itemText}`}>
-        <table className="w-full border-collapse text-[0.88rem] tabular-nums sm:min-w-[52rem]">
+        <table className={`w-full border-collapse text-[0.88rem] tabular-nums ${cols >= 9 ? "sm:min-w-[52rem]" : "sm:min-w-[40rem]"}`}>
           {currencies.size > 1 && <caption className="px-3 pt-3 pb-1 text-left text-[0.8rem] text-warn">Mixed currencies: compare with care</caption>}
           <thead>
             <tr>
@@ -87,19 +95,25 @@ export function EntrySheet({
                 Product
               </th>
               <th scope="col" className={`${th} ${stickyB} text-right`} {...header("price", "Price", "asc")} />
-              <th scope="col" className={`${th} ${wide} text-right`}>
-                Was
-              </th>
-              <th scope="col" className={`${th} text-right`} {...header("discount", "Off", "desc")} />
+              {has.was && (
+                <th scope="col" className={`${th} ${wide} text-right`}>
+                  Was
+                </th>
+              )}
+              {has.off && <th scope="col" className={`${th} text-right`} {...header("discount", "Off", "desc")} />}
               <th scope="col" className={`${th} ${wide}`}>
                 Retailer
               </th>
-              <th scope="col" className={`${th} ${wide}`}>
-                Coupon
-              </th>
-              <th scope="col" className={`${th} ${wide}`}>
-                Deal window
-              </th>
+              {has.coupon && (
+                <th scope="col" className={`${th} ${wide}`}>
+                  Coupon
+                </th>
+              )}
+              {has.deal && (
+                <th scope="col" className={`${th} ${wide}`}>
+                  Deal window
+                </th>
+              )}
               <th scope="col" className={`${th} ${wide}`}>
                 Posted by
               </th>
@@ -116,6 +130,17 @@ export function EntrySheet({
               const updated = p ? checkedAt(p) : e.updated_at;
               const stale = !!p && !isFresh(p, now);
               const highlight = e.id === boughtId ? "bg-deal-soft" : e.id === lowestId ? "bg-sunk" : "";
+              // The row's own toggle (the whole row opens it too): a chevron, no extra line.
+              const ROW_TOGGLE = renderDetail ? (
+                <details className="row-toggle">
+                  <summary className="row-toggle-btn" title="Details, price history and comments">
+                    <span className="sr-only">Details, price history and comments for {e.title}</span>
+                    <span aria-hidden="true" className="row-toggle-chev">
+                      ›
+                    </span>
+                  </summary>
+                </details>
+              ) : null;
               return (
                 // Each product is its own group: its row, then its details (shown while the row's toggle is open, app.css).
                 <tbody key={e.id} className="sheet-group">
@@ -146,30 +171,27 @@ export function EntrySheet({
                     )}
                   </th>
                   <td className={`${td} ${stickyB} ${highlight || "bg-card"} text-right`}>
-                    {p ? <span className="price text-[1.25rem]">{formatMoney(p.price, p.currency)}</span> : <span className="text-ink-3">–</span>}
-                  </td>
-                  <td className={`${td} ${wide} text-right text-ink-2`}>
-                    {p?.original_price && pct !== null ? <span className="price-was">{formatMoney(p.original_price, p.currency)}</span> : <span className="text-ink-3">–</span>}
-                  </td>
-                  <td className={`${td} text-right`}>
                     <span className="inline-flex items-start justify-end gap-1">
-                      {pct !== null ? <span className="save">−{pct}%</span> : <span className="text-ink-3">–</span>}
-                      {/* The row's own toggle (the whole row opens it too): a chevron, no extra line. */}
-                      {renderDetail && (
-                        <details className="row-toggle">
-                          <summary className="row-toggle-btn" title="Details, price history and comments">
-                            <span className="sr-only">Details, price history and comments for {e.title}</span>
-                            <span aria-hidden="true" className="row-toggle-chev">
-                              ›
-                            </span>
-                          </summary>
-                        </details>
-                      )}
+                      {p ? <span className="price text-[1.25rem]">{formatMoney(p.price, p.currency)}</span> : <span className="text-ink-3">–</span>}
+                      {!has.off && ROW_TOGGLE}
                     </span>
                   </td>
+                  {has.was && (
+                    <td className={`${td} ${wide} text-right text-ink-2`}>
+                      {p?.original_price && pct !== null ? <span className="price-was">{formatMoney(p.original_price, p.currency)}</span> : <span className="text-ink-3">–</span>}
+                    </td>
+                  )}
+                  {has.off && (
+                    <td className={`${td} text-right`}>
+                      <span className="inline-flex items-start justify-end gap-1">
+                        {pct !== null ? <span className="save">−{pct}%</span> : <span className="text-ink-3">–</span>}
+                        {ROW_TOGGLE}
+                      </span>
+                    </td>
+                  )}
                   <td className={`${td} ${wide} text-ink-2`}>{e.retailer || "–"}</td>
-                  <td className={`${td} ${wide}`}>{e.coupon_code ? <code className="font-semibold">{e.coupon_code}</code> : <span className="text-ink-3">–</span>}</td>
-                  <td className={`${td} ${wide} whitespace-nowrap text-ink-2`}>{deal ? deal.label.replace(/^Deal /, "") : <span className="text-ink-3">–</span>}</td>
+                  {has.coupon && <td className={`${td} ${wide}`}>{e.coupon_code ? <code className="font-semibold">{e.coupon_code}</code> : <span className="text-ink-3">–</span>}</td>}
+                  {has.deal && <td className={`${td} ${wide} whitespace-nowrap text-ink-2`}>{deal ? deal.label.replace(/^Deal /, "") : <span className="text-ink-3">–</span>}</td>}
                   <td className={`${td} ${wide}`}>
                     <ActorTag actor={e.author} compact />
                   </td>
@@ -193,7 +215,7 @@ export function EntrySheet({
                 </tr>
                 {renderDetail && (
                   <tr className="sheet-detail">
-                    <td colSpan={10} className="border-b border-line bg-paper px-3 py-3">
+                    <td colSpan={cols} className="border-b border-line bg-paper px-3 py-3">
                       {renderDetail(e)}
                     </td>
                   </tr>

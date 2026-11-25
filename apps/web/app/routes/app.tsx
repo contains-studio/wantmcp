@@ -266,11 +266,12 @@ function QuestionCard({ q, onAnswered }: { q: WaitingQuestion; onAnswered: (mess
                 </button>
               </fetcher.Form>
             ))}
+            {/* One more choice in the same set: a quiet pill; its answer box takes the whole row when open. */}
+            <details className="choice-other">
+              <summary className="btn btn-ghost text-ink-2">Something else…</summary>
+              <AnswerField fetcher={fetcher} hidden={hidden} labelledBy={qid} busy={busy} />
+            </details>
           </div>
-          <details className="group">
-            <summary className="add-link">Something else…</summary>
-            <AnswerField fetcher={fetcher} hidden={hidden} labelledBy={qid} busy={busy} />
-          </details>
         </>
       ) : (
         <AnswerField fetcher={fetcher} hidden={hidden} labelledBy={qid} busy={busy} />

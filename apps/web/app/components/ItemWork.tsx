@@ -516,15 +516,14 @@ function QuestionForm({ question, compact = false }: { question: Question; compa
               </button>
             </fetcher.Form>
           ))}
+          {/* Anything else is one more choice in the same set: a quiet pill; its answer box takes the row when open. */}
+          <details className="choice-other">
+            <summary className="btn btn-ghost btn-sm text-ink-2">Something else…</summary>
+            <AnswerBox fetcher={fetcher} questionId={question.id} uid={uid} busy={busy} placeholder="Your answer" />
+          </details>
         </div>
       )}
-      {/* With options, they answer in one tap; anything else is one more tap away. */}
-      {question.options.length > 0 ? (
-        <details>
-          <summary className="add-link">Something else…</summary>
-          <AnswerBox fetcher={fetcher} questionId={question.id} uid={uid} busy={busy} placeholder="Your answer" />
-        </details>
-      ) : (
+      {question.options.length > 0 ? null : (
         <AnswerBox fetcher={fetcher} questionId={question.id} uid={uid} busy={busy} placeholder="Your answer" />
       )}
       {fetcher.data?.error && (

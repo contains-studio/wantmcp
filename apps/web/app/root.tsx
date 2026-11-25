@@ -131,19 +131,20 @@ function Footer() {
     <footer className="mt-16 flex-1 border-t border-line bg-sunk">
       <div className="wrap flex flex-col gap-4 py-10 text-[0.88rem] text-ink-3 sm:flex-row sm:items-center sm:justify-between">
         <Wordmark />
-        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Link to="/connect" className="link footer-link">Connect an agent</Link>
+        {/* One wrapping row of short links on a phone; the trademark line small beneath. */}
+        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-4 gap-y-0 sm:gap-x-6">
+          <Link to="/connect" className="link footer-link">Connect</Link>
           <Link to="/for" className="link footer-link">Ideas</Link>
           <Link to="/privacy" className="link footer-link">Privacy</Link>
           <Link to="/terms" className="link footer-link">Terms</Link>
           {sourceUrl && (
             <a href={sourceUrl} className="link footer-link">
-              Source (MIT)
+              Source
             </a>
           )}
         </nav>
       </div>
-      <p className="wrap pb-8 text-[0.75rem] text-ink-3">Logos are their owners' trademarks; The Want MCP isn't affiliated with them.</p>
+      <p className="wrap -mt-4 pb-8 text-[0.72rem] text-ink-3">Logos are their owners' trademarks; The Want MCP isn't affiliated with them.</p>
     </footer>
   );
 }
