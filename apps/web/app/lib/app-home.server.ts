@@ -18,6 +18,8 @@ export interface ListCard {
   updatedAt: string;
   createdAt: string;
   items: number;
+  /** SPEC 16.2, writers only: outsiders' items (feedback) waiting for a person to accept them; not in `items`. */
+  held: number;
   done: number;
   waiting: number;
   latest: {
@@ -51,7 +53,9 @@ export async function listCards(request: Request, lists: ListSummary[], waiting:
   return sorted.map((l, i) => {
     const d = details[i];
     const format = l.format ?? "shopping";
-    const items = d?.items ?? [];
+    // Held outsiders' items are counted apart, as the API's item_count does (SPEC 16.2).
+    const all = d?.items ?? [];
+    const items = all.filter((it) => !it.pending_review);
     const done = items.filter((it) => (format === "shopping" ? !!it.purchase : it.status === "done")).length;
     // The newest listed entry posted by an agent: what the person most likely wants to see.
     const entries = items.flatMap((it) => it.entries.filter((e) => e.status === "listed" && e.author.kind !== "user"));
@@ -70,6 +74,7 @@ export async function listCards(request: Request, lists: ListSummary[], waiting:
       updatedAt: l.updated_at,
       createdAt: l.created_at,
       items: d ? items.length : l.item_count,
+      held: all.length - items.length,
       done,
       waiting: waiting.filter((q) => q.list.id === l.id).length,
       latest: last
@@ -132,6 +137,8 @@ export async function loadCards(request: Request, waiting: Parameters<typeof lis
       updatedAt: l.updated_at,
       createdAt: l.created_at,
       items: s.items,
+      // The API's summary doesn't count held items yet (asked for); the list page itself shows them.
+      held: 0,
       done: s.done,
       waiting: s.waiting,
       latest: s.latest

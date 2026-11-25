@@ -48,7 +48,7 @@ const CALLS = {
   POST: ["/auth/code", "/auth/verify", "/auth/logout", "/claims/lookup", "/claims/claim", "/invites/lookup", "/invites/accept", "/invites/{token}/accept",
     "/claims/{claim_token}", "/me/invites/{list_id}/accept", "/lists", "/lists/{id}/handover", "/lists/{id}/invites", "/lists/{id}/members", "/lists/{id}/keys",
     "/lists/{id}/items", "/items/{id}/entries", "/items/{id}/purchase", "/items/{id}/status", "/entries/{id}/promote", "/entries/{id}/reject",
-    "/entries/{id}/prices", "/questions/{id}/answer", "/comments", "/reports", "/unsubscribe", "/me/skills"],
+    "/entries/{id}/prices", "/questions/{id}/answer", "/comments", "/reports", "/unsubscribe", "/me/skills", "/feedback", "/items/{id}/accept"],
   PATCH: ["/me", "/lists/{id}", "/items/{id}", "/entries/{id}", "/me/skills/{id}"],
   DELETE: ["/me", "/me/agent-keys/{id}", "/agents/{id}", "/lists/{id}", "/lists/{id}/members/{member_id}", "/items/{id}", "/items/{id}/purchase", "/entries/{id}", "/comments/{id}", "/me/skills/{id}"],
 };

@@ -75,12 +75,13 @@ test("SPEC 16.2: feedback lands held on our list: the owner sees it and accepts 
   await page.goto("/l/lst_feedback");
   const row = page.locator("section", { hasText: words });
   await expect(row.getByText("From outside")).toBeVisible();
-  await expect(row.getByText("Hidden from visitors until you accept it")).toBeVisible();
+  await expect(row.getByText("· not public yet")).toBeVisible();
   // Someone else's words: plain text, never a link.
   await expect(page.locator("section", { hasText: "Let me reorder" }).locator('a[href*="example.com/reorder"]')).toHaveCount(0);
   // One quiet action in the row; no menu to open.
   await row.getByRole("button", { name: /^Accept/ }).click();
-  await expect(row.getByText("Hidden from visitors until you accept it")).toHaveCount(0);
+  await expect(row.getByText("· not public yet")).toHaveCount(0);
+  await expect(row.getByRole("status")).toHaveText("· Accepted");
   await expect(row.getByRole("button", { name: /^Accept/ })).toHaveCount(0);
   await expect(row.getByText("From outside")).toBeVisible();
 
@@ -88,4 +89,34 @@ test("SPEC 16.2: feedback lands held on our list: the owner sees it and accepts 
   expect(after).toContain("Held check");
   expect(after).not.toContain("Let me reorder wants");
   await visitor.close();
+});
+
+test.describe("on a touch phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+test("a held report on a phone: compact, Accept in reach, said once; the connect card waits until after the reports", async ({ page }) => {
+  const tag = `compact ${Date.now()}`;
+  await page.goto("/feedback?from=%2Fclaim");
+  await page.getByRole("radio", { name: "It didn't do what I expected" }).check();
+  await page.getByLabel("What happened?").fill(`The claim page showed my wants but not the products my agent found (${tag}).`);
+  await page.getByLabel(/What did you expect/).fill("Products with prices under each want.");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Thanks. It's on our list." })).toBeVisible();
+  await signIn(page, "team@example.com");
+  await page.goto("/l/lst_feedback");
+  const row = page.locator("section", { hasText: tag }).first();
+  expect(await row.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThanOrEqual(180);
+  // The report is said once: the title carries it, the folded line adds only what the title doesn't.
+  await expect(row.locator(".item-details")).toHaveText(/^Expected: Products with prices under each want\. · From someone not signed in/);
+  const accept = row.getByRole("button", { name: /^Accept/ });
+  expect((await accept.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await row.getByRole("button", { name: "Show all" }).click();
+  await expect(row.locator(".item-details")).toContainText(`The claim page showed my wants but not the products my agent found (${tag}).`);
+  // With reports waiting, the "Give this list to your agent" card comes after them.
+  const card = page.getByRole("heading", { name: "Give this list to your agent" });
+  if (await card.count()) {
+    const cardTop = await card.evaluate((el) => el.getBoundingClientRect().top);
+    const rowTop = await row.evaluate((el) => el.getBoundingClientRect().top);
+    expect(cardTop).toBeGreaterThan(rowTop);
+  }
+});
 });

@@ -145,14 +145,20 @@ function Footer() {
           <Link to="/privacy" className="link footer-link">Privacy</Link>
           <Link to="/terms" className="link footer-link">Terms</Link>
           <Link to={about && about !== "/feedback" ? `/feedback?from=${encodeURIComponent(about)}` : "/feedback"} className="link footer-link">Feedback</Link>
-          {sourceUrl && (
-            <a href={sourceUrl} className="link footer-link">
-              Source
-            </a>
-          )}
         </nav>
       </div>
-      <p className="wrap -mt-4 pb-8 text-[0.72rem] text-ink-3">Logos are their owners' trademarks; The Want MCP isn't affiliated with them.</p>
+      {/* Five links keep one row on a 360px phone with any system font; the source link sits with the small print. */}
+      <p className="wrap -mt-4 pb-8 text-[0.72rem] text-ink-3">
+        {sourceUrl && (
+          <>
+            <a href={sourceUrl} className="link">
+              Source code
+            </a>{" "}
+            (MIT).{" "}
+          </>
+        )}
+        Logos are their owners' trademarks; The Want MCP isn't affiliated with them.
+      </p>
     </footer>
   );
 }

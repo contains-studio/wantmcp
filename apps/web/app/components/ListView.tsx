@@ -87,6 +87,9 @@ export function ListView(props: ListViewProps) {
   const shopping = fi.format === "shopping";
   const isPrivate = visibilityOf(list) === "private";
   const isDone = (i: ItemWithEntries) => (shopping ? !!i.purchase : i.status === "done");
+  // SPEC 16.2: outsiders' items waiting for a writer to accept them. They keep their place in the list (re-sorting on
+  // Accept would slide the next one under the finger), and the connect card waits until after them.
+  const heldCount = isWriter ? items.filter((i) => i.pending_review).length : 0;
   const wanted = items.filter((i) => !isDone(i)).slice(0, previewItems ?? Infinity);
   const bought = previewItems ? [] : items.filter(isDone);
   const listCurrencyHint = listCurrency(items);
@@ -226,7 +229,8 @@ export function ListView(props: ListViewProps) {
           </div>
         )}
         {props.kept && !preview && <KeptNote listId={list.id} kept={props.kept} isPrivate={isPrivate} />}
-        {props.handoff && !preview && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
+        {/* With items waiting for the person to accept, those come first and this card follows the list. */}
+        {props.handoff && !preview && heldCount === 0 && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
         {nothingYet && !preview && !props.handoff && (!isWriter || (!agentActive && agentsCanWrite === 0) || idleAgent) && (
           <p className="list-nothing-yet text-[0.95rem] text-ink-2">
             {idleAgent ? (
@@ -310,6 +314,8 @@ export function ListView(props: ListViewProps) {
           </section>
         )}
         </div>
+
+        {props.handoff && !preview && heldCount > 0 && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
 
         {/* Outside suggestions come after the person's own list, never before it. */}
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
@@ -421,12 +427,11 @@ function ItemSection({
               </span>
             )
           )}
-          <H2 id={headingId} className={`item-title min-w-0 flex-1 text-[1.15rem] font-semibold sm:text-[1.35rem] ${done ? "text-ink-2" : ""}`}>
+          <H2 id={headingId} tabIndex={-1} className={`item-title min-w-0 flex-1 text-[1.15rem] font-semibold sm:text-[1.35rem] ${done ? "text-ink-2" : ""} ${outsider ? "line-clamp-2" : ""}`}>
             {item.text}
           </H2>
           {/* The item's actions: at the right end of its title row. */}
           <span className="item-actions">
-            {isWriter && held && <AcceptItem itemId={item.id} itemText={item.text} />}
             {isWriter && shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} itemText={item.text} currency={currencyHint} />}
             {/* Visitors: nothing here but Report, which the list's own flag in the header covers. */}
             {isWriter && (
@@ -467,7 +472,7 @@ function ItemSection({
               agent's want (text_by "person"), the words are theirs and the line goes. An outsider's item (SPEC 16.2, a
               feedback task) always says so, and while it is held, that readers can't see it yet and how to let them. */}
           {outsider ? (
-            <OutsiderLine held={held && isWriter} />
+            <OutsiderLine held={held && isWriter} itemId={item.id} itemText={item.text} headingId={headingId} />
           ) : !(item.created_by.kind === "user" && item.created_by.handle === ownerHandle) && !(item.text_by === "person" && item.created_by.kind === "agent") && (
             <span className="inline-flex items-center gap-1.5">
               Added by <ActorTag actor={item.created_by} compact /> <Time ts={item.created_at} />
@@ -486,7 +491,7 @@ function ItemSection({
             {isWriter && <UndoPurchase itemId={item.id} />}
           </div>
         )}
-        {outsider ? <OutsiderDetails details={item.details} /> : <ItemDetails details={item.details} />}
+        {outsider ? <OutsiderDetails details={item.details} title={item.text} /> : <ItemDetails details={item.details} />}
         {!held && (!shopping || status === "waiting_on_owner" || !!item.status_note) && (
           <ItemStatusBar
             itemId={item.id}
@@ -602,49 +607,75 @@ function EmptyEntries({ status, fi, quiet }: { status: string; fi: FormatInfo; q
  * SPEC 16.2: an outsider's item (a feedback task). Held: one quiet Accept, in the row, no menu to open. Accepted: the
  * words are still marked as someone else's.
  */
-function OutsiderLine({ held }: { held: boolean }) {
+function OutsiderLine({ held, itemId, itemText, headingId }: { held: boolean; itemId: string; itemText: string; headingId: string }) {
+  // Accepted while the page is open: "Accepted" takes the button's place, so the rows below don't move.
+  const [wasHeld] = useState(held);
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+    <span className={`inline-flex flex-wrap items-center gap-x-2 gap-y-1 ${wasHeld ? "min-h-11" : ""}`}>
       <span className="chip chip-warn">From outside</span>
-      {held && <span>Hidden from visitors until you accept it</span>}
+      {held ? (
+        <>
+          <span>· not public yet</span>
+          <AcceptItem itemId={itemId} itemText={itemText} headingId={headingId} />
+        </>
+      ) : (
+        wasHeld && <span role="status">· Accepted</span>
+      )}
     </span>
   );
 }
 
-/** One quiet action in the item's title row, no menu to open: the held item becomes an ordinary one. */
-function AcceptItem({ itemId, itemText }: { itemId: string; itemText: string }) {
+/** One quiet action, in the row (no menu to open): the held item becomes an ordinary one. */
+function AcceptItem({ itemId, itemText, headingId }: { itemId: string; itemText: string; headingId: string }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const busy = fetcher.state !== "idle";
+  // The button goes away once accepted: keep keyboard focus on this item rather than dropping it to the page.
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok) document.getElementById(headingId)?.focus();
+  }, [fetcher.state, fetcher.data, headingId]);
   return (
     <fetcher.Form method="post" className="inline-flex items-center gap-2">
       <input type="hidden" name="intent" value="accept-item" />
       <input type="hidden" name="item_id" value={itemId} />
-      {fetcher.data?.error && <span className="form-error text-[0.8rem]">{fetcher.data.error}</span>}
       <button className="btn btn-sm" disabled={busy} aria-label={`Accept “${itemText.slice(0, 60)}”`}>
         {busy ? "Accepting…" : "Accept"}
       </button>
+      {fetcher.data?.error && <span className="form-error text-[0.8rem]">{fetcher.data.error}</span>}
     </fetcher.Form>
   );
 }
 
-/** Someone else's words: plain text, never links (SPEC 8 and 16.2). Long ones fold to three lines. */
-function OutsiderDetails({ details }: { details: string | undefined }) {
+/**
+ * Someone else's words: plain text, never links (SPEC 8 and 16.2). A feedback task's details begin with the full report
+ * its title was cut from, so the folded row shows only what the title doesn't: the expectation and where it came from.
+ * "Show all" opens the whole text.
+ */
+function OutsiderDetails({ details, title }: { details: string | undefined; title: string }) {
   const [open, setOpen] = useState(false);
   if (!details) return null;
-  const long = details.length > 240 || details.split("\n").length > 4;
-  return (
-    <div className="item-indent grid max-w-3xl justify-items-start gap-1 sm:pl-11">
-      {long && !open ? (
-        // Folded: one paragraph, so blank lines don't spend the three lines.
-        <p className="item-details line-clamp-3 break-words text-[0.95rem] text-ink-2">{details.replace(/\s*\n+\s*/g, " · ")}</p>
-      ) : (
+  const flat = (t: string) => t.replace(/\s+/g, " ").trim();
+  const paras = details.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const said = flat(title.replace(/^(Bug|Expected|Request):\s*/, "")).replace(/…$/, "");
+  const repeats = paras.length > 0 && said.length > 0 && flat(paras[0]!).startsWith(said);
+  const rest = repeats ? paras.slice(1) : paras;
+  const folded = rest.join(" · ");
+  if (open) {
+    return (
+      <div className="item-indent grid max-w-3xl justify-items-start gap-1 sm:pl-11">
         <p className="item-details whitespace-pre-line break-words text-[0.95rem] text-ink-2">{details}</p>
-      )}
-      {long && (
-        <button type="button" className="textlink-btn text-[0.85rem] text-ink-3" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? "Show less" : "Show all"}
+        <button type="button" className="textlink-btn min-h-11 text-[0.85rem] text-ink-3 sm:min-h-0" aria-expanded onClick={() => setOpen(false)}>
+          Show less
         </button>
-      )}
+      </div>
+    );
+  }
+  // Folded: what the title doesn't say, and "Show all" on the same line (the title is clamped, so it is always offered).
+  return (
+    <div className="item-indent flex max-w-3xl items-end gap-3 sm:pl-11">
+      <p className="item-details line-clamp-2 min-w-0 flex-1 break-words text-[0.9rem] text-ink-3">{folded}</p>
+      <button type="button" className="textlink-btn min-h-11 flex-none text-[0.85rem] text-ink-3 sm:min-h-0" aria-expanded={false} onClick={() => setOpen(true)}>
+        Show all
+      </button>
     </div>
   );
 }

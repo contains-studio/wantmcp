@@ -349,6 +349,7 @@ function ListCardRow({ card: c }: { card: ListCard }) {
               c.done > 0 && `${c.done} ${fi.done}`,
               c.role === "member" && `by ${c.ownerHandle}`,
               c.role === "owner" && c.access && c.access.people > 1 && `Shared with ${plural(c.access.people - 1, "person", "people")}`,
+              c.held > 0 && <span className="font-medium text-warn">{c.held} waiting for you to accept</span>,
               c.waiting > 0 && (
                 <span className="font-medium text-warn">
                   <span aria-hidden="true">● </span>

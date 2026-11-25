@@ -280,7 +280,8 @@ function listsWithSummary(c: NonNullable<Caller>): ListWithSummary[] {
   return store.lists
     .filter((l) => canWrite(c, l.id))
     .map((l) => {
-      const items = store.items.filter((i) => i.list_id === l.id);
+      // "Live items": held outsiders' items (SPEC 16.2) are not counted, as on the server.
+      const items = store.items.filter((i) => i.list_id === l.id && !i.pending_review);
       const ids = new Set(items.map((i) => i.id));
       const shopping = fmt(l) === "shopping";
       const done = items.filter((i) => (shopping ? !!i.purchase : i.status === "done")).length;
@@ -1671,7 +1672,7 @@ route("POST", "/reports", ({ body }) => {
 });
 
 // SPEC 16.1: feedback, from anyone. Mock only: text "mock: rate limit" answers as the daily limit would.
-route("POST", "/feedback", ({ body }) => {
+route("POST", "/feedback", ({ body, caller }) => {
   const kind = String(body.kind ?? "");
   if (kind !== "bug" && kind !== "expectation" && kind !== "request") throw invalid("kind must be bug, expectation or request");
   const t = text("text", body.text, 2000, true);
@@ -1686,7 +1687,7 @@ route("POST", "/feedback", ({ body }) => {
     const prefix = kind === "bug" ? "Bug" : kind === "expectation" ? "Expected" : "Request";
     store.items.push({
       id: newId("itm"), list_id: store.feedback_list, text: `${prefix}: ${t.replace(/\s+/g, " ").slice(0, 120)}`,
-      details: [t, expected ? `Expected: ${expected}` : "", `From someone on the web${about ? `, about ${about}` : ""}`].filter(Boolean).join("\n\n"),
+      details: [t, expected ? `Expected: ${expected}` : "", `${caller?.kind === "user" ? "From a person" : caller ? "From an agent" : "From someone not signed in"} on the web${about ? `, about ${about}` : ""}`].filter(Boolean).join("\n\n"),
       created_by: { kind: "outside", name: null }, created_at: nowIso(), purchase: null, status: "open", claimed_by: null, completion: null,
       text_by: "outsider", pending_review: true,
     });

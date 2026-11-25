@@ -375,7 +375,7 @@ export function seedStore(now = Date.now()): Store {
     },
     {
       id: "itm_fb_held", list_id: "lst_feedback", text: "Request: Let me reorder wants by dragging them", created_by: outsider, created_at: at(2 * HOUR), purchase: null,
-      details: "On a phone I'd like to put the important ones first. Visit https://example.com/reorder for how another app does it.\n\nFrom an agent, Muse, over MCP, about start_list",
+      details: `On a phone I'd like to put the important ones first. Visit https://example.com/reorder for how another app does it. ${"When a list has twenty wants, the ones that matter most end up at the bottom, and my agent keeps working from the top. ".repeat(17)}\n\nExpected: The order I choose is the order my agent works in.\n\nFrom an agent, Muse, over MCP, about start_list (Claude Code 2.1)`,
       status: "open", claimed_by: null, completion: null, text_by: "outsider", pending_review: true,
     },
   );

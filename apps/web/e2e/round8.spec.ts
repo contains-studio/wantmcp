@@ -31,12 +31,18 @@ test("phone: the list header drops the products count instead of wrapping it alo
   await expect(page.locator(".list-meta").getByText(/products?$/)).toBeVisible();
 });
 
-test("phone: the footer's links fit one row", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test("phone: the footer's links fit one row, with room to spare, at 390 and 360px", async ({ page }) => {
   await signIn(page, DEMO);
-  await page.goto("/app");
-  const tops = await page.getByRole("navigation", { name: "Footer" }).getByRole("link").evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
-  expect(tops.length).toBe(1);
+  for (const width of [390, 360]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/app");
+    const links = page.getByRole("navigation", { name: "Footer" }).getByRole("link");
+    const tops = await links.evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
+    expect(tops.length, `${width}px`).toBe(1);
+    // Room for a wider system font than this machine's.
+    const right = await links.evaluateAll((els) => Math.max(...els.map((e) => e.getBoundingClientRect().right)));
+    expect(width - 16 - right, `${width}px spare`).toBeGreaterThanOrEqual(12);
+  }
 });
 
 test("'Something else…' is one more pill among the options", async ({ page }) => {
