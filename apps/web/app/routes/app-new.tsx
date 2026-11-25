@@ -2,6 +2,7 @@
  * /app/new: make a list (format, title, who can see it). After it is made, the list opens with the
  * one next step: give it to your agent (?new=1 on the list page).
  */
+import { resolveLook } from "~/themes/catalogue.server";
 import { cleanRef, RefField } from "~/lib/ref";
 import { useState } from "react";
 import { data, Form, Link, redirect, useActionData, useNavigation, useSearchParams } from "react-router";
@@ -42,6 +43,9 @@ export async function action({ request }: Route.ActionArgs) {
       },
       ref: cleanRef(form.get("ref")),
     });
+    // Started from a look's preview (?look=): dress the new list in it.
+    const look = String(form.get("look") ?? "");
+    if (/^[a-z0-9-]{1,60}$/.test(look)) await api(request, `/lists/${list.id}`, { method: "PATCH", body: { theme: resolveLook(look, list.format ?? "shopping").slug } }).catch(() => null);
     // Offered once, with the first list: the bio for the person's own agents (SPEC 12.2).
     const bio = String(form.get("bio") ?? "").trim();
     if (bio) await api(request, "/me", { method: "PATCH", body: { bio } }).catch(() => null);
@@ -84,6 +88,7 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
       <Form method="post" className="grid gap-4">
         <input type="hidden" name="intent" value="create-list" />
         <RefField />
+        {params.get("look") && <input type="hidden" name="look" value={params.get("look")!} />}
         <fieldset className="grid gap-2">
           <legend className="label mb-1">What is this list for?</legend>
           {(Object.values(FORMATS) as FormatInfo[]).map((f) => (

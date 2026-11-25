@@ -11,6 +11,7 @@ export function CopyButton({
   labelClass,
   doneText = "Copied",
   tooltip,
+  shareTitle,
 }: {
   text: string;
   label?: string;
@@ -27,6 +28,8 @@ export function CopyButton({
   doneText?: string;
   /** A tooltip (and long-press title on phones). */
   tooltip?: string;
+  /** On a touch screen with a share sheet, open it (with this title) instead of copying. */
+  shareTitle?: string;
 }) {
   const [state, setState] = useState<"idle" | "done" | "fail">("idle");
   return (
@@ -36,6 +39,15 @@ export function CopyButton({
       aria-label={iconOnly ? ariaLabel ?? label : state === "idle" ? ariaLabel : undefined}
       title={tooltip ?? (iconOnly ? ariaLabel ?? label : undefined)}
       onClick={async () => {
+        // Phones: the system share sheet, where people actually send links from.
+        if (shareTitle && typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches) {
+          try {
+            await navigator.share({ title: shareTitle, url: text });
+            return;
+          } catch (err) {
+            if ((err as Error)?.name === "AbortError") return;
+          }
+        }
         try {
           await navigator.clipboard.writeText(text);
           setState("done");

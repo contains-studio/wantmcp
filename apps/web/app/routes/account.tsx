@@ -32,10 +32,15 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = String(form.get("intent"));
   try {
     if (intent === "profile") {
+      // One Save for the handle and what agents should know. The feature-email choice is made once, at sign-up.
       await api(request, "/me", {
         method: "PATCH",
-        // The feature-email choice is made once, at sign-up; this form never changes it.
-        body: { handle: String(form.get("handle") ?? "").trim() },
+        body: {
+          handle: String(form.get("handle") ?? "").trim(),
+          bio: String(form.get("bio") ?? "").trim(),
+          country: String(form.get("country") ?? "") || null,
+          currency: String(form.get("currency") ?? "") || null,
+        },
       });
       return { ok: true, intent };
     }
@@ -76,8 +81,11 @@ export default function Account({ loaderData }: Route.ComponentProps) {
     <div className="wrap grid max-w-2xl gap-6 py-8">
       <h1 className="text-[1.75rem] leading-tight font-semibold tracking-[-0.02em] sm:text-[2rem]">Account</h1>
 
+      {/* One form, one Save: who you are here, and what your agents should know. */}
       <section aria-labelledby="profile-h" className="card grid gap-4 p-5 sm:p-6">
-        <h2 id="profile-h" className="text-xl font-semibold">Profile</h2>
+        <h2 id="profile-h" className="text-xl font-semibold">
+          You
+        </h2>
         <div className="grid gap-1">
           <p className="label">Email</p>
           <p className="break-all text-ink-2">{user.email}</p>
@@ -88,62 +96,46 @@ export default function Account({ loaderData }: Route.ComponentProps) {
           <label className="field">
             <span className="label">Handle</span>
             <input name="handle" required minLength={3} maxLength={40} pattern="[a-zA-Z0-9][a-zA-Z0-9\-]{2,39}" defaultValue={user.handle} className="input font-mono" />
-            <span className="hint">Shown on your lists and comments. Letters, numbers and dashes.</span>
+            <span className="hint">Shown on your lists and comments.</span>
           </label>
+          <div id="bio" className="grid scroll-mt-24 gap-4 border-t border-line pt-4">
+            <Field label="For your agents">
+              {(p) => <Textarea {...p} name="bio" maxLength={600} defaultValue={user.bio ?? ""} placeholder={BIO_PLACEHOLDER} className="min-h-24" />}
+            </Field>
+            <p className="hint -mt-2">Only your own agents see this. It's never shown on a list.</p>
+            <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+              <Field label="Country">
+                {(p) => (
+                  <Select {...p} name="country" defaultValue={user.country ?? guess?.country ?? ""}>
+                    <option value="">Not set</option>
+                    {COUNTRIES.map(([code, name]) => (
+                      <option key={code} value={code}>
+                        {name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+              <Field label="Currency">
+                {(p) => (
+                  <Select {...p} name="currency" defaultValue={user.currency ?? guess?.currency ?? ""}>
+                    <option value="">Not set</option>
+                    {CURRENCIES.map(([code, name]) => (
+                      <option key={code} value={code}>
+                        {name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+            </div>
+            {guess && !(result?.intent === "profile" && result.ok) && <p className="hint -mt-2">We guessed your country and currency from your location. Save to keep them.</p>}
+          </div>
           <div aria-live="polite">
             {result?.intent === "profile" && result.error && <p className="form-error">{result.error}</p>}
             {result?.intent === "profile" && result.ok && <p className="form-ok">Saved.</p>}
           </div>
-          <button className="btn w-fit" disabled={nav.state !== "idle"}>
-            Save
-          </button>
-        </Form>
-      </section>
-
-      <section id="bio" aria-labelledby="bio-h" className="card grid scroll-mt-24 gap-4 p-5 sm:p-6">
-        <div>
-          <h2 id="bio-h" className="text-xl font-semibold">
-            For your agents
-          </h2>
-          <p className="hint mt-1">Only your own agents see this. It's never shown on a list.</p>
-        </div>
-        <Form method="post" className="grid gap-4">
-          <input type="hidden" name="intent" value="bio" />
-          <Field label="About you">
-            {(p) => <Textarea {...p} name="bio" maxLength={600} defaultValue={user.bio ?? ""} placeholder={BIO_PLACEHOLDER} className="min-h-24" />}
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
-            <Field label="Country">
-              {(p) => (
-                <Select {...p} name="country" defaultValue={user.country ?? guess?.country ?? ""}>
-                  <option value="">Not set</option>
-                  {COUNTRIES.map(([code, name]) => (
-                    <option key={code} value={code}>
-                      {name}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-            <Field label="Currency">
-              {(p) => (
-                <Select {...p} name="currency" defaultValue={user.currency ?? guess?.currency ?? ""}>
-                  <option value="">Not set</option>
-                  {CURRENCIES.map(([code, name]) => (
-                    <option key={code} value={code}>
-                      {name}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
-          </div>
-          {guess && !(result?.intent === "bio" && result.ok) && <p className="hint -mt-2">We guessed your country and currency from your location. Save to keep them.</p>}
-          <div aria-live="polite">
-            {result?.intent === "bio" && result.error && <p className="form-error">{result.error}</p>}
-            {result?.intent === "bio" && result.ok && <p className="form-ok">Saved.</p>}
-          </div>
-          <button className="btn w-fit" disabled={nav.state !== "idle"}>
+          <button className="btn btn-want w-fit" disabled={nav.state !== "idle"}>
             Save
           </button>
         </Form>
@@ -160,19 +152,25 @@ export default function Account({ loaderData }: Route.ComponentProps) {
         </Form>
       </section>
 
-      <section aria-labelledby="del-h" className="grid gap-3 rounded-[1.1rem] border-2 border-dashed border-danger/40 p-5 sm:p-6">
-        <h2 id="del-h" className="text-xl font-semibold text-danger">Delete account</h2>
-        <p className="text-[0.9rem] text-ink-2">Deletes your account, your lists and your agents' access. This can't be undone.</p>
-        <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-          <input type="hidden" name="intent" value="delete" />
-          <label className="field">
-            <span className="label">Type “delete my account”</span>
-            <input name="confirm" required autoComplete="off" className="input" />
-          </label>
-          <button className="btn btn-danger">Delete account</button>
-          {result?.intent === "delete" && result.error && <p className="form-error sm:col-span-2">{result.error}</p>}
-        </Form>
-      </section>
+      {/* Quiet until asked for: the typed confirmation opens from a link-sized control. */}
+      <details className="group px-1">
+        <summary className="textlink-btn inline-flex min-h-11 items-center text-[0.9rem] text-danger">Delete account…</summary>
+        <section aria-labelledby="del-h" className="mt-2 grid gap-3 rounded-[1.1rem] border border-danger/40 p-5 sm:p-6">
+          <h2 id="del-h" className="text-lg font-semibold">
+            Delete your account
+          </h2>
+          <p className="text-[0.9rem] text-ink-2">Deletes your account, your lists and your agents' access. This can't be undone.</p>
+          <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+            <input type="hidden" name="intent" value="delete" />
+            <label className="field">
+              <span className="label">Type “delete my account”</span>
+              <input name="confirm" required autoComplete="off" className="input" />
+            </label>
+            <button className="btn btn-danger">Delete account</button>
+            {result?.intent === "delete" && result.error && <p className="form-error sm:col-span-2">{result.error}</p>}
+          </Form>
+        </section>
+      </details>
     </div>
   );
 }

@@ -111,6 +111,11 @@ export async function loadCards(request: Request, waiting: Parameters<typeof lis
   const res = await api<Page<ListWithSummary> | ListSummary[]>(request, "/me/lists", { query: { include: "summary", limit: 100 } });
   // An API without summaries ignores the parameter and returns the plain array.
   if (Array.isArray(res)) return listCards(request, res, waiting);
+  // A shape this build can't read: the older way, one call per list, rather than a broken page.
+  if (!res || !Array.isArray(res.data) || res.data.some((l) => !l?.summary)) {
+    const plain = await api<ListSummary[]>(request, "/me/lists");
+    return listCards(request, Array.isArray(plain) ? plain : [], waiting);
+  }
   // The API pages its results as { data, next_cursor }, like every other list route.
   return res.data.map((l) => {
     const format = l.format ?? "shopping";

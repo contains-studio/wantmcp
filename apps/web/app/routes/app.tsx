@@ -3,6 +3,8 @@
  * needs me (questions waiting), then how my lists are doing. One column, the same on every screen.
  * The cross-list feed lives at /app/activity; a new list is made at /app/new.
  */
+import { errorLine } from "~/lib/telemetry";
+import { currentTrace } from "~/lib/trace.server";
 import { MetaLine } from "~/components/MetaLine";
 import { useEffect, useRef, useState } from "react";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
@@ -20,7 +22,7 @@ import { formatMoney, plural } from "~/lib/format";
 import { FORMATS } from "~/lib/formats";
 import { moneyPlaceholder, useCurrency } from "~/lib/hooks";
 import { handleWriterIntent } from "~/lib/intents.server";
-import { assertSameOrigin } from "~/lib/session.server";
+import { assertSameOrigin, clearFlashCookie, readFlash } from "~/lib/session.server";
 import type { AgentInfo, ListSummary, PendingInvite } from "~/lib/types";
 import { waitingQuestions, type WaitingQuestion } from "~/lib/waiting.server";
 
@@ -43,8 +45,17 @@ export async function loader({ request }: Route.LoaderArgs) {
     waitingQuestions(request).catch(() => ({ questions: [] as WaitingQuestion[], count: 0 })),
     api<AgentInfo[]>(request, "/me/agents").catch(() => [] as AgentInfo[]),
   ]);
-  const cards = orderCards(await loadCards(request, waiting.questions));
+  // Never a 500 for the whole home page: if the lists can't be read, say so with the reference and keep the rest.
+  let listsError: string | null = null;
+  const cards = orderCards(
+    await loadCards(request, waiting.questions).catch((err) => {
+      listsError = currentTrace()?.ref ?? "unknown";
+      console.error(errorLine({ kind: "server_error", ref: listsError, route: "/app", status: 502, build: __BUILD_ID__, name: err instanceof Error ? err.name : null }));
+      return [] as ListCard[];
+    }),
+  );
   const q = (url.searchParams.get("q") ?? "").trim();
+  const flash = readFlash(request);
   return data(
     {
       bio: user.bio ?? null,
@@ -56,8 +67,10 @@ export async function loader({ request }: Route.LoaderArgs) {
       waitingTotal: waiting.count,
       showAllQuestions: url.searchParams.get("questions") === "all",
       hasAgent: agents.length > 0,
+      listsError,
+      flash,
     },
-    { headers: { "Cache-Control": "private, no-store" } },
+    { headers: { "Cache-Control": "private, no-store", ...(flash ? { "Set-Cookie": clearFlashCookie(request) } : {}) } },
   );
 }
 
@@ -90,7 +103,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
   const { cards, listCount, q, invites, waiting, waitingTotal, showAllQuestions, hasAgent, bio } = loaderData;
   const firstRun = listCount === 0 || !hasAgent;
   // Answers are confirmed here: the answered card itself leaves the page once the question is gone.
-  const [announce, setAnnounce] = useState("");
+  const [announce, setAnnounce] = useState(loaderData.flash ?? "");
   return (
     <div className="bg-sunk">
       <div className="mx-auto grid w-full max-w-[47.5rem] gap-8 px-4 pt-8 pb-16 sm:pt-10">
@@ -113,7 +126,16 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
         {waiting.length > 0 && (
           <WaitingOnYou waiting={showAllQuestions ? waiting : waiting.slice(0, FIRST_QUESTIONS)} total={waitingTotal} onAnswered={setAnnounce} />
         )}
-        {firstRun && (
+        {loaderData.listsError && (
+          <p role="alert" className="card px-5 py-4 text-[0.95rem]">
+            We couldn't load your lists just now.{" "}
+            <a href="/app" className="link">
+              Try again
+            </a>
+            . Reference: <code className="font-semibold">{loaderData.listsError}</code>
+          </p>
+        )}
+        {firstRun && !loaderData.listsError && (
           <FirstRun hasList={listCount > 0} hasItem={cards.some((c) => c.items > 0)} hasAgent={hasAgent} firstListId={cards[0]?.id ?? null} needsBio={!bio} />
         )}
 

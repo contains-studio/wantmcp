@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { dealState, discountPercent, formatDateTime, formatMoney, timeAgo } from "~/lib/format";
 import { useNow } from "~/lib/hooks";
-import { checkedAt, isFresh, isVerified, SOURCE_LABEL } from "~/lib/prices";
+import { checkedAt, isFresh, SOURCE_LABEL } from "~/lib/prices";
 import type { Entry } from "~/lib/types";
 import { ActorTag } from "./ActorTag";
 import { ExtLink } from "./ExtLink";
@@ -42,7 +42,7 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
       children: (
         <button
           type="button"
-          className="inline-flex items-center gap-1 font-semibold hover:text-ink"
+          className="inline-flex min-h-11 items-center gap-1 font-semibold hover:text-ink"
           onClick={() => setSort(active ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: defaultDir })}
         >
           {label}
@@ -145,7 +145,6 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
                     {p ? (
                       <>
                         {SOURCE_LABEL[p.source ?? "unknown"]}
-                        {!isVerified(p) && <span className="block text-[0.75rem] text-ink-3">unverified</span>}
                         {p.in_stock === true && <span className="block text-[0.75rem] text-ink-3">in stock</span>}
                         {p.in_stock === false && <span className="block text-[0.75rem] text-warn">out of stock</span>}
                       </>

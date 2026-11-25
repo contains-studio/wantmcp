@@ -653,7 +653,9 @@ button.check-toggle:hover { border-color: var(--ink); }
   .input:disabled, .textarea:disabled, .select:disabled { opacity: 0.55; cursor: not-allowed; }
   .input::placeholder, .textarea::placeholder { color: var(--ink-3); opacity: 1; }
   .check { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.92rem; min-height: 1.5rem; }
-  .check input { width: 1.15rem; height: 1.15rem; margin-top: 0.15rem; accent-color: var(--want); flex: none; }
+  .check input { width: 1.4rem; height: 1.4rem; margin-top: 0; accent-color: var(--want); flex: none; }
+  .check { align-items: center; min-height: 2.75rem; }
+  .footer-link { display: inline-flex; align-items: center; min-height: 2.75rem; }
   .form-error {
     border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent);
     color: var(--danger); padding: 0.6rem 0.8rem; border-radius: 0.7rem; font-size: 0.9rem;
@@ -710,6 +712,8 @@ button.check-toggle:hover { border-color: var(--ink); }
     --hue: var(--agent-0);
     display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 600; line-height: 1; color: var(--ink);
   }
+  .agent-tag .dot.dot-mark { background: transparent !important; color: inherit; }
+  .agent-tag .dot.dot-mark img { width: 100%; height: 100%; object-fit: contain; }
   .agent-tag .dot {
     width: 1.15rem; height: 1.15rem; border-radius: 3px; background: var(--hue); color: var(--card);
     display: inline-grid; place-items: center; font-size: 0.62rem; font-weight: 700; font-family: var(--font-sans);

@@ -132,17 +132,18 @@ function Footer() {
       <div className="wrap flex flex-col gap-4 py-10 text-[0.88rem] text-ink-3 sm:flex-row sm:items-center sm:justify-between">
         <Wordmark />
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Link to="/connect" className="link">Connect an agent</Link>
-          <Link to="/for" className="link">Ideas</Link>
-          <Link to="/privacy" className="link">Privacy</Link>
-          <Link to="/terms" className="link">Terms</Link>
+          <Link to="/connect" className="link footer-link">Connect an agent</Link>
+          <Link to="/for" className="link footer-link">Ideas</Link>
+          <Link to="/privacy" className="link footer-link">Privacy</Link>
+          <Link to="/terms" className="link footer-link">Terms</Link>
           {sourceUrl && (
-            <a href={sourceUrl} className="link">
+            <a href={sourceUrl} className="link footer-link">
               Source (MIT)
             </a>
           )}
         </nav>
       </div>
+      <p className="wrap pb-8 text-[0.75rem] text-ink-3">Logos are their owners' trademarks; The Want MCP isn't affiliated with them.</p>
     </footer>
   );
 }
@@ -211,6 +212,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
   const ref = useErrorRef(status, error);
   const signedIn = !!useRouteLoaderData<typeof loader>("root")?.user;
+  const here = useLocation().pathname;
   return (
     <>
       <title>{`${title} · The Want MCP`}</title>
@@ -231,9 +233,14 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
             <a href={signedIn ? "/app/new" : "/login?next=/app/new"} className="btn btn-want">
               Start a list
             </a>
-            {signedIn && (
+            {signedIn ? (
               <a href="/app" className="btn">
                 Your lists
+              </a>
+            ) : (
+              // A private list someone was sent looks like this page: signing in may be all it takes.
+              <a href={`/login?next=${encodeURIComponent(here)}`} className="btn">
+                Sign in
               </a>
             )}
           </div>

@@ -55,6 +55,21 @@ export function assertSameOrigin(request: Request) {
   }
 }
 
+/** A one-line notice for the next page (e.g. "Deleted 'X'."), read once. Kept out of URLs because it can name private things. */
+const FLASH_COOKIE = "wm_flash";
+
+export function flashCookie(request: Request, message: string): string {
+  return `${FLASH_COOKIE}=${encodeURIComponent(message.slice(0, 200))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=60${secureFlag(request)}`;
+}
+
+export function readFlash(request: Request): string | null {
+  return readCookie(request, FLASH_COOKIE);
+}
+
+export function clearFlashCookie(request: Request): string {
+  return `${FLASH_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureFlag(request)}`;
+}
+
 /**
  * The one-time line after keeping a list ("This list was started by Claude…"): which list, how it came, and who made
  * it. Read once by the list page, then cleared.

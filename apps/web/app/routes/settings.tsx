@@ -6,7 +6,7 @@ import { Time } from "~/components/Time";
 import { api, apiOptional, formError, toRouteError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
-import { assertSameOrigin } from "~/lib/session.server";
+import { assertSameOrigin, flashCookie } from "~/lib/session.server";
 import type { AgentInfo, HandoverResult, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { ThemeThumb } from "~/components/ThemeThumb";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
@@ -159,9 +159,10 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { ok: true, intent } satisfies ActionData;
       case "delete-list": {
         const list = await api<ListDetail>(request, `/lists/${id}`);
-        if (s("confirm") !== list.title) return data({ error: "Type the list title exactly to confirm.", intent } satisfies ActionData, 400);
+        if (s("confirm") !== "yes") return data({ error: "Confirm to delete.", intent } satisfies ActionData, 400);
         await api(request, `/lists/${id}`, { method: "DELETE" });
-        return redirect("/app");
+        // "Deleted '…'" on /app, once (a cookie, not the URL: titles can be private).
+        return redirect("/app", { headers: { "Set-Cookie": flashCookie(request, `Deleted “${list.title}”.`) } });
       }
       default:
         return data({ error: "Unknown action" } satisfies ActionData, 400);
@@ -322,7 +323,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
                 <Form method="post" onSubmit={(e) => !confirm(`Remove ${m.handle ?? m.invited_email ?? "this person"}? Their agents lose access too.`) && e.preventDefault()}>
                   <input type="hidden" name="intent" value="revoke-member" />
                   <input type="hidden" name="member_id" value={m.id} />
-                  <button className="btn btn-danger btn-xs">{m.status === "invited" ? "Cancel invite" : "Remove"}</button>
+                  <button className="textlink-btn text-[0.85rem] text-danger">{m.status === "invited" ? "Cancel invite" : "Remove"}</button>
                 </Form>
               )}
             </li>
@@ -444,17 +445,21 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
 
           <Section id="danger-h" title="Delete" desc="Delete this list and everything on it" open={openFor(["delete-list"])}>
             <p className="text-[0.9rem] text-ink-2">Deletes every item, product, price and comment, and disconnects its agents. This can't be undone.</p>
-            <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-              <input type="hidden" name="intent" value="delete-list" />
-              <label className="field">
-                <span className="label">Type the title to confirm: <span className="font-mono font-normal">{list.title}</span></span>
-                <input name="confirm" required autoComplete="off" className="input" />
-              </label>
-              <button className="btn btn-danger" disabled={busy("delete-list")}>
-                Delete list
-              </button>
-              <div className="sm:col-span-2">{err("delete-list")}</div>
-            </Form>
+            {/* Two steps, no typing: "Delete list…", then the confirm that names what goes. Works without JavaScript. */}
+            <details className="group">
+              <summary className="textlink-btn inline-flex min-h-11 w-fit items-center text-[0.95rem] text-danger">Delete list…</summary>
+              <Form method="post" className="mt-3 grid gap-2">
+                <input type="hidden" name="intent" value="delete-list" />
+                <input type="hidden" name="confirm" value="yes" />
+                <p className="text-[0.9rem]">
+                  Delete “{list.title}” and its {list.item_count} {list.item_count === 1 ? formatInfo(list).item : formatInfo(list).items}?
+                </p>
+                <button className="btn btn-danger w-fit" disabled={busy("delete-list")}>
+                  {busy("delete-list") ? "Deleting…" : "Yes, delete it"}
+                </button>
+                {err("delete-list")}
+              </Form>
+            </details>
           </Section>
         </>
       )}
@@ -509,7 +514,7 @@ function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
         <input type="hidden" name="intent" value="revoke-agent" />
         <input type="hidden" name="agent_id" value={a.id} />
         {listOnly && <input type="hidden" name="scope" value="list" />}
-        <button className="btn btn-danger btn-xs" disabled={fetcher.state !== "idle"}>
+        <button className="textlink-btn text-[0.85rem] text-danger" disabled={fetcher.state !== "idle"}>
           {fetcher.state !== "idle" ? "Removing…" : action}
           <span className="sr-only"> {a.name}</span>
         </button>

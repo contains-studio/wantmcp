@@ -1,5 +1,6 @@
 import { useRootData } from "~/lib/hooks";
 import { agentHue } from "~/lib/format";
+import { agentMark } from "~/lib/brands";
 import type { ActorRef } from "~/lib/types";
 
 /**
@@ -12,15 +13,23 @@ export function ActorTag({ actor, compact = false }: { actor: ActorRef; compact?
   if (actor.kind === "agent") {
     const mine = me !== null && actor.owner_handle === me;
     const hue = agentHue(actor.name);
+    const mark = agentMark(actor.name);
     return (
       <span
         className="agent-tag"
         style={{ ["--hue" as string]: `var(--agent-${hue})` }}
         title={mine ? `${actor.name}, your agent` : `${actor.name}, ${actor.owner_handle}'s agent`}
       >
-        <span className="dot" aria-hidden="true">
-          {actor.name.slice(0, 1).toUpperCase()}
-        </span>
+        {mark ? (
+          <span className="dot dot-mark" aria-hidden="true">
+            <img src={mark.light} alt="" width={16} height={16} className={mark.dark ? "brand-logo-light" : ""} decoding="async" />
+            {mark.dark && <img src={mark.dark} alt="" width={16} height={16} className="brand-logo-dark" decoding="async" />}
+          </span>
+        ) : (
+          <span className="dot" aria-hidden="true">
+            {actor.name.slice(0, 1).toUpperCase()}
+          </span>
+        )}
         <span>
           {actor.name}
           {!compact && <span className="sr-only">{mine ? ", your agent" : `, agent of ${actor.owner_handle}`}</span>}

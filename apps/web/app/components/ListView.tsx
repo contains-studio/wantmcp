@@ -148,6 +148,7 @@ export function ListView(props: ListViewProps) {
                   tooltip={isPrivate ? "Copy link (only people with access can open it)" : "Copy link"}
                   className="btn-tool"
                   icon={<Icon name="share" />}
+                  shareTitle={list.title}
                 />
                 {isWriter && (
                   <Link to={`/app/lists/${list.id}/settings`} className="btn-tool" title="List settings">
@@ -398,6 +399,11 @@ function ItemSection({
                   </MenuSub>
                 </div>
               )}
+              {isWriter && entries.length === 0 && (
+                <MenuSub label={fi.addEntryLabel}>
+                  {fi.format === "shopping" ? <EntryForm itemId={item.id} currency={currencyHint} /> : <TextEntryForm itemId={item.id} fi={fi} />}
+                </MenuSub>
+              )}
               {isWriter && itemComments.length === 0 && (
                 <MenuSub label="Comment">
                   <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />
@@ -526,7 +532,8 @@ function ItemSection({
         <EmptyEntries status={status} fi={fi} quiet={quietEmpty} />
       )}
 
-      {isWriter && (
+      {/* An empty want stays one row: adding the first product is in its ⋯ menu. Once it has some, the add link shows. */}
+      {isWriter && entries.length > 0 && (
         <div className="item-indent sm:pl-11">
           <AddEntry itemId={item.id} fi={fi} currency={currencyHint} />
         </div>

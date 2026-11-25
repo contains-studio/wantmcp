@@ -212,7 +212,14 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           </div>
         </section>
       )}
-      <p className="wrap pb-6 text-[0.78rem] text-ink-3">Logos are their owners' trademarks; The Want MCP isn't affiliated with them.</p>
+      <section aria-labelledby="end-h" className="wrap grid justify-items-center gap-4 py-14 text-center">
+        <h2 id="end-h" className="serif text-[1.75rem] sm:text-[2.1rem]">
+          Write down what you want
+        </h2>
+        <Link to={user ? "/app/new" : "/login?next=/app/new"} className="btn btn-want btn-lg">
+          Start a list
+        </Link>
+      </section>
     </div>
   );
 }

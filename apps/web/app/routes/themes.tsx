@@ -40,7 +40,7 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
   const origin = loaderData?.origin ?? "https://wantmcp.com";
   const description = "Layouts from Board to Sheet, and occasions from Black Friday to birthdays.";
   return [
-    { title: "Layouts and occasions · The Want MCP" },
+    { title: "Looks · The Want MCP" },
     { name: "description", content: description },
     { tagName: "link", rel: "canonical", href: `${origin}/themes` },
     ...(location.search ? [{ name: "robots", content: "noindex, follow" }] : []),
@@ -83,10 +83,8 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
   return (
     <div className="wrap grid gap-10 py-10">
       <header className="max-w-3xl">
-        <h1 className="serif text-[2.2rem] sm:text-[2.6rem]">Layouts and occasions</h1>
-        <p className="mt-2 text-ink-2">
-          Choose in <Link to="/app" className="link">list settings</Link>.
-        </p>
+        <h1 className="serif text-[2.2rem] sm:text-[2.6rem]">Looks</h1>
+        <p className="mt-2 text-ink-2">A layout, and an occasion if you like. Pick one when you start a list, or change it in the list's settings.</p>
       </header>
 
       <section aria-labelledby="tpl-h" className="grid gap-3">

@@ -18,7 +18,8 @@
 .themed.tpl-doc .text-entry, .themed.tpl-doc .entry-card { border: 0; border-left: 3px solid var(--line-strong); border-radius: 0; box-shadow: none; background: transparent; padding-left: 1.25rem; }
 .themed.tpl-doc .text-entry h3 { font-family: var(--font-display); font-size: 1.15rem; }
 .themed.tpl-doc .accepted-answer, .themed.tpl-doc .ring-deal { border-left-color: var(--deal) !important; }
-.themed.tpl-doc .add-item, .themed.tpl-doc aside.card { background: var(--sunk); border: 0; box-shadow: none; }
+/* The add box sits on the page itself (a panel behind it left the button hanging over its edge). */
+.themed.tpl-doc aside.card { background: var(--sunk); border: 0; box-shadow: none; }
 .themed.tpl-doc .bought-divider h2 { font-size: 1.3rem; }
 .themed.tpl-doc .bought-divider .divider-dots { background: var(--line); height: 1px; }
 

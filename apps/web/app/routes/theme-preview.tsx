@@ -1,4 +1,5 @@
 import { Link, redirect } from "react-router";
+import { useRootData } from "~/lib/hooks";
 import type { Route } from "./+types/theme-preview";
 import { ListView } from "~/components/ListView";
 import { siteOrigin } from "~/lib/config.server";
@@ -44,11 +45,14 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export default function ThemePreview({ loaderData }: Route.ComponentProps) {
   const { theme, sample, format, origin } = loaderData;
+  const { user } = useRootData();
+  // Not a dead end: start a list in this look (sign-in first when needed).
+  const startHref = `/app/new?${new URLSearchParams({ format, look: theme.slug })}`;
   return (
     <div>
       <div className="wrap flex flex-wrap items-center gap-x-4 gap-y-2 py-3 text-[0.9rem]">
         <Link to="/themes" className="link text-ink-3">
-          ← All themes
+          ← All looks
         </Link>
         <span className="text-ink-2">
           <strong className="text-ink">{theme.name}</strong>
@@ -67,6 +71,9 @@ export default function ThemePreview({ loaderData }: Route.ComponentProps) {
             </Link>
           ))}
         </nav>
+        <Link to={user ? startHref : `/login?next=${encodeURIComponent(startHref)}`} className="btn btn-want btn-sm ml-auto">
+          Start a list with this look
+        </Link>
       </div>
       <ListView
         list={sample.list}

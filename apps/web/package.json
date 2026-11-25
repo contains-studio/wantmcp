@@ -13,10 +13,11 @@
     "check:contrast": "node scripts/check-contrast.mts",
     "check:private": "node scripts/check-private.mjs",
     "check:a11y": "node scripts/check-a11y.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm check:contrast",
+    "check": "pnpm typecheck && pnpm test && pnpm check:contrast && pnpm check:contract",
     "deploy": "pnpm build && wrangler deploy",
-    "test": "node --test app/lib/*.test.ts",
-    "test:e2e": "playwright test"
+    "test": "node --test app/lib/*.test.ts mock/*.test.ts",
+    "test:e2e": "playwright test",
+    "check:contract": "node scripts/check-contract.mjs"
   },
   "dependencies": {
     "@cf-wasm/og": "^0.5.0",

@@ -44,3 +44,23 @@ export const BRANDS: Brand[] = [
 
 /** Clients people can use today: every logo row shows only these. */
 export const LIVE_BRANDS = BRANDS.filter((b) => !b.comingSoon);
+
+/**
+ * Square marks for agents we know by name, used in place of a letter tile wherever an agent is named (ActorTag). The
+ * name is always written beside the mark, so ChatGPT and Codex (both OpenAI's mark) stay apart.
+ */
+const OPENAI = { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg" };
+export const AGENT_MARKS: Record<string, { light: string; dark?: string }> = {
+  chatgpt: OPENAI,
+  codex: OPENAI,
+  claude: { light: "/brands/claude-spark.svg" },
+  "claude code": { light: "/brands/claude-spark.svg" },
+  "grok bot": { light: "/brands/grok-bot-on-light.svg", dark: "/brands/grok-bot-on-dark.svg" },
+  grok: { light: "/brands/grok-mark.svg" },
+  muse: { light: "/brands/muse-mark.svg" },
+  gemini: { light: "/brands/gemini-sparkle.svg" },
+};
+
+export function agentMark(name: string): { light: string; dark?: string } | null {
+  return AGENT_MARKS[name.trim().toLowerCase()] ?? null;
+}

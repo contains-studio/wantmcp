@@ -361,7 +361,7 @@ function DoneWith({ itemId, entryId }: { itemId: string; entryId: string }) {
       <input type="hidden" name="status" value="done" />
       <input type="hidden" name="entry_id" value={entryId} />
       <button className="btn-quiet" disabled={fetcher.state !== "idle"}>
-        {fetcher.state !== "idle" ? "Saving…" : "Done with this"}
+        {fetcher.state !== "idle" ? "Saving…" : "Use this and mark done"}
       </button>
     </fetcher.Form>
   );
@@ -443,10 +443,20 @@ export function OwnerQuestion({ question, history = [], compact = false }: { que
   // "You" for the viewer's own answers, never their handle.
   const label = useActorLabel();
   const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+  const now = useNow();
+  const latest = answered.at(-1);
+  const lastAnswer = latest && now - Date.parse(latest.answer!.answered_at) < 24 * 3600_000 ? latest : null;
   if (!question && !answered.length) return null;
   return (
     <div className={`owner-question grid gap-3 ${compact ? "" : "item-indent sm:pl-11"}`}>
       {question && <QuestionForm question={question} compact={compact} />}
+      {/* Just answered: say so on the item until the agent moves on (no open question, the latest answer within a day). */}
+      {!question && !compact && lastAnswer && (
+        <p className="text-[0.92rem] text-ink-2">
+          {cap(label(lastAnswer.answer!.answered_by))} answered: “{lastAnswer.answer!.text}”.{" "}
+          {lastAnswer.asked_by.kind === "agent" ? `${lastAnswer.asked_by.name} can carry on.` : ""}
+        </p>
+      )}
       {!compact && answered.length > 0 && (
         <details className="group">
           <summary className="textlink-btn text-[0.85rem]">
@@ -508,30 +518,48 @@ function QuestionForm({ question, compact = false }: { question: Question; compa
           ))}
         </div>
       )}
-      <fetcher.Form method="post" className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <input type="hidden" name="intent" value="answer-question" />
-        <input type="hidden" name="question_id" value={question.id} />
-        <label htmlFor={`${uid}-a`} className="sr-only">
-          Your answer
-        </label>
-        <textarea
-          id={`${uid}-a`}
-          name="text"
-          required
-          maxLength={2000}
-          rows={1}
-          placeholder={question.options.length ? "Or write an answer" : "Your answer"}
-          className="textarea textarea-line flex-1"
-        />
-        <button className="btn btn-ghost" disabled={busy}>
-          {busy ? "Sending…" : "Answer"}
-        </button>
-      </fetcher.Form>
+      {/* With options, they answer in one tap; anything else is one more tap away. */}
+      {question.options.length > 0 ? (
+        <details>
+          <summary className="add-link">Something else…</summary>
+          <AnswerBox fetcher={fetcher} questionId={question.id} uid={uid} busy={busy} placeholder="Your answer" />
+        </details>
+      ) : (
+        <AnswerBox fetcher={fetcher} questionId={question.id} uid={uid} busy={busy} placeholder="Your answer" />
+      )}
       {fetcher.data?.error && (
         <p className="form-error" role="alert">
           {fetcher.data.error}
         </p>
       )}
     </div>
+  );
+}
+
+function AnswerBox({
+  fetcher,
+  questionId,
+  uid,
+  busy,
+  placeholder,
+}: {
+  fetcher: ReturnType<typeof useFetcher<IntentResult>>;
+  questionId: string;
+  uid: string;
+  busy: boolean;
+  placeholder: string;
+}) {
+  return (
+    <fetcher.Form method="post" className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+      <input type="hidden" name="intent" value="answer-question" />
+      <input type="hidden" name="question_id" value={questionId} />
+      <label htmlFor={`${uid}-a`} className="sr-only">
+        Your answer
+      </label>
+      <textarea id={`${uid}-a`} name="text" required maxLength={2000} rows={1} placeholder={placeholder} className="textarea textarea-line flex-1" />
+      <button className="btn btn-ghost" disabled={busy}>
+        {busy ? "Sending…" : "Answer"}
+      </button>
+    </fetcher.Form>
   );
 }
