@@ -120,19 +120,18 @@ export function ListView(props: ListViewProps) {
               Updated <Time ts={list.updated_at} />
             </span>
             {!preview && (
-              <span className="flex items-center gap-3">
-                <CopyButton text={listUrl} label="Copy link" />
+              // One row with the counts: the list's actions, never wrapping onto a row of their own.
+              <span className="list-actions flex flex-wrap items-center gap-2">
+                <CopyButton text={listUrl} label="Copy link" className="btn btn-ghost btn-sm" />
+                {isWriter && (
+                  <Link to={`/app/lists/${list.id}/settings`} className="btn btn-ghost btn-sm">
+                    Settings
+                  </Link>
+                )}
                 {!isPrivate && <ReportLink type="list" id={list.id} label="Report" />}
               </span>
             )}
           </div>
-          {isWriter && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link to={`/app/lists/${list.id}/settings`} className="btn btn-ghost btn-sm">
-                Settings
-              </Link>
-            </div>
-          )}
         </div>
       </section>
 

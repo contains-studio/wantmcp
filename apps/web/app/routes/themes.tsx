@@ -37,7 +37,7 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
     ...(location.search ? [{ name: "robots", content: "noindex, follow" }] : []),
     { property: "og:title", content: "List themes" },
     { property: "og:description", content: description },
-    { property: "og:image", content: `${origin}/og/home.png?v=4` },
+    { property: "og:image", content: `${origin}/og/home.png?v=5` },
   ];
 }
 
@@ -60,7 +60,7 @@ function Choice({ to, current, view, sample, origin, label, note }: { to: string
         preventScrollReset
         replace
         aria-current={current ? "true" : undefined}
-        className={`grid overflow-hidden rounded-md border-2 bg-card ${current ? "border-want" : "border-line hover:border-line-strong"}`}
+        className={`grid overflow-hidden rounded-md border-2 bg-card ${current ? "border-ink" : "border-line hover:border-line-strong"}`}
       >
         <ThemeThumb theme={view} sample={sample} origin={origin} className="h-28 border-b border-line" />
         <span className="grid gap-0.5 p-2.5">
@@ -86,7 +86,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
       </header>
 
       <section aria-labelledby="tpl-h" className="grid gap-3">
-        <h2 id="tpl-h" className="text-xl font-semibold">
+        <h2 id="tpl-h" className="serif text-[1.6rem] leading-tight">
           Layout
         </h2>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -106,7 +106,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
       </section>
 
       <section aria-labelledby="occ-h" className="grid gap-3">
-        <h2 id="occ-h" className="text-xl font-semibold">
+        <h2 id="occ-h" className="serif text-[1.6rem] leading-tight">
           Occasion
         </h2>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -116,7 +116,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
               preventScrollReset
               replace
               aria-current={occasion === null ? "true" : undefined}
-              className={`grid h-full min-h-[9.5rem] place-items-center rounded-md border-2 bg-card p-3 font-semibold ${occasion === null ? "border-want" : "border-line hover:border-line-strong"}`}
+              className={`grid h-full min-h-[9.5rem] place-items-center rounded-md border-2 bg-card p-3 font-semibold ${occasion === null ? "border-ink" : "border-line hover:border-line-strong"}`}
             >
               None
             </Link>
@@ -138,7 +138,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
 
       <section aria-labelledby="preview-h" className="grid gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="preview-h" className="text-2xl font-semibold">
+          <h2 id="preview-h" className="serif text-[1.6rem] leading-tight">
             {chosen.name}
           </h2>
           <div className="flex items-center gap-3">

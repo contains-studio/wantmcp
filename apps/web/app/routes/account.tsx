@@ -60,7 +60,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
     <div className="wrap grid max-w-2xl gap-6 py-8">
       <div>
         <p className="eyebrow">Account</p>
-        <h1 className="mt-1 text-[1.75rem] font-semibold">{user.handle}</h1>
+        <h1 className="mt-1 text-[1.75rem] leading-tight font-normal tracking-[-0.02em] sm:text-[2rem]">{user.handle}</h1>
       </div>
 
       <section aria-labelledby="profile-h" className="card grid gap-4 p-5 sm:p-6">

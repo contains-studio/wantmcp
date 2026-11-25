@@ -9,24 +9,26 @@
  * /og.png (a saved render of the home card).
  */
 import { cache, CustomFont, ImageResponse } from "@cf-wasm/og/workerd";
-import bricolage800 from "@fontsource/bricolage-grotesque/files/bricolage-grotesque-latin-800-normal.woff?inline";
+import inter300 from "@fontsource/inter/files/inter-latin-300-normal.woff?inline";
+import inter400 from "@fontsource/inter/files/inter-latin-400-normal.woff?inline";
 import inter500 from "@fontsource/inter/files/inter-latin-500-normal.woff?inline";
-import inter700 from "@fontsource/inter/files/inter-latin-700-normal.woff?inline";
+import inter600 from "@fontsource/inter/files/inter-latin-600-normal.woff?inline";
 import { api } from "../app/lib/api.server";
 import { formatMoney } from "../app/lib/format";
 import type { ListDetail } from "../app/lib/types";
 import { resolveLook } from "../app/themes/catalogue.server";
 import { lookColors } from "../app/themes/view";
 
+/** The site's light tokens (app.css): warm paper, near-black ink, one crimson accent for the mark. */
 const C = {
-  paper: "#f7f2ea",
-  card: "#fffdf9",
-  ink: "#1b1512",
-  ink2: "#4a403a",
-  ink3: "#6f645c",
-  line: "#e3d9ca",
-  want: "#d1236f",
-  wantSoft: "#fbe3ee",
+  paper: "#faf9f6",
+  card: "#ffffff",
+  ink: "#1d1b18",
+  ink2: "#4b4842",
+  ink3: "#6b665e",
+  line: "#e6e2da",
+  want: "#b5174f",
+  wantSoft: "#f2f0eb",
   deal: "#0f7a47",
 };
 
@@ -45,9 +47,10 @@ function dataUrlToBuffer(dataUrl: string): ArrayBuffer {
 }
 
 const fonts = () => [
-  new CustomFont("Bricolage", dataUrlToBuffer(bricolage800), { weight: 800 }),
+  new CustomFont("Inter", dataUrlToBuffer(inter300), { weight: 300 }),
+  new CustomFont("Inter", dataUrlToBuffer(inter400), { weight: 400 }),
   new CustomFont("Inter", dataUrlToBuffer(inter500), { weight: 500 }),
-  new CustomFont("Inter", dataUrlToBuffer(inter700), { weight: 700 }),
+  new CustomFont("Inter", dataUrlToBuffer(inter600), { weight: 600 }),
 ];
 
 type Colors = typeof C;
@@ -78,27 +81,11 @@ function Frame({ children, colors = C, motif = null }: { children: React.ReactNo
         position: "relative",
       }}
     >
-      {/* soft accent glow, as on the site, and the theme's motif if it has one */}
-      <div
-        style={{
-          position: "absolute",
-          right: -220,
-          top: -260,
-          width: 760,
-          height: 760,
-          borderRadius: 9999,
-          background: C.wantSoft,
-          display: "flex",
-        }}
-      />
+      {/* the occasion's motif, if the look has one; no glows or washes */}
       {motif && <img src={motif} width={560} height={420} style={{ position: "absolute", right: 0, top: 10 }} />}
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <img src={TAG_SVG} width={56} height={56} />
-        <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 36, letterSpacing: -1 }}>
-          <span style={{ color: C.ink3 }}>The&nbsp;</span>
-          <span>Want&nbsp;</span>
-          <span style={{ color: C.want }}>MCP</span>
-        </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <img src={TAG_SVG} width={48} height={48} />
+        <div style={{ display: "flex", fontSize: 32, fontWeight: 600, letterSpacing: -0.6 }}>The Want MCP</div>
       </div>
       {children}
     </div>
@@ -108,18 +95,15 @@ function Frame({ children, colors = C, motif = null }: { children: React.ReactNo
 function HomeCard() {
   return (
     <Frame>
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 40, maxWidth: 980 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", fontFamily: "Bricolage", fontSize: 84, lineHeight: 1, letterSpacing: -3 }}>
-          <span>An MCP server for&nbsp;</span>
-          <span style={{ color: C.want }}>getting what you want.</span>
-        </div>
-        <div style={{ display: "flex", marginTop: 30, fontSize: 28, color: C.ink2, fontWeight: 500 }}>
+      <div style={{ display: "flex", flexDirection: "column", marginTop: 64, maxWidth: 1056 }}>
+        <div style={{ display: "flex", fontSize: 76, fontWeight: 300, lineHeight: 1.04, letterSpacing: -2.6 }}>AN MCP SERVER FOR GETTING WHAT YOU WANT</div>
+        <div style={{ display: "flex", marginTop: 32, fontSize: 30, color: C.ink2, fontWeight: 400 }}>
           Things to buy, to get done, to find out. Your agents work on them.
         </div>
       </div>
-      <div style={{ display: "flex", marginTop: "auto", alignItems: "center", gap: 16, fontSize: 26, color: C.ink3, fontWeight: 500 }}>
+      <div style={{ display: "flex", marginTop: "auto", alignItems: "center", gap: 16, fontSize: 24, color: C.ink3, fontWeight: 500 }}>
         <span>wantmcp.com</span>
-        <span style={{ color: C.line }}>•</span>
+        <span>·</span>
         <span>Free, no affiliate links</span>
       </div>
     </Frame>
@@ -141,14 +125,14 @@ function ListCard({ list }: { list: ListDetail }) {
 
   return (
     <Frame colors={C} motif={motif}>
-      <div style={{ display: "flex", marginTop: 44, fontSize: 26, color: C.ink3, fontWeight: 700, letterSpacing: 3 }}>
+      <div style={{ display: "flex", marginTop: 56, fontSize: 22, color: C.ink3, fontWeight: 500, letterSpacing: 2 }}>
         A WANT LIST BY {list.owner_handle.toUpperCase()}
       </div>
-      <div style={{ display: "flex", marginTop: 14, fontFamily: "Bricolage", fontSize: titleSize, lineHeight: 1.02, letterSpacing: -2.5, maxWidth: 1000 }}>
+      <div style={{ display: "flex", marginTop: 16, fontSize: titleSize, fontWeight: 400, lineHeight: 1.05, letterSpacing: -2.2, maxWidth: 1000 }}>
         {title}
       </div>
       <div style={{ display: "flex", marginTop: "auto", alignItems: "flex-end", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 30, color: C.ink2, fontWeight: 500 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 28, color: C.ink2, fontWeight: 400 }}>
           <span>
             {wanted} {wanted === 1 ? "thing" : "things"} wanted
           </span>
@@ -163,13 +147,13 @@ function ListCard({ list }: { list: ListDetail }) {
               flexDirection: "column",
               alignItems: "flex-end",
               background: C.card,
-              border: `2px solid ${C.want}`,
-              borderRadius: 28,
-              padding: "20px 32px",
+              border: `1px solid ${C.line}`,
+              borderRadius: 6,
+              padding: "20px 28px",
             }}
           >
-            <span style={{ fontSize: 22, color: C.ink3, fontWeight: 700, letterSpacing: 2 }}>PRICES FROM</span>
-            <span style={{ fontFamily: "Bricolage", fontSize: 76, letterSpacing: -2, lineHeight: 1 }}>
+            <span style={{ fontSize: 20, color: C.ink3, fontWeight: 500, letterSpacing: 2 }}>PRICES FROM</span>
+            <span style={{ fontSize: 68, fontWeight: 400, letterSpacing: -2, lineHeight: 1.1 }}>
               {formatMoney(cheapest.current_price!.price, cheapest.current_price!.currency)}
             </span>
           </div>

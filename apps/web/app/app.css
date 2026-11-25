@@ -354,6 +354,8 @@
 
 /* Board for tasks and research: status columns of cards, swipeable on phones. */
 .ix-columns {
+  /* Contains its absolutely positioned (sr-only) text, which otherwise widens the page on phones. */
+  position: relative;
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(16.5rem, 85vw); gap: 0.75rem; align-items: start;
   overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 0.75rem; overscroll-behavior-x: contain;
 }
@@ -628,7 +630,7 @@ button.check-toggle:hover { border-color: var(--want); }
   }
   .plain-url { font-family: var(--font-mono); font-size: 0.78rem; word-break: break-all; color: var(--ink-2); }
 
-  .prose-page h2 { font-size: 1.35rem; margin-top: 2rem; margin-bottom: 0.5rem; }
+  .prose-page h2 { font-family: var(--font-serif); font-weight: 400; font-size: 1.6rem; line-height: 1.2; margin-top: 2.5rem; margin-bottom: 0.5rem; }
   .prose-page p, .prose-page li { color: var(--ink-2); }
   .prose-page ul { list-style: disc; padding-left: 1.25rem; display: grid; gap: 0.35rem; }
   .prose-page ol { list-style: decimal; padding-left: 1.25rem; display: grid; gap: 0.35rem; }

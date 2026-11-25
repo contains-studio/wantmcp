@@ -265,7 +265,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <Header />
       <main id="main" className="wrap flex-1 py-24">
         <p className="eyebrow">Error {status}</p>
-        <h1 className="mt-2 text-5xl font-extrabold">{title}</h1>
+        <h1 className="serif mt-2 text-[2.5rem] leading-tight sm:text-[3rem]">{title}</h1>
         <p className="mt-4 max-w-prose text-ink-2">{details}</p>
         {status >= 500 && ref && (
           <p className="mt-3 text-[0.9rem] text-ink-3">

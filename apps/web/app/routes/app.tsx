@@ -310,7 +310,7 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
   return (
     <details id="new-list" open={first || undefined} className="card scroll-mt-24 p-4">
       <summary className="flex items-center justify-between text-lg font-semibold">
-        New list <span aria-hidden="true" className="text-want">+</span>
+        New list <span aria-hidden="true" className="text-ink-3">+</span>
       </summary>
       <Form method="post" className="mt-3 grid gap-4">
         <input type="hidden" name="intent" value="create-list" />
@@ -327,7 +327,7 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
                 value={f.format}
                 checked={format === f.format}
                 onChange={() => setFormat(f.format)}
-                className="mt-1 accent-[var(--want)]"
+                className="mt-1 accent-[var(--ink)]"
               />
               <span>
                 <span className="block font-semibold">{f.label}</span>
@@ -366,7 +366,7 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
           <legend className="label mb-1">Who can see it?</legend>
           {(["public", "private"] as const).map((v) => (
             <label key={v} className="flex cursor-pointer items-start gap-2 text-[0.88rem]">
-              <input type="radio" name="visibility" value={v} checked={vis === v} onChange={() => setVisibility(v)} className="mt-1 accent-[var(--want)]" />
+              <input type="radio" name="visibility" value={v} checked={vis === v} onChange={() => setVisibility(v)} className="mt-1 accent-[var(--ink)]" />
               <span>
                 <span className="font-semibold">{v === "public" ? "Public" : "Private"}</span>
                 {fi.defaultVisibility === v && <span className="text-ink-3"> (usual for {fi.label.toLowerCase()})</span>}

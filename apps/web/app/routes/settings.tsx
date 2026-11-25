@@ -169,7 +169,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           ← Back to the list
         </Link>
         <p className="eyebrow mt-4">List settings</p>
-        <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{list.title}</h1>
+        <h1 className="mt-1 text-[1.75rem] leading-tight font-normal tracking-[-0.02em] sm:text-[2rem]">{list.title}</h1>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-ink-3">
           <span>
             {formatInfo(list).label} list · you are {isOwner ? "the owner" : "a member"}.
@@ -397,9 +397,9 @@ function OutsideToggle({ allow }: { allow: boolean }) {
         role="switch"
         aria-checked={optimistic}
         aria-label="Accept suggestions from outside agents"
-        className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition ${optimistic ? "border-want bg-want" : "border-line-strong bg-sunk"}`}
+        className={`relative h-8 w-14 shrink-0 rounded-[4px] border-2 transition ${optimistic ? "border-ink bg-ink" : "border-line-strong bg-sunk"}`}
       >
-        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-card shadow transition-all ${optimistic ? "left-[1.6rem]" : "left-0.5"}`} />
+        <span className={`absolute top-0.5 h-6 w-6 rounded-[3px] bg-card transition-all ${optimistic ? "left-[1.6rem]" : "left-0.5"}`} />
       </button>
       <span className="font-semibold">{optimistic ? "Accepting outside suggestions" : "Outside suggestions are off"}</span>
       {fetcher.data?.error && <p className="form-error w-full">{fetcher.data.error}</p>}
@@ -569,12 +569,12 @@ function ThemePicker({
       <fieldset className="grid gap-2">
         <legend className="label mb-1">Occasion</legend>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <label className={`grid cursor-pointer place-items-center gap-2 rounded-md border-2 p-3 text-center ${occasion === null ? "border-want" : "border-line"}`}>
+          <label className={`grid cursor-pointer place-items-center gap-2 rounded-md border-2 p-3 text-center ${occasion === null ? "border-ink" : "border-line"}`}>
             <span className="grid h-20 w-full place-items-center rounded-lg bg-sunk text-[0.85rem] text-ink-3" aria-hidden="true">
               No occasion
             </span>
             <span className="flex items-center gap-2">
-              <input type="radio" name="occasion-choice" checked={occasion === null} onChange={() => setOccasion(null)} className="h-5 w-5 accent-[var(--want)]" />
+              <input type="radio" name="occasion-choice" checked={occasion === null} onChange={() => setOccasion(null)} className="h-5 w-5 accent-[var(--ink)]" />
               <span className="font-semibold">None</span>
             </span>
           </label>
@@ -653,12 +653,12 @@ function LookOption({
   // The label holds only the radio and its name, so the radio's accessible name is "Sheet Price table".
   // The miniature beside it is decorative; clicking it picks the same option.
   return (
-    <div className={`grid overflow-hidden rounded-md border-2 ${checked ? "border-want" : "border-line"}`}>
+    <div className={`grid overflow-hidden rounded-md border-2 ${checked ? "border-ink" : "border-line"}`}>
       <div onClick={onChange} className="cursor-pointer">
         <ThemeThumb theme={view} sample={sample} origin={origin} className={`${small ? "h-20" : "h-28"} border-b border-line`} />
       </div>
       <label className="flex cursor-pointer items-center gap-2 p-2.5">
-        <input type="radio" name={name} checked={checked} onChange={onChange} className="h-5 w-5 shrink-0 accent-[var(--want)]" />
+        <input type="radio" name={name} checked={checked} onChange={onChange} className="h-5 w-5 shrink-0 accent-[var(--ink)]" />
         <span className="min-w-0">
           <span className="block text-[0.92rem] font-semibold leading-tight">{label ?? view.name}</span>
           {note && <span className="block text-[0.75rem] text-ink-3">{note}</span>}
@@ -682,12 +682,12 @@ function VisibilityControl({ visibility }: { visibility: ListVisibility }) {
           role="switch"
           aria-checked={v === "private"}
           aria-label="Private list"
-          className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition ${v === "private" ? "border-want bg-want" : "border-line-strong bg-sunk"}`}
+          className={`relative h-8 w-14 shrink-0 rounded-[4px] border-2 transition ${v === "private" ? "border-ink bg-ink" : "border-line-strong bg-sunk"}`}
           onClick={(e) => {
             if (next === "public" && !confirm("Make this list public? Anyone with the link will be able to read it, and search engines can find it.")) e.preventDefault();
           }}
         >
-          <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-card shadow transition-all ${v === "private" ? "left-[1.6rem]" : "left-0.5"}`} />
+          <span className={`absolute top-0.5 h-6 w-6 rounded-[3px] bg-card transition-all ${v === "private" ? "left-[1.6rem]" : "left-0.5"}`} />
         </button>
         <span className="font-semibold">{v === "private" ? "Private" : "Public"}</span>
       </div>
@@ -718,7 +718,7 @@ function FormatControl({ list }: { list: Pick<ListSummary, "format" | "item_coun
       <p className="text-[0.9rem] text-ink-2">You can change the format until the first item is added.</p>
       {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
         <label key={f.format} className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${current === f.format ? "border-ink bg-sunk" : "border-line"}`}>
-          <input type="radio" name="format" value={f.format} defaultChecked={current === f.format} className="mt-1 accent-[var(--want)]" />
+          <input type="radio" name="format" value={f.format} defaultChecked={current === f.format} className="mt-1 accent-[var(--ink)]" />
           <span>
             <span className="block font-semibold">{f.label}</span>
             <span className="block text-[0.82rem] text-ink-2">{f.blurb}</span>

@@ -32,7 +32,7 @@ export default function Report() {
   const result = useActionData<typeof action>();
   return (
     <div className="wrap py-20">
-      <h1 className="text-4xl font-semibold">{result && "ok" in result ? "Thanks for the report" : "Report not sent"}</h1>
+      <h1 className="serif text-[2.25rem] leading-tight">{result && "ok" in result ? "Thanks for the report" : "Report not sent"}</h1>
       <p className="mt-3 text-ink-2">
         {result && "error" in result ? result.error : "We'll take a look."} You can also email{" "}
         <a href="mailto:hello@wantmcp.com" className="link">

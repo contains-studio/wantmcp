@@ -1,3 +1,4 @@
+import { BrandLogo } from "~/components/BrandLogo";
 import { Link } from "react-router";
 import type { Route } from "./+types/home";
 import { FeedCard } from "~/components/FeedCard";
@@ -12,7 +13,10 @@ import { sampleList } from "~/themes/sample.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const cursor = new URL(request.url).searchParams.get("cursor");
-  const feed = await api<Page<FeedEntry>>(request, "/feed", { anonymous: true, query: { cursor } }).catch(() => ({ data: [], next_cursor: null }));
+  const feed = await api<Page<FeedEntry>>(request, "/feed", {
+    anonymous: true,
+    query: { cursor },
+  }).catch(() => ({ data: [], next_cursor: null }));
   const accountDeleted = new URL(request.url).searchParams.get("account") === "deleted";
   const now = Date.now();
   // The three kinds of want, shown as real rendered lists rather than described.
@@ -52,8 +56,7 @@ export function headers() {
 export function meta({ loaderData }: Route.MetaArgs) {
   const origin = loaderData?.origin ?? "https://wantmcp.com";
   const title = "The Want MCP: an MCP server for getting what you want";
-  const description =
-    "Write down what you want to buy, get done or find out. ChatGPT, Claude or any AI agent works on it. Free, no affiliate links.";
+  const description = "Write down what you want to buy, get done or find out. ChatGPT, Claude or any AI agent works on it. Free, no affiliate links.";
   return [
     { title },
     { name: "description", content: description },
@@ -64,10 +67,13 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/` },
     // Bump v when the home card design changes.
-    { property: "og:image", content: `${origin}/og/home.png?v=4` },
+    { property: "og:image", content: `${origin}/og/home.png?v=5` },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
-    { property: "og:image:alt", content: "The Want MCP: AN MCP SERVER FOR GETTING WHAT YOU WANT" },
+    {
+      property: "og:image:alt",
+      content: "The Want MCP: AN MCP SERVER FOR GETTING WHAT YOU WANT",
+    },
     { name: "twitter:card", content: "summary_large_image" },
     ...(loaderData?.cursor || loaderData?.accountDeleted ? [{ name: "robots", content: "noindex, follow" }] : []),
     {
@@ -201,19 +207,9 @@ function WorksWith() {
 }
 
 function BrandLink({ brand }: { brand: Brand }) {
-  const l = brand.logo;
   return (
     <Link to={`/connect#${brand.id}`} className="brand-tile" aria-label={`Connect ${brand.name}`} title={`Connect ${brand.name}`}>
-      {l ? (
-        <>
-          <img src={l.light} alt="" width={l.width} height={l.height} style={{ height: `${l.optical ?? 1.5}rem` }} className={`brand-logo ${l.dark ? "brand-logo-light" : ""}`} decoding="async" />
-          {l.dark && <img src={l.dark} alt="" width={l.width} height={l.height} style={{ height: `${l.optical ?? 1.5}rem` }} className="brand-logo brand-logo-dark" decoding="async" />}
-          {/* A company mark or symbol doesn't spell the product's name, so it is set beside it in our type. */}
-          {l.nameBeside && <span className="text-[0.95rem] font-bold">{brand.name}</span>}
-        </>
-      ) : (
-        <span className="text-[0.95rem] font-bold">{brand.name}</span>
-      )}
+      <BrandLogo brand={brand} />
     </Link>
   );
 }
