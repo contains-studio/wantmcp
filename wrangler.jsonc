@@ -15,7 +15,7 @@
 		"SITE_ORIGIN": "https://wantmcp.com",
 		"MCP_URL": "https://mcp.wantmcp.com/mcp",
 		// Shows the "Source (MIT)" link in the footer. Remove it to hide the link.
-		"SOURCE_URL": "https://github.com/contains-studio/wantmcp-web"
+		"SOURCE_URL": "https://github.com/contains-studio/wantmcp"
 	},
 	"routes": [
 		{ "pattern": "wantmcp.com", "custom_domain": true },
