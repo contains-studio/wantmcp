@@ -413,7 +413,7 @@ export function OwnerQuestion({ question, history = [], compact = false }: { que
   if (!question && !answered.length) return null;
   return (
     <div className={`owner-question grid gap-3 ${compact ? "" : "item-indent sm:pl-11"}`}>
-      {question && <QuestionForm question={question} />}
+      {question && <QuestionForm question={question} compact={compact} />}
       {!compact && answered.length > 0 && (
         <details className="group">
           <summary className="textlink-btn text-[0.85rem]">
@@ -440,15 +440,15 @@ export function OwnerQuestion({ question, history = [], compact = false }: { que
   );
 }
 
-function QuestionForm({ question }: { question: Question }) {
+function QuestionForm({ question, compact = false }: { question: Question; compact?: boolean }) {
   const fetcher = useFetcher<IntentResult>();
   const uid = useId();
   const busy = fetcher.state !== "idle";
   const pending = fetcher.formData?.get("text");
   return (
-    <div role="group" aria-labelledby={`${uid}-h`} className="grid gap-3 rounded-md border border-ink p-4">
+    <div role="group" aria-labelledby={`${uid}-h`} className="grid gap-3 rounded-[14px] bg-sunk p-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h3 id={`${uid}-h`} className="eyebrow text-ink">
+        <h3 id={`${uid}-h`} className={compact ? "sr-only" : "eyebrow text-ink"}>
           Waiting on you
         </h3>
         <ActorTag actor={question.asked_by} compact />

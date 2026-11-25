@@ -1,3 +1,4 @@
+import { moneyPlaceholder, useCurrency } from "~/lib/hooks";
 import { useEffect, useRef, useState } from "react";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import { PrivateBadge } from "~/components/ListView";
@@ -180,13 +181,15 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
                 <Link to={`/l/${l.id}`} className="link block font-semibold leading-snug">
                   {l.title}
                 </Link>
-                {visibilityOf(l) === "private" && (
-                  <span className="mt-1 inline-block">
-                    <PrivateBadge />
-                  </span>
-                )}
-                <p className="mt-1 text-[0.78rem] text-ink-3">
-                  {formatInfo(l).label} · {plural(l.item_count, formatInfo(l).item)} · {l.my_role} · updated <Time ts={l.updated_at} />
+                <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[0.78rem] text-ink-3">
+                  {visibilityOf(l) === "private" && (
+                    <>
+                      <PrivateBadge bare />
+                      <span aria-hidden="true">·</span>
+                    </>
+                  )}
+                  {plural(l.item_count, formatInfo(l).item)}
+                  {l.my_role === "member" && <> · member</>}
                 </p>
                 <p className="mt-1.5 flex gap-3 text-[0.8rem]">
                   <Link to={l.id === listId ? "/app" : `/app?list=${l.id}`} className="link text-ink-2" aria-current={l.id === listId ? "true" : undefined}>
@@ -235,6 +238,7 @@ function ListFilter({ lists, listId }: { lists: ListSummary[]; listId: string | 
 }
 
 function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string | null }) {
+  const currency = useCurrency();
   const fetcher = useFetcher<{ ok?: boolean; error?: string; itemId?: string }>();
   const busy = fetcher.state !== "idle";
   const added = fetcher.state === "idle" && fetcher.data?.ok && fetcher.data.itemId ? fetcher.data.itemId : null;
@@ -265,7 +269,7 @@ function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string 
       >
         <input type="hidden" name="intent" value="add-item" />
         <Field label={fi.addItemTitle}>
-          {(p) => <Input {...p} name="text" required maxLength={500} placeholder={fi.itemPlaceholder} />}
+          {(p) => <Input {...p} name="text" required maxLength={500} placeholder={moneyPlaceholder(fi.itemPlaceholder, currency)} />}
         </Field>
         <Field label="List">
           {(p) => (
@@ -299,6 +303,7 @@ function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string 
 }
 
 function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
+  const currency = useCurrency();
   const nav = useNavigation();
   const result = useActionData<typeof action>() as { error?: string } | undefined;
   const busy = nav.state === "submitting" && nav.formData?.get("intent") === "create-list";
@@ -319,7 +324,7 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
           {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
             <label
               key={f.format}
-              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${format === f.format ? "border-ink bg-sunk" : "border-line"}`}
+              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${format === f.format ? "border-ink-3 bg-sunk" : "border-line"}`}
             >
               <input
                 type="radio"
@@ -339,7 +344,7 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
         </fieldset>
         <label className="field">
           <span className="label">Title</span>
-          <input name="title" required maxLength={140} placeholder={format === "shopping" ? "Black Friday 2026" : format === "tasks" ? "Moving flat" : "Heat pump questions"} className="input" />
+          <input name="title" required maxLength={140} placeholder={format === "shopping" ? "Black Friday 2026" : format === "tasks" ? "Moving day" : "Heat pump questions"} className="input" />
         </label>
         <label className="field">
           <span className="label">Description (optional)</span>
@@ -351,7 +356,7 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
           </summary>
           <label className="field mt-2">
             <span className="label">Note for agents (optional)</span>
-            <textarea name="note" maxLength={600} className="textarea min-h-16" placeholder="Gifts for Dad, about £50 each, deliver to Leeds" />
+            <textarea name="note" maxLength={600} className="textarea min-h-16" placeholder={moneyPlaceholder("Gifts for Dad, about {50} each, ship to Denver", currency)} />
             <span className="hint">Everyone who can write this list, and their agents, can see it. Never public.</span>
           </label>
         </details>
@@ -470,7 +475,7 @@ function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCoun
         {steps.map((st, i) => (
           <li
             key={st.title}
-            className={`grid content-start gap-2 rounded-md border p-4 ${i === next ? "border-ink bg-sunk" : "border-line"}`}
+            className={`grid content-start gap-2 rounded-[18px] p-4 ${i === next ? "bg-[color-mix(in_srgb,var(--ink)_8%,var(--card))]" : "bg-sunk"}`}
             aria-current={i === next ? "step" : undefined}
           >
             <span
@@ -488,7 +493,7 @@ function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCoun
         ))}
       </ol>
       {next === -1 && (
-        <p className="rounded-md bg-sunk px-4 py-3 text-[0.9rem] text-ink-2">
+        <p className="rounded-[14px] bg-sunk px-4 py-3 text-[0.9rem] text-ink-2">
           Try: “Work on my Want MCP list.”
         </p>
       )}
@@ -530,10 +535,9 @@ function WaitingOnYou({ waiting, total }: { waiting: WaitingQuestion[]; total: n
 /** A quiet prompt until the person has told their agents about themselves (SPEC 12.2). */
 function BioPrompt() {
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 border-y border-line py-3 text-[0.9rem] text-ink-2">
-      Tell your agents about you: country, currency, sizes, shops you avoid.
+    <p className="border-y border-line py-3 text-[0.9rem] text-ink-2">
       <Link to="/app/account#bio" className="link font-medium text-ink">
-        Add a bio
+        Tell your agents your sizes and country
       </Link>
     </p>
   );

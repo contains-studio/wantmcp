@@ -64,16 +64,11 @@ export function ReportLink({ type, id, label = "Report" }: { type: ReportTargetT
   if (preview) return null;
   return (
     <Menu
-      label={`Report this ${type}`}
+      label={`${label} this ${type}`}
       wide
-      triggerClass="btn-quiet"
-      trigger={
-        <>
-          <Icon name="flag" />
-          {label}
-          <span className="sr-only"> this {type}</span>
-        </>
-      }
+      iconTrigger
+      triggerClass="btn-icon"
+      trigger={<Icon name="flag" />}
     >
       <div className="p-3">
         <ReportForm type={type} id={id} />

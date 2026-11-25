@@ -8,6 +8,21 @@ export function useRootData(): RootData {
   return data ?? { user: null, now: Date.now(), theme: "system", mcpUrl: "https://mcp.wantmcp.com/mcp", origin: "https://wantmcp.com" };
 }
 
+/**
+ * The currency to suggest in forms and placeholders: the list's own prices when there are any,
+ * else the person's chosen currency, else US dollars.
+ */
+export function useCurrency(hint?: string | null): string {
+  const { user } = useRootData();
+  return hint || (user as { currency?: string | null } | null)?.currency || "USD";
+}
+
+/** Fills "{200}" in a placeholder with that amount in the currency. */
+export function moneyPlaceholder(text: string, currency: string): string {
+  const sym: Record<string, string> = { USD: "$", GBP: "£", EUR: "€", CAD: "C$", AUD: "A$", NZD: "NZ$", INR: "₹", JPY: "¥" };
+  return text.replace(/\{(\d+)\}/g, (_, n) => (sym[currency] ? `${sym[currency]}${n}` : `${n} ${currency}`));
+}
+
 /** The request time from the server, so relative times match between SSR and hydration. */
 export function useNow(): number {
   return useRootData().now;

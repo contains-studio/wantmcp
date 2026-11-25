@@ -7,6 +7,7 @@ export function CopyButton({
   className = "btn btn-ghost btn-xs",
   ariaLabel,
   icon,
+  iconOnly = false,
 }: {
   text: string;
   label?: string;
@@ -15,13 +16,16 @@ export function CopyButton({
   ariaLabel?: string;
   /** Shown before the label (quiet toolbar controls). */
   icon?: React.ReactNode;
+  /** Icon only: the label becomes the accessible name and tooltip; the state is announced. */
+  iconOnly?: boolean;
 }) {
   const [state, setState] = useState<"idle" | "done" | "fail">("idle");
   return (
     <button
       type="button"
       className={className}
-      aria-label={state === "idle" ? ariaLabel : undefined}
+      aria-label={iconOnly ? ariaLabel ?? label : state === "idle" ? ariaLabel : undefined}
+      title={iconOnly ? ariaLabel ?? label : undefined}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
@@ -32,8 +36,10 @@ export function CopyButton({
         setTimeout(() => setState("idle"), 2000);
       }}
     >
-      {icon}
-      <span aria-live="polite">{state === "done" ? "Copied" : state === "fail" ? "Press ⌘C" : label}</span>
+      {iconOnly && state === "done" ? <span aria-hidden="true">✓</span> : icon}
+      <span aria-live="polite" className={iconOnly ? "sr-only" : undefined}>
+        {state === "done" ? "Copied" : state === "fail" ? "Press ⌘C" : iconOnly ? "" : label}
+      </span>
     </button>
   );
 }

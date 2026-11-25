@@ -364,11 +364,11 @@ const STATUS = {
   generic: null,
 };
 
-/** Each client's mark; Claude Code shares Claude's. Clients without one show their name. */
+/** Each client's mark. Claude Code uses the Claude symbol with its name beside it, as Codex uses OpenAI's. */
+const CLAUDE_CODE: Brand = { id: "claude-code", name: "Claude Code", logo: { light: "/brands/claude-spark.svg", width: 2000, height: 2000, nameBeside: true, optical: 1.3 } };
 function brandFor(c: Client): Brand {
-  const b = BRANDS.find((x) => x.id === (c.id === "claude-code" ? "claude" : c.id));
-  if (!b?.logo) return { id: c.id, name: c.name };
-  return c.id === "claude-code" ? { ...b, id: c.id, name: c.name } : b;
+  if (c.id === "claude-code") return CLAUDE_CODE;
+  return BRANDS.find((x) => x.id === c.id && x.logo) ?? { id: c.id, name: c.name };
 }
 
 const ASKS: Array<[string, string]> = [
@@ -382,7 +382,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
   return (
     <div className="wrap grid gap-12 py-10 sm:py-14">
       <header className="grid max-w-3xl gap-5">
-        <h1 className="text-[2.5rem] leading-[1.1] font-normal tracking-[-0.025em] sm:text-[3rem]">Connect an agent</h1>
+        <h1 className="display text-[2.25rem] sm:text-[2.75rem]">Connect an agent</h1>
         <p className="max-w-[65ch] text-[1.0625rem] text-ink-2">Add The Want MCP to your AI app, sign in, and pick the lists it can work on.</p>
         <div className="grid max-w-xl gap-1.5">
           <span id="url-l" className="label">
@@ -402,7 +402,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
           {CLIENTS.map((c) => (
             <li key={c.id}>
               <a href={`#${c.id}`} className="brand-tile" aria-label={c.name} title={c.name}>
-                {c.id === "claude-code" || c.id === "other" ? (
+                {c.id === "other" ? (
                   <span className="text-[0.95rem] font-semibold">{c.name}</span>
                 ) : (
                   <BrandLogo brand={brandFor(c)} />

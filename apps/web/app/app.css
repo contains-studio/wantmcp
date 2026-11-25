@@ -13,6 +13,8 @@
  */
 
 @theme {
+  /* Soft corners for small boxes and rows (rounded-md). */
+  --radius-md: 0.75rem;
   /* The system face first (SF on Apple devices), then Inter everywhere else. */
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter Variable", system-ui, "Segoe UI", sans-serif;
   --font-serif: "Newsreader Variable", "Iowan Old Style", Georgia, ui-serif, serif;
@@ -581,15 +583,17 @@ button.check-toggle:hover { border-color: var(--ink); }
   .menu-sub-body { padding: 0.5rem 0.75rem 0.75rem; }
   .menu-sub-body > form, .menu-sub-body > .grid { margin-top: 0; }
 
-  /* The list header: title left, one toolbar right; on phones the toolbar is a row under the title. */
-  .list-titlebar { display: flex; flex-direction: column; gap: 0.25rem; }
-  .list-titlebar > .list-title { margin: 0; }
-  .list-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; margin-left: -0.55rem; }
-  @media (min-width: 640px) {
-    .list-titlebar { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 1rem; }
-    .list-titlebar > .list-title { flex: 1 1 auto; min-width: 0; }
-    .list-actions { flex: none; flex-wrap: nowrap; margin: 0.15rem -0.55rem 0 0; }
+  /* The list header: the title with icon-only actions at its right end, on every screen. */
+  .list-titlebar { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+  .list-titlebar > .list-title { flex: 1 1 auto; min-width: 0; margin: 0; }
+  .list-actions { display: flex; flex: none; align-items: center; gap: 0.125rem; margin: -0.15rem -0.5rem 0 0; }
+  /* Icon-only quiet buttons: a light glyph, a full target (36px, 44px on touch), a name and a tooltip. */
+  .btn-icon {
+    display: inline-grid; place-items: center; width: var(--ctl-sm); height: var(--ctl-sm); border: 0; border-radius: 980px;
+    background: transparent; color: inherit; cursor: pointer; text-decoration: none; transition: background 120ms ease;
   }
+  .btn-icon:hover { background: color-mix(in srgb, currentColor 9%, transparent); }
+  .btn-icon svg { width: 18px; height: 18px; }
   /* An item's actions: at the right end of its title row. */
   .item-actions { display: inline-flex; flex: none; align-items: center; gap: 0.25rem; margin-left: auto; margin-top: -0.3rem; }
 
@@ -637,6 +641,7 @@ button.check-toggle:hover { border-color: var(--ink); }
     .btn-sm, .btn-xs, .input-sm, .select.input-sm { min-height: var(--ctl); }
     .textlink-btn { min-height: var(--ctl); }
     .btn-quiet, .menu-trigger, .menu-item, .add-link, .textarea.textarea-grow { min-height: var(--ctl); }
+    .btn-icon { width: var(--ctl); height: var(--ctl); }
     .menu-trigger { min-width: var(--ctl); }
   }
 
@@ -742,6 +747,11 @@ button.check-toggle:hover { border-color: var(--ink); }
   }
 
   .tag-dot { width: 0.5rem; height: 0.5rem; border-radius: 99px; background: var(--want); display: inline-block; }
+}
+
+/* A table wider than its column (tablets): the right edge fades to show there is more. */
+@media (min-width: 640px) and (max-width: 1100px) {
+  .sheet-scroll { mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
 }
 
 /* Theme gallery thumbnails: a whole list page, scaled down. */

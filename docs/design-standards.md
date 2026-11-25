@@ -58,6 +58,26 @@ account) are tools, not landing pages:
 The defaults follow from this: a list nobody has dressed uses Sheet for shopping, Checklist for
 tasks and Doc for research.
 
+## Every word earns its place
+
+Chrome is not content. Before any item, a person should read only what tells them something.
+
+1. **A list header is two rows at most**, in every layout, on every screen. Row 1 is the title
+   with its actions at the right end as icon-only buttons (copy link, settings; report for
+   visitors), each with an accessible name, a tooltip and a full touch target. Row 2 is one quiet
+   line: a lock and "Private" only when the list is private, then the counts ("1 open · 2
+   products"). Visitors also see "by handle", and "updated …" when it is older than a day.
+2. **No labels for what the content already shows.** No format word ("Shopping") over a list of
+   products, no owner handle to the owner, no "Updated just now", no "2 products compared" over a
+   table showing both. A collapsed row may say "from $149.99".
+3. **No decoration that reads as text.** A layout may draw a grid or a rule; it may not print
+   fake cell names, column letters or "fx".
+4. **"Added by" only when it tells the owner something**: an agent or another person added it.
+5. **Hints are one short line or none.** A control that explains itself gets no paragraph.
+6. **Trust stays.** Who posted a price, when it was checked, its source and "unverified", the
+   agent's name on an entry and the private marker are never cut. On a phone, what doesn't fit
+   (retailer, coupon, source) moves behind the row, not off the page.
+
 ## Spacing
 
 Spacing comes from a 4px scale: 4, 8, 12, 16, 24, 32, 48, 64 (in the web app, Tailwind `1 2 3 4 6 8 12 16`).

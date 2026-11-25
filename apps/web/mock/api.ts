@@ -478,7 +478,7 @@ route("PATCH", "/me", ({ caller, body }) => {
   }
   if (body.currency !== undefined) {
     const v = body.currency == null || body.currency === "" ? null : String(body.currency).toUpperCase();
-    if (v !== null && !/^[A-Z]{3}$/.test(v)) throw invalid("currency must be a three-letter ISO code like GBP");
+    if (v !== null && !/^[A-Z]{3}$/.test(v)) throw invalid("currency must be a three-letter ISO code like USD");
     user.currency = v;
   }
   return userSelf(user);

@@ -48,8 +48,11 @@ export function Menu({
   triggerClass,
   children,
   wide = false,
+  iconTrigger = false,
 }: {
   label: string;
+  /** The trigger shows only an icon: `label` becomes its accessible name and tooltip. */
+  iconTrigger?: boolean;
   trigger?: ReactNode;
   triggerClass?: string;
   children: ReactNode;
@@ -65,8 +68,8 @@ export function Menu({
         type="button"
         popoverTarget={preview ? undefined : id}
         className={triggerClass ?? "menu-trigger"}
-        aria-label={trigger ? undefined : label}
-        title={trigger ? undefined : label}
+        aria-label={trigger && !iconTrigger ? undefined : label}
+        title={trigger && !iconTrigger ? undefined : label}
         style={{ anchorName: anchor } as React.CSSProperties}
       >
         {trigger ?? <span aria-hidden="true">⋯</span>}

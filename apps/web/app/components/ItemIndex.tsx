@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { DueChip } from "~/components/ItemWork";
 import { ChecklistBox, type ItemWithEntries } from "~/components/ListView";
-import { agentHue, plural } from "~/lib/format";
+import { agentHue, formatMoney, plural } from "~/lib/format";
 import type { FormatInfo } from "~/lib/formats";
 import type { ActorRef } from "~/lib/types";
 
@@ -190,7 +190,14 @@ export function ItemIndex({
 
 function countLabel(item: ItemWithEntries, fi: FormatInfo) {
   const n = item.entries.length;
-  return n ? plural(n, fi.entry) : `No ${fi.entries} yet`;
+  if (!n) return `No ${fi.entries} yet`;
+  // Collapsed shopping rows: one "from $149.99" rather than a count.
+  if (fi.format === "shopping") {
+    const priced = item.entries.map((e) => e.current_price).filter((p) => p != null);
+    const cheapest = priced.sort((a, b) => Number(a.price) - Number(b.price))[0];
+    if (cheapest) return `from ${formatMoney(cheapest.price, cheapest.currency)}`;
+  }
+  return plural(n, fi.entry);
 }
 
 function Avatars({ actors, named = false }: { actors: Array<ActorRef | null>; named?: boolean }) {

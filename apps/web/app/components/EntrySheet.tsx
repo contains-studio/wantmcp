@@ -15,7 +15,7 @@ const updatedOf = (e: Entry) => Date.parse(e.current_price ? checkedAt(e.current
 
 /**
  * The Sheet layout: one comparison table per item, sortable by price, discount and
- * freshness. On a phone the product and price columns stay pinned while the rest scrolls.
+ * freshness. On a phone it shows product, price and saving; each row's Details holds the rest.
  * Each row carries the entry's #ent_… anchor.
  */
 export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries: Entry[]; lowestId: string | null; boughtId: string | null; itemText: string }) {
@@ -57,42 +57,41 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
 
   const th = "whitespace-nowrap border-b border-line-strong px-3 py-2 text-left text-[0.75rem] font-semibold uppercase tracking-[0.05em] text-ink-3";
   const td = "border-b border-line px-3 py-2.5 align-top";
-  const stickyA = "sticky left-0 z-[1] w-[9.5rem] min-w-[9.5rem] bg-card sm:w-[15rem] sm:min-w-[15rem]";
-  const stickyB = "sticky left-[9.5rem] z-[1] bg-card shadow-[inset_-1px_0_0_var(--line)] sm:left-[15rem]";
+  // On a phone: product, price and saving; the rest sits behind each row's "Details".
+  const wide = "hidden sm:table-cell";
+  const stickyA = "sm:sticky sm:left-0 z-[1] bg-card sm:w-[15rem] sm:min-w-[15rem]";
+  const stickyB = "sm:sticky sm:left-[15rem] z-[1] bg-card sm:shadow-[inset_-1px_0_0_var(--line)]";
 
   return (
     <div className="card overflow-hidden p-0">
-      <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label={`Price comparison for ${itemText}`}>
-        <table className="w-full min-w-[52rem] border-collapse text-[0.88rem] tabular-nums">
-          <caption className="px-3 pt-3 pb-1 text-left text-[0.8rem] text-ink-3">
-            {entries.length} {entries.length === 1 ? "product" : "products"} compared
-            {currencies.size > 1 && " · mixed currencies, compare with care"}
-            <span className="sm:hidden"> · scroll sideways for more</span>
-          </caption>
+      {/* Wider than its column on a tablet: the edge fades to show there's more to the right. */}
+      <div className="sheet-scroll relative overflow-x-auto" tabIndex={0} role="region" aria-label={`Price comparison for ${itemText}`}>
+        <table className="w-full border-collapse text-[0.88rem] tabular-nums sm:min-w-[52rem]">
+          {currencies.size > 1 && <caption className="px-3 pt-3 pb-1 text-left text-[0.8rem] text-warn">Mixed currencies: compare with care</caption>}
           <thead>
             <tr>
               <th scope="col" className={`${th} ${stickyA}`}>
                 Product
               </th>
               <th scope="col" className={`${th} ${stickyB} text-right`} {...header("price", "Price", "asc")} />
-              <th scope="col" className={`${th} text-right`}>
+              <th scope="col" className={`${th} ${wide} text-right`}>
                 Was
               </th>
               <th scope="col" className={`${th} text-right`} {...header("discount", "Off", "desc")} />
-              <th scope="col" className={th}>
+              <th scope="col" className={`${th} ${wide}`}>
                 Retailer
               </th>
-              <th scope="col" className={th}>
+              <th scope="col" className={`${th} ${wide}`}>
                 Coupon
               </th>
-              <th scope="col" className={th}>
+              <th scope="col" className={`${th} ${wide}`}>
                 Deal window
               </th>
-              <th scope="col" className={th}>
+              <th scope="col" className={`${th} ${wide}`}>
                 Posted by
               </th>
-              <th scope="col" className={th} {...header("updated", "Checked", "desc")} />
-              <th scope="col" className={th}>
+              <th scope="col" className={`${th} ${wide}`} {...header("updated", "Checked", "desc")} />
+              <th scope="col" className={`${th} ${wide}`}>
                 Source
               </th>
             </tr>
@@ -121,27 +120,73 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
                         </ExtLink>
                       )}
                     </span>
+                    {/* Phone: who posted it, when it was checked and where from stay one tap away. */}
+                    <details className="group mt-1 sm:hidden">
+                      <summary className="textlink-btn text-[0.78rem]">
+                        Details<span className="sr-only"> for {e.title}</span>
+                      </summary>
+                      <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[0.78rem] text-ink-2">
+                        {p?.original_price && pct !== null && (
+                          <>
+                            <dt className="text-ink-3">Was</dt>
+                            <dd className="price-was">{formatMoney(p.original_price, p.currency)}</dd>
+                          </>
+                        )}
+                        <dt className="text-ink-3">Retailer</dt>
+                        <dd>{e.retailer || "–"}</dd>
+                        {e.coupon_code && (
+                          <>
+                            <dt className="text-ink-3">Coupon</dt>
+                            <dd><code className="font-semibold">{e.coupon_code}</code></dd>
+                          </>
+                        )}
+                        {deal && (
+                          <>
+                            <dt className="text-ink-3">Deal</dt>
+                            <dd>{deal.label.replace(/^Deal /, "")}</dd>
+                          </>
+                        )}
+                        <dt className="text-ink-3">Posted by</dt>
+                        <dd><ActorTag actor={e.author} compact /></dd>
+                        <dt className="text-ink-3">Checked</dt>
+                        <dd>
+                          <time dateTime={updated}>{timeAgo(updated, now)}</time>
+                          {stale && " · not checked today"}
+                        </dd>
+                        {p && (
+                          <>
+                            <dt className="text-ink-3">Source</dt>
+                            <dd>
+                              {SOURCE_LABEL[p.source ?? "unknown"]}
+                              {!isVerified(p) && " · unverified"}
+                              {p.in_stock === true && " · in stock"}
+                              {p.in_stock === false && " · out of stock"}
+                            </dd>
+                          </>
+                        )}
+                      </dl>
+                    </details>
                   </th>
                   <td className={`${td} ${stickyB} ${highlight || "bg-card"} text-right`}>
                     {p ? <span className="price text-[1.25rem]">{formatMoney(p.price, p.currency)}</span> : <span className="text-ink-3">–</span>}
                   </td>
-                  <td className={`${td} text-right text-ink-2`}>
+                  <td className={`${td} ${wide} text-right text-ink-2`}>
                     {p?.original_price && pct !== null ? <span className="price-was">{formatMoney(p.original_price, p.currency)}</span> : <span className="text-ink-3">–</span>}
                   </td>
                   <td className={`${td} text-right`}>{pct !== null ? <span className="save">−{pct}%</span> : <span className="text-ink-3">–</span>}</td>
-                  <td className={`${td} text-ink-2`}>{e.retailer || "–"}</td>
-                  <td className={td}>{e.coupon_code ? <code className="font-semibold">{e.coupon_code}</code> : <span className="text-ink-3">–</span>}</td>
-                  <td className={`${td} whitespace-nowrap text-ink-2`}>{deal ? deal.label.replace(/^Deal /, "") : <span className="text-ink-3">–</span>}</td>
-                  <td className={td}>
+                  <td className={`${td} ${wide} text-ink-2`}>{e.retailer || "–"}</td>
+                  <td className={`${td} ${wide}`}>{e.coupon_code ? <code className="font-semibold">{e.coupon_code}</code> : <span className="text-ink-3">–</span>}</td>
+                  <td className={`${td} ${wide} whitespace-nowrap text-ink-2`}>{deal ? deal.label.replace(/^Deal /, "") : <span className="text-ink-3">–</span>}</td>
+                  <td className={`${td} ${wide}`}>
                     <ActorTag actor={e.author} compact />
                   </td>
-                  <td className={`${td} whitespace-nowrap text-ink-2`}>
+                  <td className={`${td} ${wide} whitespace-nowrap text-ink-2`}>
                     <time dateTime={updated} title={formatDateTime(updated)}>
                       {timeAgo(updated, now)}
                     </time>
                     {stale && <span className="block text-[0.75rem] text-ink-3">not checked today</span>}
                   </td>
-                  <td className={`${td} whitespace-nowrap text-ink-2`}>
+                  <td className={`${td} ${wide} whitespace-nowrap text-ink-2`}>
                     {p ? (
                       <>
                         {SOURCE_LABEL[p.source ?? "unknown"]}

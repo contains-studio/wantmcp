@@ -69,7 +69,7 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
         if (price) {
           body.price = price;
           body.original_price = optional(form, "original_price");
-          body.currency = (str(form, "currency") || "GBP").toUpperCase();
+          body.currency = (str(form, "currency") || "USD").toUpperCase();
         }
         await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}/entries`, { method: "POST", body });
         return { ok: true, intent };
@@ -87,7 +87,7 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
           method: "POST",
           body: {
             price,
-            currency: (str(form, "currency") || "GBP").toUpperCase(),
+            currency: (str(form, "currency") || "USD").toUpperCase(),
             original_price: optional(form, "original_price"),
             note: optional(form, "note"),
           },

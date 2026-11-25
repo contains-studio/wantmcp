@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from "react";
 import { useFetcher } from "react-router";
 import type { ActorRef, Entry, Item, UserSelf } from "~/lib/types";
 import { Menu, useCloseOnDone } from "./Actions";
+import { useCurrency } from "~/lib/hooks";
 
 /** Result shape of the writer intents in `intents.server.ts`. */
 export type IntentResult = { ok?: boolean; intent?: string; error?: string; code?: string; details?: unknown };
@@ -86,6 +87,7 @@ export function EntryForm({ itemId, entry, onDone }: { itemId: string; entry?: E
   }, [done, onDone]);
   const f = (name: string) => `${uid}-${name}`;
   const cur = entry?.current_price;
+  const currency = useCurrency(cur?.currency);
 
   if (done && !editing) {
     return (
@@ -137,7 +139,7 @@ export function EntryForm({ itemId, entry, onDone }: { itemId: string; entry?: E
           </label>
           <label className="field" htmlFor={f("cur")}>
             <span className="label">Currency</span>
-            <input id={f("cur")} name="currency" defaultValue={cur?.currency ?? "GBP"} maxLength={3} pattern="[A-Za-z]{3}" className="input uppercase" />
+            <input id={f("cur")} name="currency" defaultValue={currency} maxLength={3} pattern="[A-Za-z]{3}" className="input uppercase" />
           </label>
         </fieldset>
       )}
@@ -169,6 +171,7 @@ export function PostPrice({ entry }: { entry: Entry }) {
   const ref = useRef<HTMLFormElement>(null);
   const uid = useId();
   const cur = entry.current_price;
+  const currency = useCurrency(cur?.currency);
   const done = fetcher.state === "idle" && fetcher.data?.ok;
   useEffect(() => {
     if (done) ref.current?.reset();
@@ -188,7 +191,7 @@ export function PostPrice({ entry }: { entry: Entry }) {
         </label>
         <label className="field" htmlFor={`${uid}-c`}>
           <span className="label">Currency</span>
-          <input id={`${uid}-c`} name="currency" required defaultValue={cur?.currency ?? "GBP"} maxLength={3} pattern="[A-Za-z]{3}" className="input px-2 uppercase" />
+          <input id={`${uid}-c`} name="currency" required defaultValue={currency} maxLength={3} pattern="[A-Za-z]{3}" className="input px-2 uppercase" />
         </label>
       </div>
       <label className="field" htmlFor={`${uid}-n`}>
@@ -247,8 +250,9 @@ export function EditItem({ item, onDone, label = "What do you want?" }: { item: 
 }
 
 /** The "Mark bought" form: optionally where and for how much. */
-export function MarkBoughtForm({ itemId }: { itemId: string }) {
+export function MarkBoughtForm({ itemId, currency: hint }: { itemId: string; currency?: string | null }) {
   const fetcher = useFetcher<IntentResult>();
+  const currency = useCurrency(hint);
   const ref = useCloseOnDone(fetcher);
   const uid = useId();
   return (
@@ -267,7 +271,7 @@ export function MarkBoughtForm({ itemId }: { itemId: string }) {
         </label>
         <label className="field" htmlFor={`${uid}-c`}>
           <span className="label">Currency</span>
-          <input id={`${uid}-c`} name="currency" defaultValue="GBP" maxLength={3} pattern="[A-Za-z]{3}" className="input px-2 uppercase" />
+          <input id={`${uid}-c`} name="currency" defaultValue={currency} maxLength={3} pattern="[A-Za-z]{3}" className="input px-2 uppercase" />
         </label>
       </div>
       <button className="btn btn-ghost btn-sm w-fit" disabled={fetcher.state !== "idle"}>

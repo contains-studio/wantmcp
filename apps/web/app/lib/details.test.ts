@@ -9,5 +9,5 @@ test("an empty details prompt sends nothing, so saved details stay", () => {
 });
 
 test("a filled prompt sends the trimmed text", () => {
-  assert.deepEqual(detailsPatch("  Budget £200, size M  "), { details: "Budget £200, size M" });
+  assert.deepEqual(detailsPatch("  Budget $200, size M  "), { details: "Budget $200, size M" });
 });

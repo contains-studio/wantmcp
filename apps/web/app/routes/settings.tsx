@@ -5,7 +5,7 @@ import { CopyButton } from "~/components/CopyButton";
 import { Time } from "~/components/Time";
 import { api, apiOptional, formError, toRouteError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
-import { useRootData } from "~/lib/hooks";
+import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin } from "~/lib/session.server";
 import type { AgentInfo, ListDetail, ListFormat, ListSummary, ListVisibility, Member } from "~/lib/types";
 import { ThemeThumb } from "~/components/ThemeThumb";
@@ -152,6 +152,7 @@ function Section({ id, title, desc, children }: { id: string; title: string; des
 }
 
 export default function Settings({ loaderData }: Route.ComponentProps) {
+  const currency = useCurrency();
   const { list, role, members, agents } = loaderData;
   const isOwner = role === "owner";
   const { user } = useRootData();
@@ -169,13 +170,14 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           ← Back to the list
         </Link>
         <p className="eyebrow mt-4">List settings</p>
-        <h1 className="mt-1 text-[1.75rem] leading-tight font-normal tracking-[-0.02em] sm:text-[2rem]">{list.title}</h1>
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-ink-3">
-          <span>
-            {formatInfo(list).label} list · you are {isOwner ? "the owner" : "a member"}.
-          </span>
-          {visibilityOf(list) === "private" && <PrivateBadge />}
-        </p>
+        <h1 className="mt-1 text-[1.75rem] leading-tight font-semibold tracking-[-0.02em] sm:text-[2rem]">{list.title}</h1>
+        {(visibilityOf(list) === "private" || !isOwner) && (
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-[0.88rem] text-ink-3">
+            {visibilityOf(list) === "private" && <PrivateBadge bare />}
+            {visibilityOf(list) === "private" && !isOwner && <span aria-hidden="true">·</span>}
+            {!isOwner && <span>You're a member</span>}
+          </p>
+        )}
       </div>
 
       <Section
@@ -183,8 +185,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         title="Agents and write keys"
         desc={
           <>
-            Agents that sign in with OAuth (ChatGPT, Claude and most apps) appear here after you approve them. For CLI tools and scripts,
-            create a write key: name the agent, and that name becomes its tag on everything it posts. <Link to="/connect" className="link">Setup guides</Link>
+            Signed-in agents appear here. Command-line tools use a write key. <Link to="/connect" className="link">Setup guides</Link>
           </>
         }
       >
@@ -243,7 +244,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         {err("revoke-agent")}
       </Section>
 
-      <Section id="members-h" title="People" desc={isOwner ? "Invite people to write to this list. They sign in with their email and can connect their own agents." : "People who can write to this list."}>
+      <Section id="members-h" title="People" desc={isOwner ? "They can add, tick off and connect their own agents." : undefined}>
         <ul className="grid gap-2">
           {members.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
@@ -298,7 +299,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
             title="Look"
             desc={
               <>
-                Everyone who opens the list sees it. <Link to="/themes" className="link">All layouts and occasions</Link>
+                <Link to="/themes" className="link">All layouts and occasions</Link>
               </>
             }
           >
@@ -321,7 +322,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           </Section>
 
           {visibilityOf(list) === "public" ? (
-            <Section id="outside-h" title="Outside suggestions" desc={`Let any agent suggest ${formatInfo(list).entries}. Suggestions stay hidden from everyone but this list's writers until one of you promotes them.`}>
+            <Section id="outside-h" title="Outside suggestions" desc={`Hidden from visitors until a writer promotes one.`}>
               <OutsideToggle allow={list.allow_outside_suggestions} />
             </Section>
           ) : null}
@@ -331,8 +332,8 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               <input type="hidden" name="intent" value="note" />
               <label className="field">
                 <span className="label">What's true of this list only</span>
-                <textarea name="note" maxLength={600} defaultValue={list.note ?? ""} className="textarea min-h-20" placeholder="Gifts for Dad, about £50 each, deliver to Leeds" />
-                <span className="hint">Everyone who can write this list, and their agents, can see this. It's never public.</span>
+                <textarea name="note" maxLength={600} defaultValue={list.note ?? ""} className="textarea min-h-20" placeholder={moneyPlaceholder("Gifts for Dad, about {50} each, ship to Denver", currency)} />
+                <span className="hint">Writers and their agents see it. Never public.</span>
               </label>
               <div aria-live="polite">
                 {err("note")}
@@ -397,9 +398,9 @@ function OutsideToggle({ allow }: { allow: boolean }) {
         role="switch"
         aria-checked={optimistic}
         aria-label="Accept suggestions from outside agents"
-        className={`relative h-8 w-14 shrink-0 rounded-[4px] border-2 transition ${optimistic ? "border-ink bg-ink" : "border-line-strong bg-sunk"}`}
+        className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition ${optimistic ? "border-ink bg-ink" : "border-line-strong bg-sunk"}`}
       >
-        <span className={`absolute top-0.5 h-6 w-6 rounded-[3px] bg-card transition-all ${optimistic ? "left-[1.6rem]" : "left-0.5"}`} />
+        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-card transition-all ${optimistic ? "left-[1.6rem]" : "left-0.5"}`} />
       </button>
       <span className="font-semibold">{optimistic ? "Accepting outside suggestions" : "Outside suggestions are off"}</span>
       {fetcher.data?.error && <p className="form-error w-full">{fetcher.data.error}</p>}
@@ -468,7 +469,7 @@ function NewKey({ keyValue, agentName, listUrl }: { keyValue: string; agentName:
     ["Any MCP client", `URL:    ${mcpUrl}\nHeader: Authorization: Bearer ${keyValue}`],
   ];
   return (
-    <div className="grid gap-4 rounded-md border-2 border-ink bg-sunk p-4" role="status">
+    <div className="grid gap-4 rounded-[14px] bg-sunk p-4" role="status">
       <div>
         <p className="font-display text-lg font-semibold">Write key for “{agentName}”</p>
         <p className="text-[0.88rem] text-ink-2">
@@ -569,7 +570,7 @@ function ThemePicker({
       <fieldset className="grid gap-2">
         <legend className="label mb-1">Occasion</legend>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <label className={`grid cursor-pointer place-items-center gap-2 rounded-md border-2 p-3 text-center ${occasion === null ? "border-ink" : "border-line"}`}>
+          <label className={`grid cursor-pointer place-items-center gap-2 rounded-md border-2 p-3 text-center ${occasion === null ? "border-ink-3" : "border-line"}`}>
             <span className="grid h-20 w-full place-items-center rounded-lg bg-sunk text-[0.85rem] text-ink-3" aria-hidden="true">
               No occasion
             </span>
@@ -653,7 +654,7 @@ function LookOption({
   // The label holds only the radio and its name, so the radio's accessible name is "Sheet Price table".
   // The miniature beside it is decorative; clicking it picks the same option.
   return (
-    <div className={`grid overflow-hidden rounded-md border-2 ${checked ? "border-ink" : "border-line"}`}>
+    <div className={`grid overflow-hidden rounded-md border-2 ${checked ? "border-ink-3" : "border-line"}`}>
       <div onClick={onChange} className="cursor-pointer">
         <ThemeThumb theme={view} sample={sample} origin={origin} className={`${small ? "h-20" : "h-28"} border-b border-line`} />
       </div>
@@ -682,19 +683,19 @@ function VisibilityControl({ visibility }: { visibility: ListVisibility }) {
           role="switch"
           aria-checked={v === "private"}
           aria-label="Private list"
-          className={`relative h-8 w-14 shrink-0 rounded-[4px] border-2 transition ${v === "private" ? "border-ink bg-ink" : "border-line-strong bg-sunk"}`}
+          className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition ${v === "private" ? "border-ink bg-ink" : "border-line-strong bg-sunk"}`}
           onClick={(e) => {
             if (next === "public" && !confirm("Make this list public? Anyone with the link will be able to read it, and search engines can find it.")) e.preventDefault();
           }}
         >
-          <span className={`absolute top-0.5 h-6 w-6 rounded-[3px] bg-card transition-all ${v === "private" ? "left-[1.6rem]" : "left-0.5"}`} />
+          <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-card transition-all ${v === "private" ? "left-[1.6rem]" : "left-0.5"}`} />
         </button>
         <span className="font-semibold">{v === "private" ? "Private" : "Public"}</span>
       </div>
       <p className="text-[0.9rem] text-ink-2">
         {v === "private"
-          ? "Only you, the people you invite and your connected agents can see this list. Everyone else gets “not found”: it isn't in search, the public feed, the sitemap or link previews, and outside agents can't suggest anything."
-          : "Anyone with the link can read the list, search engines can find it once it has an item, and its finds can appear in the public feed. Only you and the people you invite can write."}
+          ? "Only you, people you invite and your agents. Not in search or the public feed."
+          : "Anyone with the link can read it, and search engines can find it. Only invited people can write."}
       </p>
       {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
     </fetcher.Form>
@@ -707,8 +708,7 @@ function FormatControl({ list }: { list: Pick<ListSummary, "format" | "item_coun
   if (list.item_count > 0) {
     return (
       <p className="text-[0.9rem] text-ink-2">
-        This is a <strong>{FORMATS[current].label.toLowerCase()}</strong> list: {FORMATS[current].blurb} The format is fixed once a list has
-        items.
+        <strong>{FORMATS[current].label}</strong>. Fixed once a list has items.
       </p>
     );
   }
@@ -717,7 +717,7 @@ function FormatControl({ list }: { list: Pick<ListSummary, "format" | "item_coun
       <input type="hidden" name="intent" value="format" />
       <p className="text-[0.9rem] text-ink-2">You can change the format until the first item is added.</p>
       {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
-        <label key={f.format} className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${current === f.format ? "border-ink bg-sunk" : "border-line"}`}>
+        <label key={f.format} className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${current === f.format ? "border-ink-3 bg-sunk" : "border-line"}`}>
           <input type="radio" name="format" value={f.format} defaultChecked={current === f.format} className="mt-1 accent-[var(--ink)]" />
           <span>
             <span className="block font-semibold">{f.label}</span>

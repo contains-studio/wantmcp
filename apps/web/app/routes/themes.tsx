@@ -60,7 +60,7 @@ function Choice({ to, current, view, sample, origin, label, note }: { to: string
         preventScrollReset
         replace
         aria-current={current ? "true" : undefined}
-        className={`grid overflow-hidden rounded-md border-2 bg-card ${current ? "border-ink" : "border-line hover:border-line-strong"}`}
+        className={`grid overflow-hidden rounded-md border-2 bg-card ${current ? "border-ink-3" : "border-line hover:border-line-strong"}`}
       >
         <ThemeThumb theme={view} sample={sample} origin={origin} className="h-28 border-b border-line" />
         <span className="grid gap-0.5 p-2.5">
@@ -116,7 +116,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
               preventScrollReset
               replace
               aria-current={occasion === null ? "true" : undefined}
-              className={`grid h-full min-h-[9.5rem] place-items-center rounded-md border-2 bg-card p-3 font-semibold ${occasion === null ? "border-ink" : "border-line hover:border-line-strong"}`}
+              className={`grid h-full min-h-[9.5rem] place-items-center rounded-md border-2 bg-card p-3 font-semibold ${occasion === null ? "border-ink-3" : "border-line hover:border-line-strong"}`}
             >
               None
             </Link>

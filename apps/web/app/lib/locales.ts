@@ -12,4 +12,4 @@ export const CURRENCIES: Array<[code: string, name: string]> = [
   ["DKK", "Danish kroner (DKK)"], ["PLN", "Złoty (PLN)"], ["JPY", "Yen (JPY)"], ["INR", "Rupees (INR)"], ["SGD", "Singapore dollars (SGD)"], ["ZAR", "Rand (ZAR)"],
 ];
 
-export const BIO_PLACEHOLDER = "UK, pounds. Size M tops, UK 9 shoes. Prefer refurbished. No Amazon.";
+export const BIO_PLACEHOLDER = "US, dollars. Size M shirts, size 9 shoes. Refurbished is fine. Ship to my ZIP code only.";

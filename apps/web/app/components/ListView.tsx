@@ -16,7 +16,7 @@ import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
 import { BUILD_ID } from "~/lib/build";
 import { lowestEntryId } from "~/lib/prices";
-import { useNow } from "~/lib/hooks";
+import { moneyPlaceholder, useCurrency, useNow } from "~/lib/hooks";
 import { EntryRows } from "~/components/EntryRows";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
@@ -79,6 +79,16 @@ export function ListView(props: ListViewProps) {
   const indexKind = layout === "sections" || layout === "heat" || (layout === "board" && !shopping) ? layout : null;
   const className = `${theme.className.replace(/\blayout-\w+\b/, `layout-${layout}`)} format-${fi.format}${indexKind ? " has-index" : ""}${previewItems ? "" : " list-page"}`;
 
+  // Row 2 of the header: counts, and for anyone but the owner, whose list it is and (if over a day) its age.
+  const now = useNow();
+  const meta: React.ReactNode[] = [
+    <>{wanted.length} open</>,
+    ...(bought.length ? [<>{bought.length} {fi.done}</>] : []),
+    <>{productCount} {productCount === 1 ? fi.entry : fi.entries}</>,
+  ];
+  if (role !== "owner") meta.push(<>by {list.owner_handle}</>);
+  if (!isWriter && now - Date.parse(list.updated_at) > 24 * 3600_000) meta.push(<>updated <Time ts={list.updated_at} /></>);
+
   return (
     <PreviewContext.Provider value={preview}>
     <div
@@ -94,48 +104,39 @@ export function ListView(props: ListViewProps) {
       {/* data-year: the year ahead (from October on), for themes that print it. */}
       <section className="list-hero border-b border-line" data-year={yearAhead(list.created_at)}>
         <div className="wrap py-5 sm:py-7">
-          <p className="eyebrow flex flex-wrap items-center gap-2">
-            <span>
-              {fi.label} <span aria-hidden="true">·</span> <span className="normal-case tracking-normal">{list.owner_handle}</span>
-            </span>
-            {isPrivate && <PrivateBadge />}
-          </p>
-          {/* Title on the left, the list's one toolbar on the right (under the title on phones). */}
-          <header className="list-titlebar mt-2">
+          {/* Two rows at most: the title with its icon-only actions, then one quiet line. */}
+          <header className="list-titlebar">
             <h1 className="list-title max-w-4xl text-[1.6rem] font-semibold sm:text-[2.1rem]">
               <span className="list-title-mark" aria-hidden="true" />
               <span className="list-title-text">{list.title}</span>
             </h1>
             {!preview && (
               <div role="toolbar" aria-label="List" className="list-actions">
-                <CopyButton text={listUrl} label="Copy link" ariaLabel="Copy link to this list" className="btn-quiet" icon={<Icon name="link" />} />
+                <CopyButton text={listUrl} label="Copy link" ariaLabel="Copy link to this list" iconOnly className="btn-icon" icon={<Icon name="link" />} />
                 {isWriter && (
-                  <Link to={`/app/lists/${list.id}/settings`} className="btn-quiet">
+                  <Link to={`/app/lists/${list.id}/settings`} className="btn-icon" aria-label="List settings" title="List settings">
                     <Icon name="gear" />
-                    Settings
                   </Link>
                 )}
                 {!isWriter && !isPrivate && <ReportLink type="list" id={list.id} label="Report" />}
               </div>
             )}
           </header>
-          {list.description && <p className="list-desc mt-2 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.88rem] text-ink-3">
-            <span>
-              <strong className="text-ink">{wanted.length}</strong> open
-            </span>
-            {bought.length > 0 && (
-              <span>
-                <strong className="text-ink">{bought.length}</strong> {fi.done}
+          <div className="list-meta mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.88rem] text-ink-3">
+            {isPrivate && (
+              <span className="inline-flex items-center gap-1 text-ink-2">
+                <LockIcon />
+                Private
               </span>
             )}
-            <span>
-              <strong className="text-ink">{productCount}</strong> {productCount === 1 ? fi.entry : fi.entries}
-            </span>
-            <span>
-              Updated <Time ts={list.updated_at} />
-            </span>
+            {meta.map((m, i) => (
+              <span key={i} className="inline-flex items-center gap-2">
+                {(i > 0 || isPrivate) && <span aria-hidden="true">·</span>}
+                {m}
+              </span>
+            ))}
           </div>
+          {list.description && <p className="list-desc mt-3 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
         </div>
       </section>
 
@@ -149,7 +150,7 @@ export function ListView(props: ListViewProps) {
           </div>
         )}
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
-        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} />}
+        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={items.flatMap((i) => i.entries).find((e) => e.current_price)?.current_price?.currency} />}
         {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">No {fi.items} yet.</p>}
 
         {indexKind && (
@@ -180,6 +181,7 @@ export function ListView(props: ListViewProps) {
             canDeleteComment={canDeleteComment}
             eager={i === 0}
             inPanel={!!indexKind}
+            ownerHandle={list.owner_handle}
           />
         ))}
 
@@ -204,6 +206,7 @@ export function ListView(props: ListViewProps) {
                 user={user}
                 canDeleteComment={canDeleteComment}
                 inPanel={!!indexKind}
+                ownerHandle={list.owner_handle}
               />
             ))}
           </section>
@@ -244,7 +247,9 @@ function ItemSection({
   fi,
   inPanel = false,
   cards = false,
+  ownerHandle,
 }: {
+  ownerHandle: string;
   inPanel?: boolean;
   cards?: boolean;
   fi: FormatInfo;
@@ -315,7 +320,7 @@ function ItemSection({
                 // On phones "Mark bought" lives here, so the title keeps the row.
                 <div className="sm:hidden">
                   <MenuSub label="Mark bought">
-                    <MarkBoughtForm itemId={item.id} />
+                    <MarkBoughtForm itemId={item.id} currency={cheapest?.currency} />
                   </MenuSub>
                 </div>
               )}
@@ -332,14 +337,10 @@ function ItemSection({
           </span>
         </div>
         <div className="item-meta item-indent flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem] text-ink-3 sm:pl-11">
-          <span className="inline-flex items-center gap-1.5">
-            Added by <ActorTag actor={item.created_by} compact /> <Time ts={item.created_at} />
-          </span>
-          {entries.length > 0 && (
-            <span>
-              {shopping
-                ? `${plural(entries.length, "product")}${cheapest && entries.length > 1 ? ` from ${formatMoney(cheapest.price, cheapest.currency)}` : ""}`
-                : plural(entries.length, fi.entry)}
+          {/* Who added it, only when that tells the owner something: an agent or another person. */}
+          {!(item.created_by.kind === "user" && item.created_by.handle === ownerHandle) && (
+            <span className="inline-flex items-center gap-1.5">
+              Added by <ActorTag actor={item.created_by} compact /> <Time ts={item.created_at} />
             </span>
           )}
           <DueChip due={item.due_at} done={done} />
@@ -503,7 +504,8 @@ function UndoPurchase({ itemId }: { itemId: string }) {
   );
 }
 
-function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: boolean; fi: FormatInfo; isPrivate: boolean }) {
+function AddItem({ listId, empty, fi, isPrivate, currency: hint }: { listId: string; empty: boolean; fi: FormatInfo; isPrivate: boolean; currency?: string }) {
+  const currency = useCurrency(hint);
   const fetcher = useFetcher<{ ok?: boolean; error?: string; itemId?: string }>();
   const busy = fetcher.state !== "idle";
   const added = fetcher.state === "idle" && fetcher.data?.ok && fetcher.data.itemId ? fetcher.data.itemId : null;
@@ -540,7 +542,7 @@ function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: bool
           <label htmlFor="new-item" className="sr-only">
             {fi.addItemTitle}
           </label>
-          <input id="new-item" name="text" required maxLength={500} placeholder={fi.itemPlaceholder} className="input flex-1" />
+          <input id="new-item" name="text" required maxLength={500} placeholder={moneyPlaceholder(fi.itemPlaceholder, currency)} className="input flex-1" />
           <button className="btn btn-want" disabled={busy}>
             {busy ? "Adding…" : `Add ${fi.item}`}
           </button>
@@ -824,10 +826,26 @@ export function ChecklistBox({
   );
 }
 
-/** Lock marker for private lists. */
-export function PrivateBadge() {
+function LockIcon() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-[3px] border border-line-strong bg-card px-2 py-0.5 font-sans text-[0.72rem] font-bold normal-case tracking-normal text-ink">
+    <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor" />
+      <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+/** Lock marker for private lists: a soft pill, or `bare` (icon and word) inside a meta line. */
+export function PrivateBadge({ bare = false }: { bare?: boolean }) {
+  if (bare)
+    return (
+      <span className="inline-flex items-center gap-1 text-ink-2">
+        <LockIcon />
+        Private
+      </span>
+    );
+  return (
+    <span className="chip font-sans text-[0.72rem] font-medium normal-case tracking-normal">
       <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
         <rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor" />
         <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.6" />
