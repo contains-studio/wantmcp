@@ -201,7 +201,8 @@ function Footer() {
 /**
  * Cloudflare Web Analytics: counts page views without cookies. Loaded only when the token is set
  * and only on pages that opt in with `handle.analytics` (never /app, sign-in, settings, private
- * lists or anything with a key on screen).
+ * lists or anything with a key on screen). `spa: false` because the script keeps hooking history after
+ * the tag is removed, which would count client-side navigations onto those pages.
  */
 function AnalyticsBeacon({ token }: { token: string | null }) {
   const matches = useMatches();
@@ -209,7 +210,7 @@ function AnalyticsBeacon({ token }: { token: string | null }) {
   const opt = (leaf?.handle as { analytics?: boolean | ((data: unknown) => boolean) } | undefined)?.analytics;
   const allowed = typeof opt === "function" ? opt(leaf?.loaderData) : opt === true;
   if (!token || !allowed) return null;
-  return <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon={JSON.stringify({ token })} />;
+  return <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon={JSON.stringify({ token, spa: false })} />;
 }
 
 /** See app/lib/build.ts: keeps a tab that was open across a deploy off the error page. */
@@ -294,6 +295,7 @@ function useErrorRef(status: number, error: unknown): string | null {
   const [ref, setRef] = useState<string | null>(root?.ref ?? null);
   useEffect(() => {
     if (!isHydrated()) return; // the server rendered this error page and logged it
+    if (status < 500) return; // 4xx is a routine answer, not a fault
     const fromServer = takeLastErrorRef();
     if (fromServer) {
       setRef(fromServer);
