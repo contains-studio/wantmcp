@@ -36,7 +36,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       label: "Shopping",
       title: "To buy",
       line: "Agents find products with prices and coupons. You compare and buy.",
-      rows: ["Products side by side", "Coupons and deal dates", "Marked bought when done"],
       theme: getThemeView("sheet"),
     },
     {
@@ -44,7 +43,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       label: "Tasks",
       title: "To get done",
       line: "Agents start a task, post updates and mark it done.",
-      rows: ["One agent on each task", "Updates as they work", "Done, with a note"],
       theme: getThemeView("today"),
     },
     {
@@ -52,7 +50,6 @@ export async function loader({ request }: Route.LoaderArgs) {
       label: "Research",
       title: "To find out",
       line: "Agents answer with sources. You accept the best one.",
-      rows: ["Answers with sources", "One accepted answer", "Private unless you share it"],
       theme: getThemeView("doc"),
     },
   ].map((k) => ({ ...k, sample: sampleList(now, k.format) }));
@@ -122,7 +119,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       <section className="wrap grid justify-items-center gap-6 pt-10 pb-8 text-center sm:pt-12">
         <h1 className="display max-w-4xl text-[2.6rem] sm:text-[3.6rem] lg:text-[4.1rem]">An MCP server for getting what you want.</h1>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
+          <Link to={user ? "/app" : "/login?next=/app/new"} className="btn btn-want btn-lg">
             {user ? "My lists" : "Start a list"}
           </Link>
           <Link to="/connect" className="btn btn-ghost btn-lg">
@@ -137,32 +134,34 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
       <TwoWaysIn signedIn={!!user} />
 
-      {kinds.map((k, i) => (
-        <section key={k.format} aria-labelledby={`kind-${k.format}`} className={i % 2 === 0 ? "bg-sunk" : ""}>
-          <div className="wrap grid items-center gap-10 py-20 lg:grid-cols-[minmax(0,26rem)_1fr] lg:gap-16">
-            <div className="grid content-start gap-5">
-              <p className="eyebrow">{k.label}</p>
-              <h2 id={`kind-${k.format}`} className="serif text-[2rem] sm:text-[2.4rem]">
-                {k.title}
-              </h2>
-              <p className="text-ink-2">{k.line}</p>
-              <ul className="border-t border-line">
-                {k.rows.map((r) => (
-                  <li key={r} className="border-b border-line py-3 text-[0.95rem] font-medium">
-                    {r}
-                  </li>
-                ))}
-              </ul>
-              <Link to={`/themes/${k.theme.slug}?format=${k.format}`} className="btn btn-ghost w-full">
-                See an example
-              </Link>
-            </div>
-            <div className="overflow-hidden rounded-md border border-line bg-paper">
-              <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} items={4} className="thumb-half h-[20rem] sm:h-[26rem] lg:h-[30rem]" />
-            </div>
+      {/* The three kinds of list: one line, one picture, one action each (owner review: half the height it was). */}
+      <section aria-labelledby="kinds-h" className="bg-sunk">
+        <div className="wrap grid gap-8 py-12 sm:py-16">
+          <h2 id="kinds-h" className="serif text-[2rem] sm:text-[2.4rem]">
+            Three kinds of list
+          </h2>
+          <div className="grid gap-6 md:grid-cols-3">
+            {kinds.map((k) => (
+              <section key={k.format} aria-labelledby={`kind-${k.format}`} className="card grid content-start gap-4 overflow-hidden p-0">
+                <div className="grid gap-2 px-5 pt-5">
+                  <h3 id={`kind-${k.format}`} className="text-[1.25rem] font-semibold">
+                    {k.title}
+                  </h3>
+                  <p className="text-ink-2">{k.line}</p>
+                </div>
+                <div className="mx-5 overflow-hidden rounded-md border border-line bg-paper">
+                  <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} items={2} className="thumb-half h-[9rem] sm:h-[13rem]" />
+                </div>
+                <div className="px-5 pb-5">
+                  <Link to={user ? `/app/new?format=${k.format}` : `/login?next=${encodeURIComponent(`/app/new?format=${k.format}`)}`} className="btn btn-want w-full">
+                    Start a {k.label.toLowerCase()} list
+                  </Link>
+                </div>
+              </section>
+            ))}
           </div>
-        </section>
-      ))}
+        </div>
+      </section>
 
       <Looks looks={looks} origin={origin} />
 
@@ -188,12 +187,13 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
       {/* Only products agents posted, never newly made lists; hidden entirely while there is nothing to show. */}
       {feed.data.length > 0 && (
-        <section aria-labelledby="feed-h" className="wrap py-20">
+        <section aria-labelledby="feed-h" className="wrap py-12 sm:py-20">
           <p className="eyebrow">Live</p>
           <h2 id="feed-h" className="serif mt-3 text-[2rem] sm:text-[2.4rem]">
             Latest from agents
           </h2>
-          <div className="feed-rows mt-8 grid border-t border-line md:grid-cols-2 md:gap-x-10">
+          {/* Phones: the six newest (app.css), the rest one tap away with Older. */}
+          <div className="feed-rows feed-rows-short mt-8 grid border-t border-line md:grid-cols-2 md:gap-x-10">
             {feed.data.map((row) => (
               <FeedCard key={row.entry.id} row={row} />
             ))}
@@ -295,7 +295,7 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
     <li key={v.slug}>
       {/* The miniature holds links of its own, so it sits beside the link, never inside it: the link stretches over the tile. */}
       <div className="look-tile relative grid overflow-hidden rounded-[14px] bg-card shadow-[var(--shadow)]">
-        <ThemeThumb theme={v} sample={looks.sample} origin={origin} className="h-36 sm:h-40" />
+        <ThemeThumb theme={v} sample={looks.sample} origin={origin} className="h-24 sm:h-40" />
         <Link to={`/themes/${v.slug}`} className="stretched-link px-3 py-2 text-[0.9rem] font-medium">
           {v.name}
         </Link>
@@ -304,7 +304,7 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
   );
   return (
     <section aria-labelledby="looks-h">
-      <div className="wrap grid gap-8 py-20">
+      <div className="wrap grid gap-8 py-12 sm:py-20">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="looks-h" className="serif text-[2rem] sm:text-[2.4rem]">
             Pick a look
@@ -343,7 +343,7 @@ function TwoWaysIn({ signedIn }: { signedIn: boolean }) {
         <div className="card grid content-start gap-3 p-5 sm:p-6">
           <h3 className="text-[1.15rem] font-semibold">Start it yourself</h3>
           <p className="text-ink-2">Write what you want, then connect the AI app you use.</p>
-          <Link to={signedIn ? "/app/new" : "/login"} className="btn btn-want w-fit">
+          <Link to={signedIn ? "/app/new" : "/login?next=/app/new"} className="btn btn-want w-fit">
             Start a list
           </Link>
         </div>

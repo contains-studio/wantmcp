@@ -60,7 +60,7 @@ export function GiveToAgent({ listId, listUrl, focus, connectedName }: { listId:
         <ul className="flex flex-wrap gap-2">
           {apps.map((b) => (
             <li key={b.id}>
-              <Link to={`/connect?list=${encodeURIComponent(listId)}#${b.id}`} aria-label={`Steps for ${b.name}`} className="btn btn-sm gap-2">
+              <Link to={`/connect?list=${encodeURIComponent(listId)}&app=${b.id}#steps`} aria-label={`Steps for ${b.name}`} className="btn btn-sm gap-2">
                 <BrandLogo brand={b} scale={0.7} />
               </Link>
             </li>

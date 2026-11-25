@@ -42,7 +42,7 @@ test("malformed fields are dropped, not logged", () => {
 
 test("claim and invite tokens never reach a log line", () => {
   const token = "clm_k3m9q2x8w7v6u5t4s3r2p1n0";
-  for (const route of [`/claim/${token}`, `/claim/${token}.data`, `/invite/inv_${token}`]) {
+  for (const route of [`/claim/${token}`, `/claim/${token}.data`, `/invite/inv_${token}`, `/unsubscribe/${token}`]) {
     const line = errorLine({ kind: "server_error", ref: "abcdefgh", route, status: 500, build: "b1" });
     assert.ok(!line.includes(token), line);
   }

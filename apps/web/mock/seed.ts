@@ -142,7 +142,7 @@ export function seedStore(now = Date.now()): Store {
     { id: "itm_machine", list_id: "lst_espresso", text: "Single boiler espresso machine, small footprint", created_by: heron, created_at: at(9 * DAY), purchase: null },
     { id: "itm_t_broadband", list_id: "lst_tasks", text: "Move the internet service to the new address", created_by: demo, created_at: at(6 * DAY), purchase: null,
       details: "Account is in my name. New apartment is 14 Elm Street. Ask whether there's an installation fee.", due_at: at(-3 * DAY), status: "in_progress", claimed_by: claude, claimed_at: at(3 * DAY), completion: null,
-      status_note: "Called the provider. The move is free with 14 days' notice; waiting to hear back about the install date." },
+      status_note: "Called the provider. The move is free with 14 days' notice; waiting to hear back about the install date.", status_note_at: at(HOUR) },
     { id: "itm_t_movers", list_id: "lst_tasks", text: "Get three quotes from movers", created_by: demo, created_at: at(6 * DAY), purchase: null,
       details: "One-bedroom apartment, third floor, no elevator. Moving day is the 12th.", due_at: at(-1 * DAY), status: "open", claimed_by: null, completion: null },
     { id: "itm_t_post", list_id: "lst_tasks", text: "Set up mail forwarding", created_by: heron, created_at: at(5 * DAY), purchase: null,

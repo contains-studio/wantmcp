@@ -74,12 +74,14 @@ export function ItemStatusBar({
   claimedAt,
   completion,
   statusNote,
+  statusNoteAt,
   fi,
   canWrite,
 }: {
   itemId: string;
   /** What the agent said it is doing (with in_progress, or a release back to open). */
   statusNote?: string | null;
+  statusNoteAt?: string | null;
   status: ItemStatus;
   claimedBy: ActorRef | null | undefined;
   claimedAt?: string | null;
@@ -145,7 +147,16 @@ export function ItemStatusBar({
       )}
       {status !== "done" && statusNote && (
         <p className="item-status-note w-full whitespace-pre-line break-words text-ink-2">
-          <span className="sr-only">Latest note: </span>“{statusNote}”
+          <span className="text-ink-3">
+            {claimedBy ? actorLabel(claimedBy) : "Note"}
+            {statusNoteAt && (
+              <>
+                , <Time ts={statusNoteAt} />
+              </>
+            )}
+            :{" "}
+          </span>
+          “{statusNote}”
         </p>
       )}
       {status === "done" && completion?.note && (

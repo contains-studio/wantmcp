@@ -1,8 +1,10 @@
-import { data, Link } from "react-router";
+import { useEffect, useState } from "react";
+import { data, Link, useFetcher } from "react-router";
+import { AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
 import { agentsText } from "~/lib/agents-text";
-import { AgentPromptBuilder, KeyPromptExample } from "~/components/AgentPrompt";
-import { api } from "~/lib/api.server";
-import { getSessionToken } from "~/lib/session.server";
+import { AgentPromptBuilder } from "~/components/AgentPrompt";
+import { api, formError } from "~/lib/api.server";
+import { assertSameOrigin, getSessionToken } from "~/lib/session.server";
 import type { ListSummary } from "~/lib/types";
 import type { Route } from "./+types/connect";
 import { CopyButton } from "~/components/CopyButton";
@@ -23,10 +25,30 @@ export async function loader({ request }: Route.LoaderArgs) {
   const selected = mine.find((l) => l.id === asked)?.id ?? mine[0]?.id ?? null;
   const base = apiBaseUrl();
   const forAgents = agentsText({ origin: siteOrigin(request), mcp: mcpUrl(), api: base === "mock" ? "https://api.wantmcp.com/v1" : base });
+  const asked_app = new URL(request.url).searchParams.get("app");
+  const app = CLIENTS.some((c) => c.id === asked_app) ? asked_app : null;
   return data(
-    { origin: siteOrigin(request), signedIn, lists: mine, selected, forAgents },
+    { origin: siteOrigin(request), signedIn, lists: mine, selected, forAgents, app },
     { headers: { "Cache-Control": signedIn ? "private, no-store" : "public, max-age=300, s-maxage=3600", Vary: "Cookie" } },
   );
+}
+
+/** "Create a key for <app>": a write key for one list, made with the person's session. */
+export async function action({ request }: Route.ActionArgs) {
+  assertSameOrigin(request);
+  const form = await request.formData();
+  if (form.get("intent") !== "create-key") return data({ error: "Unknown action" }, 400);
+  const listId = String(form.get("list_id") ?? "");
+  try {
+    const res = await api<{ key: string }>(request, `/lists/${encodeURIComponent(listId)}/keys`, {
+      method: "POST",
+      body: { agent_name: String(form.get("agent_name") ?? "").slice(0, 60) },
+    });
+    const list = await api<ListSummary>(request, `/lists/${encodeURIComponent(listId)}`);
+    return data({ ok: true, key: res.key, listUrl: list.url }, { headers: { "Cache-Control": "no-store" } });
+  } catch (err) {
+    return data(formError(err), 400);
+  }
 }
 
 export function headers({ loaderHeaders }: Route.HeadersArgs) {
@@ -50,13 +72,104 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 const CHECKED = "24 Nov 2026";
 
+/** One app: at most three steps and one thing to copy; caveats, other ways and sources behind "Details and troubleshooting". */
 type Client = {
   id: string;
   name: string;
   status: "confirmed" | "partial" | "generic" | "soon";
   sources: Array<[string, string]>;
-  body: (mcp: string) => React.ReactNode;
+  steps: (ctx: Ctx) => React.ReactNode;
+  more?: (ctx: Ctx) => React.ReactNode;
 };
+
+/** The server URL with its own Copy, inside a step. */
+function UrlCopy({ mcp }: { mcp: string }) {
+  return (
+    <span className="mt-2 flex items-stretch gap-2">
+      <code className="input flex min-w-0 flex-1 items-center break-all font-mono text-[0.8rem]">{mcp}</code>
+      <CopyButton text={mcp} label="Copy" ariaLabel="Copy server URL" className="btn btn-sm" />
+    </span>
+  );
+}
+
+/**
+ * The prompt for apps that need a write key. Signed in: "Create a key for <app>" makes one for the chosen list (the call
+ * list settings uses) and fills it in, shown once, leaving only through Copy. Signed out: the placeholders, and a way to
+ * sign in to fill them.
+ */
+function KeyPrompt({ ctx, agent }: { ctx: Ctx; agent: string }) {
+  const fetcher = useFetcher<{ ok?: boolean; key?: string; listUrl?: string; error?: string }>();
+  const [listId, setListId] = useState(ctx.selected ?? ctx.lists[0]?.id ?? "");
+  const made = fetcher.data?.ok && fetcher.data.key ? fetcher.data : null;
+  if (made) {
+    const text = fillPrompt(AGENT_PROMPT_WITH_KEY, { mcpUrl: ctx.mcp, listUrl: made.listUrl ?? "", key: made.key });
+    return (
+      <div className="grid gap-2">
+        <pre className="codeblock text-[0.78rem]" tabIndex={0} role="region" aria-label={`Prompt for ${agent}, with your new key`}>
+          {text}
+        </pre>
+        <div className="flex flex-wrap items-center gap-3">
+          <CopyButton text={text} label="Copy prompt" className="btn btn-want btn-sm" />
+          <span className="text-[0.85rem] text-ink-3">Shown once. The key works on this list only; revoke it in list settings.</span>
+        </div>
+      </div>
+    );
+  }
+  if (!ctx.signedIn) {
+    const text = fillPrompt(AGENT_PROMPT_WITH_KEY, { mcpUrl: ctx.mcp, listUrl: "https://wantmcp.com/l/YOUR_LIST", key: "wk_YOUR_WRITE_KEY" });
+    return (
+      <div className="grid gap-2">
+        <pre className="codeblock text-[0.78rem]" tabIndex={0} role="region" aria-label={`Prompt for ${agent}`}>
+          {text}
+        </pre>
+        <p className="text-[0.85rem] text-ink-2">
+          <Link to={`/login?next=${encodeURIComponent(`/connect?app=${agent === "Muse" ? "muse" : "grok-bot"}`)}`} className="link">
+            Sign in to fill this in
+          </Link>{" "}
+          with your list and a key.
+        </p>
+      </div>
+    );
+  }
+  if (!ctx.lists.length) {
+    return (
+      <p className="text-ink-2">
+        <Link to="/app/new" className="link">
+          Make a list
+        </Link>{" "}
+        first, then come back to give it to {agent}.
+      </p>
+    );
+  }
+  return (
+    <fetcher.Form method="post" className="grid gap-2">
+      <input type="hidden" name="intent" value="create-key" />
+      <input type="hidden" name="agent_name" value={agent} />
+      {ctx.lists.length > 1 ? (
+        <label className="field max-w-md">
+          <span className="label">List</span>
+          <select name="list_id" value={listId} onChange={(e) => setListId(e.target.value)} className="input">
+            {ctx.lists.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <input type="hidden" name="list_id" value={listId} />
+      )}
+      <button className="btn btn-want btn-sm w-fit" disabled={fetcher.state !== "idle"}>
+        {fetcher.state !== "idle" ? "Creating…" : `Create a key for ${agent}`}
+      </button>
+      {fetcher.data?.error && (
+        <p className="form-error" role="alert">
+          {fetcher.data.error}
+        </p>
+      )}
+    </fetcher.Form>
+  );
+}
 
 function Code({ children }: { children: string }) {
   return (
@@ -73,6 +186,9 @@ function Steps({ children }: { children: React.ReactNode }) {
 
 const b64 = (s: string) => (typeof btoa === "function" ? btoa(s) : Buffer.from(s).toString("base64"));
 
+type Ctx = { mcp: string; signedIn: boolean; lists: MyList[]; selected: string | null };
+type MyList = { id: string; title: string; url: string; shared: boolean };
+
 const CLIENT_LIST: Client[] = [
   {
     id: "grok-bot",
@@ -82,23 +198,27 @@ const CLIENT_LIST: Client[] = [
       ["xAI: Grok Bot computer and apps", "https://docs.x.ai/grok-bot/computer-and-apps"],
       ["xAI: Grok Bot overview", "https://docs.x.ai/grok-bot/overview"],
     ],
-    body: (mcp) => (
+    steps: (c) => (
       <>
-        <p>Grok Bot can add a server itself: paste the prompt below in a chat with it. It sends your write key as a header.</p>
-        <KeyPromptExample mcpUrl={mcp} agent="Grok Bot" />
+        <p>Paste this in a chat with Grok Bot. It adds the server itself and sends your key with every call.</p>
+        <KeyPrompt ctx={c} agent="Grok Bot" />
+      </>
+    ),
+    more: (c) => (
+      <>
         <p>Or add it by hand in the Grok Bot desktop app:</p>
         <Steps>
           <li>
             Choose <strong>Add a custom connector</strong>, then <strong>Remote HTTPS</strong>.
           </li>
           <li>
-            Server URL: <code>{mcp}</code>
+            Server URL: <code>{c.mcp}</code>
           </li>
           <li>
             HTTP header: <code>Authorization: Bearer wk_…</code> with a write key from your list settings. Leave the OAuth fields empty.
           </li>
         </Steps>
-        <p className="hint">The steps are from xAI's docs; we haven't tested the prompt in Grok Bot yet. A team admin's MCP policy can block new servers.</p>
+        <p>The steps are from xAI's docs; we haven't tested the prompt in Grok Bot yet. A team admin's MCP policy can block new servers.</p>
       </>
     ),
   },
@@ -107,18 +227,14 @@ const CLIENT_LIST: Client[] = [
     name: "Muse",
     status: "generic",
     sources: [["Meta: How Muse works with Connectors", "https://www.meta.com/help/superintelligence/1687253048996149/"]],
-    body: (mcp) => (
+    steps: (c) => (
       <>
-        <p>
-          Muse has no "add server" setting. Ask it to create a custom connector: paste the prompt below in a chat with Muse. It keeps your write key in its
-          secure credential store.
-        </p>
-        <KeyPromptExample mcpUrl={mcp} agent="Muse" />
-        <p className="hint">Meta's docs describe custom connectors but don't mention MCP servers; we haven't tested this in Muse yet.</p>
+        <p>Paste this in a chat with Muse. It creates a custom connector and keeps your key in its credential store.</p>
+        <KeyPrompt ctx={c} agent="Muse" />
       </>
     ),
+    more: () => <p>Muse has no "add server" setting. Meta's docs describe custom connectors but don't mention MCP servers; we haven't tested this in Muse yet.</p>,
   },
-
   {
     id: "chatgpt",
     name: "ChatGPT",
@@ -127,60 +243,52 @@ const CLIENT_LIST: Client[] = [
       ["OpenAI: custom MCP servers", "https://developers.openai.com/api/docs/guides/custom-mcp-server"],
       ["OpenAI Help Center", "https://help.openai.com/en/articles/12584461"],
     ],
-    body: (mcp) => (
-      <>
-        <p>On chatgpt.com, in a browser.</p>
-        <Steps>
-          <li>
-            Go to <strong>Plugins</strong> (chatgpt.com/plugins) › <strong>+</strong> › <strong>Add custom MCP server</strong>.
-          </li>
-          <li>
-            Name: The Want MCP. <strong>Connection</strong>: <code>{mcp}</code>.
-          </li>
-          <li>
-            Authentication: <strong>OAuth</strong>. Tick <strong>I understand and want to continue</strong>, then <strong>Create as a plugin</strong>.
-          </li>
-          <li>Install it, sign in, and tick the lists ChatGPT can work on.</li>
-          <li>
-            In a chat, type <kbd>@</kbd> and pick The Want MCP.
-          </li>
-        </Steps>
-        <p className="hint">
-          Business, Enterprise and Edu: full access (an admin, owner or permitted member adds it). Pro: reads lists, can't post. Plus and Free: not in OpenAI's
-          docs. ChatGPT asks before each change.
-        </p>
-      </>
+    steps: (c) => (
+      <Steps>
+        <li>
+          On chatgpt.com, go to <strong>Plugins</strong> › <strong>+</strong> › <strong>Add custom MCP server</strong>.
+        </li>
+        <li>
+          Name it The Want MCP, paste the server URL as <strong>Connection</strong>, choose <strong>OAuth</strong>, tick{" "}
+          <strong>I understand and want to continue</strong> and press <strong>Create as a plugin</strong>.
+          <UrlCopy mcp={c.mcp} />
+        </li>
+        <li>
+          Install it, sign in and tick your lists. In a chat, type <kbd>@</kbd> and pick The Want MCP.
+        </li>
+      </Steps>
+    ),
+    more: () => (
+      <p>
+        Business, Enterprise and Edu: full access (an admin, owner or permitted member adds it). Pro: reads lists, can't post. Plus and Free: not in OpenAI's
+        docs. ChatGPT asks before each change.
+      </p>
     ),
   },
   {
     id: "claude",
     name: "Claude",
     status: "confirmed",
-    sources: [
-      ["Claude Help Center: custom connectors", "https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp"],
-    ],
-    body: (mcp) => (
-      <>
-        <p>On claude.ai or the desktop app. It then works on mobile too.</p>
-        <Steps>
-          <li>
-            <strong>Customize › Connectors › + Add › Add custom connector</strong>.
-          </li>
-          <li>
-            Name: The Want MCP. URL: <code>{mcp}</code>. Press <strong>Continue</strong>.
-          </li>
-          <li>
-            Leave <strong>Use Claude's published identity (Recommended)</strong> selected and press <strong>Continue</strong>.
-          </li>
-          <li>
-            Press <strong>Add</strong>, sign in, and tick the lists Claude can work on.
-          </li>
-        </Steps>
-        <p className="hint">
-          Free (one custom connector), Pro, Max, Team, Enterprise. Team and Enterprise: an owner adds it in <strong>Organization settings › Connectors</strong>{" "}
-          (Add › Custom › Web), then members press <strong>Connect</strong>.
-        </p>
-      </>
+    sources: [["Claude Help Center: custom connectors", "https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp"]],
+    steps: (c) => (
+      <Steps>
+        <li>
+          On claude.ai or the desktop app: <strong>Customize › Connectors › + Add › Add custom connector</strong>.
+        </li>
+        <li>
+          Name it The Want MCP, paste the server URL and press <strong>Continue</strong> twice.
+          <UrlCopy mcp={c.mcp} />
+        </li>
+        <li>
+          Press <strong>Add</strong>, sign in and tick the lists Claude can work on. It then works on mobile too.
+        </li>
+      </Steps>
+    ),
+    more: () => (
+      <p>
+        Leave <strong>Use Claude's published identity (Recommended)</strong> selected. Free (one custom connector), Pro, Max, Team, Enterprise. Team and
+        Enterprise: an owner adds it in <strong>Organization settings › Connectors</strong> (Add › Custom › Web), then members press <strong>Connect</strong>.
+      </p>
     ),
   },
   {
@@ -188,15 +296,18 @@ const CLIENT_LIST: Client[] = [
     name: "Claude Code",
     status: "confirmed",
     sources: [["Claude Code docs: MCP", "https://code.claude.com/docs/en/mcp"]],
-    body: (mcp) => (
+    steps: (c) => (
       <>
-        <p>
-          Run this, then <code>/mcp</code> in a session to sign in:
-        </p>
-        <Code>{`claude mcp add --transport http --scope user wantmcp ${mcp}`}</Code>
-        <p>Or with a key from list settings:</p>
-        <Code>{`claude mcp add --transport http wantmcp ${mcp} \\\n  --header "Authorization: Bearer wk_your_key"`}</Code>
-        <p className="hint">With a key, Claude Code won't ask you to sign in.</p>
+        <p>Paste this into Claude Code. It adds the server, signs in and starts on your list.</p>
+        <AgentPromptBuilder mcpUrl={c.mcp} lists={c.lists} selected={c.selected} signedIn={c.signedIn} />
+      </>
+    ),
+    more: (c) => (
+      <>
+        <p>Or add it yourself, then run <code>/mcp</code> in a session to sign in:</p>
+        <Code>{`claude mcp add --transport http --scope user wantmcp ${c.mcp}`}</Code>
+        <p>With a key from list settings instead (no sign-in):</p>
+        <Code>{`claude mcp add --transport http wantmcp ${c.mcp} \\\n  --header "Authorization: Bearer wk_your_key"`}</Code>
       </>
     ),
   },
@@ -208,14 +319,20 @@ const CLIENT_LIST: Client[] = [
       ["OpenAI: Codex MCP", "https://learn.chatgpt.com/docs/extend/mcp"],
       ["OpenAI: Codex config reference", "https://learn.chatgpt.com/docs/config-file/config-reference"],
     ],
-    body: (mcp) => (
+    steps: (c) => (
       <>
-        <p>Command line, with sign-in:</p>
-        <Code>{`codex mcp add wantmcp --url ${mcp}\ncodex mcp login wantmcp`}</Code>
+        <p>Paste this into Codex. It adds the server, signs in and starts on your list.</p>
+        <AgentPromptBuilder mcpUrl={c.mcp} lists={c.lists} selected={c.selected} signedIn={c.signedIn} />
+      </>
+    ),
+    more: (c) => (
+      <>
+        <p>Or from the command line, with sign-in:</p>
+        <Code>{`codex mcp add wantmcp --url ${c.mcp}\ncodex mcp login wantmcp`}</Code>
         <p>
-          Or with a key, in <code>~/.codex/config.toml</code>:
+          With a key, in <code>~/.codex/config.toml</code>:
         </p>
-        <Code>{`[mcp_servers.wantmcp]\nurl = "${mcp}"\nbearer_token_env_var = "WANTMCP_TOKEN"`}</Code>
+        <Code>{`[mcp_servers.wantmcp]\nurl = "${c.mcp}"\nbearer_token_env_var = "WANTMCP_TOKEN"`}</Code>
         <p>
           Runs without you there (<code>codex exec</code>, scheduled tasks) can't stop to ask before each tool call. Let this server's tools run without asking:
         </p>
@@ -236,16 +353,24 @@ const CLIENT_LIST: Client[] = [
       ["xAI: Grok Build MCP servers", "https://docs.x.ai/build/features/mcp-servers"],
       ["xAI API: remote MCP", "https://docs.x.ai/developers/tools/remote-mcp"],
     ],
-    body: (mcp) => (
+    steps: (c) => (
+      <Steps>
+        <li>
+          Go to <strong>grok.com/connectors › New Connector › Custom</strong>.
+        </li>
+        <li>
+          Paste the server URL.
+          <UrlCopy mcp={c.mcp} />
+        </li>
+        <li>Sign in and pick your lists.</li>
+      </Steps>
+    ),
+    more: (c) => (
       <>
-        <p>
-          <strong>grok.com/connectors › New Connector › Custom</strong>. Enter <code>{mcp}</code> and sign in. xAI's docs don't yet list plans or sign-in
-          methods.
-        </p>
-        <p>Grok Build CLI (checked):</p>
-        <Code>{`grok mcp add --transport http wantmcp ${mcp}`}</Code>
+        <p>xAI's docs don't yet list plans or sign-in methods. Grok Build CLI (checked):</p>
+        <Code>{`grok mcp add --transport http wantmcp ${c.mcp}`}</Code>
         <p>xAI API, in your request:</p>
-        <Code>{`{ "type": "mcp", "server_url": "${mcp}", "server_label": "wantmcp",\n  "authorization": "wk_your_key" }`}</Code>
+        <Code>{`{ "type": "mcp", "server_url": "${c.mcp}", "server_label": "wantmcp",\n  "authorization": "wk_your_key" }`}</Code>
       </>
     ),
   },
@@ -257,13 +382,17 @@ const CLIENT_LIST: Client[] = [
       ["OpenClaw docs: MCP", "https://docs.openclaw.ai/tools/mcp"],
       ["OpenClaw docs: transports", "https://docs.openclaw.ai/cli/mcp/transports"],
     ],
-    body: (mcp) => (
+    steps: (c) => (
       <>
-        <p>With sign-in:</p>
-        <Code>{`openclaw mcp add wantmcp --url ${mcp} --transport streamable-http --auth oauth\nopenclaw mcp login wantmcp\nopenclaw mcp doctor wantmcp --probe`}</Code>
+        <p>Run these three commands, then sign in when OpenClaw opens the browser:</p>
+        <Code>{`openclaw mcp add wantmcp --url ${c.mcp} --transport streamable-http --auth oauth\nopenclaw mcp login wantmcp\nopenclaw mcp doctor wantmcp --probe`}</Code>
+      </>
+    ),
+    more: (c) => (
+      <>
         <p>Or with a key, in your OpenClaw config:</p>
-        <Code>{`{ "mcp": { "servers": { "wantmcp": {\n  "url": "${mcp}",\n  "transport": "streamable-http",\n  "headers": { "Authorization": "Bearer \${WANTMCP_TOKEN}" }\n} } } }`}</Code>
-        <p className="hint">
+        <Code>{`{ "mcp": { "servers": { "wantmcp": {\n  "url": "${c.mcp}",\n  "transport": "streamable-http",\n  "headers": { "Authorization": "Bearer \${WANTMCP_TOKEN}" }\n} } } }`}</Code>
+        <p>
           Set <code>transport</code> explicitly: OpenClaw defaults to SSE. With OAuth on, it ignores static headers.
         </p>
       </>
@@ -277,22 +406,24 @@ const CLIENT_LIST: Client[] = [
       ["Cursor docs: MCP", "https://cursor.com/docs/context/mcp"],
       ["Cursor docs: install links", "https://cursor.com/docs/context/mcp/install-links"],
     ],
-    body: (mcp) => (
-      <>
-        <p>
-          <a
-            className="btn btn-sm"
-            href={`cursor://anysphere.cursor-deeplink/mcp/install?name=wantmcp&config=${encodeURIComponent(b64(JSON.stringify({ url: mcp })))}`}
-          >
+    steps: (c) => (
+      <Steps>
+        <li>
+          <a className="btn btn-sm" href={`cursor://anysphere.cursor-deeplink/mcp/install?name=wantmcp&config=${encodeURIComponent(b64(JSON.stringify({ url: c.mcp })))}`}>
             Add to Cursor
           </a>{" "}
           <span className="hint">opens Cursor if it's installed</span>
-        </p>
+        </li>
+        <li>Sign in when Cursor asks.</li>
+      </Steps>
+    ),
+    more: (c) => (
+      <>
         <p>
           Or add it to <code>~/.cursor/mcp.json</code> (all projects) or <code>.cursor/mcp.json</code> (one project). Leave out <code>headers</code> to sign in
           with OAuth:
         </p>
-        <Code>{`{\n  "mcpServers": {\n    "wantmcp": {\n      "url": "${mcp}",\n      "headers": { "Authorization": "Bearer \${env:WANTMCP_TOKEN}" }\n    }\n  }\n}`}</Code>
+        <Code>{`{\n  "mcpServers": {\n    "wantmcp": {\n      "url": "${c.mcp}",\n      "headers": { "Authorization": "Bearer \${env:WANTMCP_TOKEN}" }\n    }\n  }\n}`}</Code>
       </>
     ),
   },
@@ -301,15 +432,18 @@ const CLIENT_LIST: Client[] = [
     name: "Gemini",
     status: "partial",
     sources: [["Google: MCP servers with Gemini CLI", "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md"]],
-    body: (mcp) => (
-      <>
-        <p>
-          Gemini CLI: add the server to <code>~/.gemini/settings.json</code>, then run <code>/mcp auth wantmcp</code> in Gemini CLI and sign in in the browser.
-        </p>
-        <Code>{`{\n  "mcpServers": {\n    "wantmcp": { "httpUrl": "${mcp}" }\n  }\n}`}</Code>
-        <p className="hint">The Gemini app itself doesn't take custom MCP servers yet.</p>
-      </>
+    steps: (c) => (
+      <Steps>
+        <li>
+          Add this to <code>~/.gemini/settings.json</code>:
+          <Code>{`{\n  "mcpServers": {\n    "wantmcp": { "httpUrl": "${c.mcp}" }\n  }\n}`}</Code>
+        </li>
+        <li>
+          In Gemini CLI, run <code>/mcp auth wantmcp</code> and sign in in the browser.
+        </li>
+      </Steps>
     ),
+    more: () => <p>The Gemini app itself doesn't take custom MCP servers yet; these steps are for Gemini CLI.</p>,
   },
   {
     id: "msgblast",
@@ -317,33 +451,30 @@ const CLIENT_LIST: Client[] = [
     // Not released yet (brands.ts comingSoon): no steps until it ships.
     status: "soon",
     sources: [],
-    body: () => <p className="text-ink-2">Not available yet.</p>,
+    steps: () => <p className="text-ink-2">Not available yet.</p>,
   },
   {
     id: "other",
     name: "Other apps",
     status: "generic",
     sources: [],
-    body: (mcp) => (
+    steps: (c) => (
+      <Steps>
+        <li>
+          In any app that takes remote MCP servers (Streamable HTTP), add the server URL.
+          <UrlCopy mcp={c.mcp} />
+        </li>
+        <li>Sign in when the app asks.</li>
+      </Steps>
+    ),
+    more: (c) => (
       <>
-        <p>Any app that supports remote MCP servers (Streamable HTTP):</p>
-        <Steps>
-          <li>
-            Add <code>{mcp}</code> as a remote server.
-          </li>
-          <li>
-            Sign in when the app asks. To use a key instead, send <code>Authorization: Bearer wk_…</code> with a key from your{" "}
-            <Link to="/app" className="link">
-              list settings
-            </Link>
-            .
-          </li>
-          <li>Reading public lists needs no sign-in.</li>
-          <li>
-            If the app never asks you to sign in, use <code>{signinUrl(mcp)}</code> instead.
-          </li>
-        </Steps>
-        <p className="hint">Apps with only local servers need a stdio-to-HTTP proxy.</p>
+        <p>
+          To use a key instead, send <code>Authorization: Bearer wk_…</code> with a key from your list settings. Reading public lists needs no sign-in.
+        </p>
+        <p>
+          If the app never asks you to sign in, use <code>{signinUrl(c.mcp)}</code> instead. Apps with only local servers need a stdio-to-HTTP proxy.
+        </p>
       </>
     ),
   },
@@ -375,6 +506,7 @@ const ASKS: Array<[string, string]> = [
 
 export default function Connect({ loaderData }: Route.ComponentProps) {
   const { mcpUrl } = useRootData();
+  const app = useChosenApp(loaderData.app);
   return (
     <div className="wrap grid gap-12 py-10 sm:py-14">
       <header className="grid max-w-3xl gap-5">
@@ -402,93 +534,14 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
         </div>
       </header>
 
-      <nav aria-label="Apps" className="border-y border-line py-3">
-        <ul className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          {CLIENTS.map((c) => (
-            <li key={c.id}>
-              <a href={`#${c.id}`} className="brand-tile" aria-label={c.name} title={c.name}>
-                {c.id === "other" ? (
-                  <span className="text-[0.95rem] font-semibold">{c.name}</span>
-                ) : (
-                  <BrandLogo brand={brandFor(c)} />
-                )}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <section aria-labelledby="prompt-h" className="grid gap-6 lg:grid-cols-[18rem_1fr] lg:gap-10">
-        <div className="grid content-start gap-2">
-          <h2 id="prompt-h" className="serif text-[1.75rem] leading-tight">
-            Coding agents: paste this
-          </h2>
-          <p className="text-ink-2">For Claude Code, Codex and agents that can set themselves up. It signs in and starts on your list.</p>
-        </div>
-        <div className="min-w-0 max-w-3xl">
-          <AgentPromptBuilder mcpUrl={mcpUrl} lists={loaderData.lists} selected={loaderData.selected} signedIn={loaderData.signedIn} />
-        </div>
-      </section>
-
-      <div className="grid border-t border-line">
-        {CLIENTS.map((c) => {
-          const status = STATUS[c.status];
-          const brand = brandFor(c);
-          return (
-            <section
-              key={c.id}
-              id={c.id}
-              aria-labelledby={`${c.id}-h`}
-              className="grid scroll-mt-24 gap-4 border-b border-line py-8 lg:grid-cols-[18rem_1fr] lg:gap-10"
-            >
-              <div className="grid content-start justify-items-start gap-2">
-                <h2 id={`${c.id}-h`} className="serif flex items-center gap-2.5 text-[1.6rem] leading-tight">
-                  {/* A symbol mark sits beside the name; a wordmark would only repeat it. */}
-                  {brand.logo?.nameBeside && (
-                    <span className="flex h-7 w-7 items-center justify-center [&_img]:!h-6 [&_img]:!w-6 [&>span]:hidden" aria-hidden="true">
-                      <BrandLogo brand={brand} />
-                    </span>
-                  )}
-                  {c.name}
-                </h2>
-                {status && <span className={status.cls}>{status.label}</span>}
-              </div>
-              <div className="grid min-w-0 max-w-3xl gap-3 text-[0.97rem] [&_code]:rounded-[3px] [&_code]:bg-sunk [&_code]:px-1 [&_code]:text-[0.85em]">
-                {c.body(mcpUrl)}
-                {c.sources.length > 0 && (
-                  <p className="text-[0.8rem] text-ink-3">
-                    Source:{" "}
-                    {c.sources.map(([label, href], i) => (
-                      <span key={href}>
-                        {i > 0 && " · "}
-                        <a href={href} className="link" target="_blank" rel="noopener noreferrer">
-                          {label}
-                        </a>
-                      </span>
-                    ))}
-                  </p>
-                )}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      <AppPicker
+        app={app}
+        ctx={{ mcp: mcpUrl, signedIn: loaderData.signedIn, lists: loaderData.lists, selected: loaderData.selected }}
+        listParam={loaderData.selected}
+      />
 
       <AwaySection />
 
-      <section aria-labelledby="ask-h" className="grid gap-4 lg:grid-cols-[18rem_1fr] lg:gap-10">
-        <h2 id="ask-h" className="serif text-[1.75rem] leading-tight">
-          Then ask
-        </h2>
-        <dl className="grid max-w-3xl border-t border-line">
-          {ASKS.map(([k, v]) => (
-            <div key={k} className="grid gap-1 border-b border-line py-3 sm:grid-cols-[8rem_1fr] sm:gap-4">
-              <dt className="font-semibold">{k}</dt>
-              <dd className="text-ink-2">“{v}”</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
 
       {/* The same text agents read at /llms.txt and /agents.txt, for anyone (or any agent) reading this page. */}
       <section id="for-agents" aria-labelledby="agents-h" className="grid scroll-mt-24 gap-4 lg:grid-cols-[18rem_1fr] lg:gap-10">
@@ -552,3 +605,110 @@ function AwaySection() {
 
 /** Cloudflare Web Analytics may count views of this page (root.tsx, AnalyticsBeacon). */
 export const handle = { analytics: true };
+
+const LAST_APP = "wm_last_app";
+
+/** The app to show: ?app= (works without JavaScript), else #app (links from a list), else the last one used here, else Claude. */
+function useChosenApp(fromQuery: string | null): string {
+  const [app, setApp] = useState(fromQuery ?? "claude");
+  useEffect(() => {
+    if (fromQuery) {
+      setApp(fromQuery);
+      return;
+    }
+    const hash = window.location.hash.slice(1);
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem(LAST_APP);
+    } catch {
+      // no storage: fine
+    }
+    const pick = [hash, last].find((x) => x && CLIENTS.some((c) => c.id === x));
+    if (pick) setApp(pick);
+  }, [fromQuery]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_APP, app);
+    } catch {
+      // ignore
+    }
+  }, [app]);
+  return app;
+}
+
+/** The logo row picks an app; only that app's steps are on the page. */
+function AppPicker({ app, ctx, listParam }: { app: string; ctx: Ctx; listParam: string | null }) {
+  const c = CLIENTS.find((x) => x.id === app) ?? CLIENTS.find((x) => x.id === "claude")!;
+  const status = STATUS[c.status];
+  const brand = brandFor(c);
+  const href = (id: string) => `/connect?${new URLSearchParams({ app: id, ...(listParam ? { list: listParam } : {}) })}#steps`;
+  return (
+    <>
+      <nav aria-label="Pick your app" className="border-y border-line py-3">
+        <ul className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {CLIENTS.map((x) => (
+            <li key={x.id}>
+              <Link
+                to={href(x.id)}
+                replace
+                preventScrollReset
+                aria-current={x.id === c.id ? "page" : undefined}
+                className={`brand-tile ${x.id === c.id ? "is-on" : ""}`}
+                aria-label={x.name}
+                title={x.name}
+              >
+                {x.id === "other" ? <span className="text-[0.95rem] font-semibold">{x.name}</span> : <BrandLogo brand={brandFor(x)} />}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <section id="steps" aria-labelledby="steps-h" className="grid scroll-mt-24 gap-4 lg:grid-cols-[18rem_1fr] lg:gap-10">
+        <div className="grid content-start justify-items-start gap-2">
+          <h2 id="steps-h" className="serif flex items-center gap-2.5 text-[1.6rem] leading-tight">
+            {brand.logo?.nameBeside && (
+              <span className="flex h-7 w-7 items-center justify-center [&_img]:!h-6 [&_img]:!w-6 [&>span]:hidden" aria-hidden="true">
+                <BrandLogo brand={brand} />
+              </span>
+            )}
+            {c.name}
+          </h2>
+          {status && <span className={`${status.cls} text-[0.75rem]`}>{status.label}</span>}
+        </div>
+        <div className="grid min-w-0 max-w-3xl gap-4 text-[0.97rem] [&_code]:rounded-[3px] [&_code]:bg-sunk [&_code]:px-1 [&_code]:text-[0.85em]">
+          {c.steps(ctx)}
+          {c.status !== "soon" && (
+            <p className="rounded-md bg-sunk px-4 py-3">
+              <span className="font-semibold">Then say:</span> “{ASKS[0][1]}”{" "}
+              <CopyButton text={ASKS[0][1]} label="Copy" ariaLabel="Copy what to say" className="btn btn-ghost btn-xs" />
+            </p>
+          )}
+          {(c.more || c.sources.length > 0) && (
+            <details className="group">
+              <summary className="textlink-btn text-[0.9rem]">
+                Details and troubleshooting <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+              </summary>
+              <div className="mt-3 grid gap-3 text-[0.92rem] text-ink-2">
+                {c.more?.(ctx)}
+                {c.sources.length > 0 && (
+                  <p className="text-[0.8rem] text-ink-3">
+                    Source:{" "}
+                    {c.sources.map(([label, url], i) => (
+                      <span key={url}>
+                        {i > 0 && " · "}
+                        <a href={url} className="link" target="_blank" rel="noopener noreferrer">
+                          {label}
+                        </a>
+                      </span>
+                    ))}
+                  </p>
+                )}
+              </div>
+            </details>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}

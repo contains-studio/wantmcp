@@ -89,7 +89,7 @@ test("a bad invite link says so before anyone signs in", async ({ page }) => {
 
 test("price history plots when prices were checked, and says how much they changed", async ({ page }) => {
   await page.goto("/l/lst_desk2026");
-  await page.getByText("Details, price history and comments for these products").first().click();
+  await page.getByText("Details and price history").first().click();
   const caption = page.locator(".price-sparkline figcaption").first();
   await expect(caption).toBeVisible();
   await expect(caption).not.toContainText("$0");

@@ -20,7 +20,8 @@ export const cyberMonday: Theme = {
     line: "#1b2254", lineStrong: "#323d85", want: "#2ef2ff", wantInk: "#00151a", wantSoft: "#0c2a3d",
     deal: "#2ef2ff", dealSoft: "#0c2a3d", warn: "#ffc857", warnSoft: "#2e2410", danger: "#ff5fa2",
   },
-  fonts: { display: "mono", price: "mono" },
+  // Prices stay in the system face (tabular figures) everywhere; mono is for the headline only.
+  fonts: { display: "mono" },
   radius: { card: "0", control: "0", input: "0", image: "0" },
   card: "outline",
   traits: ["mono-meta"],

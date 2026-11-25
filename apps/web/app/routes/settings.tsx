@@ -12,7 +12,7 @@ import { ThemeThumb } from "~/components/ThemeThumb";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeView } from "~/themes/view";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PrivateBadge } from "~/components/ListView";
 import { FORMATS, formatInfo, formatOf, visibilityOf, type FormatInfo } from "~/lib/formats";
 
@@ -79,7 +79,7 @@ function accessLine(a: ListSummary["access"]): string | null {
   if (!a) return null;
   const parts = [`${a.people} ${a.people === 1 ? "person" : "people"}`, `${a.agents} ${a.agents === 1 ? "agent" : "agents"}`];
   if (a.pending_invites) parts.push(`${a.pending_invites} invited`);
-  return `${parts.join(" · ")} can write this list.`;
+  return parts.join(" · ");
 }
 
 type ActionData = {
@@ -171,15 +171,44 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 }
 
-function Section({ id, title, desc, children }: { id: string; title: string; desc?: React.ReactNode; children: React.ReactNode }) {
+/**
+ * One settings section: a collapsed row on a phone (title and what it holds, in a few words), open on desktop. It opens
+ * when its own form was just used, when the address points at it, or (desktop) from the start.
+ */
+function Section({ id, title, desc, open = false, children }: { id: string; title: string; desc?: React.ReactNode; open?: boolean; children: React.ReactNode }) {
+  const [isOpen, setOpen] = useState(open);
+  useEffect(() => {
+    if (open) setOpen(true);
+  }, [open]);
+  useEffect(() => {
+    // Desktop: open from the start. Any width: open when the address points into this section.
+    if (window.matchMedia("(min-width: 640px)").matches) setOpen(true);
+    const openIfTarget = () => {
+      const target = window.location.hash ? document.getElementById(decodeURIComponent(window.location.hash.slice(1))) : null;
+      if (target && target.closest(`[data-section="${id}"]`)) {
+        setOpen(true);
+        requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
+      }
+    };
+    openIfTarget();
+    window.addEventListener("hashchange", openIfTarget);
+    return () => window.removeEventListener("hashchange", openIfTarget);
+  }, [id]);
   return (
-    <section aria-labelledby={id} className="card grid gap-4 p-5 sm:p-6">
-      <div>
-        <h2 id={id} className="text-xl font-semibold">{title}</h2>
-        {desc && <p className="mt-1 text-[0.9rem] text-ink-3">{desc}</p>}
-      </div>
-      {children}
-    </section>
+    <details className="settings-section card group" open={isOpen} onToggle={(e) => setOpen(e.currentTarget.open)} data-section={id}>
+      <summary className="flex items-center gap-3 p-5 sm:p-6">
+        <span className="min-w-0 flex-1">
+          <h2 id={id} className="text-xl font-semibold">
+            {title}
+          </h2>
+          {desc && <span className="mt-0.5 block text-[0.9rem] text-ink-3">{desc}</span>}
+        </span>
+        <span aria-hidden="true" className="text-ink-3 transition group-open:rotate-90">
+          ›
+        </span>
+      </summary>
+      <div className="grid gap-4 px-5 pb-5 sm:px-6 sm:pb-6">{children}</div>
+    </details>
   );
 }
 
@@ -194,6 +223,11 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
   const nav = useNavigation();
   const busy = (intent: string) => nav.state === "submitting" && nav.formData?.get("intent") === intent;
   const err = (intent: string) => (result?.intent === intent && result.error ? <p className="form-error" role="alert">{result.error}</p> : null);
+  const openFor = (intents: string[]) => !!result?.intent && intents.includes(result.intent);
+  const [searchParams] = useSearchParams();
+  const browsingLooks = searchParams.has("template");
+  const canChangeFormat = list.item_count === 0;
+  const currentLookName = loaderData.looks?.templates.find((t) => t.template === loaderData.currentTemplate)?.name ?? "";
 
   return (
     <div className="wrap grid max-w-3xl grid-cols-1 gap-6 py-8">
@@ -212,71 +246,69 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         )}
       </div>
 
-      <Section
-        id="keys-h"
-        title="Agents and write keys"
-        desc={
-          <>
-            Signed-in agents appear here. Command-line tools use a write key. <Link to={`/connect?list=${list.id}`} className="link">Setup guides</Link>
-          </>
-        }
-      >
-        {result?.intent === "create-key" && result.key ? (
-          <NewKey keyValue={result.key} agentName={result.agent?.name ?? "agent"} listUrl={list.url} />
-        ) : (
-          <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-            <input type="hidden" name="intent" value="create-key" />
-            <label className="field">
-              <span className="label">Agent name</span>
-              <input name="agent_name" required maxLength={60} placeholder="e.g. Codex on my laptop" className="input" />
-            </label>
-            <button className="btn" disabled={busy("create-key")}>
-              {busy("create-key") ? "Creating…" : "Create write key"}
-            </button>
-            <div className="sm:col-span-2">{err("create-key")}</div>
-          </Form>
-        )}
+      {/* The page's own menu (desktop): sections in the order people use them. */}
+      <nav aria-label="Settings sections" className="hidden flex-wrap gap-x-5 gap-y-1 text-[0.9rem] sm:flex">
+        {isOwner && <a href="#details-h" className="link">Details</a>}
+        <a href="#sharing-h" className="link">Sharing</a>
+        <a href="#keys-h" className="link">Agents</a>
+        {isOwner && <a href="#theme-h" className="link">Look</a>}
+        {isOwner && canChangeFormat && <a href="#format-h" className="link">Format</a>}
+        {isOwner && <a href="#danger-h" className="link">Delete</a>}
+      </nav>
 
-        <h3 className="eyebrow mt-2">Your connected clients</h3>
-        {mine.filter((a) => a.kind !== "key").length === 0 ? (
-          <p className="text-[0.9rem] text-ink-3">
-            None yet. When you add the MCP server to ChatGPT, Claude or another app and sign in, it appears here.
-          </p>
-        ) : (
-          <ul className="grid gap-2">
-            {mine
-              .filter((a) => a.kind !== "key")
-              .map((a) => (
-                <AgentRow key={a.id} agent={a} own />
-              ))}
-          </ul>
-        )}
-        <h3 className="eyebrow mt-2">Your write keys</h3>
-        {mine.filter((a) => a.kind === "key").length === 0 ? (
-          <p className="text-[0.9rem] text-ink-3">No write keys for this list.</p>
-        ) : (
-          <ul className="grid gap-2">
-            {mine
-              .filter((a) => a.kind === "key")
-              .map((a) => (
-                <AgentRow key={a.id} agent={a} own />
-              ))}
-          </ul>
-        )}
-        {isOwner && others.length > 0 && (
+      {isOwner && (
+        <Section id="details-h" title="Details" desc="Title, description, note for agents" open={openFor(["rename", "note"])}>
+        <Form method="post" className="grid gap-3">
+          <input type="hidden" name="intent" value="rename" />
+          <label className="field">
+            <span className="label">Title</span>
+            <input name="title" required maxLength={140} defaultValue={list.title} className="input" />
+          </label>
+          <label className="field">
+            <span className="label">Description</span>
+            <textarea name="description" maxLength={500} defaultValue={list.description} className="textarea" />
+          </label>
+          <div aria-live="polite">
+            {err("rename")}
+            {result?.intent === "rename" && result.ok && <p className="form-ok">Saved.</p>}
+          </div>
+          <button className="btn w-fit" disabled={busy("rename")}>
+            {busy("rename") ? "Saving…" : "Save"}
+          </button>
+        </Form>
+          <div className="border-t border-line pt-4">
+        <Form method="post" className="grid gap-3">
+          <input type="hidden" name="intent" value="note" />
+          <label className="field">
+            <span className="label">Note for agents</span>
+            <textarea name="note" maxLength={600} defaultValue={list.note ?? ""} className="textarea min-h-20" placeholder={moneyPlaceholder("Gifts for Dad, about {50} each, ship to Denver", currency)} />
+            <span className="hint">Writers and their agents see it. Never public.</span>
+          </label>
+          <div aria-live="polite">
+            {err("note")}
+            {result?.intent === "note" && result.ok && <p className="form-ok">Saved.</p>}
+          </div>
+          <button className="btn w-fit" disabled={busy("note")}>
+            {busy("note") ? "Saving…" : "Save"}
+          </button>
+        </Form>
+          </div>
+        </Section>
+      )}
+
+      <Section id="sharing-h" title="Sharing" desc={accessLine(list.access) ?? "Who can see it, and people"} open={openFor(["visibility", "outside", "invite", "revoke-member", "handover"])}>
+        {isOwner && (
           <>
-            <h3 className="eyebrow mt-2">Members' agents</h3>
-            <ul className="grid gap-2">
-              {others.map((a) => (
-                <AgentRow key={a.id} agent={a} own={false} />
-              ))}
-            </ul>
+            <VisibilityControl visibility={visibilityOf(list)} />
+            {visibilityOf(list) === "public" && (
+              <div className="grid gap-2 border-t border-line pt-4">
+                <p className="label">Outside suggestions</p>
+                <p className="hint">Hidden from visitors until a writer promotes one.</p>
+                <OutsideToggle allow={list.allow_outside_suggestions} />
+              </div>
+            )}
           </>
         )}
-        {err("revoke-agent")}
-      </Section>
-
-      <Section id="members-h" title="People" desc={accessLine(list.access) ?? (isOwner ? "They can add, tick off and connect their own agents." : undefined)}>
         <ul className="grid gap-2">
           {members.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
@@ -325,17 +357,74 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         {isOwner && <Handover result={result} busy={busy("handover")} />}
       </Section>
 
+      <Section
+        id="keys-h"
+        title="Agents"
+        desc="Connected apps and write keys"
+        open={openFor(["create-key", "revoke-agent"])}
+      >
+        {/* Not in the summary: a link inside the row that opens the section would be a control inside a control. */}
+        <Link to={`/connect?list=${list.id}`} className="link inline-flex min-h-6 w-fit items-center text-[0.9rem]">
+          How agents connect
+        </Link>
+        {result?.intent === "create-key" && result.key ? (
+          <NewKey keyValue={result.key} agentName={result.agent?.name ?? "agent"} listUrl={list.url} />
+        ) : (
+          <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+            <input type="hidden" name="intent" value="create-key" />
+            <label className="field">
+              <span className="label">Agent name</span>
+              <input name="agent_name" required maxLength={60} placeholder="e.g. Codex on my laptop" className="input" />
+            </label>
+            <button className="btn" disabled={busy("create-key")}>
+              {busy("create-key") ? "Creating…" : "Create write key"}
+            </button>
+            <div className="sm:col-span-2">{err("create-key")}</div>
+          </Form>
+        )}
+
+        <h3 className="eyebrow mt-2">Your connected clients</h3>
+        {mine.filter((a) => a.kind !== "key").length === 0 ? (
+          <p className="text-[0.9rem] text-ink-3">
+            None yet.
+          </p>
+        ) : (
+          <ul className="grid gap-2">
+            {mine
+              .filter((a) => a.kind !== "key")
+              .map((a) => (
+                <AgentRow key={a.id} agent={a} own />
+              ))}
+          </ul>
+        )}
+        <h3 className="eyebrow mt-2">Your write keys</h3>
+        {mine.filter((a) => a.kind === "key").length === 0 ? (
+          <p className="text-[0.9rem] text-ink-3">No write keys for this list.</p>
+        ) : (
+          <ul className="grid gap-2">
+            {mine
+              .filter((a) => a.kind === "key")
+              .map((a) => (
+                <AgentRow key={a.id} agent={a} own />
+              ))}
+          </ul>
+        )}
+        {isOwner && others.length > 0 && (
+          <>
+            <h3 className="eyebrow mt-2">Members' agents</h3>
+            <ul className="grid gap-2">
+              {others.map((a) => (
+                <AgentRow key={a.id} agent={a} own={false} />
+              ))}
+            </ul>
+          </>
+        )}
+        {err("revoke-agent")}
+      </Section>
+
       {isOwner && (
         <>
-          <Section
-            id="theme-h"
-            title="Look"
-            desc={
-              <>
-                <Link to="/themes" className="link">All layouts and occasions</Link>
-              </>
-            }
-          >
+          <Section id="theme-h" title="Look" desc={currentLookName} open={openFor(["theme"]) || browsingLooks}>
             <ThemePicker
               looks={loaderData.looks!}
               sample={loaderData.sample!}
@@ -346,61 +435,14 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
             />
           </Section>
 
-          <Section id="visibility-h" title="Who can see this list">
-            <VisibilityControl visibility={visibilityOf(list)} />
-          </Section>
-
-          <Section id="format-h" title="Format">
+          {/* The format can only change while the list is empty: hidden afterwards, not explained. */}
+          {canChangeFormat && (
+            <Section id="format-h" title="Format" desc="Shopping, tasks or research" open={openFor(["format"])}>
             <FormatControl list={list} />
-          </Section>
-
-          {visibilityOf(list) === "public" ? (
-            <Section id="outside-h" title="Outside suggestions" desc={`Hidden from visitors until a writer promotes one.`}>
-              <OutsideToggle allow={list.allow_outside_suggestions} />
             </Section>
-          ) : null}
+          )}
 
-          <Section id="note-h" title="Note for agents">
-            <Form method="post" className="grid gap-3">
-              <input type="hidden" name="intent" value="note" />
-              <label className="field">
-                <span className="label">What's true of this list only</span>
-                <textarea name="note" maxLength={600} defaultValue={list.note ?? ""} className="textarea min-h-20" placeholder={moneyPlaceholder("Gifts for Dad, about {50} each, ship to Denver", currency)} />
-                <span className="hint">Writers and their agents see it. Never public.</span>
-              </label>
-              <div aria-live="polite">
-                {err("note")}
-                {result?.intent === "note" && result.ok && <p className="form-ok">Saved.</p>}
-              </div>
-              <button className="btn w-fit" disabled={busy("note")}>
-                {busy("note") ? "Saving…" : "Save"}
-              </button>
-            </Form>
-          </Section>
-
-          <Section id="rename-h" title="Title and description">
-            <Form method="post" className="grid gap-3">
-              <input type="hidden" name="intent" value="rename" />
-              <label className="field">
-                <span className="label">Title</span>
-                <input name="title" required maxLength={140} defaultValue={list.title} className="input" />
-              </label>
-              <label className="field">
-                <span className="label">Description</span>
-                <textarea name="description" maxLength={500} defaultValue={list.description} className="textarea" />
-              </label>
-              <div aria-live="polite">
-                {err("rename")}
-                {result?.intent === "rename" && result.ok && <p className="form-ok">Saved.</p>}
-              </div>
-              <button className="btn w-fit" disabled={busy("rename")}>
-                {busy("rename") ? "Saving…" : "Save"}
-              </button>
-            </Form>
-          </Section>
-
-          <section aria-labelledby="danger-h" className="grid gap-3 rounded-[1.1rem] border-2 border-dashed border-danger/40 p-5 sm:p-6">
-            <h2 id="danger-h" className="text-xl font-semibold text-danger">Delete this list</h2>
+          <Section id="danger-h" title="Delete" desc="Delete this list and everything on it" open={openFor(["delete-list"])}>
             <p className="text-[0.9rem] text-ink-2">Deletes every item, product, price and comment, and disconnects its agents. This can't be undone.</p>
             <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
               <input type="hidden" name="intent" value="delete-list" />
@@ -413,7 +455,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               </button>
               <div className="sm:col-span-2">{err("delete-list")}</div>
             </Form>
-          </section>
+          </Section>
         </>
       )}
     </div>
@@ -583,47 +625,38 @@ function ThemePicker({
     <fetcher.Form method="post" className="grid gap-5">
       <input type="hidden" name="intent" value="theme" />
       <input type="hidden" name="theme" value={slug} />
+      {/* Two compact rows of swatches, name only; the one preview below follows the choice. */}
       <fieldset className="grid gap-2">
         <legend className="label mb-1">Layout</legend>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="flex flex-wrap gap-2">
           {templates.map((t) => (
-            <LookOption
+            <SwatchOption
               key={t.slug}
               name="template-choice"
               checked={template === t.template}
               onChange={() => pickTemplate(t.template)}
               view={t}
-              sample={sample}
-              origin={origin}
-              note={t.template === defaultTemplate ? "Default" : t.caption}
+              label={t.template === defaultTemplate ? `${t.name} (default)` : t.name}
             />
           ))}
         </div>
       </fieldset>
       <fieldset className="grid gap-2">
         <legend className="label mb-1">Occasion</legend>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <label className={`grid cursor-pointer place-items-center gap-2 rounded-md border-2 p-3 text-center ${occasion === null ? "border-ink-3" : "border-line"}`}>
-            <span className="grid h-20 w-full place-items-center rounded-lg bg-sunk text-[0.85rem] text-ink-3" aria-hidden="true">
-              No occasion
-            </span>
-            <span className="flex items-center gap-2">
-              <input type="radio" name="occasion-choice" checked={occasion === null} onChange={() => setOccasion(null)} className="h-5 w-5 accent-[var(--ink)]" />
-              <span className="font-semibold">None</span>
-            </span>
+        <div className="flex flex-wrap gap-2">
+          <label className={`swatch-option ${occasion === null ? "is-on" : ""}`}>
+            <input type="radio" name="occasion-choice" checked={occasion === null} onChange={() => setOccasion(null)} className="swatch-input" />
+            <span className="swatch-chip" aria-hidden="true" />
+            None
           </label>
           {looks.occasions.map((o) => (
-            <LookOption
+            <SwatchOption
               key={o.slug}
               name="occasion-choice"
               checked={occasion === o.occasion}
               onChange={() => setOccasion(o.occasion)}
               view={o}
-              sample={sample}
-              origin={origin}
               label={o.name.split(" · ").pop()!}
-              note={o.caption}
-              small
             />
           ))}
         </div>
@@ -634,7 +667,7 @@ function ThemePicker({
         </p>
         {/* A picture of the list in this look, scaled to the frame: nothing inside it scrolls. */}
         <div className="overflow-hidden rounded-[14px] border border-line">
-          <ThemeThumb theme={view} sample={sample} origin={origin} items={3} className="thumb-half h-[18rem] sm:h-[24rem]" />
+          <ThemeThumb theme={view} sample={sample} origin={origin} items={2} className="thumb-half h-[12rem] sm:h-[15rem]" />
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3" aria-live="polite">
@@ -651,42 +684,16 @@ function ThemePicker({
   );
 }
 
-function LookOption({
-  name,
-  checked,
-  onChange,
-  view,
-  sample,
-  origin,
-  note,
-  label,
-  small = false,
-}: {
-  name: string;
-  checked: boolean;
-  onChange: () => void;
-  view: ThemeView;
-  sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>;
-  origin: string;
-  note: string;
-  label?: string;
-  small?: boolean;
-}) {
-  // The label holds only the radio and its name, so the radio's accessible name is "Sheet Price table".
-  // The miniature beside it is decorative; clicking it picks the same option.
+/** One look as a small chip: its paper and accent, and its name. The radio is the chip (selection shown on it). */
+function SwatchOption({ name, checked, onChange, view, label }: { name: string; checked: boolean; onChange: () => void; view: ThemeView; label: string }) {
   return (
-    <div className={`grid overflow-hidden rounded-md border-2 ${checked ? "border-ink-3" : "border-line"}`}>
-      <div onClick={onChange} className="cursor-pointer">
-        <ThemeThumb theme={view} sample={sample} origin={origin} className={`${small ? "h-20" : "h-28"} border-b border-line`} />
-      </div>
-      <label className="flex cursor-pointer items-center gap-2 p-2.5">
-        <input type="radio" name={name} checked={checked} onChange={onChange} className="h-5 w-5 shrink-0 accent-[var(--ink)]" />
-        <span className="min-w-0">
-          <span className="block text-[0.92rem] font-semibold leading-tight">{label ?? view.name}</span>
-          {note && <span className="block text-[0.75rem] text-ink-3">{note}</span>}
-        </span>
-      </label>
-    </div>
+    <label className={`swatch-option ${checked ? "is-on" : ""}`}>
+      <input type="radio" name={name} checked={checked} onChange={onChange} className="swatch-input" />
+      <span className="swatch-chip" aria-hidden="true" style={{ background: view.swatch.paper }}>
+        <span style={{ background: view.swatch.want }} />
+      </span>
+      {label}
+    </label>
   );
 }
 
@@ -783,3 +790,4 @@ function Handover({ result, busy }: { result: ActionData | undefined; busy: bool
     </div>
   );
 }
+

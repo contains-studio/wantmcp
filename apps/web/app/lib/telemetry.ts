@@ -16,7 +16,9 @@ const ROUTES: Array<[RegExp, string]> = [
   [/^\/app\/lists\/[^/]+\/settings$/, "/app/lists/:id/settings"],
   [/^\/invite\/[^/]+$/, "/invite/:token"],
   [/^\/claim$/, "/claim"],
+  [/^\/(account|settings)$/, "/$1"],
   [/^\/claim\/[^/]+$/, "/claim/:token"],
+  [/^\/unsubscribe\/[^/]+$/, "/unsubscribe/:token"],
   [/^\/connect$/, "/connect"],
   [/^\/themes$/, "/themes"],
   [/^\/themes\/[^/]+$/, "/themes/:slug"],
@@ -44,7 +46,7 @@ export function routePattern(pathname: string): string {
 export function apiPathPattern(path: string): string {
   return (path.split("?")[0] || "/")
     .split("/")
-    .map((seg, i) => (i === 0 ? seg : /^(v1|me|lists|items|entries|questions|comments|agents|members|invites|claims|unclaimed|handover|auth|feed|reports|prices|events|status|purchase|promote|reject|summary|suggestions|updates|context|whoami|answer|accept|code|verify|logout)$/.test(seg) ? seg : ":id"))
+    .map((seg, i) => (i === 0 ? seg : /^(v1|me|lists|items|entries|questions|comments|agents|members|invites|claims|unclaimed|handover|unsubscribe|auth|feed|reports|prices|events|status|purchase|promote|reject|summary|suggestions|updates|context|whoami|answer|accept|code|verify|logout)$/.test(seg) ? seg : ":id"))
     .join("/");
 }
 

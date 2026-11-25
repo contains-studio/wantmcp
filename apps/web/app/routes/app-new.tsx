@@ -4,7 +4,7 @@
  */
 import { cleanRef, RefField } from "~/lib/ref";
 import { useState } from "react";
-import { data, Form, Link, redirect, useActionData, useNavigation } from "react-router";
+import { data, Form, Link, redirect, useActionData, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/app-new";
 import { api, formError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
@@ -69,7 +69,10 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
   const nav = useNavigation();
   const result = useActionData<typeof action>() as { error?: string } | undefined;
   const busy = nav.state === "submitting" && nav.formData?.get("intent") === "create-list";
-  const [format, setFormat] = useState<ListFormat>("shopping");
+  // ?format= from a "Start a … list" button picks the format; the person can still change it.
+  const [params] = useSearchParams();
+  const asked = params.get("format");
+  const [format, setFormat] = useState<ListFormat>(asked === "tasks" || asked === "research" ? asked : "shopping");
   // An explicit choice, private until the person picks public.
   const [vis, setVisibility] = useState<ListVisibility>("private");
   const fi = FORMATS[format];

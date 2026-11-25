@@ -10,7 +10,7 @@ import { LiveUpdates } from "~/components/LiveUpdates";
 import { ProductImage } from "~/components/ProductImage";
 import { Time } from "~/components/Time";
 import { api } from "~/lib/api.server";
-import { listCards } from "~/lib/app-home.server";
+import { loadCards } from "~/lib/app-home.server";
 import { requireUser } from "~/lib/auth.server";
 import { formatMoney } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
@@ -34,8 +34,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   // What agents say they are doing now (status_note), on the first page only.
   const working = cursor
     ? []
-    : (await listCards(request, listId ? lists.filter((l) => l.id === listId) : lists, []))
-        .filter((c) => c.note)
+    : (await loadCards(request, []))
+        .filter((c) => c.note && (!listId || c.id === listId))
         .map((c) => ({ listId: c.id, listTitle: c.title, ...c.note! }))
         .sort((a, b) => b.at.localeCompare(a.at));
   return data({ chips, listId, cursor, feed, working }, { headers: { "Cache-Control": "private, no-store" } });
@@ -92,7 +92,8 @@ export default function Activity({ loaderData }: Route.ComponentProps) {
                   </p>
                   <p className="mt-0.5 whitespace-pre-line text-ink-2">“{w.text}”</p>
                   <p className="mt-0.5 text-[0.85rem] text-ink-3">
-                    {w.listTitle} · in progress since <Time ts={w.at} />
+                    {w.listTitle} · {w.timed ? "" : "in progress since "}
+                    <Time ts={w.at} />
                   </p>
                 </li>
               ))}

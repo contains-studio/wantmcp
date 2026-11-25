@@ -20,7 +20,7 @@ const CHROME =
   process.env.CHROME_PATH ??
   (process.platform === "darwin" ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" : "/usr/bin/google-chrome");
 
-const PUBLIC_PAGES = ["/", "/connect", "/privacy", "/terms", "/themes", "/login", "/l/lst_desk2026", "/l/lst_desk2026?view=sheet", "/does-not-exist", "/for", "/for/black-friday-shopping-list", "/for/christmas-hosting-checklist", "/for/kwanzaa-gift-list", "/for/task-list-for-multiple-coding-agents", "/claim/clm_seed_unclaimed", "/claim/clm_seed_handover", "/claim/clm_seed_expired", "/login?next=/claim", "/invite/inv_seed_from_agent", "/l/lst_desk2026?ref=share"];
+const PUBLIC_PAGES = ["/", "/connect", "/privacy", "/terms", "/themes", "/login", "/l/lst_desk2026", "/l/lst_desk2026?view=sheet", "/does-not-exist", "/for", "/for/black-friday-shopping-list", "/for/christmas-hosting-checklist", "/for/kwanzaa-gift-list", "/for/task-list-for-multiple-coding-agents", "/claim/clm_seed_unclaimed", "/claim/clm_seed_handover", "/claim/clm_seed_expired", "/login?next=/claim", "/invite/inv_seed_from_agent", "/l/lst_desk2026?ref=share", "/connect?app=chatgpt", "/connect?app=grok-bot", "/unsubscribe/unsub_check_a11y", "/for/black-friday-shopping-list?list=tasks"];
 const SIGNED_IN_PAGES = ["/app", "/app?list=lst_tasks", "/account", "/app/lists/lst_desk2026/settings", "/app/lists/lst_tasks/settings", "/l/lst_tasks", "/l/lst_research", "/l/lst_desk2026"];
 const VIEWPORTS = { phone: { width: 390, height: 844, isMobile: true, hasTouch: true }, desktop: { width: 1280, height: 900 } };
 const SCHEMES = ["light", "dark"];

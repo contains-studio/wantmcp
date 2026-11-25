@@ -14,7 +14,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 /** Pages that are always personal: never stored by any cache. */
-const ALWAYS_PRIVATE = /^\/(app|login|logout|invite|claim)(\/|\.data|$)/;
+const ALWAYS_PRIVATE = /^\/(app|login|logout|invite|claim|unsubscribe)(\/|\.data|$)/;
 const SESSION_COOKIE = /(?:^|;\s*)wm_session=/;
 
 /**
@@ -45,7 +45,7 @@ function applyCachePolicy(request: Request, url: URL, res: Response) {
 }
 
 /** Pages that must never be indexed, whatever the route returns. */
-const NOINDEX = /^\/(app|login|logout|invite|claim|report|theme)(\/|\.data|$)/;
+const NOINDEX = /^\/(app|login|logout|invite|claim|unsubscribe|report|theme)(\/|\.data|$)/;
 
 export default {
   async fetch(request, env, ctx) {

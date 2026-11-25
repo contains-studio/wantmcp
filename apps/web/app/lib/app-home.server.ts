@@ -1,13 +1,10 @@
 /**
  * What /app shows for each list: counts in the format's words, progress, questions waiting and
- * the latest thing an agent did. All of it comes through this one function.
- *
- * Today the API has no per-list summary, so this reads each list's detail (one call per list, in
- * parallel). A `GET /v1/me/lists?include=summary` returning the same fields would replace it with
- * one call; the page would not change.
+ * the latest thing someone did. One call, GET /me/lists?include=summary; an API without it gets the
+ * older way (each list's detail, in parallel).
  */
 import { api } from "./api.server";
-import type { ActorRef, ListDetail, ListFormat, ListSummary } from "./types";
+import type { ActorRef, ListDetail, ListFormat, ListSummary, ListWithSummary } from "./types";
 import type { WaitingQuestion } from "./waiting.server";
 
 export interface ListCard {
@@ -25,7 +22,8 @@ export interface ListCard {
   waiting: number;
   latest: {
     actor: ActorRef;
-    kind: "product" | "update" | "answer";
+    /** "found", "posted", "answered", "commented on"… in plain words. */
+    verb: string;
     title: string;
     price: { price: string; currency: string } | null;
     at: string;
@@ -33,7 +31,7 @@ export interface ListCard {
     anchor: string;
   } | null;
   /** The newest progress note an agent left on a task it is working on (status_note). */
-  note: { actor: ActorRef; text: string; item: string; at: string; anchor: string } | null;
+  note: { actor: ActorRef; text: string; item: string; at: string; anchor: string; timed: boolean } | null;
   /** Writers only: how many people and agents can write the list (null when the API doesn't say). */
   access: { people: number; agents: number; pending_invites: number } | null;
 }
@@ -76,7 +74,7 @@ export async function listCards(request: Request, lists: ListSummary[], waiting:
       latest: last
         ? {
             actor: last.author,
-            kind: (last.kind ?? "product") as "product" | "update" | "answer",
+            verb: (last.kind ?? "product") === "product" ? "found" : last.kind === "answer" ? "answered" : "posted",
             title: last.title,
             price: last.current_price ? { price: last.current_price.price, currency: last.current_price.currency } : null,
             at: last.current_price?.posted_at ?? last.created_at,
@@ -85,8 +83,61 @@ export async function listCards(request: Request, lists: ListSummary[], waiting:
         : null,
       note:
         noted && noted.claimed_by
-          ? { actor: noted.claimed_by, text: noted.status_note!, item: noted.text, at: noted.claimed_at ?? l.updated_at, anchor: noted.id }
+          ? {
+              actor: noted.claimed_by,
+              text: noted.status_note!,
+              item: noted.text,
+              at: noted.status_note_at ?? noted.claimed_at ?? l.updated_at,
+              anchor: noted.id,
+              timed: !!noted.status_note_at,
+            }
           : null,
+      access: l.access ?? null,
+    };
+  });
+}
+
+const VERB: Record<string, (format: ListFormat) => string> = {
+  entry: (f) => (f === "shopping" ? "found" : f === "research" ? "answered" : "posted"),
+  price: () => "checked the price of",
+  comment: () => "commented on",
+  status: () => "updated",
+  answer: () => "answered",
+  question: () => "asked about",
+};
+
+/** The person's lists as /app cards, from GET /me/lists?include=summary, or the older way if the API doesn't have it. */
+export async function loadCards(request: Request, waiting: Parameters<typeof listCards>[2]): Promise<ListCard[]> {
+  const res = await api<{ items: ListWithSummary[] } | ListSummary[]>(request, "/me/lists", { query: { include: "summary", limit: 100 } });
+  // An API without summaries ignores the parameter and returns the plain array.
+  if (Array.isArray(res)) return listCards(request, res, waiting);
+  return res.items.map((l) => {
+    const format = l.format ?? "shopping";
+    const s = l.summary;
+    return {
+      id: l.id,
+      title: l.title,
+      url: l.url,
+      format,
+      isPrivate: l.visibility === "private",
+      role: l.my_role ?? null,
+      ownerHandle: l.owner_handle,
+      updatedAt: l.updated_at,
+      createdAt: l.created_at,
+      items: s.items,
+      done: s.done,
+      waiting: s.waiting,
+      latest: s.latest
+        ? {
+            actor: s.latest.actor,
+            verb: (VERB[s.latest.kind] ?? (() => "posted"))(format),
+            title: s.latest.title,
+            price: s.latest.price ? { price: s.latest.price.amount, currency: s.latest.price.currency } : null,
+            at: s.latest.at,
+            anchor: s.latest.anchor,
+          }
+        : null,
+      note: s.note ? { actor: s.note.actor, text: s.note.text, item: s.note.item.text, at: s.note.at, anchor: s.note.anchor, timed: true } : null,
       access: l.access ?? null,
     };
   });

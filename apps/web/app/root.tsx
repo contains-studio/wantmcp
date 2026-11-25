@@ -74,7 +74,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 /** "My lists", with how many questions wait on the person (SPEC 12.1). Loaded after the page so it never slows it. */
 
-function Header() {
+/** `minimal` (sign-in): the wordmark only, so the one thing on the page is the email field. */
+function Header({ minimal = false }: { minimal?: boolean }) {
   const { user } = useRootData();
   const nav = useNavigation();
   const navCls = ({ isActive }: { isActive: boolean }) =>
@@ -90,6 +91,8 @@ function Header() {
           {/* Very narrow screens: the mark alone, so the links keep one row. */}
           <Wordmark textClass={user ? "max-[339px]:sr-only" : ""} />
         </Link>
+        {!minimal && (
+        <>
         <nav aria-label="Main" className="flex flex-none items-center gap-0.5 sm:gap-1">
           <NavLink to="/connect" className={navCls}>
             Connect
@@ -111,9 +114,11 @@ function Header() {
         </nav>
         {!user && (
           // From 640px up; on phones the page's own "Start a list" is the primary.
-          <Link to="/login" className="ml-1 hidden flex-none whitespace-nowrap rounded-full bg-want px-4 py-2 text-[0.88rem] font-semibold text-want-ink sm:inline-flex">
+          <Link to="/login?next=/app/new" className="ml-1 hidden flex-none whitespace-nowrap rounded-full bg-want px-4 py-2 text-[0.88rem] font-semibold text-want-ink sm:inline-flex">
             Start a list
           </Link>
+        )}
+        </>
         )}
       </div>
     </header>
@@ -128,7 +133,7 @@ function Footer() {
         <Wordmark />
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <Link to="/connect" className="link">Connect an agent</Link>
-          <Link to="/for" className="link">Lists for every job</Link>
+          <Link to="/for" className="link">Ideas</Link>
           <Link to="/privacy" className="link">Privacy</Link>
           <Link to="/terms" className="link">Terms</Link>
           {sourceUrl && (
@@ -174,13 +179,15 @@ function BuildGuard() {
 
 export default function App() {
   useRememberRef();
+  // Sign-in shows no navigation or footer: nothing to do there but sign in.
+  const minimal = useMatches().at(-1)?.id === "routes/login";
   return (
     <>
-      <Header />
+      <Header minimal={minimal} />
       <main id="main" tabIndex={-1}>
         <Outlet />
       </main>
-      <Footer />
+      {!minimal && <Footer />}
       <BuildGuard />
     </>
   );
@@ -203,6 +210,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     details = error.message;
   }
   const ref = useErrorRef(status, error);
+  const signedIn = !!useRouteLoaderData<typeof loader>("root")?.user;
   return (
     <>
       <title>{`${title} · The Want MCP`}</title>
@@ -217,10 +225,23 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
             Reference: <code className="font-semibold text-ink">{ref}</code>
           </p>
         )}
-        {/* A full page load, not a client-side route change: after a deploy the open tab may hold an old build. */}
-        <a href="/" className="btn mt-8">
-          Go home
-        </a>
+        {/* Full page loads, not client-side route changes: after a deploy the open tab may hold an old build. */}
+        {status === 404 ? (
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href={signedIn ? "/app/new" : "/login?next=/app/new"} className="btn btn-want">
+              Start a list
+            </a>
+            {signedIn && (
+              <a href="/app" className="btn">
+                Your lists
+              </a>
+            )}
+          </div>
+        ) : (
+          <a href="/" className="btn mt-8">
+            Go home
+          </a>
+        )}
       </main>
       <Footer />
       <RecoverOnce active={status >= 500} />

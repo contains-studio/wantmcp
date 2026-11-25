@@ -14,7 +14,7 @@ import { LiveUpdates } from "~/components/LiveUpdates";
 import { Time } from "~/components/Time";
 import type { IntentResult } from "~/components/WriteTools";
 import { api, apiOptional, formError } from "~/lib/api.server";
-import { listCards, orderCards, type ListCard } from "~/lib/app-home.server";
+import { loadCards, orderCards, type ListCard } from "~/lib/app-home.server";
 import { requireUser } from "~/lib/auth.server";
 import { formatMoney, plural } from "~/lib/format";
 import { FORMATS } from "~/lib/formats";
@@ -36,15 +36,14 @@ const FILTER_FROM = 9;
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
   const url = new URL(request.url);
-  const [lists, invites, waiting, agents] = await Promise.all([
-    api<ListSummary[]>(request, "/me/lists"),
+  const [invites, waiting, agents] = await Promise.all([
     // Older API servers don't have pending invites yet: show none.
     apiOptional<PendingInvite[]>(request, "/me/invites").then((r) => r ?? []),
     // SPEC 12.1: every open question across the person's lists comes first on this page.
     waitingQuestions(request).catch(() => ({ questions: [] as WaitingQuestion[], count: 0 })),
     api<AgentInfo[]>(request, "/me/agents").catch(() => [] as AgentInfo[]),
   ]);
-  const cards = orderCards(await listCards(request, lists, waiting.questions));
+  const cards = orderCards(await loadCards(request, waiting.questions));
   const q = (url.searchParams.get("q") ?? "").trim();
   return data(
     {
@@ -369,12 +368,17 @@ function ListCardRow({ card: c }: { card: ListCard }) {
             <span className="min-w-0 flex-1">
               <ActorTag actor={c.note.actor} compact /> <span className="text-ink-2">on {c.note.item}:</span> <span className="text-ink">“{c.note.text}”</span>
             </span>
+            {c.note.timed && (
+              <span className="flex-none text-[0.82rem] text-ink-3">
+                <Time ts={c.note.at} />
+              </span>
+            )}
           </p>
         ) : c.latest ? (
           <p className="flex items-baseline gap-2">
             <span className="min-w-0 flex-1">
               <ActorTag actor={c.latest.actor} compact />{" "}
-              <span className="text-ink-2">{c.latest.kind === "product" ? "found" : c.latest.kind === "answer" ? "answered" : "posted"}</span>{" "}
+              <span className="text-ink-2">{c.latest.verb}</span>{" "}
               <span className="text-ink">{c.latest.title}</span>
               {c.latest.price && (
                 <>

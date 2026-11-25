@@ -7,7 +7,7 @@ test("home: two ways to start, and a pointer for agents", async ({ page, context
   const ways = page.locator("section[aria-labelledby=ways-h]");
   await expect(ways.getByRole("heading", { name: "Start it yourself" })).toBeVisible();
   await expect(ways.getByRole("heading", { name: "Have your agent start it" })).toBeVisible();
-  await expect(ways.getByRole("link", { name: "Start a list" })).toHaveAttribute("href", "/login");
+  await expect(ways.getByRole("link", { name: "Start a list" })).toHaveAttribute("href", "/login?next=/app/new");
   await ways.getByRole("button", { name: "Copy the message for your agent" }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^Start a list for me on The Want MCP \(https:\/\/.+\/mcp\)\. Call start_list/);
   await expect(page.locator('link[rel="alternate"][type="text/plain"]')).toHaveAttribute("href", /\/llms\.txt$/);

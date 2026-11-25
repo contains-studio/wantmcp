@@ -21,7 +21,10 @@ export function loader({ request, params }: Route.LoaderArgs) {
   if (!persona) throw new Response("Not found", { status: 404 });
   const origin = siteOrigin(request);
   const now = Date.now();
-  const lists = ORDER.map((format) => {
+  // One sample at a time (?list=, real links): the first by default.
+  const asked = new URL(request.url).searchParams.get("list");
+  const shown: ListFormat = ORDER.includes(asked as ListFormat) ? (asked as ListFormat) : ORDER[0];
+  const lists = [shown].map((format) => {
     const spec = persona.lists[format];
     const theme = getThemeView(spec.look ?? DEFAULT_LOOK[format], format);
     return { format, theme, sample: buildSample(spec, { id: `s-${format}`, now, url: `${origin}/for/${persona.slug}` }) };
@@ -32,7 +35,7 @@ export function loader({ request, params }: Route.LoaderArgs) {
   const related = [...others.filter((p) => p.group === persona.group), ...others.filter((p) => p.group !== persona.group)]
     .slice(0, 3)
     .map((p) => ({ slug: p.slug, title: p.title }));
-  return { persona: page, lists, origin, related };
+  return { persona: page, lists, origin, related, shown };
 }
 
 export function headers() {
@@ -66,7 +69,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const form = await request.formData();
   const format = String(form.get("format")) as ListFormat;
   if (!ORDER.includes(format)) return data({ error: "Pick a list" }, 400);
-  if (!getSessionToken(request)) throw redirect(`/login?next=${encodeURIComponent(`/for/${persona.slug}#start-${format}`)}`);
+  if (!getSessionToken(request)) throw redirect(`/login?next=${encodeURIComponent(`/for/${persona.slug}?list=${format}#start-${format}`)}`);
   const spec = persona.lists[format];
   try {
     const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: spec.title, format, visibility: "private" }, ref: cleanRef(form.get("ref")) });
@@ -82,7 +85,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function ForPersona({ loaderData, actionData }: Route.ComponentProps) {
-  const { persona: p, lists, origin, related } = loaderData;
+  const { persona: p, lists, origin, related, shown } = loaderData;
   const nav = useNavigation();
   const { user } = useRootData();
   const starting = nav.state !== "idle" ? nav.formData?.get("format") : null;
@@ -96,17 +99,28 @@ export default function ForPersona({ loaderData, actionData }: Route.ComponentPr
         <p className="max-w-[60ch] text-[1.0625rem] text-ink-2">{p.intro}</p>
       </header>
 
-      {lists.map(({ format, theme, sample }, i) => (
-        <section key={format} id={`start-${format}`} aria-labelledby={`${format}-h`} className={`scroll-mt-20 ${i % 2 === 0 ? "bg-sunk" : ""}`}>
-          <div className="wrap grid gap-4 py-10 sm:py-14">
+      {/* Three samples, one shown at a time: real links, so each has an address and it works without JavaScript. */}
+      <nav aria-label="Sample lists" className="wrap">
+        <div className="view-switch">
+          {ORDER.map((f) => (
+            <Link key={f} to={`?list=${f}#start-${f}`} preventScrollReset replace aria-current={f === shown ? "page" : undefined} className={`view-tab ${f === shown ? "is-on" : ""}`}>
+              {f === "shopping" ? "Shopping" : f === "tasks" ? "Tasks" : "Research"}
+            </Link>
+          ))}
+        </div>
+      </nav>
+
+      {lists.map(({ format, theme, sample }) => (
+        <section key={format} id={`start-${format}`} aria-labelledby={`${format}-h`} className="scroll-mt-20">
+          <div className="wrap grid gap-4 py-6 sm:py-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <h2 id={`${format}-h`} className="serif text-[1.6rem] sm:text-[1.9rem]">
-                {LIST_NAME[format]} <span className="font-normal text-ink-3">· {theme.name}</span>
+                {LIST_NAME[format]}
               </h2>
               <Form method="post" className="flex items-center gap-2">
                 <input type="hidden" name="format" value={format} />
                 <RefField />
-                <button className="btn btn-sm" disabled={starting === format}>
+                <button className="btn btn-want" disabled={starting === format}>
                   {starting === format ? "Creating…" : "Start with this list"}
                 </button>
               </Form>
@@ -126,6 +140,7 @@ export default function ForPersona({ loaderData, actionData }: Route.ComponentPr
                   origin={origin}
                   theme={theme}
                   preview
+                  sample
                 />
               </HeadingBase.Provider>
             </div>
@@ -139,7 +154,7 @@ export default function ForPersona({ loaderData, actionData }: Route.ComponentPr
         </h2>
         <p className="max-w-[52ch] text-ink-2">Write what you want in your own words, then connect the AI app you already use.</p>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
+          <Link to={user ? "/app/new" : "/login?next=/app/new"} className="btn btn-want btn-lg">
             Start a list
           </Link>
           <Link to="/connect" className="btn btn-lg">

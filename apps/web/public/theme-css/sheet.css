@@ -1,5 +1,5 @@
 /* Sheet: a spreadsheet. Gridlines on the page, dense tables, tabular numbers, row numbers down the side. */
-.themed.tpl-sheet { --grid: color-mix(in srgb, var(--line) 70%, transparent); --bar: var(--occ-band); background:
+.themed.tpl-sheet { --grid: color-mix(in srgb, var(--line) 45%, transparent); --bar: var(--occ-band); background:
   linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 2rem,
   linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 7.5rem 100%,
   var(--paper); }
@@ -20,9 +20,15 @@
 .themed.tpl-sheet .item-title { font-family: var(--font-sans); font-size: 1.1rem !important; font-weight: 650; }
 .themed.tpl-sheet .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
 .themed.tpl-sheet .item-section .card { border-radius: 8px; box-shadow: none; border: 1px solid var(--line); }
-.themed.tpl-sheet .price { font-family: var(--font-mono); letter-spacing: -0.02em; }
+/* Prices in the system face with tabular figures, everywhere; monospace is for codes only. */
 .themed.tpl-sheet .bought-divider h2 { font-family: var(--font-sans); font-size: 1rem; }
 
 /* Occasions: the bar along the top of the header widens into a band carrying the art. */
 .themed.tpl-sheet.has-occ .list-hero::before { height: 3.25rem; background: var(--occ-art) no-repeat right 1.25rem center / auto 85%, var(--occ-pattern, none), var(--occ-band); }
 .themed.tpl-sheet.has-occ .list-hero::after { content: ""; display: block; height: var(--occ-strip-h); background: var(--occ-strip); }
+
+/* Dark: the grid reads as texture, not lines (owner review, 25 Nov). */
+.themed.tpl-sheet.is-dark, [data-theme="dark"] .themed.tpl-sheet { --grid: color-mix(in srgb, var(--line) 25%, transparent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .themed.tpl-sheet { --grid: color-mix(in srgb, var(--line) 25%, transparent); } }
+/* Phones: no grid at all, just the paper (owner review, 25 Nov). */
+@media (max-width: 639px) { .themed.tpl-sheet { background-image: none; } }

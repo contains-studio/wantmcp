@@ -675,7 +675,7 @@ button.check-toggle:hover { border-color: var(--ink); }
 
   /* Prices: the easiest thing on the page to read */
   .price {
-    font-family: var(--font-price, var(--font-display)); font-weight: var(--price-weight, 500); font-variant-numeric: tabular-nums lining-nums;
+    font-family: var(--font-price, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", system-ui, "Segoe UI", sans-serif); font-weight: var(--price-weight, 500); font-variant-numeric: tabular-nums lining-nums;
     letter-spacing: -0.02em; line-height: 1; color: var(--ink);
   }
   .price-was { font-variant-numeric: tabular-nums; color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1.5px; }
@@ -857,8 +857,21 @@ button.check-toggle:hover { border-color: var(--ink); }
   padding: 0 0.6rem; border-radius: 4px; color: var(--ink); text-decoration: none;
 }
 .brand-tile:hover { background: var(--sunk); }
+/* List settings' look picker: small chips that wrap (no inner scrolling). */
+.swatch-option {
+  display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--ctl-sm, 2.5rem); padding: 0.25rem 0.75rem 0.25rem 0.3rem;
+  border: 1px solid var(--line-strong); border-radius: 999px; font-size: 0.9rem; cursor: pointer; background: var(--card);
+}
+.swatch-option { position: relative; }
+.swatch-input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.swatch-option.is-on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-weight: 600; }
+.swatch-option:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.swatch-chip { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; border: 1px solid var(--line); background: var(--sunk); }
+.swatch-chip > span { width: 0.85rem; height: 0.85rem; border-radius: 999px; }
+.brand-tile.is-on { background: var(--sunk); box-shadow: inset 0 0 0 2px var(--ink); }
 
-/* The home feed as plain rows separated by hairlines. */
+/* The home feed as plain rows separated by hairlines. Phones show the six newest. */
+@media (max-width: 639px) { .feed-rows-short > :nth-child(n + 7) { display: none; } }
 .feed-rows > article, .feed-rows > li > article { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding-inline: 0; }
 .feed-rows > li > article.untrusted { border: 1px dashed var(--warn); border-radius: 6px; padding-inline: 1rem; margin-block: 0.75rem; }
 .brand-logo { height: 1.6rem; width: auto; max-width: 7.5rem; object-fit: contain; }

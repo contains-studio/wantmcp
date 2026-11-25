@@ -68,7 +68,7 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
         <div className="card grid w-full max-w-md justify-items-center gap-3 p-6 text-center sm:p-8">
           <h1 className="text-[1.6rem] leading-tight font-semibold">This invite link doesn't work</h1>
           <p className="text-ink-2">It may have expired, been cancelled or already used. Ask the person who sent it for a new one.</p>
-          <Link to={user ? "/app" : "/login"} className="btn btn-want mt-2">
+          <Link to={user ? "/app/new" : "/login?next=/app/new"} className="btn btn-want mt-2">
             Start a list
           </Link>
         </div>
@@ -97,7 +97,7 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
                 ? "This invite was cancelled. Ask the list owner for a new one."
                 : "This invite has already been used. Ask the list owner for a new one."}
             </p>
-            <Link to={user ? "/app" : "/login"} className="btn btn-want">
+            <Link to={user ? "/app/new" : "/login?next=/app/new"} className="btn btn-want">
               Start a list
             </Link>
           </div>

@@ -56,8 +56,8 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
   };
 
   const th = "whitespace-nowrap border-b border-line-strong px-3 py-2 text-left text-[0.75rem] font-semibold uppercase tracking-[0.05em] text-ink-3";
-  const td = "border-b border-line px-3 py-2.5 align-top";
-  // On a phone: product, price and saving; the rest sits behind each row's "Details".
+  const td = "border-b border-line px-3 py-2 align-top sm:py-2.5";
+  // On a phone: product, price and saving; the rest is in the want's one "Details and price history" below the table.
   const wide = "hidden sm:table-cell";
   const stickyA = "sm:sticky sm:left-0 z-[1] bg-card sm:w-[15rem] sm:min-w-[15rem]";
   const stickyB = "sm:sticky sm:left-[15rem] z-[1] bg-card sm:shadow-[inset_-1px_0_0_var(--line)]";
@@ -107,65 +107,20 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
               return (
                 <tr key={e.id} id={e.id} className={`scroll-mt-24 ${highlight} ${stale ? "is-stale" : ""}`}>
                   <th scope="row" className={`${td} ${stickyA} ${highlight || "bg-card"} text-left font-normal`}>
-                    <ExtLink href={e.product_url ?? ""} className="link line-clamp-3 font-semibold leading-snug">
-                      {e.title}
-                      <span className="sr-only"> (opens retailer site in a new tab)</span>
-                    </ExtLink>
-                    <span className="mt-1 flex flex-wrap gap-1">
-                      {e.id === boughtId && <span className="stamp text-[0.6rem]">Bought</span>}
-                      {e.id === lowestId && e.id !== boughtId && <span className="lowest text-[0.6rem]">Lowest</span>}
-                      {e.buy_url && (
-                        <ExtLink href={e.buy_url} className="link text-[0.78rem] text-ink-2">
-                          Buy ↗<span className="sr-only"> {e.title} (new tab)</span>
-                        </ExtLink>
-                      )}
+                    {/* Two title lines at most, the tag inline after the title: about four products per phone screen. */}
+                    <span className="line-clamp-2 leading-snug">
+                      <ExtLink href={e.product_url ?? ""} className="link font-semibold">
+                        {e.title}
+                        <span className="sr-only"> (opens retailer site in a new tab)</span>
+                      </ExtLink>
+                      {e.id === boughtId && <span className="stamp ml-1.5 align-middle text-[0.6rem]">Bought</span>}
+                      {e.id === lowestId && e.id !== boughtId && <span className="lowest ml-1.5 align-middle text-[0.6rem]">Lowest</span>}
                     </span>
-                    {/* Phone: who posted it, when it was checked and where from stay one tap away. */}
-                    <details className="group mt-1 sm:hidden">
-                      <summary className="textlink-btn text-[0.78rem]">
-                        Details<span className="sr-only"> for {e.title}</span>
-                      </summary>
-                      <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[0.78rem] text-ink-2">
-                        {p?.original_price && pct !== null && (
-                          <>
-                            <dt className="text-ink-3">Was</dt>
-                            <dd className="price-was">{formatMoney(p.original_price, p.currency)}</dd>
-                          </>
-                        )}
-                        <dt className="text-ink-3">Retailer</dt>
-                        <dd>{e.retailer || "–"}</dd>
-                        {e.coupon_code && (
-                          <>
-                            <dt className="text-ink-3">Coupon</dt>
-                            <dd><code className="font-semibold">{e.coupon_code}</code></dd>
-                          </>
-                        )}
-                        {deal && (
-                          <>
-                            <dt className="text-ink-3">Deal</dt>
-                            <dd>{deal.label.replace(/^Deal /, "")}</dd>
-                          </>
-                        )}
-                        <dt className="text-ink-3">Posted by</dt>
-                        <dd><ActorTag actor={e.author} compact /></dd>
-                        <dt className="text-ink-3">Checked</dt>
-                        <dd>
-                          <time dateTime={updated}>{timeAgo(updated, now)}</time>
-                          {stale && " · not checked today"}
-                        </dd>
-                        {p && (
-                          <>
-                            <dt className="text-ink-3">Source</dt>
-                            <dd>
-                              {SOURCE_LABEL[p.source ?? "unknown"]}
-                              {!isVerified(p) && " · unverified"}
-                              {p.in_stock === true && " · in stock"}
-                              {p.in_stock === false && " · out of stock"}
-                            </dd>
-                          </>
-                        )}
-                      </dl>
-                    </details>
+                    {e.buy_url && (
+                      <ExtLink href={e.buy_url} className="link mt-1 hidden text-[0.78rem] text-ink-2 sm:inline-block">
+                        Buy ↗<span className="sr-only"> {e.title} (new tab)</span>
+                      </ExtLink>
+                    )}
                   </th>
                   <td className={`${td} ${stickyB} ${highlight || "bg-card"} text-right`}>
                     {p ? <span className="price text-[1.25rem]">{formatMoney(p.price, p.currency)}</span> : <span className="text-ink-3">–</span>}

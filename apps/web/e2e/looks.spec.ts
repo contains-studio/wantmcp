@@ -4,11 +4,18 @@ import { createList, freshEmail, signIn } from "./helpers";
 /** Picks a layout (and optionally an occasion) in settings, saves, and checks the list page. */
 async function useLook(page: import("@playwright/test").Page, id: string, layout: string, cls: string, occasion?: { name: string; cls: string }) {
   await page.goto(`/app/lists/${id}/settings`);
-  const look = page.locator("section[aria-labelledby='theme-h']");
+  const look = page.locator("[data-section='theme-h']");
   const radio = look.getByRole("radio", { name: new RegExp(`^${layout}\\b`) });
   await radio.click();
   await expect(radio).toBeChecked();
-  if (occasion) await look.getByRole("radio", { name: new RegExp(`^${occasion.name}\\b`) }).check();
+  // Picking a layout reloads its occasions (?template=): wait for that before picking one.
+  await expect(page).toHaveURL(/[?&]template=/);
+  await expect(look.getByText(new RegExp(`^Preview: ${layout}`))).toBeVisible();
+  if (occasion) {
+    const o = look.getByRole("radio", { name: new RegExp(`^${occasion.name}\\b`) });
+    await o.click();
+    await expect(o).toBeChecked();
+  }
   await look.getByRole("button", { name: "Save", exact: true }).click();
   await expect(look.getByText("Saved. Your list now uses this look.")).toBeVisible();
   await page.goto(`/l/${id}`);

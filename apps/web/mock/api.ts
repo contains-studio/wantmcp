@@ -10,7 +10,7 @@
  * Sign-in: any email, code 123456.
  */
 import type {
-  ActorRef, AgentInfo, ClaimPreview, HandoverResult, UnclaimedListResult, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
+  ActorRef, AgentInfo, ClaimPreview, HandoverResult, ListWithSummary, UnclaimedListResult, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
   ItemSummary, ListSummaryPage, Member, OpenQuestionsPage, Page, PriceInput, PriceObservation, PriceSource, PurchaseInput, Question, UserSelf, WantEvent,
 } from "../app/lib/types.ts";
 import { HANDOVER_TTL_DAYS, UNCLAIMED_TTL_HOURS } from "../app/lib/claims.ts";
@@ -273,6 +273,39 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
   return out;
 }
 
+/** GET /me/lists?include=summary: the caller's lists, most recently active first, each with what /app shows. */
+function listsWithSummary(c: NonNullable<Caller>): ListWithSummary[] {
+  const isMe = (a: ActorRef) => a.kind === "user" && c.kind === "user" && a.handle === c.user.handle;
+  return store.lists
+    .filter((l) => canWrite(c, l.id))
+    .map((l) => {
+      const items = store.items.filter((i) => i.list_id === l.id);
+      const ids = new Set(items.map((i) => i.id));
+      const shopping = fmt(l) === "shopping";
+      const done = items.filter((i) => (shopping ? !!i.purchase : i.status === "done")).length;
+      const waiting = store.questions.filter((q) => ids.has(q.item_id) && !q.answer && !isMe(q.asked_by)).length;
+      const entries = store.entries.filter((e) => ids.has(e.item_id) && e.status === "listed" && !isMe(e.author)).sort((a, b) => b.created_at.localeCompare(a.created_at));
+      const e = entries[0];
+      const price = e ? pricesFor(e.id).at(-1) : undefined;
+      const noted = items.filter((i) => i.status_note && i.claimed_by && i.status !== "done").sort((a, b) => (b.status_note_at ?? "").localeCompare(a.status_note_at ?? ""))[0];
+      return {
+        ...listSummary(l, c),
+        summary: {
+          items: items.length,
+          done,
+          waiting,
+          latest: e
+            ? { actor: e.author, kind: "entry" as const, title: e.title, ...(price ? { price: { amount: price.price, currency: price.currency } } : {}), at: e.created_at, anchor: e.item_id }
+            : null,
+          note: noted
+            ? { actor: noted.claimed_by!, text: noted.status_note!, item: { id: noted.id, text: noted.text }, at: noted.status_note_at ?? noted.claimed_at ?? l.updated_at, anchor: noted.id }
+            : null,
+        },
+      };
+    })
+    .sort((a, b) => [b.updated_at, b.summary.latest?.at ?? ""].sort().at(-1)!.localeCompare([a.updated_at, a.summary.latest?.at ?? ""].sort().at(-1)!));
+}
+
 function accessCounts(listId: string) {
   const active = store.members.filter((m) => m.list_id === listId && m.status === "active" && m.user_id);
   const people = active.filter((m) => !userById(m.user_id!).placeholder).length;
@@ -347,6 +380,7 @@ function itemOut(i: ItemRow, c: Caller): Item {
     claimed_by: i.claimed_by ?? null,
     claimed_at: i.claimed_by ? (i.claimed_at ?? null) : null,
     status_note: i.status_note ?? null,
+    status_note_at: i.status_note ? (i.status_note_at ?? i.claimed_at ?? null) : null,
     text_by: i.text_by ?? (i.created_by.kind === "agent" ? "agent" : "person"),
     completion:
       i.completion ??
@@ -537,8 +571,9 @@ route("POST", "/me/invites/{list_id}/accept", ({ caller, params }) => {
   return listSummary(getList(m.list_id), c);
 });
 
-route("GET", "/me/lists", ({ caller }) => {
+route("GET", "/me/lists", ({ caller, url }) => {
   if (!caller) throw unauthorized();
+  if (url.searchParams.get("include") === "summary") return { items: listsWithSummary(caller), next_cursor: null };
   return store.lists
     .filter((l) => canWrite(caller, l.id))
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
@@ -567,6 +602,16 @@ route("DELETE", "/me/agent-keys/{id}", ({ caller, params }) => {
   if (!a) throw notFound("Key not found");
   store.agents = store.agents.filter((x) => x !== a);
   return store.agents.filter((x) => x.owner_id === c.user.id && x.kind === "account").map(agentOut);
+});
+
+// Feature-email unsubscribe links. Mock: unsub_<anything> is a valid token, once.
+const unsubscribed = new Set<string>();
+route("GET", "/unsubscribe/{token}", ({ params }) => ({ valid: /^unsub_[a-z0-9_-]{4,60}$/i.test(params[0]), unsubscribed: unsubscribed.has(params[0]) }));
+route("POST", "/unsubscribe", ({ body }) => {
+  const token = text("token", body.token, 200, true);
+  if (!/^unsub_[a-z0-9_-]{4,60}$/i.test(token)) throw notFound("This link doesn't work");
+  unsubscribed.add(token);
+  return NO_CONTENT;
 });
 
 route("GET", "/me/agents", ({ caller, url }) => {
@@ -1048,6 +1093,7 @@ route("POST", "/items/{id}/status", ({ caller, params, body }) => {
   i.status = status;
   // The note stays until the status changes again; re-sending in_progress with a new note posts progress.
   i.status_note = status === "done" ? null : note;
+  i.status_note_at = i.status_note ? nowIso() : null;
   if (status === "open") {
     i.claimed_by = null;
     i.claimed_at = null;

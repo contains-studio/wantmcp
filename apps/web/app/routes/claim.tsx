@@ -167,7 +167,7 @@ function LinkGone({ signedIn, message }: { signedIn: boolean; message?: string }
           {message ||
             `Someone may have kept the list already, or the link ran out. A list an agent starts is deleted if nobody keeps it within ${UNCLAIMED_TTL_HOURS} hours.`}
         </p>
-        <Link to={signedIn ? "/app" : "/login"} className="btn btn-want mt-2">
+        <Link to={signedIn ? "/app/new" : "/login?next=/app/new"} className="btn btn-want mt-2">
           Start a list
         </Link>
         {!signedIn && (

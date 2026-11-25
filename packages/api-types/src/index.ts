@@ -111,6 +111,8 @@ export interface Item {
    * the status changes again. Absent from older API builds.
    */
   status_note?: string | null;
+  /** When the status note was written. */
+  status_note_at?: Timestamp | null;
   completion: Completion | null;
   /** Who wrote the item's text: a person, or an agent. A person editing it makes it theirs. */
   text_by?: "person" | "agent";
@@ -292,6 +294,34 @@ export interface InvitePreview {
   invited_by?: ActorRef | null;
 }
 
+/** GET /me/lists?include=summary: one list as /app shows it. */
+export interface ListWithSummary extends ListSummary {
+  summary: {
+    items: number;
+    /** Bought, done or answered. */
+    done: number;
+    /** Open questions someone other than the caller asked. */
+    waiting: number;
+    /** The newest thing by someone other than the caller (the caller's own agents count as someone else). */
+    latest: {
+      actor: ActorRef;
+      kind: "entry" | "price" | "comment" | "status" | "answer" | "question";
+      title: string;
+      price?: { amount: Decimal; currency: string };
+      at: Timestamp;
+      /** The item id to link to. */
+      anchor: string;
+    } | null;
+    note: { actor: ActorRef; text: string; item: { id: string; text: string }; at: Timestamp; anchor: string } | null;
+  };
+}
+
+/** GET /unsubscribe/{token}. */
+export interface UnsubscribeState {
+  valid: boolean;
+  unsubscribed: boolean;
+}
+
 /** SPEC 13.1: POST /lists/unclaimed (no credential). */
 export interface UnclaimedListInput {
   title: string;
@@ -436,6 +466,7 @@ export interface ItemSummary {
   claimed_by: ActorRef | null;
   claimed_at: Timestamp | null;
   status_note?: string | null;
+  status_note_at?: Timestamp | null;
   text_by?: "person" | "agent";
   /** Writers only; null for everyone else. */
   open_question: Question | null;

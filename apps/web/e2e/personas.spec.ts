@@ -17,17 +17,23 @@ test("the /for index links to persona pages @phone", async ({ page }) => {
 });
 
 for (const p of PAGES) {
-  test(`/for/${p.slug} shows three sample lists`, async ({ page }) => {
+  test(`/for/${p.slug} shows three sample lists, one at a time`, async ({ page }) => {
     await page.goto(`/for/${p.slug}`);
     await expect(page.getByRole("heading", { level: 1, name: p.h1 })).toBeVisible();
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/for/${p.slug}$`));
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", new RegExp(`/og/for/${p.slug}\\.png`));
-    for (const name of ["Shopping list", "Task list", "Research list"]) {
-      await expect(page.getByRole("heading", { level: 2, name: new RegExp(`^${name}`) })).toBeVisible();
+    // The first sample shows; the switch has real links to the others.
+    await expect(page.getByRole("heading", { level: 2, name: "Shopping list", exact: true })).toBeVisible();
+    await expect(page.locator(".themed")).toHaveCount(1);
+    // The one thing to do here: start with this list. No counts or owner inside the sample, just its tag.
+    await expect(page.getByRole("button", { name: "Start with this list" })).toHaveClass(/btn-want/);
+    await expect(page.locator(".themed .list-meta")).toHaveText("Sample");
+    for (const [tab, name] of [["Tasks", "Task list"], ["Research", "Research list"]]) {
+      await page.getByRole("navigation", { name: "Sample lists" }).getByRole("link", { name: tab }).click();
+      await expect(page.getByRole("heading", { level: 2, name, exact: true })).toBeVisible();
     }
-    // Real list components, each saying it is a sample.
-    await expect(page.locator(".themed")).toHaveCount(3);
+    await expect(page.locator(".themed")).toHaveCount(1);
     await expect(page.getByText("Sample list: stores, prices and agents are illustrative.").first()).toBeVisible();
     // Read-only: no menus or forms from the list itself.
     await expect(page.locator(".themed .menu-trigger")).toHaveCount(0);
@@ -46,7 +52,7 @@ test("an unknown persona is a 404", async ({ page }) => {
 
 test("start with a sample list after signing in", async ({ page }) => {
   await signIn(page, freshEmail("persona"));
-  await page.goto("/for/literature-review-tracker");
+  await page.goto("/for/literature-review-tracker?list=research");
   await page.locator("#start-research").getByRole("button", { name: "Start with this list" }).click();
   await expect(page).toHaveURL(/\/l\/[^/]+$/);
   await expect(page.getByRole("heading", { level: 1, name: "Chapter 2: open questions" })).toBeVisible();

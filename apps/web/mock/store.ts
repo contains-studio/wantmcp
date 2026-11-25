@@ -74,6 +74,7 @@ export interface ItemRow {
   claimed_at?: Timestamp | null;
   completion?: Completion | null;
   status_note?: string | null;
+  status_note_at?: Timestamp | null;
   text_by?: "person" | "agent";
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { SEASON, seasonActive } from "~/lib/season";
 import { MetaLine } from "~/components/MetaLine";
 import { GiveToAgent } from "~/components/GiveToAgent";
 import { HeadingBase, headingTag } from "~/components/preview";
@@ -54,6 +55,8 @@ export interface ListViewProps {
   previewItems?: number;
   /** A miniature: the header is the title only (no counts, owner, description or sample note). */
   thumbnail?: boolean;
+  /** A sample on a /for page: title, description and a quiet "Sample" tag; no counts, no owner. */
+  sample?: boolean;
   /** The owner's next step while no agent works on the list (list page only). */
   handoff?: { focus: boolean; connectedName: string | null } | null;
   /** Who can write the list (writers only, list page only). */
@@ -105,13 +108,13 @@ export function ListView(props: ListViewProps) {
   // Row 2 of the header: counts, and for anyone but the owner, whose list it is and (if over a day) its age.
   const now = useNow();
   // Zero counts say nothing: they're left out.
-  const meta: React.ReactNode[] = [
+  const meta: React.ReactNode[] = props.sample ? [<span className="chip">Sample</span>] : [
     ...(wanted.length ? [<>{wanted.length} open</>] : []),
     ...(bought.length ? [<>{bought.length} {fi.done}</>] : []),
     ...(productCount ? [<>{productCount} {productCount === 1 ? fi.entry : fi.entries}</>] : []),
   ];
-  if (role !== "owner") meta.push(<>by {list.owner_handle}</>);
-  if (!isWriter && now - Date.parse(list.updated_at) > 24 * 3600_000) meta.push(<>updated <Time ts={list.updated_at} /></>);
+  if (role !== "owner" && !props.sample) meta.push(<>by {list.owner_handle}</>);
+  if (!isWriter && !props.sample && now - Date.parse(list.updated_at) > 24 * 3600_000) meta.push(<>updated <Time ts={list.updated_at} /></>);
 
   return (
     <PreviewContext.Provider value={preview}>
@@ -276,9 +279,12 @@ export function ListView(props: ListViewProps) {
 
         {!isWriter && !preview && (
           <aside aria-labelledby="own-h" className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
-            <h2 id="own-h" className="text-[1.05rem] font-semibold">
-              Make your own list. Your AI agents work on it.
-            </h2>
+            <div>
+              <h2 id="own-h" className="text-[1.05rem] font-semibold">
+                Make your own list. Your AI agents work on it.
+              </h2>
+              {seasonActive(SEASON, now) && <p className="mt-1 text-[0.92rem] text-ink-2">{SEASON.heading}</p>}
+            </div>
             <Link to="/?ref=share" className="btn btn-want">
               Start a list
             </Link>
@@ -381,6 +387,8 @@ function ItemSection({
           {/* The item's actions: at the right end of its title row. */}
           <span className="item-actions">
             {isWriter && shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} itemText={item.text} currency={currencyHint} />}
+            {/* Visitors: nothing here but Report, which the list's own flag in the header covers. */}
+            {isWriter && (
             <Menu label={`More actions for “${item.text.slice(0, 60)}”`}>
               {isWriter && shopping && !p && !checklist && (
                 // On phones "Mark bought" lives here, so the title keeps the row.
@@ -405,6 +413,7 @@ function ItemSection({
                 <MenuRemove intent="delete-item" fields={{ item_id: item.id }} label="Remove" confirmText={`Remove “${item.text.slice(0, 80)}” and everything on it?`} />
               )}
             </Menu>
+            )}
           </span>
         </div>
         <div className="item-meta item-indent flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.85rem] text-ink-3 sm:pl-11">
@@ -437,6 +446,7 @@ function ItemSection({
             claimedAt={item.claimed_at}
             completion={item.completion}
             statusNote={item.status_note}
+            statusNoteAt={item.status_note_at}
             fi={fi}
             canWrite={isWriter}
           />
@@ -472,7 +482,7 @@ function ItemSection({
           <EntrySheet entries={entries} lowestId={lowest} boughtId={p?.entry_id ?? null} itemText={item.text} />
           <details className="group">
             <summary className="textlink-btn text-[0.85rem]">
-              Details, price history and comments for these products{" "}
+              Details and price history{" "}
               <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
             </summary>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

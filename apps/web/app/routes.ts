@@ -13,6 +13,7 @@ export default [
   route("invite/:token", "routes/invite.tsx"),
   route("claim", "routes/claim-resume.tsx"),
   route("claim/:token", "routes/claim.tsx"),
+  route("unsubscribe/:token", "routes/unsubscribe.tsx"),
   route("connect", "routes/connect.tsx"),
   route("themes", "routes/themes.tsx"),
   route("themes/:slug", "routes/theme-preview.tsx"),
@@ -30,5 +31,7 @@ export default [
   route("robots.txt", "routes/robots.ts"),
   route("llms.txt", "routes/llms.ts", { id: "llms-txt" }),
   route("agents.txt", "routes/llms.ts", { id: "agents-txt" }),
+  route("account", "routes/redirects.ts", { id: "redirect-account" }),
+  route("settings", "routes/redirects.ts", { id: "redirect-settings" }),
   route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;

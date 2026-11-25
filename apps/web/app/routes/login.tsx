@@ -97,13 +97,14 @@ export default function Login() {
   const next = safeNext(params.get("next"));
   const busy = nav.state !== "idle";
   const onCode = result?.step === "code";
-  // From a claim link: the list waits on the other side of sign-in.
+  // From a claim link: the list waits on the other side of sign-in. From a start action: a new list does.
   const claiming = next === "/claim";
+  const starting = next.startsWith("/app/new") || next.startsWith("/start") || /^\/for\/[^/?#]+(\?list=\w+)?#start-/.test(next);
 
   return (
     <div className="wrap grid place-items-center py-12">
       <div className="card w-full max-w-md p-6 sm:p-8">
-        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : "Sign in"}</h1>
+        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : starting ? "Start your list" : "Sign in"}</h1>
 
         {onCode ? (
           <Form method="post" className="mt-6 grid gap-4" key="code">
@@ -151,7 +152,7 @@ export default function Login() {
         ) : (
           <Form method="post" className="mt-6 grid gap-4" key="email">
             <p className="text-ink-2">
-              {claiming ? "Enter your email and we'll send a code. Then the list is yours. New here? This signs you up." : "We'll email you a code. New here? This signs you up."}
+              {claiming ? "Enter your email and we'll send a code. Then the list is yours." : "Enter your email and we'll send a code. No password."}
             </p>
             <input type="hidden" name="next" value={next} />
             <label className="field">
@@ -181,8 +182,8 @@ export default function Login() {
               {busy ? "Sending…" : "Email me a code"}
             </button>
             <p className="text-[0.8rem] text-ink-3">
-              By signing in you agree to the <Link to="/terms" className="link">terms</Link>. We use your email to sign you in, and for feature news
-              only if you tick the box. <Link to="/privacy" className="link">Privacy</Link>.
+              By signing in you agree to the <Link to="/terms" className="link">terms</Link> and the{" "}
+              <Link to="/privacy" className="link">privacy policy</Link>.
             </p>
           </Form>
         )}
