@@ -1,15 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { acceptDialogs, createList, freshEmail, MOCK_CODE, signIn } from "./helpers";
 
-test("home: two ways to start, and a pointer for agents", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+test("home: one way in for people, the words for an agent, and a pointer for agents", async ({ page }) => {
   await page.goto("/");
-  const ways = page.locator("section[aria-labelledby=ways-h]");
-  await expect(ways.getByRole("heading", { name: "Start it yourself" })).toBeVisible();
-  await expect(ways.getByRole("heading", { name: "Have your agent start it" })).toBeVisible();
-  await expect(ways.getByRole("link", { name: "Start a list" })).toHaveAttribute("href", "/login?next=/app/new");
-  await ways.getByRole("button", { name: "Copy the message for your agent" }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/^Start a list for me on The Want MCP \(https:\/\/.+\/mcp\)\. Call start_list/);
+  // The "Two ways to start" section is gone (owner, 25 Nov 2026): the hero's button and the line under it say both.
+  await expect(page.getByRole("heading", { name: "Two ways to start" })).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("link", { name: "Start a list" }).first()).toHaveAttribute("href", "/login?next=/app/new");
+  await expect(page.getByRole("button", { name: /set up wantmcp\.com for keeping track of the things I want/ })).toBeVisible();
   await expect(page.locator('link[rel="alternate"][type="text/plain"]')).toHaveAttribute("href", /\/llms\.txt$/);
 });
 
