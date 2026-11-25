@@ -129,3 +129,55 @@ test("/app: a list with reports waiting says so, and doesn't look empty or idle"
   await expect(card.getByText("0 tasks")).toHaveCount(0);
   await expect(card.getByText("No agent has worked on this yet.")).toHaveCount(0);
 });
+
+test("SPEC 16.6: the thanks screen gives the report's status link; the page shows where it stands, never the report", async ({ page }) => {
+  const words = `Status check ${Date.now()}: secret details of the report`;
+  await page.goto("/feedback");
+  await page.getByRole("radio", { name: "Something broke" }).check();
+  await page.getByLabel("What happened?").fill(words);
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Thanks. It's on our list." })).toBeVisible();
+  const link = page.getByRole("link", { name: "See what happens to it" });
+  await expect(link).toHaveAttribute("href", /^\/feedback\/fbk_[A-Za-z0-9_-]+$/);
+  // The API's own status_url, as given (the mock answers with https://wantmcp.com/feedback/<id>); a reload keeps it.
+  const code = page.locator("code", { hasText: /\/feedback\/fbk_/ });
+  await expect(code).toHaveText(/^https:\/\/wantmcp\.com\/feedback\/fbk_[A-Za-z0-9_-]+$/);
+  await page.reload();
+  await expect(code).toHaveText(/^https:\/\/wantmcp\.com\/feedback\/fbk_/);
+  await expect(page.getByRole("button", { name: "Copy the link to this report's status" })).toBeVisible();
+
+  await link.click();
+  await expect(page.getByRole("heading", { level: 1, name: "We have it. Nobody has looked yet." })).toBeVisible();
+  await expect(page.getByText(/^Something broke · sent /)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Send more feedback" })).toHaveAttribute("href", "/feedback");
+  expect(await page.content()).not.toContain("secret details");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
+  const res = await page.request.get(page.url());
+  expect(res.headers()["x-robots-tag"]).toBe("noindex");
+  expect(res.headers()["cache-control"]).toContain("no-store");
+});
+
+test("SPEC 16.6: an unknown report id is the ordinary not-found page", async ({ page }) => {
+  for (const path of ["/feedback/fbk_doesnotexist", "/feedback/not-an-id"]) {
+    const res = await page.goto(path);
+    expect(res?.status()).toBe(404);
+    await expect(page.getByRole("heading", { level: 1, name: "Nothing here" })).toBeVisible();
+  }
+});
+
+test("robots.txt keeps status pages out and /feedback in", async ({ request }) => {
+  const body = await (await request.get("/robots.txt")).text();
+  expect(body).toContain("Disallow: /feedback/\n");
+  expect(body).not.toMatch(/Disallow: \/feedback\n/);
+  const sitemap = await (await request.get("/sitemap.xml")).text();
+  expect(sitemap).not.toContain("/feedback/");
+});
+
+test("SPEC 16.6: on a report from outside, the completion note says the sender will see it", async ({ page }) => {
+  await signIn(page, "team@example.com");
+  await page.goto("/l/lst_feedback");
+  const row = page.locator("section", { hasText: "The share image still shows the old title" });
+  await row.getByRole("button", { name: /In progress/ }).click();
+  await row.getByText("Done, with a note").click();
+  await expect(row.getByText("The sender sees the status and this note.")).toBeVisible();
+});

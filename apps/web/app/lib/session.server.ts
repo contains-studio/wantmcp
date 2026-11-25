@@ -66,6 +66,20 @@ export function readFlash(request: Request): string | null {
   return readCookie(request, FLASH_COOKIE);
 }
 
+/**
+ * SPEC 16.6: the status link the API gave for the report just sent, for the thanks screen (and a reload of it). Path /,
+ * because the page data is fetched from /feedback.data; ten minutes; the URL carries only the id.
+ */
+const FEEDBACK_SENT_COOKIE = "wm_fb_sent";
+
+export function feedbackSentCookie(request: Request, statusUrl: string): string {
+  return `${FEEDBACK_SENT_COOKIE}=${encodeURIComponent(statusUrl.slice(0, 300))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${secureFlag(request)}`;
+}
+
+export function readFeedbackSent(request: Request): string | null {
+  return readCookie(request, FEEDBACK_SENT_COOKIE);
+}
+
 export function clearFlashCookie(request: Request): string {
   return `${FLASH_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureFlag(request)}`;
 }

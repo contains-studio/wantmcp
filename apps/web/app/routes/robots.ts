@@ -14,6 +14,8 @@ export function loader({ request }: Route.LoaderArgs) {
     "Disallow: /claim",
     "Disallow: /unsubscribe/",
     "Disallow: /report",
+    // SPEC 16.6: one report's status, for whoever holds its link. /feedback itself stays allowed.
+    "Disallow: /feedback/",
     "",
     `Sitemap: ${origin}/sitemap.xml`,
     "",

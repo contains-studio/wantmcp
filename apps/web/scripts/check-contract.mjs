@@ -170,6 +170,20 @@ for (const [specPath, mockPath, paged] of ROUTES) {
   }
 }
 
+// SPEC 16.6: one report's status, by id, no credential. A note until the live document has it.
+{
+  const op = spec.paths["/feedback/{id}"]?.get;
+  if (!op) console.log("note GET /feedback/{id}: not in the API's document yet");
+  else {
+    const body = await call("/feedback/fbk_seed_done");
+    const schema = ref(op.responses?.["200"]?.content?.["application/json"]?.schema);
+    const missing = (schema?.required ?? []).filter((k) => !(k in body));
+    const extra = Object.keys(body).filter((k) => schema?.properties && !(k in schema.properties));
+    console.log(`${missing.length ? "FAIL" : "ok  "} GET /feedback/{id}: FeedbackStatus${missing.length ? `: mock lacks ${missing.join(", ")}` : ""}${extra.length ? ` (mock-only keys: ${extra.join(", ")})` : ""}`);
+    if (missing.length) failures++;
+  }
+}
+
 // /app's cards: each row of GET /me/lists?include=summary and its summary (SPEC 16.2 adds awaiting_review to both).
 {
   const page = ref(spec.paths["/me/lists"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema);
