@@ -3,6 +3,8 @@ import type { Route } from "./+types/login";
 import { api, ApiError, friendlyError } from "~/lib/api.server";
 import { getUser } from "~/lib/auth.server";
 import { assertSameOrigin, attemptCookie, clearAttemptCookie, getAttemptId, sessionCookie } from "~/lib/session.server";
+import { apiBaseUrl } from "~/lib/config.server";
+import { updatesOptInDefault } from "~/lib/consent";
 import { cleanRef, RefField } from "~/lib/ref";
 import { safeNext } from "~/lib/url";
 import type { UserSelf } from "~/lib/types";
@@ -18,7 +20,18 @@ export function meta() {
 export async function loader({ request }: Route.LoaderArgs) {
   const next = safeNext(new URL(request.url).searchParams.get("next"));
   if (await getUser(request)) throw redirect(next);
-  return null;
+  // Computed here, so the box renders in its right state with or without JavaScript (lib/consent explains the list).
+  return { optInDefault: updatesOptInDefault(visitorCountry(request)) };
+}
+
+/**
+ * Cloudflare's country for this visitor. Local dev supplies a stand-in request.cf, so with the mock API (local dev and
+ * the tests) a cf-ipcountry header wins, letting tests pretend to be in Germany; production reads request.cf first.
+ */
+function visitorCountry(request: Request): string | null {
+  const cf = (request as unknown as { cf?: { country?: string } }).cf?.country ?? null;
+  const header = request.headers.get("cf-ipcountry");
+  return apiBaseUrl() === "mock" ? (header ?? cf) : (cf ?? header);
 }
 
 /** The API's own message is user-facing; for email delivery problems it says what went wrong. */
@@ -27,7 +40,10 @@ function loginError(err: ApiError): string {
   return friendlyError(err);
 }
 
-type ActionResult = { step: "code"; email: string; optIn: boolean; error?: string; devCode?: string } | { step: "email"; email?: string; error: string };
+/** An account whose created_at is this close to the verify call was made by it (allows for clock skew). */
+const NEW_ACCOUNT_WINDOW_MS = 2 * 60_000;
+
+type ActionResult = { step: "code"; email: string; optIn: boolean; error?: string; devCode?: string } | { step: "email"; email?: string; optIn: boolean; error: string };
 
 export async function action({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
@@ -40,13 +56,22 @@ export async function action({ request }: Route.ActionArgs) {
     const code = String(form.get("code") ?? "").replace(/\s+/g, "");
     if (!/^\d{6}$/.test(code)) return data<ActionResult>({ step: "code", email, optIn, error: "Enter the 6-digit code." }, 400);
     const attempt = getAttemptId(request);
+    const started = Date.now();
     try {
+      // The choice is for new accounts only. The API turns updates_opt_in: true into a "yes" on an existing account
+      // too, which with a ticked default would re-subscribe someone who had said no; so verify never sends it, and a
+      // brand-new account (made by this very call) gets the person's choice right after.
       const res = await api<{ token: string; user: UserSelf }>(request, "/auth/verify", {
         method: "POST",
         anonymous: true,
-        body: { email, code, updates_opt_in: optIn, ...(attempt ? { attempt_id: attempt } : {}) },
+        body: { email, code, updates_opt_in: false, ...(attempt ? { attempt_id: attempt } : {}) },
         ref: cleanRef(form.get("ref")),
       });
+      const created = Date.parse(res.user?.created_at ?? "");
+      if (optIn && Number.isFinite(created) && created >= started - NEW_ACCOUNT_WINDOW_MS) {
+        // Best effort: if this fails the account simply stays opted out, the safe side.
+        await api(request, "/me", { method: "PATCH", token: res.token, body: { updates_opt_in: true } }).catch(() => undefined);
+      }
       const headers = new Headers();
       headers.append("set-cookie", sessionCookie(request, res.token));
       headers.append("set-cookie", clearAttemptCookie(request));
@@ -58,7 +83,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, error: "Enter a valid email." }, 400);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, optIn, error: "Enter a valid email." }, 400);
   let devCode: string | undefined;
   let attemptId: string | null = null;
   try {
@@ -74,16 +99,18 @@ export async function action({ request }: Route.ActionArgs) {
     });
     attemptId = typeof res?.attempt_id === "string" ? res.attempt_id : null;
   } catch (err) {
-    if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, error: loginError(err) }, err.status);
-    if (err instanceof TypeError) return data<ActionResult>({ step: "email", email, error: "Can't reach the server. Check your connection and try again." }, 503);
+    if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, optIn, error: loginError(err) }, err.status);
+    if (err instanceof TypeError) return data<ActionResult>({ step: "email", email, optIn, error: "Can't reach the server. Check your connection and try again." }, 503);
     throw err;
   }
   const result: ActionResult = { step: "code", email, optIn, devCode };
   return attemptId ? data(result, { headers: { "set-cookie": attemptCookie(request, attemptId) } }) : result;
 }
 
-export default function Login() {
+export default function Login({ loaderData }: Route.ComponentProps) {
   const result = useActionData<typeof action>() as ActionResult | undefined;
+  // Re-shown after an error: the person's own choice; first time: the default for where they are.
+  const optInChecked = result ? result.optIn : (loaderData?.optInDefault ?? true);
   const nav = useNavigation();
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"));
@@ -162,7 +189,7 @@ export default function Login() {
               />
             </label>
             <label className="check">
-              <input type="checkbox" name="updates_opt_in" />
+              <input type="checkbox" name="updates_opt_in" defaultChecked={optInChecked} />
               <span>Email me about new features</span>
             </label>
             {result?.error && (
