@@ -2,7 +2,7 @@
 .themed.theme-today .list-hero, .themed.theme-today { background: var(--paper); }
 .themed.theme-today .list-hero { border-bottom: 0; }
 .themed.theme-today .list-hero > .wrap, .themed.theme-today > .wrap { max-width: 46rem; }
-.themed.theme-today .list-hero > .wrap { padding-block: 3.5rem 1rem; }
+.themed.theme-today .list-hero > .wrap { padding-block: 5rem 1.5rem; }
 .themed.theme-today .list-title { display: flex; align-items: center; gap: 0.9rem; font-size: clamp(2rem, 5vw, 2.6rem); font-weight: 800; letter-spacing: -0.025em; }
 /* The round mark fills like a pie as items get done. */
 .themed.theme-today .list-title-mark {
@@ -11,7 +11,9 @@
 }
 .themed.theme-today .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; font-weight: 500; }
 .themed.theme-today .list-hero h1 + p { color: var(--ink-3); font-size: 1rem; margin-top: 0.5rem; padding-left: 2.6rem; }
-.themed.theme-today .list-hero > .wrap > div { padding-left: 2.6rem; font-size: 0.85rem; }
+/* Almost nothing on the page: the counts and meta lines stay quiet, no boxes anywhere. */
+.themed.theme-today .list-hero > .wrap > div { padding-left: 2.6rem; font-size: 0.8rem; color: var(--ink-3); }
+.themed.theme-today .list-hero > .wrap > div strong { font-weight: 500; color: var(--ink-3); }
 .themed.theme-today > .wrap { gap: 2.5rem; padding-bottom: 7rem; }
 .themed.theme-today .items-region { gap: 0.35rem; }
 .themed.theme-today .item-section { gap: 0.6rem; padding: 0.7rem 0.75rem; border-radius: 12px; }
@@ -37,6 +39,9 @@
 .themed.theme-today .bought-divider h2 { font-family: var(--font-sans); font-size: 0.85rem; font-weight: 700; color: var(--ink-3); letter-spacing: 0.02em; }
 .themed.theme-today .bought-divider .divider-dots { background: var(--line); height: 1px; }
 .themed.theme-today .is-bought .item-title { color: var(--ink-3); text-decoration: none !important; }
-.themed.theme-today .add-item { background: var(--sunk); border: 0; box-shadow: none; }
+.themed.theme-today .add-item { background: transparent; border: 0; box-shadow: none; padding: 0 0 0 0.75rem; }
+.themed.theme-today .add-item > p { display: none; }
+.themed.theme-today .add-item h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.themed.theme-today .add-item .input { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding-left: 0; }
 .themed.theme-today .item-status, .themed.theme-today .item-section .btn { font-size: 0.85rem; }
 .themed.theme-today .entries-empty { border: 0; padding: 0; text-align: left; font-size: 0.85rem; padding-left: 2.25rem; }

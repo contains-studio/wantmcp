@@ -17,7 +17,11 @@ export function loader({ request, params }: Route.LoaderArgs) {
   const q = new URL(request.url).searchParams.get("format");
   const natural: ListFormat = t.natural ?? "shopping";
   const format = q ? formatOf({ format: q as ListFormat }) : natural;
-  return { theme: getThemeView(t.slug), sample: sampleList(Date.now(), format), format, origin: siteOrigin(request) };
+  const sample = sampleList(Date.now(), format);
+  // ?items=0 or ?items=1 previews an empty or one-item list.
+  const n = new URL(request.url).searchParams.get("items");
+  if (n !== null && /^\d+$/.test(n)) sample.items = sample.items.slice(0, Number(n));
+  return { theme: getThemeView(t.slug), sample, format, origin: siteOrigin(request) };
 }
 
 export function headers() {

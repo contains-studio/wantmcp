@@ -80,7 +80,7 @@ export function ListView(props: ListViewProps) {
   const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
   // Sections, Heat and (for tasks and research) Board show a compact index; each item opens in a panel.
   const indexKind = layout === "sections" || layout === "heat" || (layout === "board" && !shopping) ? layout : null;
-  const className = `${theme.className.replace(/\blayout-\w+\b/, `layout-${layout}`)} format-${fi.format}${indexKind ? " has-index" : ""}`;
+  const className = `${theme.className.replace(/\blayout-\w+\b/, `layout-${layout}`)} format-${fi.format}${indexKind ? " has-index" : ""}${previewItems ? "" : " list-page"}`;
 
   return (
     <PreviewContext.Provider value={preview}>

@@ -264,6 +264,9 @@
   .themed .list-hero { background-size: min(16rem, 58%) auto, auto; background-position: right -1.5rem top 0.25rem, 0 0; }
 }
 
+/* A list page fills at least the viewport below the site header with the theme's own surface. */
+.themed.list-page { min-height: calc(100dvh - 4.0625rem); }
+
 /* Themes with a fixed identity look the same in light and dark (their palettes are equal). */
 .themed.scheme-dark { color-scheme: dark; }
 .themed.scheme-light { color-scheme: light; }
