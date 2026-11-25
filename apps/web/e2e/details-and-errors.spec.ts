@@ -12,7 +12,7 @@ test("the details prompt is skipped when the add form already had details, and s
   await add.locator('textarea[name="details"]').fill("Two-tonne van, Saturday morning");
   await add.getByRole("button", { name: /^Add / }).click();
   const van = page.locator("section.item-section", { hasText: "Book the van" });
-  await expect(van.getByText("Two-tonne van, Saturday morning")).toBeVisible();
+  await expect(van.locator(".item-details")).toHaveText("Two-tonne van, Saturday morning");
   await expect(add.getByText("Added. Anything an agent needs?")).toHaveCount(0);
 
   // No details on the add form: the prompt asks once, and what's typed is saved.
@@ -21,7 +21,7 @@ test("the details prompt is skipped when the add form already had details, and s
   await expect(add.getByText("Added. Anything an agent needs?")).toBeVisible();
   await add.getByLabel("Added. Anything an agent needs?").fill("Membership ends in March");
   await add.getByRole("button", { name: "Save" }).click();
-  await expect(page.locator("section.item-section", { hasText: "Cancel the gym" }).getByText("Membership ends in March")).toBeVisible();
+  await expect(page.locator("section.item-section", { hasText: "Cancel the gym" }).locator(".item-details")).toHaveText("Membership ends in March");
 });
 
 test("a 404 reached by client-side navigation reports nothing to /telemetry/error", async ({ page }) => {

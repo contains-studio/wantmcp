@@ -1,4 +1,5 @@
 import type { Theme } from "../types.ts";
+import { SITE } from "../site.ts";
 
 /** A ledger: gridlines, tabular numbers and a sortable comparison table for every item. */
 export const sheet: Theme = {
@@ -9,7 +10,8 @@ export const sheet: Theme = {
   natural: "shopping",
   stylesheet: true,
   idea: "A ledger: gridlines, tabular numbers and a sortable comparison table for every item.",
-  accents: { light: { band: "#0f6b4a" }, dark: { band: "#0f6b4a" } },
+  // The bar along the top of the sheet carries the site accent.
+  accents: { light: { band: SITE.light.want }, dark: { band: SITE.dark.want } },
   light: {
     paper: "#f7f8f9", card: "#ffffff", sunk: "#eef0f2", ink: "#111827", ink2: "#374151", ink3: "#525c6b",
     line: "#dde1e6", lineStrong: "#b8bfc8", want: "#0f6b63", wantInk: "#ffffff", wantSoft: "#d6f0ec",

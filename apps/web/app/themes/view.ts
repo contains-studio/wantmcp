@@ -1,4 +1,5 @@
 import { FONTS, type Accents, type Layout, type Palette, type Theme } from "./types.ts";
+import { SITE } from "./site.ts";
 
 /** What a page needs to render a look: serialisable, no theme code on the client. */
 export interface ThemeView {
@@ -61,7 +62,8 @@ export function lookColors(template: Theme, occasion: Theme | null, mode: "light
   // If either half is always dark, the look is always dark and uses the dark palette in both modes.
   const fixedDark = template.scheme === "dark" || occasion?.scheme === "dark";
   const m = fixedDark ? "dark" : mode;
-  const palette = (occasion ?? template)[m];
+  // Layouts take the site's neutrals and accent; only an occasion brings its own palette.
+  const palette = occasion ? occasion[m] : SITE[m];
   const accents: Accents = {
     band: palette.ink,
     bandAlt: palette.ink2,
@@ -97,7 +99,6 @@ export function lookView(template: Theme, occasion: Theme | null, slug: string):
   if (occasion && dressed !== occasion && occasion.fonts?.display) style["--font-occ-display"] = FONTS[occasion.fonts.display];
   if (dressed.radius?.card) style["--r-card"] = dressed.radius.card;
   // Control radius is not a look's to change (docs/design-standards.md, "Actions"): buttons stay rectangles everywhere.
-  if (dressed.radius?.input) style["--r-input"] = dressed.radius.input;
   if (dressed.radius?.image) style["--r-image"] = dressed.radius.image;
   if (dressed.card === "outline") style["--card-border-w"] = "1.5px";
 

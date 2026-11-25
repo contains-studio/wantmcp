@@ -11,26 +11,33 @@ client should have the same single source for its controls and the same two chec
 
 ## The look
 
-Restraint. Almost no colour, type and layout do the work, and every element is a plain
-rectangle. Things this product does not do: gradient washes, tinted backgrounds behind labels,
-pill chips, soft cards with shadows, an icon in a coloured square beside every label, extra-bold
-display type, monospace labels everywhere.
+Friendly and calm. Soft neutrals, near-black type, round shapes and one colour, so type and
+layout do the work. Things this product does not do: gradient washes, black outlines on
+controls, tinted icon squares beside every label, extra-bold or all-caps display type, more than
+one accent, monospace labels everywhere. The tone is close to Apple's own pages, under our own
+identity: no Apple assets, icons, exact colours or page layouts.
 
-- **Palette.** A warm near-white page (`--paper`), one deeper warm grey for alternate sections and
-  the footer (`--sunk`), white for fields and media (`--card`), near-black text (`--ink`), two greys
-  (`--ink-2`, `--ink-3`), a hairline (`--line`) and a field border (`--line-strong`, at least 3:1).
-  Dark mode mirrors it: near-black page, warm off-white text.
-- **One accent.** Crimson `#b5174f` (dark mode `#f2709a`): the brand mark's own pink, deepened so it
-  carries white text at 6.6:1. It is used only for the primary action and the mark, nowhere else.
-  Savings green, warning amber and error red are status colours, not decoration.
-- **Type.** Inter (variable, with its optical-size axis) for display and UI; Newsreader for
-  section headings; JetBrains Mono only for codes, keys and coupons. All open-licence and
-  self-hosted.
+- **Palette.** A near-white page (`--paper` `#fbfbfd`), a light grey band for alternate sections
+  and the footer (`--sunk` `#f5f5f7`), white for cards and fields (`--card`), near-black text
+  (`--ink` `#1d1d1f`), two greys (`--ink-2`, `--ink-3`), a hairline (`--line`) and a field border
+  (`--line-strong`, at least 3:1). Dark mode mirrors it: black page, `#1c1c1e` cards, `#f5f5f7` text,
+  `#38383a` hairlines.
+- **One accent.** Blue `#0a6fe0` with white text (4.8:1); dark mode `#66adff` with deep navy text
+  (7.5:1). It fills the primary action, the brand mark and the focus ring, nowhere else. It is one
+  token (`--want` in `app/app.css`, mirrored in `app/themes/site.ts`): nothing else names its value,
+  so it can change in one place. Savings green, warning amber and danger red are status colours,
+  not decoration; red appears only for destructive actions.
+- **Type.** The system face first (SF Pro on Apple devices), then Inter (variable, self-hosted).
+  Headings are semibold and a little tight; the home headline is in sentence case. Newsreader
+  belongs to the Doc layout only. JetBrains Mono only for codes, keys and coupons.
+- **Shapes.** Buttons are pills with no outline. Fields have 11px corners and a hairline border.
+  Cards and panels are white on the grey band with 18px corners, no border and at most a very soft
+  shadow (`0 1px 2px rgb(0 0 0 / .04), 0 8px 24px rgb(0 0 0 / .04)`). Chips are small soft pills.
+  The top bar is translucent paper with a blur and a hairline.
 - **Sections.** Pages are bands of generous vertical space (80 to 96px on desktop), alternating
   `--paper` and `--sunk` where it helps. A content section is two columns on desktop: on the left
-  a label, a serif heading, one or two short lines, a few rows separated by hairlines and
-  full-width buttons; on the right a large real render of the product. On phones the columns
-  stack.
+  a label, a heading, one or two short lines, a few rows separated by hairlines and a button; on
+  the right a large real render of the product. On phones the columns stack.
 
 ## Density
 
@@ -62,13 +69,13 @@ component to centre text optically.
 
 | Role | Size | Face | Notes |
 | --- | --- | --- | --- |
-| Display (home headline) | 64 to 84px | Inter, weight 300 | tracking −0.035em, centred, two lines (`.display`) |
-| h1 | 40 to 56px | Inter, weight 400 | list titles; one per page |
-| Section heading | 32 to 38px | Newsreader, weight 400 | `.serif` |
-| h3 | 18 to 20px | Inter, weight 600 | |
-| Body | 16px | Inter | line height 1.55 |
-| Small | 14px | Inter | meta lines |
-| Label | 12px | Inter 500, uppercase, tracking 0.08em, `--ink-3` | `.eyebrow`; sparingly, one per block at most |
+| Display (home headline) | 64 to 76px | system/Inter, weight 600 | tracking −0.028em, sentence case, centred, two lines (`.display`) |
+| h1 | 26 to 48px | system/Inter, weight 600 | list titles 26 to 34px; one per page |
+| Section heading | 28 to 36px | system/Inter, weight 600 | tracking −0.02em (`.serif`, kept as a class name; the serif face is Doc's only) |
+| h3 | 18 to 20px | system/Inter, weight 600 | |
+| Body | 16px | system/Inter | line height 1.55 |
+| Small | 14px | system/Inter | meta lines |
+| Label | 13px | system/Inter 500, sentence case, `--ink-3` | `.eyebrow`; sparingly, one per block at most |
 
 Form fields are always 16px (on the web, so phones do not zoom into them; natively, the
 platform's body size). Body text is at most about 70
@@ -89,11 +96,11 @@ characters per line (65ch).
   a visually hidden label). Hints go under the control, errors under the hint.
 - **Select.** The native `<select>` is restyled to match the input: same border, radius, height,
   padding and focus ring, with a drawn chevron. No native border or outline shows through.
-- **Radius and borders.** Small radii: 3px for badges, 4px for buttons and fields
-  (`--r-control`, `--r-input`), 6px for panels and media (`--r-card`). All borders are 1px:
-  `--line` for dividers and panels, `--line-strong` for fields. No shadows. The only pill on the
-  site is the small "Start a list" button in the header.
-- **Focus.** One focus ring everywhere: a 3px outline in the focus colour, 2px outside the
+- **Radius and borders.** Buttons, chips and quiet controls are pills; fields have 11px corners;
+  menus 14px; cards and panels 18px (`--r-card`). Controls have no outline; fields have a 1px
+  `--line-strong` border; dividers are 1px `--line`. Cards may carry the one very soft shadow.
+  A look may change card radius, never the shape of a control.
+- **Focus.** One focus ring everywhere: a 3px outline in the focus colour (the accent), 2px outside the
   element, shown on keyboard focus (`:focus-visible`; browsers also show it on text fields
   whenever they are focused).
   Never removed, never replaced by a colour change alone. The focus colour has at least 3:1
@@ -101,20 +108,21 @@ characters per line (65ch).
 
 ## Buttons
 
-Three kinds, all rectangles: **primary** (solid accent, one per view), **secondary** (solid
-near-black) and **plain** (the page colour with a 1px near-black border); plus **danger** (outline
-in red). In narrow columns buttons are full width and stack. A destructive action is never
-the primary one and asks for confirmation. Button text says what happens ("Add task", "Make
-private"), not "OK" or "Submit".
+Three kinds, all pills without outlines: **primary** (the accent fill, one per view),
+**secondary** (a quiet grey fill derived from the text colour, with ink text) and **tertiary**
+(plain text, `.btn-quiet`); plus **danger** (red text on the quiet fill). In narrow columns
+buttons are full width and stack. A destructive action is never the primary one and asks for
+confirmation. Button text says what happens ("Add task", "Make private"), not "OK" or "Submit".
 
 ## Actions
 
 One action system on every page and in every list layout. A layout keeps its own type and
-structure; it never brings its own button shapes, colours or accent.
+structure; it takes its neutrals, control shapes and accent from the site. Occasions keep their
+own palettes.
 
 1. **One primary per view.** On a list page it is the add button (Add want, Add task, Add
-   question), solid crimson and rectangular. Nothing else on the page is filled with the accent:
-   no teal or blue primaries, no pills, no floating add button.
+   question): the accent-filled pill. Nothing else on the page is filled with the accent, a look's
+   own colour never replaces it, and there is no floating add button.
 2. **The list header has one toolbar.** The title is on the left; on the same row at the right sit
    "Copy link" and "Settings" (or "Report" for visitors) as quiet controls: an icon and a label,
    no border. On phones the toolbar is one row under the title. It sits in the same place in every
@@ -156,7 +164,7 @@ touch screens).
 | `--deal` | savings, success, "done" |
 | `--warn` | deals ending, unverified content |
 | `--danger` | errors and destructive actions |
-| `--focus` | the focus ring: near-black in light mode, off-white in dark |
+| `--focus` | the focus ring: the accent |
 
 Colour is never the only signal: status also has a word or an icon.
 

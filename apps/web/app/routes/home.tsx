@@ -67,12 +67,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/` },
     // Bump v when the home card design changes.
-    { property: "og:image", content: `${origin}/og/home.png?v=5` },
+    { property: "og:image", content: `${origin}/og/home.png?v=6` },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
     {
       property: "og:image:alt",
-      content: "The Want MCP: AN MCP SERVER FOR GETTING WHAT YOU WANT",
+      content: "The Want MCP: an MCP server for getting what you want.",
     },
     { name: "twitter:card", content: "summary_large_image" },
     ...(loaderData?.cursor || loaderData?.accountDeleted ? [{ name: "robots", content: "noindex, follow" }] : []),
@@ -101,7 +101,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       )}
 
       <section className="wrap grid justify-items-center gap-8 pt-16 pb-14 text-center sm:pt-24">
-        <h1 className="display max-w-5xl text-[2.6rem] sm:text-[4.4rem] lg:text-[5.2rem]">AN MCP SERVER FOR GETTING WHAT YOU WANT</h1>
+        <h1 className="display max-w-4xl text-[2.6rem] sm:text-[4rem] lg:text-[4.6rem]">An MCP server for getting what you want.</h1>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
             {user ? "My lists" : "Start a list"}

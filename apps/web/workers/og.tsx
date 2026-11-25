@@ -18,19 +18,10 @@ import { formatMoney } from "../app/lib/format";
 import type { ListDetail } from "../app/lib/types";
 import { resolveLook } from "../app/themes/catalogue.server";
 import { lookColors } from "../app/themes/view";
+import { SITE } from "../app/themes/site";
 
-/** The site's light tokens (app.css): warm paper, near-black ink, one crimson accent for the mark. */
-const C = {
-  paper: "#faf9f6",
-  card: "#ffffff",
-  ink: "#1d1b18",
-  ink2: "#4b4842",
-  ink3: "#6b665e",
-  line: "#e6e2da",
-  want: "#b5174f",
-  wantSoft: "#f2f0eb",
-  deal: "#0f7a47",
-};
+/** The site's light palette (app/themes/site.ts): soft neutrals, near-black ink, the one accent for the mark. */
+const C = SITE.light;
 
 const TAG_SVG =
   "data:image/svg+xml;base64," +
@@ -60,7 +51,7 @@ function themeColors(slug: string | null | undefined): { colors: Colors; motif: 
   const { template, occasion } = resolveLook(slug);
   if (template.slug === "default" && !occasion) return { colors: C, motif: null };
   const p = lookColors(template, occasion, "light").palette;
-  const colors: Colors = { paper: p.paper, card: p.card, ink: p.ink, ink2: p.ink2, ink3: p.ink3, line: p.line, want: p.want, wantSoft: p.wantSoft, deal: p.deal };
+  const colors: Colors = p;
   const motif = occasion?.art ? "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(occasion.art))) : null;
   return { colors, motif };
 }
@@ -96,7 +87,7 @@ function HomeCard() {
   return (
     <Frame>
       <div style={{ display: "flex", flexDirection: "column", marginTop: 64, maxWidth: 1056 }}>
-        <div style={{ display: "flex", fontSize: 76, fontWeight: 300, lineHeight: 1.04, letterSpacing: -2.6 }}>AN MCP SERVER FOR GETTING WHAT YOU WANT</div>
+        <div style={{ display: "flex", fontSize: 78, fontWeight: 600, lineHeight: 1.06, letterSpacing: -2.2 }}>An MCP server for getting what you want.</div>
         <div style={{ display: "flex", marginTop: 32, fontSize: 30, color: C.ink2, fontWeight: 400 }}>
           Things to buy, to get done, to find out. Your agents work on them.
         </div>
@@ -128,7 +119,7 @@ function ListCard({ list }: { list: ListDetail }) {
       <div style={{ display: "flex", marginTop: 56, fontSize: 22, color: C.ink3, fontWeight: 500, letterSpacing: 2 }}>
         A WANT LIST BY {list.owner_handle.toUpperCase()}
       </div>
-      <div style={{ display: "flex", marginTop: 16, fontSize: titleSize, fontWeight: 400, lineHeight: 1.05, letterSpacing: -2.2, maxWidth: 1000 }}>
+      <div style={{ display: "flex", marginTop: 16, fontSize: titleSize, fontWeight: 600, lineHeight: 1.06, letterSpacing: -2.2, maxWidth: 1000 }}>
         {title}
       </div>
       <div style={{ display: "flex", marginTop: "auto", alignItems: "flex-end", justifyContent: "space-between" }}>
@@ -147,8 +138,8 @@ function ListCard({ list }: { list: ListDetail }) {
               flexDirection: "column",
               alignItems: "flex-end",
               background: C.card,
-              border: `1px solid ${C.line}`,
-              borderRadius: 6,
+              borderRadius: 18,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06)",
               padding: "20px 28px",
             }}
           >

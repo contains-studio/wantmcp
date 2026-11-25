@@ -104,7 +104,7 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
               const deal = dealState(e.deal_starts_at, e.deal_ends_at, now);
               const updated = p ? checkedAt(p) : e.updated_at;
               const stale = !!p && !isFresh(p, now);
-              const highlight = e.id === boughtId ? "bg-deal-soft" : e.id === lowestId ? "bg-want-soft" : "";
+              const highlight = e.id === boughtId ? "bg-deal-soft" : e.id === lowestId ? "bg-sunk" : "";
               return (
                 <tr key={e.id} id={e.id} className={`scroll-mt-24 ${highlight} ${stale ? "is-stale" : ""}`}>
                   <th scope="row" className={`${td} ${stickyA} ${highlight || "bg-card"} text-left font-normal`}>

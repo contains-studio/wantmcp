@@ -7,16 +7,16 @@
 
 /*
  * The Want MCP: visual identity (docs/design-standards.md).
- * Almost no colour: warm near-white, one alternate surface, near-black type, hairlines, and one
- * crimson accent for the primary action. Inter for display and UI (light and tight at large
- * sizes), Newsreader for section headings, JetBrains Mono for codes, keys and coupons.
- * Rectangles with small radii, no shadows.
+ * Friendly and calm: soft neutrals, white cards on a light grey band, near-black type, hairlines,
+ * and one blue accent for the primary action and the mark. The system face (SF) with Inter as the
+ * fallback; JetBrains Mono for codes, keys and coupons. Round shapes: pill buttons, soft corners.
  */
 
 @theme {
-  --font-display: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* The system face first (SF on Apple devices), then Inter everywhere else. */
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter Variable", system-ui, "Segoe UI", sans-serif;
   --font-serif: "Newsreader Variable", "Iowan Old Style", Georgia, ui-serif, serif;
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter Variable", system-ui, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --color-paper: var(--paper);
@@ -43,28 +43,30 @@
   --ctl-sm: 2.25rem;
   --ctl: 2.75rem;
   --ctl-lg: 3.25rem;
-  --paper: #faf9f6;
+  --paper: #fbfbfd;
   --card: #ffffff;
-  --sunk: #f2f0eb;
-  --ink: #1d1b18;
-  --ink-2: #4b4842;
-  --ink-3: #6b665e;
-  --line: #e6e2da;
-  --line-strong: #8c877d;
-  --want: #b5174f;
+  --sunk: #f5f5f7;
+  --ink: #1d1d1f;
+  --ink-2: #424245;
+  --ink-3: #6e6e73;
+  --line: #e5e5ea;
+  --line-strong: #86868b;
+  /* The one accent. Change it here (and in app/themes/site.ts); nothing else names its value. */
+  --want: #0a6fe0;
   --want-ink: #ffffff;
-  /* The primary action keeps the site's crimson in every layout: computed here, on :root, so a
-     look's own --want (set on .themed) never reaches it. Dark mode redefines --want on :root. */
+  --want-soft: #eaf3fe;
+  /* The primary action and the mark keep the site accent in every look: computed here, on :root,
+     so a look's own --want (set on .themed) never reaches them. Dark mode redefines --want on :root. */
   --action: var(--want);
   --action-ink: var(--want-ink);
-  --want-soft: #f6e6ec;
-  --deal: #0f7a47;
-  --deal-soft: #e3f1e8;
+  --deal: #187a48;
+  --deal-soft: #e9f6ee;
   --warn: #8a5300;
-  --warn-soft: #f8eedb;
-  --danger: #b42318;
-  --focus: #1d1b18;
-  --shadow: none;
+  --warn-soft: #fdf3e1;
+  --danger: #d70015;
+  --focus: var(--want);
+  /* Cards and panels: white on the grey band, a very soft shadow, no border. */
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.04);
 
   /* Agent tag hues: same order everywhere, picked by a hash of the agent's name. */
   --agent-0: #7c3aed;
@@ -80,23 +82,23 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --paper: #131211;
-    --card: #191816;
-    --sunk: #1d1c19;
-    --ink: #f2f0eb;
-    --ink-2: #c8c4bb;
-    --ink-3: #9c978d;
-    --line: #2d2b27;
-    --line-strong: #77726a;
-    --want: #f2709a;
-    --want-ink: #1a0008;
-    --want-soft: #3a1a26;
-    --deal: #5fd395;
-    --deal-soft: #15291e;
-    --warn: #f0b45a;
-    --warn-soft: #2e2412;
-    --danger: #ff8a80;
-    --focus: #f2f0eb;
+    --paper: #000000;
+    --card: #1c1c1e;
+    --sunk: #111113;
+    --ink: #f5f5f7;
+    --ink-2: #c7c7cc;
+    --ink-3: #a1a1a6;
+    --line: #38383a;
+    --line-strong: #7c7c80;
+    --want: #66adff;
+    --want-ink: #001a38;
+    --want-soft: #0d2440;
+    --deal: #4cd48a;
+    --deal-soft: #10301e;
+    --warn: #ffb340;
+    --warn-soft: #33270d;
+    --danger: #ff6961;
+    --focus: var(--want);
     --shadow: none;
     --agent-0: #b79cff;
     --agent-1: #5fd0e6;
@@ -111,23 +113,23 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper: #131211;
-  --card: #191816;
-  --sunk: #1d1c19;
-  --ink: #f2f0eb;
-  --ink-2: #c8c4bb;
-  --ink-3: #9c978d;
-  --line: #2d2b27;
-  --line-strong: #77726a;
-  --want: #f2709a;
-  --want-ink: #1a0008;
-  --want-soft: #3a1a26;
-  --deal: #5fd395;
-  --deal-soft: #15291e;
-  --warn: #f0b45a;
-  --warn-soft: #2e2412;
-  --danger: #ff8a80;
-  --focus: #f2f0eb;
+  --paper: #000000;
+  --card: #1c1c1e;
+  --sunk: #111113;
+  --ink: #f5f5f7;
+  --ink-2: #c7c7cc;
+  --ink-3: #a1a1a6;
+  --line: #38383a;
+  --line-strong: #7c7c80;
+  --want: #66adff;
+  --want-ink: #001a38;
+  --want-soft: #0d2440;
+  --deal: #4cd48a;
+  --deal-soft: #10301e;
+  --warn: #ffb340;
+  --warn-soft: #33270d;
+  --danger: #ff6961;
+  --focus: var(--want);
   --shadow: none;
   --agent-0: #b79cff;
   --agent-1: #5fd0e6;
@@ -161,10 +163,10 @@
     line-height: 1.15;
     text-wrap: balance;
   }
-  /* The headline face: large, light and tight. */
-  .display { font-family: var(--font-display); font-weight: 300; letter-spacing: -0.035em; line-height: 1.02; }
-  /* Section headings: the serif, at a modest size. */
-  .serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; line-height: 1.15; }
+  /* The headline face: large, semibold and tight, in sentence case. */
+  .display { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.028em; line-height: 1.05; }
+  /* Section headings: the same sans, semibold and a little tight (the serif belongs to the Doc layout). */
+  .serif { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
   p { text-wrap: pretty; }
   /* Grid and flex children may shrink below their content width (long URLs, codes). */
   .grid > *, .flex > * { min-width: 0; }
@@ -479,37 +481,40 @@ button.check-toggle:hover { border-color: var(--ink); }
   .skip-link:focus { top: 0.5rem; }
 
   /* Labels: tiny uppercase sans with wide tracking, in grey. Used sparingly. */
+  /* Small labels: sentence case, quiet grey. */
   .eyebrow {
-    font-family: var(--font-sans); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--ink-3);
+    font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 500; letter-spacing: -0.005em;
+    color: var(--ink-3);
   }
 
   .link { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
-  .link:hover { text-decoration-color: var(--want); color: var(--want); }
+  .link:hover { text-decoration-color: currentColor; }
 
+  /* Cards and panels: white on the band, soft corners, a very soft shadow, no border. */
   .card {
-    background: var(--card); border: var(--card-border-w, 1px) solid var(--line); border-radius: var(--r-card, 6px);
+    background: var(--card); border: var(--card-border-w, 0) solid var(--line); border-radius: var(--r-card, 18px);
     box-shadow: var(--card-shadow, var(--shadow));
   }
 
   /* Controls. Sizes, focus and label rules live here and in app/components/ui.tsx; themes may
      change colours, radius and fonts, never height, padding rhythm or the focus ring. */
+  /* Buttons are pills with no outline. Secondary (the default) is a quiet grey fill derived from
+     the text colour, so it reads in every look; primary is the accent; danger is red text. */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
-    min-height: var(--ctl); padding: 0 1.25rem; border-radius: var(--r-control, 4px); font-weight: 600; font-size: 0.95rem; line-height: 1.2;
-    border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer;
-    transition: background 120ms ease, color 120ms ease, border-color 120ms ease, filter 120ms ease;
+    min-height: var(--ctl); padding: 0 1.25rem; border-radius: 980px; font-weight: 500; font-size: 0.95rem; line-height: 1.2; letter-spacing: -0.01em;
+    border: 0; background: color-mix(in srgb, var(--ink) 9%, var(--paper)); color: var(--ink); cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, filter 120ms ease;
     white-space: nowrap; text-decoration: none;
   }
-  .btn:hover { filter: brightness(1.08); }
+  .btn:hover { background: color-mix(in srgb, var(--ink) 14%, var(--paper)); }
   .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; filter: none; }
-  .btn-want { background: var(--action); border-color: var(--action); color: var(--action-ink); }
-  /* Every layout uses the same button shapes: a look can't round them into pills. */
-  .themed .btn { border-radius: 4px; }
-  .btn-ghost { background: var(--card); color: var(--ink); border-color: var(--ink); }
-  .btn-ghost:hover { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); filter: none; }
-  .btn-danger { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
-  .btn-danger:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 6%, transparent); filter: none; }
+  .btn-want { background: var(--action); color: var(--action-ink); }
+  .btn-want:hover { background: var(--action); filter: brightness(1.08); }
+  .btn-ghost { /* the same quiet secondary */ }
+  /* Danger: red text on a faint red tint (red on the grey fill falls under 4.5:1). */
+  .btn-danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 6%, var(--card)); }
+  .btn-danger:hover { background: color-mix(in srgb, var(--danger) 11%, var(--card)); }
   .btn-sm, .btn-xs { min-height: var(--ctl-sm); padding: 0 0.85rem; font-size: 0.875rem; }
   .btn-lg { min-height: var(--ctl-lg); padding: 0 1.4rem; font-size: 1rem; }
 
@@ -523,8 +528,8 @@ button.check-toggle:hover { border-color: var(--ink); }
   /* Quiet controls (docs/design-standards.md, "Actions"): text weight, an optional icon, no border.
      They inherit the colour around them, so they read on banded headers too. */
   .btn-quiet {
-    display: inline-flex; align-items: center; gap: 0.4rem; min-height: var(--ctl-sm); padding: 0 0.55rem;
-    border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-size: 0.875rem; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 0.4rem; min-height: var(--ctl-sm); padding: 0 0.7rem;
+    border: 0; border-radius: 980px; background: transparent; color: inherit; font: inherit; font-size: 0.875rem; font-weight: 500;
     line-height: 1.2; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background 120ms ease;
   }
   .btn-quiet:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
@@ -541,7 +546,7 @@ button.check-toggle:hover { border-color: var(--ink); }
   /* The "⋯" menu trigger and its popover. */
   .menu-wrap { display: inline-flex; }
   .menu-trigger {
-    display: inline-grid; place-items: center; min-width: var(--ctl-sm); min-height: var(--ctl-sm); border: 0; border-radius: 4px;
+    display: inline-grid; place-items: center; min-width: var(--ctl-sm); min-height: var(--ctl-sm); border: 0; border-radius: 980px;
     background: transparent; color: var(--ink-3); font-size: 1.15rem; font-weight: 700; line-height: 1; letter-spacing: 0.02em; cursor: pointer;
   }
   .menu-trigger:hover, .menu-trigger:has(+ :popover-open) { background: color-mix(in srgb, currentColor 10%, transparent); color: var(--ink); }
@@ -549,7 +554,8 @@ button.check-toggle:hover { border-color: var(--ink); }
     /* A popover sits in the top layer; it is anchored under its trigger, flipping up near the bottom. */
     position: fixed; inset: auto; margin: 4px 0 0; position-area: bottom span-left; position-try-fallbacks: flip-block, flip-inline;
     width: max-content; min-width: 12rem; max-width: min(22rem, calc(100vw - 2rem)); max-height: min(70dvh, 32rem); overflow: auto;
-    padding: 0.25rem; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--card); color: var(--ink);
+    padding: 0.3rem; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.06), 0 12px 32px rgb(0 0 0 / 0.1);
     font-family: var(--font-sans); font-size: 0.9rem; font-weight: 400; text-align: left; text-transform: none; letter-spacing: normal;
   }
   .menu-panel:not(:popover-open) { display: none; }
@@ -564,7 +570,7 @@ button.check-toggle:hover { border-color: var(--ink); }
   }
   .menu-item {
     display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: var(--ctl-sm); padding: 0 0.75rem;
-    border: 0; border-radius: 3px; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; list-style: none;
+    border: 0; border-radius: 9px; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; list-style: none;
   }
   .menu-item::-webkit-details-marker { display: none; }
   .menu-item:hover:not(:disabled) { background: var(--sunk); }
@@ -596,7 +602,7 @@ button.check-toggle:hover { border-color: var(--ink); }
   .hint { font-size: 0.8125rem; line-height: 1.4; color: var(--ink-3); }
   .field-error { font-size: 0.8125rem; line-height: 1.4; color: var(--danger); font-weight: 600; }
   .input, .textarea, .select {
-    width: 100%; min-height: var(--ctl); padding: 0 0.85rem; border-radius: var(--r-input, 4px);
+    width: 100%; min-height: var(--ctl); padding: 0 0.85rem; border-radius: 11px;
     border: 1px solid var(--line-strong); background: var(--card); color: var(--ink);
     font: inherit; font-size: 1rem; line-height: 1.25; /* 16px: phones do not zoom into the field */
     transition: border-color 120ms ease;
@@ -645,21 +651,20 @@ button.check-toggle:hover { border-color: var(--ink); }
     padding: 0; background: none; color: var(--deal);
   }
   .lowest {
-    display: inline-flex; align-items: center; gap: 0.3rem; font-family: var(--font-sans); font-size: 0.7rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.08em; padding: 0.12rem 0.4rem; border-radius: 3px;
-    border: 1px solid var(--ink); color: var(--ink);
+    display: inline-flex; align-items: center; gap: 0.3rem; font-family: var(--font-sans); font-size: 0.72rem; font-weight: 600;
+    padding: 0.15rem 0.5rem; border-radius: 980px; background: var(--deal-soft); color: var(--deal);
   }
 
   /* Chips */
   .chip {
     display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 500;
-    padding: 0.15rem 0.45rem; border-radius: 3px; border: 1px solid var(--line); background: transparent; color: var(--ink-2);
+    padding: 0.2rem 0.6rem; border-radius: 980px; border: 0; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink-2);
   }
-  .chip-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
-  .chip-live { color: var(--deal); border-color: color-mix(in srgb, var(--deal) 40%, transparent); }
+  .chip-warn { color: var(--warn); background: var(--warn-soft); }
+  .chip-live { color: var(--deal); background: var(--deal-soft); }
   /* A chip that is also the item's status control: same look, a chevron, a 24px target (44px on touch). */
   .chip-btn { position: relative; min-height: 1.6rem; cursor: pointer; font: inherit; font-size: 0.78rem; font-weight: 500; }
-  .chip-btn:hover { border-color: currentColor; }
+  .chip-btn:hover { filter: brightness(0.96); }
   @media (pointer: coarse) { .chip-btn::after { content: ""; position: absolute; inset: -0.6rem -0.25rem; } }
   .coupon {
     display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-weight: 600; font-size: 0.82rem;
@@ -705,7 +710,7 @@ button.check-toggle:hover { border-color: var(--ink); }
   }
   .plain-url { font-family: var(--font-mono); font-size: 0.78rem; word-break: break-all; color: var(--ink-2); }
 
-  .prose-page h2 { font-family: var(--font-serif); font-weight: 400; font-size: 1.6rem; line-height: 1.2; margin-top: 2.5rem; margin-bottom: 0.5rem; }
+  .prose-page h2 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; font-size: 1.4rem; line-height: 1.2; margin-top: 2.5rem; margin-bottom: 0.5rem; }
   .prose-page p, .prose-page li { color: var(--ink-2); }
   .prose-page ul { list-style: disc; padding-left: 1.25rem; display: grid; gap: 0.35rem; }
   .prose-page ol { list-style: decimal; padding-left: 1.25rem; display: grid; gap: 0.35rem; }
@@ -792,9 +797,9 @@ button.check-toggle:hover { border-color: var(--ink); }
 .themed.tpl-default.no-occ .entry-card > .entry-tools { grid-column: 1 / -1 !important; margin: 0 !important; border-top: 0; padding-top: 0; }
 .themed.tpl-default.no-occ .entry-card .product-img { aspect-ratio: 1; }
 .themed.tpl-default.no-occ .entry-card .price { font-size: 1.35rem !important; }
-.themed.tpl-default.no-occ .entry-card.ring-2, .themed.tpl-default.no-occ .entry-card[class*="ring-"] { box-shadow: inset 3px 0 0 var(--want); padding-left: 0.75rem !important; }
+.themed.tpl-default.no-occ .entry-card.ring-2, .themed.tpl-default.no-occ .entry-card[class*="ring-"] { box-shadow: inset 3px 0 0 var(--deal); padding-left: 0.75rem !important; }
 .themed.tpl-default.no-occ .text-entry { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; padding-inline: 0; }
-.themed.tpl-default.no-occ .bought-divider h2 { font-family: var(--font-serif); font-weight: 400; }
+.themed.tpl-default.no-occ .bought-divider h2 { font-weight: 600; letter-spacing: -0.02em; }
 .themed.tpl-default.no-occ .bought-divider .divider-dots { background: var(--line); height: 1px; }
 .themed.tpl-default.no-occ .entries-empty { border: 0; text-align: left; padding: 1rem 0; border-bottom: 1px solid var(--line); border-radius: 0; }
 .themed.tpl-default.no-occ .price-sparkline { max-width: 15rem; }

@@ -141,7 +141,7 @@ function Header() {
   const navCls = ({ isActive }: { isActive: boolean }) =>
     `whitespace-nowrap px-2 py-2.5 text-[0.92rem] font-medium sm:px-3 ${isActive ? "text-ink underline decoration-1 underline-offset-[6px]" : "text-ink-2 hover:text-ink"}`;
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-paper">
+    <header className="sticky top-0 z-30 border-b border-line bg-paper/80 backdrop-blur-xl backdrop-saturate-150">
       <div
         aria-hidden="true"
         className={`absolute inset-x-0 top-0 h-0.5 origin-left bg-want transition-transform duration-500 ${nav.state === "idle" ? "scale-x-0" : "scale-x-75"}`}
