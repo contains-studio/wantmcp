@@ -78,8 +78,11 @@ Chrome is not content. Before any item, a person should read only what tells the
    a cog for settings, a flag for report, sun and moon for appearance, ⋯ for more). Otherwise keep
    the word. Toolbar actions show icon and word from 640px up; on phones the icon alone, with the
    word as its accessible name and title.
-6. **Hints are one short line or none.** A control that explains itself gets no paragraph.
-7. **Trust stays.** Who posted a price, when it was checked, its source and "unverified", the
+6. **Global preferences live on the account page, not in page chrome.** Light or dark follows the
+   device by default; the choice to override it is an Appearance setting on `/account`, saved for
+   the browser.
+7. **Hints are one short line or none.** A control that explains itself gets no paragraph.
+8. **Trust stays.** Who posted a price, when it was checked, its source and "unverified", the
    agent's name on an entry and the private marker are never cut. On a phone, what doesn't fit
    (retailer, coupon, source) moves behind the row, not off the page.
 

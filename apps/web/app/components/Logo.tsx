@@ -14,11 +14,12 @@ export function LogoMark({ size = 28, className = "" }: { size?: number; classNa
   );
 }
 
-export function Wordmark() {
+/** The mark and the name. `textClass` can hide the name on very narrow screens (the link keeps its label). */
+export function Wordmark({ textClass = "" }: { textClass?: string }) {
   return (
     <span className="inline-flex items-center gap-2 whitespace-nowrap">
       <LogoMark size={24} />
-      <span className="text-[1.05rem] font-semibold tracking-[-0.02em] leading-none">
+      <span className={`text-[1.05rem] font-semibold tracking-[-0.02em] leading-none ${textClass}`}>
         The Want MCP
       </span>
     </span>

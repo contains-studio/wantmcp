@@ -1,4 +1,6 @@
-import { data, Form, redirect, useActionData, useNavigation } from "react-router";
+import { useEffect, useState } from "react";
+import { data, Form, redirect, useActionData, useFetcher, useNavigation } from "react-router";
+import { useRootData } from "~/lib/hooks";
 import { Field, Select, Textarea } from "~/components/ui";
 import { BIO_PLACEHOLDER, COUNTRIES, CURRENCIES } from "~/lib/locales";
 import type { Route } from "./+types/account";
@@ -139,6 +141,8 @@ export default function Account({ loaderData }: Route.ComponentProps) {
         </Form>
       </section>
 
+      <Appearance />
+
       <section className="card flex flex-wrap items-center justify-between gap-3 p-5 sm:p-6">
         <p className="text-ink-2">Signed in on this browser.</p>
         <Form method="post" action="/logout">
@@ -160,5 +164,49 @@ export default function Account({ loaderData }: Route.ComponentProps) {
         </Form>
       </section>
     </div>
+  );
+}
+
+const APPEARANCE: Array<[value: "system" | "light" | "dark", label: string]> = [
+  ["system", "Match device"],
+  ["light", "Light"],
+  ["dark", "Dark"],
+];
+
+/**
+ * Light or dark for this browser. Saved in a cookie (POST /theme) and read on the server, so the
+ * page renders in the right mode with no flash, signed in or not. The default follows the device.
+ */
+function Appearance() {
+  const { theme } = useRootData();
+  const fetcher = useFetcher<{ ok?: boolean }>();
+  const [choice, setChoice] = useState(theme);
+  const saved = fetcher.state === "idle" && fetcher.data?.ok;
+  useEffect(() => {
+    if (!saved) return;
+    if (choice === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", choice);
+  }, [saved, choice]);
+  return (
+    <section aria-labelledby="appearance-h" className="card grid gap-4 p-5 sm:p-6">
+      <h2 id="appearance-h" className="text-xl font-semibold">
+        Appearance
+      </h2>
+      <fetcher.Form method="post" action="/theme" className="grid gap-4">
+        <fieldset className="grid gap-2">
+          <legend className="label mb-1">On this browser</legend>
+          {APPEARANCE.map(([value, label]) => (
+            <label key={value} className="check">
+              <input type="radio" name="theme" value={value} checked={choice === value} onChange={() => setChoice(value)} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </fieldset>
+        <div aria-live="polite">{saved && <p className="form-ok">Saved.</p>}</div>
+        <button className="btn w-fit" disabled={fetcher.state !== "idle"}>
+          Save
+        </button>
+      </fetcher.Form>
+    </section>
   );
 }

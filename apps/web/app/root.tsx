@@ -48,12 +48,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const root = useRouteLoaderData<typeof loader>("root");
   const theme = root?.theme ?? "system";
   return (
-    <html lang="en-GB" data-theme={theme === "system" ? undefined : theme}>
+    <html lang="en-US" data-theme={theme === "system" ? undefined : theme}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#f7f2ea" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#15110f" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         <Meta />
         <Links />
       </head>
@@ -70,47 +70,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ThemeToggle() {
-  const { theme } = useRootData();
-  const fetcher = useFetcher();
-  const pending = fetcher.formData?.get("theme") as string | undefined;
-  const current = pending ?? theme;
-  const next = current === "system" ? "dark" : current === "dark" ? "light" : "system";
-  const label = current === "system" ? "Appearance: match device" : current === "dark" ? "Appearance: dark" : "Appearance: light";
-
-  if (typeof document !== "undefined" && pending) {
-    if (pending === "system") document.documentElement.removeAttribute("data-theme");
-    else document.documentElement.setAttribute("data-theme", pending);
-  }
-
-  return (
-    <fetcher.Form method="post" action="/theme">
-      <input type="hidden" name="theme" value={next} />
-      <button
-        className="grid h-10 w-10 place-items-center rounded border border-transparent text-ink-2 hover:border-line hover:text-ink"
-        aria-label={`${label}. Switch to ${next}.`}
-        title={label}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-          {current === "dark" ? (
-            <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="currentColor" />
-          ) : current === "light" ? (
-            <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="4" fill="currentColor" />
-              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-            </g>
-          ) : (
-            // "Match my device": the familiar monitor glyph, not a half-filled circle nobody can name.
-            <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="12" rx="2" />
-              <path d="M8 20h8M12 16v4" />
-            </g>
-          )}
-        </svg>
-      </button>
-    </fetcher.Form>
-  );
-}
 
 /** "My lists", with how many questions wait on the person (SPEC 12.1). Loaded after the page so it never slows it. */
 function MyListsLink({ className }: { className: (s: { isActive: boolean }) => string }) {
@@ -140,7 +99,7 @@ function Header() {
   const { user } = useRootData();
   const nav = useNavigation();
   const navCls = ({ isActive }: { isActive: boolean }) =>
-    `whitespace-nowrap px-2 py-2.5 text-[0.92rem] font-medium sm:px-3 ${isActive ? "text-ink underline decoration-1 underline-offset-[6px]" : "text-ink-2 hover:text-ink"}`;
+    `whitespace-nowrap px-1.5 py-2.5 text-[0.92rem] font-medium sm:px-3 ${isActive ? "text-ink underline decoration-1 underline-offset-[6px]" : "text-ink-2 hover:text-ink"}`;
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-paper/80 backdrop-blur-xl backdrop-saturate-150">
       <div
@@ -148,10 +107,11 @@ function Header() {
         className={`absolute inset-x-0 top-0 h-0.5 origin-left bg-want transition-transform duration-500 ${nav.state === "idle" ? "scale-x-0" : "scale-x-75"}`}
       />
       <div className="wrap flex h-16 items-center gap-1 sm:gap-2">
-        <Link to="/" className="mr-auto rounded-md py-1" aria-label="The Want MCP, home">
-          <Wordmark />
+        <Link to="/" className="mr-auto flex-none rounded-md py-1" aria-label="The Want MCP, home">
+          {/* Very narrow screens: the mark alone, so the links keep one row. */}
+          <Wordmark textClass={user ? "max-[339px]:sr-only" : ""} />
         </Link>
-        <nav aria-label="Main" className="flex items-center gap-0.5 sm:gap-1">
+        <nav aria-label="Main" className="flex flex-none items-center gap-0.5 sm:gap-1">
           <NavLink to="/connect" className={navCls}>
             Connect
           </NavLink>
@@ -163,10 +123,9 @@ function Header() {
             </NavLink>
           )}
         </nav>
-        <ThemeToggle />
         {!user && (
-          // The one small pill on the site.
-          <Link to="/login" className="ml-1 hidden rounded-full bg-want px-4 py-2 text-[0.88rem] font-semibold text-want-ink sm:inline-flex">
+          // From 640px up; on phones the page's own "Start a list" is the primary.
+          <Link to="/login" className="ml-1 hidden flex-none whitespace-nowrap rounded-full bg-want px-4 py-2 text-[0.88rem] font-semibold text-want-ink sm:inline-flex">
             Start a list
           </Link>
         )}
