@@ -184,6 +184,22 @@ for (const [specPath, mockPath, paged] of ROUTES) {
   }
 }
 
+// POST /auth/verify: { token, user, created } (the choice applies only when the call creates the account).
+{
+  const schema = ref(spec.paths["/auth/verify"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema);
+  if (!schema?.properties) console.log("note POST /auth/verify: no response schema in the document");
+  else {
+    await handleMockRequest(new Request("http://mock/v1/auth/code", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "contract-verify@example.com" }) }));
+    const res = await handleMockRequest(new Request("http://mock/v1/auth/verify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "contract-verify@example.com", code: "123456" }) }));
+    const body = await res.json();
+    const missing = (schema.required ?? []).filter((k) => !(k in body));
+    const lacksCreated = schema.properties.created && !("created" in body);
+    const ok = !missing.length && !lacksCreated;
+    console.log(`${ok ? "ok  " : "FAIL"} POST /auth/verify: token, user, created${missing.length || lacksCreated ? `: mock lacks ${[...missing, ...(lacksCreated ? ["created"] : [])].join(", ")}` : ""}`);
+    if (!ok) failures++;
+  }
+}
+
 // /app's cards: each row of GET /me/lists?include=summary and its summary (SPEC 16.2 adds awaiting_review to both).
 {
   const page = ref(spec.paths["/me/lists"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema);

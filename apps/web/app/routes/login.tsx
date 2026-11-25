@@ -7,7 +7,7 @@ import { apiBaseUrl } from "~/lib/config.server";
 import { updatesOptInDefault } from "~/lib/consent";
 import { cleanRef, RefField } from "~/lib/ref";
 import { safeNext } from "~/lib/url";
-import type { UserSelf } from "~/lib/types";
+import type { VerifyResult } from "~/lib/types";
 
 export function meta() {
   return [
@@ -40,9 +40,6 @@ function loginError(err: ApiError): string {
   return friendlyError(err);
 }
 
-/** An account whose created_at is this close to the verify call was made by it (allows for clock skew). */
-const NEW_ACCOUNT_WINDOW_MS = 2 * 60_000;
-
 type ActionResult = { step: "code"; email: string; optIn: boolean; error?: string; devCode?: string } | { step: "email"; email?: string; optIn: boolean; error: string };
 
 export async function action({ request }: Route.ActionArgs) {
@@ -56,22 +53,15 @@ export async function action({ request }: Route.ActionArgs) {
     const code = String(form.get("code") ?? "").replace(/\s+/g, "");
     if (!/^\d{6}$/.test(code)) return data<ActionResult>({ step: "code", email, optIn, error: "Enter the 6-digit code." }, 400);
     const attempt = getAttemptId(request);
-    const started = Date.now();
     try {
-      // The choice is for new accounts only. The API turns updates_opt_in: true into a "yes" on an existing account
-      // too, which with a ticked default would re-subscribe someone who had said no; so verify never sends it, and a
-      // brand-new account (made by this very call) gets the person's choice right after.
-      const res = await api<{ token: string; user: UserSelf }>(request, "/auth/verify", {
+      // The API applies the choice only when this call creates the account; an existing account's stored choice is
+      // never changed by signing in, whatever the box says.
+      const res = await api<VerifyResult>(request, "/auth/verify", {
         method: "POST",
         anonymous: true,
-        body: { email, code, updates_opt_in: false, ...(attempt ? { attempt_id: attempt } : {}) },
+        body: { email, code, updates_opt_in: optIn, ...(attempt ? { attempt_id: attempt } : {}) },
         ref: cleanRef(form.get("ref")),
       });
-      const created = Date.parse(res.user?.created_at ?? "");
-      if (optIn && Number.isFinite(created) && created >= started - NEW_ACCOUNT_WINDOW_MS) {
-        // Best effort: if this fails the account simply stays opted out, the safe side.
-        await api(request, "/me", { method: "PATCH", token: res.token, body: { updates_opt_in: true } }).catch(() => undefined);
-      }
       const headers = new Headers();
       headers.append("set-cookie", sessionCookie(request, res.token));
       headers.append("set-cookie", clearAttemptCookie(request));

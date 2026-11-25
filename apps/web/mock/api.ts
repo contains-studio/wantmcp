@@ -502,16 +502,16 @@ route("POST", "/auth/verify", ({ body }) => {
   // The attempt from POST /auth/code; a verify without it is still accepted during the transition.
   if (body.attempt_id !== undefined && body.attempt_id !== rec.attempt_id) throw invalid("That code is for another sign-in. Ask for a new one.");
   store.codes.delete(email);
+  // As the API: the choice applies only to the account this call creates; an existing account's is never changed here.
   let user = store.users.find((u) => u.email === email);
+  const created = !user;
   if (!user) {
     user = { id: newId("usr"), email, handle: newHandle(), updates_opt_in: body.updates_opt_in === true, created_at: nowIso() };
     store.users.push(user);
-  } else if (body.updates_opt_in === true) {
-    user.updates_opt_in = true;
   }
   const token = "mock_sess_" + randomToken(32);
   store.sessions.set(token, user.id);
-  return { token, user: userSelf(user) };
+  return { token, user: userSelf(user), created };
 });
 
 route("POST", "/auth/logout", ({ req, caller }) => {

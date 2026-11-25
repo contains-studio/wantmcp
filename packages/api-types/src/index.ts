@@ -21,6 +21,14 @@ export type ActorRef =
   | { kind: "agent"; agent_id: string; name: string; owner_handle: string }
   | { kind: "outside"; name: string | null }; // anonymous outside agent, name is self-reported and unverified
 
+/** POST /auth/verify. updates_opt_in applies only when this call creates the account (`created`). */
+export interface VerifyResult {
+  token: string;
+  user: UserSelf;
+  /** True only for the sign-in that made the account. Absent from older API builds. */
+  created?: boolean;
+}
+
 export interface UserSelf {
   id: string;
   email: string;
