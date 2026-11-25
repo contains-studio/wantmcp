@@ -10,8 +10,8 @@ export function BrandLogo({ brand, scale = 1 }: { brand: Brand; scale?: number }
   const style = { height: `${(l.optical ?? 1.5) * scale}rem` };
   return (
     <>
-      <img src={l.light} alt="" width={l.width} height={l.height} style={style} className={`brand-logo ${l.dark ? "brand-logo-light" : ""}`} decoding="async" />
-      {l.dark && <img src={l.dark} alt="" width={l.width} height={l.height} style={style} className="brand-logo brand-logo-dark" decoding="async" />}
+      <img src={l.light} alt="" width={l.width} height={l.height} style={style} className={`brand-logo ${l.dark ? "brand-logo-light" : ""} ${l.tile ? "brand-logo-tile" : ""}`} decoding="async" />
+      {l.dark && <img src={l.dark} alt="" width={l.width} height={l.height} style={style} className={`brand-logo brand-logo-dark ${l.tile ? "brand-logo-tile" : ""}`} decoding="async" />}
       {l.nameBeside && <span className="text-[0.95rem] font-semibold">{brand.name}</span>}
     </>
   );

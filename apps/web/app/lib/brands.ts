@@ -22,10 +22,12 @@ export interface Brand {
     nameBeside?: boolean;
     /** Rendered height in rem, tuned so every mark reads at one optical size (wordmarks smaller, symbols larger). */
     optical?: number;
+    /** The art is an app icon on its own square (often white): draw it with rounded corners and a hairline edge. */
+    tile?: boolean;
   };
 }
 
-/** In the order the owner chose: ChatGPT, Claude, Grok Bot, Muse, OpenClaw, the rest, and Codex last. */
+/** In the order the owner chose: ChatGPT, Claude, Grok Bot, Muse, OpenClaw, the rest (Hermes, Hark and Instinct added 25 Nov 2026), and Codex last. */
 export const BRANDS: Brand[] = [
   // OpenAI publishes only its company mark (the Blossom), so the product name goes beside it (Codex too).
   { id: "chatgpt", name: "ChatGPT", logo: { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg", width: 716, height: 716, nameBeside: true, optical: 1.6 } },
@@ -37,6 +39,11 @@ export const BRANDS: Brand[] = [
   { id: "cursor", name: "Cursor", logo: { light: "/brands/cursor-on-light.svg", dark: "/brands/cursor-on-dark.svg", width: 2239, height: 532, optical: 1.15 } },
   { id: "grok", name: "Grok", logo: { light: "/brands/grok-mark.svg", width: 512, height: 512, nameBeside: true, optical: 1.4 } },
   { id: "gemini", name: "Gemini", logo: { light: "/brands/gemini-sparkle.svg", width: 192, height: 192, nameBeside: true, optical: 1.3 } },
+  // Added at the owner's request, 25 Nov 2026. Hermes Agent documents remote MCP servers; Hark and Instinct publish
+  // no "add a server" setting, so their connect steps are the paste-a-prompt route and say they are untested.
+  { id: "hermes", name: "Hermes", logo: { light: "/brands/hermes-agent-on-light.webp", dark: "/brands/hermes-agent-on-dark.webp", width: 160, height: 160, nameBeside: true, optical: 1.5, tile: true } },
+  { id: "hark", name: "Hark", logo: { light: "/brands/hark-on-light.svg", dark: "/brands/hark-on-dark.svg", width: 811, height: 718, nameBeside: true, optical: 1.2 } },
+  { id: "instinct", name: "Instinct", logo: { light: "/brands/instinct-icon.svg", width: 100, height: 100, nameBeside: true, optical: 1.5, tile: true } },
   // Codex goes last (owner, 25 Nov 2026): two OpenAI products side by side read as a repeat.
   { id: "codex", name: "Codex", logo: { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg", width: 716, height: 716, nameBeside: true, optical: 1.6 } },
   // Not shipped yet (its pull requests are drafts).
@@ -60,6 +67,10 @@ export const AGENT_MARKS: Record<string, { light: string; dark?: string }> = {
   grok: { light: "/brands/grok-mark.svg" },
   muse: { light: "/brands/muse-mark.svg" },
   gemini: { light: "/brands/gemini-sparkle.svg" },
+  hermes: { light: "/brands/hermes-agent-on-light.webp", dark: "/brands/hermes-agent-on-dark.webp" },
+  "hermes agent": { light: "/brands/hermes-agent-on-light.webp", dark: "/brands/hermes-agent-on-dark.webp" },
+  hark: { light: "/brands/hark-on-light.svg", dark: "/brands/hark-on-dark.svg" },
+  instinct: { light: "/brands/instinct-icon.svg" },
 };
 
 export function agentMark(name: string): { light: string; dark?: string } | null {

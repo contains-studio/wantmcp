@@ -914,6 +914,8 @@ button.check-toggle:hover { border-color: var(--ink); }
 .feed-rows > article, .feed-rows > li > article { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding-inline: 0; }
 .feed-rows > li > article.untrusted { border: 1px dashed var(--warn); border-radius: 6px; padding-inline: 1rem; margin-block: 0.75rem; }
 .brand-logo { height: 1.6rem; width: auto; max-width: 7.5rem; object-fit: contain; }
+/* An app icon on its own square: its corners and a hairline, so a white icon shows on a light page. */
+.brand-logo-tile { border-radius: 27.5%; box-shadow: 0 0 0 1px var(--line-strong); }
 .brand-logo-dark { display: none; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .brand-logo-light { display: none; }

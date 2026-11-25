@@ -465,6 +465,53 @@ const CLIENT_LIST: Client[] = [
     more: () => <p>The Gemini app itself doesn't take custom MCP servers yet; these steps are for Gemini CLI.</p>,
   },
   {
+    id: "hermes",
+    name: "Hermes",
+    status: "partial",
+    sources: [["Hermes Agent docs: MCP", "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp"]],
+    steps: (c) => (
+      <>
+        <p>
+          Add this to <code>~/.hermes/config.yaml</code>, start <code>hermes chat</code>, and sign in when Hermes shows the link:
+        </p>
+        <Code>{`mcp_servers:\n  wantmcp:\n    url: "${c.mcp}"\n    auth: oauth`}</Code>
+      </>
+    ),
+    more: (c) => (
+      <>
+        <p>Or with a key from your list's settings, kept in <code>~/.hermes/.env</code> as WANTMCP_TOKEN:</p>
+        <Code>{`mcp_servers:\n  wantmcp:\n    url: "${c.mcp}"\n    headers:\n      Authorization: "Bearer \${WANTMCP_TOKEN}"`}</Code>
+        <p>From Hermes Agent's own docs. We haven't run it in Hermes yet.</p>
+      </>
+    ),
+  },
+  {
+    id: "hark",
+    name: "Hark",
+    status: "generic",
+    sources: [["Hark", "https://hark.com/"]],
+    steps: (c) => (
+      <>
+        <p>Paste this in a chat with Hark.</p>
+        <KeyPrompt ctx={c} agent="Hark" />
+      </>
+    ),
+    more: () => <p>Hark publishes no "add a server" setting that we could find, and we haven't tested this in Hark yet.</p>,
+  },
+  {
+    id: "instinct",
+    name: "Instinct",
+    status: "generic",
+    sources: [["Instinct", "https://instinct.com/"]],
+    steps: (c) => (
+      <>
+        <p>Send this to Instinct.</p>
+        <KeyPrompt ctx={c} agent="Instinct" />
+      </>
+    ),
+    more: () => <p>Instinct publishes no "add a server" setting that we could find, and we haven't tested this in Instinct yet.</p>,
+  },
+  {
     id: "msgblast",
     name: "msgblast",
     // Not released yet (brands.ts comingSoon): no steps until it ships.
@@ -500,7 +547,7 @@ const CLIENT_LIST: Client[] = [
 ];
 
 /** The order the owner uses: ChatGPT, Codex, Claude, Grok Bot, Muse, OpenClaw, then the rest. */
-const ORDER = ["chatgpt", "codex", "claude", "claude-code", "grok-bot", "muse", "openclaw", "cursor", "grok", "gemini", "msgblast", "other"];
+const ORDER = ["chatgpt", "codex", "claude", "claude-code", "grok-bot", "muse", "openclaw", "cursor", "grok", "gemini", "hermes", "hark", "instinct", "msgblast", "other"];
 const CLIENTS = [...CLIENT_LIST].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
 const STATUS = {
