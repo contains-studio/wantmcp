@@ -145,11 +145,14 @@ export default function Skills({ loaderData, actionData }: Route.ComponentProps)
             )}
           </div>
           <ViewSwitch current="skills" />
-          {/* What it's for, in one line; who reads it, once on the page. */}
-          <p className="text-[1.02rem] text-ink-2">
-            Tell your agents once how you like things done: your sizes, the stores you trust, when to ask first. They follow it on every list.{" "}
-            <span className="text-ink-3">Only agents you connect read these.</span>
-          </p>
+          {/* What it's for, in one line; who reads it, once on the page. Not while writing one: the person has decided,
+              and the form starts higher on a phone. */}
+          {!editor && (
+            <p className="text-[1.02rem] text-ink-2">
+              Tell your agents once how you like things done: your sizes, the stores you trust, when to ask first. They follow it on every list.{" "}
+              <span className="text-ink-3">Only agents you connect read these.</span>
+            </p>
+          )}
         </header>
 
         {unavailable && (
@@ -352,6 +355,8 @@ function Editor({
             {error}
           </p>
         )}
+        {/* Said once, at the moment of writing; outside the sticky Save row so that row stays one line on a phone. */}
+        <p className="text-[0.85rem] text-ink-3">Only agents you connect read it.</p>
         <div className="editor-actions flex flex-wrap items-center gap-3">
           <button className="btn btn-want" disabled={busy}>
             {busy ? "Saving…" : "Save"}

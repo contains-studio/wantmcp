@@ -145,18 +145,22 @@ export default function Claim({ loaderData, actionData }: Route.ComponentProps) 
               {busy ? "Keeping…" : "Keep this list"}
             </button>
             <p className="text-[0.85rem] text-ink-3">
+              {/* One thought per line: who keeps it, then what happens otherwise. */}
               {user ? (
                 <>
-                  As {user.handle} (
+                  {claim.kind === "handover" ? "It becomes yours, as " : "You'll keep it as "}
+                  {user.handle} (
                   <Link to="/app/account" className="link">
                     not you?
                   </Link>
-                  ).{" "}
+                  ){claim.kind === "handover" ? "; they can keep working on it. " : ". "}
                 </>
               ) : (
-                "Confirm your email to keep it. "
+                <>
+                  Confirm your email to keep it.{" "}
+                  {claim.kind === "handover" && "Keep it and it becomes yours; they can keep working on it. "}
+                </>
               )}
-              {claim.kind === "handover" && "Keep it and it becomes yours; they can keep working on it. "}
               <Deadline expiresAt={claim.expires_at} now={now} kind={claim.kind} />
             </p>
           </Form>

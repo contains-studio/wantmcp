@@ -71,6 +71,8 @@ test("an existing person's skills: on, off, and the tab row fits a phone with th
   const tabs = page.getByRole("navigation", { name: "View" }).getByRole("link");
   await expect(tabs).toHaveText(["Lists", "Activity", "Skills"]);
   await expect(tabs.nth(2)).toHaveAttribute("aria-current", "page");
+  // One "you are here": the header's Lists is current only where the Lists tab is.
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Lists" })).not.toHaveAttribute("aria-current", "page");
   const tops = await tabs.evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
   expect(tops.length).toBe(1);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -81,6 +83,9 @@ test("the editor on a phone: the instructions grow, nothing scrolls inside, Save
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(page, freshEmail("skills-long"));
   await page.goto("/app/skills?new=blank");
+  // Writing one: the intro steps aside so the form starts in the top half of a phone.
+  await expect(page.getByText(/Tell your agents once/)).toHaveCount(0);
+  expect((await page.getByLabel("Title").boundingBox())!.y).toBeLessThan(844 / 2);
   const long = Array.from({ length: 60 }, (_, i) => `Line ${i + 1}: a standing instruction about sizes, stores or budgets.`).join("\n");
   await page.getByLabel("Title").fill("A long one");
   await page.getByLabel("Instructions").fill(long);

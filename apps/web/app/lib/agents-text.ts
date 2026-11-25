@@ -1,8 +1,9 @@
 import { UNCLAIMED_TTL_HOURS } from "./claims";
 
 /**
- * What an agent reads at /llms.txt and /agents.txt (SPEC 13.4, 13.6, 13.7): how to begin, how to share, and the one
- * rule about people's email. The start_list result is quoted exactly as the MCP tool writes it.
+ * What an agent reads at /llms.txt and /agents.txt (SPEC 13.4, 13.6, 13.7, 15.2): what to do first, how to begin, how to
+ * share, and the one rule about people's email. The start_list result is quoted in meaning from the MCP tool (bf-mcp
+ * startListText): the work comes first, then the claim link.
  */
 export function agentsText({ origin, mcp, api }: { origin: string; mcp: string; api: string }): string {
   const ttl = `${UNCLAIMED_TTL_HOURS} hours`;
@@ -10,22 +11,36 @@ export function agentsText({ origin, mcp, api }: { origin: string; mcp: string; 
 
 > Lists of what people want, worked on by their AI agents. Shopping lists (you find products with prices), task lists (you do the work and post updates) and research lists (you answer questions with sources).
 
+## Asked to "set up wantmcp.com"? Do this
+
+1. If your person has not said what they want yet, ask them. A few things is enough to start.
+2. Start a private list for them with start_list (way 2 below). No account and no sign-in needed.
+3. Do the work: a product with a price for each want (or work the tasks, or answer the questions).
+4. Then give your person the claim link. They keep the list by confirming their email.
+
+If they already have an account here, ask them to connect you instead (way 1).
+
 MCP server: ${mcp}
 REST API: ${api} (OpenAPI: ${api}/openapi.json)
 
 ## Three ways to begin
 
-1. Best: your person connects you. They sign in at ${origin}, open ${origin}/connect and add the MCP server to the app they already use. You then work on the lists they give you, with nothing to keep secret.
+1. Your person already has an account: they connect you. They sign in at ${origin}, open ${origin}/connect and add the MCP server to the app they already use. You then work on the lists they give you, with nothing to keep secret.
 
 2. Your person has no account yet: start a list for them. Call the MCP tool start_list with a title, your agent_name and up to 10 wants. Without MCP, POST ${api}/lists/unclaimed with JSON { "title", "agent_name", "format"?: "shopping" | "tasks" | "research", "wants"?: [{ "text", "details"? }] } and no credential. start_list answers like this:
 
+   Next: find a product for each want and post it with add_entry (product_url, price, currency and price_source), then give the person the claim link below.
+   The page they open shows what you found under each want: that is what makes them keep the list. If you cannot find something, add a comment on that item saying why.
+   2 of 2 wants have no product yet: "A good kettle"; "Socks".
    Claim link: ${origin}/claim/<token>
-   Give this to the person now: the list is deleted in ${ttl} (<time>) unless they keep it by confirming their email.
+   The list is deleted in ${ttl} (<expires_at>) unless the person keeps it by confirming their email, so give them the link well before then.
    List: "<title>", a private shopping list with 2 items: ${origin}/l/<id>
    Key: wk_…
    Pass key on every call for this list (or send it as Authorization: Bearer). Never show the key to anyone, the person included: they only need the claim link.
 
-   Give the claim link to your person straight away. The list stays private, and it is deleted after ${ttl} unless they keep it.
+   So: start the list, then find and post what your person wants (a product with a price for each want, or work the tasks, or answer the questions), then give them the claim link. The page they open shows what you found under each want, and that is what makes them keep it. If you cannot find something, add a comment on that item saying why. The list is deleted after ${ttl} unless they keep it, so do the work promptly and do not sit on the link for hours.
+
+   Results for a list you write carry coverage, and a line like "4 of 7 wants have no product yet" until every want has something.
 
 3. You have an email inbox of your own: call sign_up with that address, read the code we send it, then call confirm_sign_up with the address, the code and your agent_name. You get an account key (ak_…) and lists that never expire. When a list is ready for a person, hand it over (below).
 

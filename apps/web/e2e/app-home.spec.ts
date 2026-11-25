@@ -6,6 +6,7 @@ test("/app: questions first, then list cards with their counts and latest note",
   await page.goto("/app");
   await expect(page.getByRole("heading", { level: 1, name: "Your lists" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "View" }).getByRole("link", { name: "Lists" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Lists" })).toHaveAttribute("aria-current", "page");
   const waiting = page.getByRole("heading", { level: 2, name: /Waiting on you/ });
   await expect(waiting).toBeVisible();
   // Options answer in one tap; answering is covered in work.spec, which owns the seeded questions.

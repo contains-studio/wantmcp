@@ -72,16 +72,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 
-/** "My lists", with how many questions wait on the person (SPEC 12.1). Loaded after the page so it never slows it. */
-
 /** `minimal` (sign-in): the wordmark only, so the one thing on the page is the email field. */
 function Header({ minimal = false }: { minimal?: boolean }) {
   const { user } = useRootData();
   const nav = useNavigation();
+  // "Lists" is current where the Lists tab is: the lists page and a list's own pages. On Activity, Skills and Account
+  // their own tab or link says where you are, so the header doesn't claim a second "you are here".
+  const { pathname } = useLocation();
+  const listsOn = pathname === "/app" || pathname === "/app/" || pathname.startsWith("/app/new") || pathname.startsWith("/app/lists/");
   const navCls = ({ isActive }: { isActive: boolean }) =>
     `whitespace-nowrap px-1.5 py-2.5 text-[0.92rem] font-medium sm:px-3 ${isActive ? "text-ink underline decoration-1 underline-offset-[6px]" : "text-ink-2 hover:text-ink"}`;
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-paper/80 backdrop-blur-xl backdrop-saturate-150">
+    <header className="sticky top-0 z-30 border-b border-line bg-paper">
       <div
         aria-hidden="true"
         className={`absolute inset-x-0 top-0 h-0.5 origin-left bg-want transition-transform duration-500 ${nav.state === "idle" ? "scale-x-0" : "scale-x-75"}`}
@@ -101,9 +103,9 @@ function Header({ minimal = false }: { minimal?: boolean }) {
           </NavLink>
           {user ? (
             <>
-              <NavLink to="/app" className={navCls} end={false}>
+              <Link to="/app" className={navCls({ isActive: listsOn })} aria-current={listsOn ? "page" : undefined}>
                 Lists
-              </NavLink>
+              </Link>
               <NavLink to="/app/account" className={navCls}>
                 Account
               </NavLink>

@@ -52,7 +52,8 @@ test("signed in already: one button keeps the list", async ({ page }) => {
   await signIn(page, freshEmail("claimsigned"));
   await page.goto(`/claim/${token("soon")}`);
   await expect(page.getByText(/Otherwise it's deleted (today|tomorrow) at /)).toBeVisible();
-  await expect(page.getByText(/^As /)).toBeVisible();
+  // One thought: who keeps it, then what happens otherwise.
+  await expect(page.getByText(/^You'll keep it as [a-z]+-[a-z]+-\d+ \(not you\?\)\. Otherwise it's deleted (today|tomorrow) at /)).toBeVisible();
   await page.getByRole("button", { name: "Keep this list" }).click();
   await expect(page).toHaveURL(/\/l\/lst_[a-z0-9]+$/);
   await expect(page.getByRole("heading", { level: 1, name: "Packing for the move" })).toBeVisible();
@@ -78,6 +79,7 @@ test("a hand-over names who made the list, and the old owner stays on it", async
 
   await signIn(page, freshEmail("handover"));
   await page.goto(`/claim/${t}`);
+  await expect(page.getByText(/^It becomes yours, as [a-z]+-[a-z]+-\d+ \(not you\?\); they can keep working on it\./)).toBeVisible();
   await page.getByRole("button", { name: "Keep this list" }).click();
   await expect(page).toHaveURL(/\/l\/lst_[a-z0-9]+$/);
   await page.goto(`${page.url().replace("/l/", "/app/lists/")}/settings`);
@@ -112,11 +114,19 @@ test("/llms.txt and /agents.txt tell agents how to begin", async ({ request }) =
       "Never type a person's email address",
       "never ask a person for a sign-in code",
       "read each with read_skill before you start",
-      "Give this to the person now: the list is deleted in 24 hours (<time>) unless they keep it by confirming their email.",
+      "If your person has not said what they want yet, ask them.",
+      "Then give your person the claim link.",
+      "The list is deleted in 24 hours (<expires_at>) unless the person keeps it by confirming their email, so give them the link well before then.",
+      "wants have no product yet",
       "Pass key on every call for this list (or send it as Authorization: Bearer). Never show the key to anyone, the person included: they only need the claim link.",
     ]) {
       expect(body, `${path}: ${s}`).toContain(s);
     }
+    // The work comes before the link (SPEC 15.2); the old "hand it over now" wording is gone.
+    expect(body).not.toContain("Give this to the person now");
+    expect(body).not.toContain("straight away");
+    // The first screen of the file says what to do first.
+    expect(body.split("\n").slice(0, 12).join("\n")).toContain("start_list");
   }
 });
 
