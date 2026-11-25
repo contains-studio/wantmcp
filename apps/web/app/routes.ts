@@ -25,6 +25,7 @@ export default [
   route("terms", "routes/terms.tsx"),
   route("report", "routes/report.tsx"),
   route("feedback", "routes/feedback.tsx"),
+  route("feedback/:id", "routes/feedback-status.tsx"),
   route("theme", "routes/theme.tsx"),
   route("live", "routes/live.ts"),
   route("waiting", "routes/waiting.ts"),

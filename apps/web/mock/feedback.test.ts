@@ -12,7 +12,8 @@ test("each kind is received with no credential; the result is { id, received }",
     const res = await send({ kind, text: `A ${kind}`, about: "/claim" });
     assert.equal(res.status, 201);
     const out: any = await res.json(); // eslint-disable-line @typescript-eslint/no-explicit-any
-    assert.deepEqual(Object.keys(out).sort(), ["id", "received"]);
+    assert.deepEqual(Object.keys(out).sort(), ["id", "received", "status_url"]);
+    assert.match(out.status_url, /\/feedback\/fbk_/);
     assert.match(out.id, /^fbk_/);
     assert.equal(out.received, true);
   }
@@ -69,17 +70,17 @@ test("SPEC 16.2: feedback is an outsider's task, held: writers see it, readers a
     assert.equal(r.status, 200);
     assert.equal(r.body.items.filter((i: { pending_review: boolean }) => i.pending_review).length, 0);
     assert.ok(!JSON.stringify(r.body).includes("Held for review"));
-    assert.equal(r.body.item_count, 1);
+    assert.equal(r.body.item_count, 2);
   }
 
   // awaiting_review: the real number for writers (list, detail and the /app summary), 0 for everyone else.
   assert.equal(mine.body.awaiting_review, 2);
-  assert.equal(mine.body.item_count, 1);
+  assert.equal(mine.body.item_count, 2);
   const home = await call("GET", "/me/lists?include=summary", team);
   const card = home.body.data.find((l: { id: string }) => l.id === "lst_feedback");
   assert.equal(card.awaiting_review, 2);
   assert.equal(card.summary.awaiting_review, 2);
-  assert.equal(card.summary.items, 1);
+  assert.equal(card.summary.items, 2);
   assert.equal((await call("GET", "/lists/lst_feedback")).body.awaiting_review, 0);
 
   // Accepting: a person writer only; it then shows to readers like any other, still marked as an outsider's words.
@@ -91,6 +92,37 @@ test("SPEC 16.2: feedback is an outsider's task, held: writers see it, readers a
   assert.equal(ok.body.text_by, "outsider");
   const after = await call("GET", "/lists/lst_feedback");
   assert.ok(after.body.items.some((i: { text: string }) => i.text === "Bug: Held for review"));
-  assert.equal(after.body.item_count, 2);
+  assert.equal(after.body.item_count, 3);
   assert.equal((await call("GET", "/lists/lst_feedback", team)).body.awaiting_review, 1, "accepting moves one across");
+});
+
+test("SPEC 16.6: the id follows one report through every status, with no credential, and never carries its text", async () => {
+  resetMockStore();
+  const sent = await send({ kind: "request", text: "Secret words from the sender", expected: "More secret words", about: "/claim" });
+  const id = sent.status === 201 ? ((await sent.json()) as { id: string }).id : null;
+  assert.ok(id);
+  const team = await session("team@example.com");
+  const look = async () => {
+    const r = await call("GET", `/feedback/${id}`);
+    assert.equal(r.status, 200);
+    assert.deepEqual(Object.keys(r.body).sort(), ["id", "kind", "note", "received_at", "status", "updated_at"]);
+    assert.ok(!JSON.stringify(r.body).includes("Secret") && !JSON.stringify(r.body).includes("/claim"));
+    return r.body;
+  };
+  assert.equal((await look()).status, "received");
+  const item = (await call("GET", "/lists/lst_feedback", team)).body.items.find((i: { text: string }) => i.text.includes("Secret words"));
+  await call("POST", `/items/${item.id}/accept`, team);
+  assert.equal((await look()).status, "accepted");
+  await call("POST", `/items/${item.id}/status`, team, { status: "in_progress", note: "internal: looking at the claim code" });
+  const working = await look();
+  assert.equal(working.status, "in_progress");
+  assert.equal(working.note, null, "only the completion note is shown, never a progress note");
+  await call("POST", `/items/${item.id}/status`, team, { status: "done", note: "The claim page now lists each want's products." });
+  const done = await look();
+  assert.equal(done.status, "done");
+  assert.equal(done.note, "The claim page now lists each want's products.");
+  assert.equal(done.kind, "request");
+  await call("DELETE", `/items/${item.id}`, team);
+  assert.equal((await look()).status, "closed");
+  assert.equal((await call("GET", "/feedback/fbk_nope")).status, 404);
 });

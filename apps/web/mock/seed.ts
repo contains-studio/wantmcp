@@ -379,7 +379,20 @@ export function seedStore(now = Date.now()): Store {
       status: "open", claimed_by: null, completion: null, text_by: "outsider", pending_review: true,
     },
   );
+  s.items.push({
+    id: "itm_fb_done", list_id: "lst_feedback", text: "Expected: The claim page showed my wants but not the products my agent found", created_by: outsider, created_at: at(5 * DAY), purchase: null,
+    details: "The claim page showed my wants but not the products my agent found.\n\nExpected: Products with prices under each want.\n\nFrom an agent, Muse, over MCP, about /claim (Claude Code 2.1)",
+    status: "done", claimed_by: null, completion: { completed_at: at(DAY), completed_by: user("steady-finch-2040"), note: "The claim page now shows what your agent found under each want, with prices.", entry_id: null },
+    text_by: "outsider", pending_review: false,
+  });
   s.feedback_list = "lst_feedback";
+  // SPEC 16.6: fixed ids to look at each status by hand (and for the accessibility check).
+  s.feedback.push(
+    { id: "fbk_seed_received", kind: "request", text: "", expected: null, about: null, list: null, created_at: at(2 * HOUR), item_id: "itm_fb_held" },
+    { id: "fbk_seed_working", kind: "bug", text: "", expected: null, about: null, list: null, created_at: at(3 * DAY), item_id: "itm_fb_share" },
+    { id: "fbk_seed_done", kind: "expectation", text: "", expected: null, about: null, list: null, created_at: at(5 * DAY), item_id: "itm_fb_done" },
+    { id: "fbk_seed_closed", kind: "bug", text: "", expected: null, about: null, list: null, created_at: at(6 * DAY), item_id: "itm_fb_gone" },
+  );
 
   // ---- SPEC 14: the demo person's own skills, one on and one off.
   s.skills.push(

@@ -77,6 +77,7 @@ export function ItemStatusBar({
   statusNoteAt,
   fi,
   canWrite,
+  outsider = false,
 }: {
   itemId: string;
   /** What the agent said it is doing (with in_progress, or a release back to open). */
@@ -88,6 +89,8 @@ export function ItemStatusBar({
   completion: { completed_at: string; completed_by: ActorRef; note: string | null; entry_id: string | null } | null | undefined;
   fi: FormatInfo;
   canWrite: boolean;
+  /** SPEC 16.6: an outsider's item (feedback): its sender sees the status and the completion note. */
+  outsider?: boolean;
 }) {
   const now = useNow();
   const actorLabel = useActorLabel();
@@ -140,7 +143,7 @@ export function ItemStatusBar({
             </>
           }
         >
-          <StatusOptions itemId={itemId} status={status} doneWord={doneWord} claimed={!!claimedBy} canTakeOver={stale && claimedBy?.kind !== "user"} />
+          <StatusOptions outsider={outsider} itemId={itemId} status={status} doneWord={doneWord} claimed={!!claimedBy} canTakeOver={stale && claimedBy?.kind !== "user"} />
         </Menu>
       ) : (
         <span className={`chip ${tone}`}>{text}</span>
@@ -170,7 +173,21 @@ export function ItemStatusBar({
 }
 
 /** The status menu: one form, one button per state, plus Release and Take over for claims. */
-function StatusOptions({ itemId, status, doneWord, claimed, canTakeOver }: { itemId: string; status: ItemStatus; doneWord: string; claimed: boolean; canTakeOver: boolean }) {
+function StatusOptions({
+  itemId,
+  status,
+  doneWord,
+  claimed,
+  canTakeOver,
+  outsider = false,
+}: {
+  itemId: string;
+  status: ItemStatus;
+  doneWord: string;
+  claimed: boolean;
+  canTakeOver: boolean;
+  outsider?: boolean;
+}) {
   const fetcher = useFetcher<IntentResult>();
   const note = useFetcher<IntentResult>();
   const ref = useCloseOnDone(fetcher);
@@ -227,6 +244,7 @@ function StatusOptions({ itemId, status, doneWord, claimed, canTakeOver }: { ite
               <label className="field">
                 <span className="label">Note</span>
                 <textarea name="note" maxLength={1000} className="textarea textarea-grow" placeholder="What was done, anything to know…" />
+                {outsider && <span className="hint">The sender sees the status and this note.</span>}
               </label>
               <button className="btn btn-ghost btn-sm w-fit" disabled={note.state !== "idle"}>
                 {note.state !== "idle" ? "Saving…" : `Mark ${doneWord.toLowerCase()}`}

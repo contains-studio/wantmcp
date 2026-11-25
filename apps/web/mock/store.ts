@@ -146,7 +146,7 @@ export interface Store {
   /** SPEC 16.1: what POST /feedback received (mock only keeps it to test against). */
   /** SPEC 16.2: the list feedback lands on (set by the admin on the server). */
   feedback_list: string | null;
-  feedback: Array<{ id: string; kind: string; text: string; expected: string | null; about: string | null; list: string | null; created_at: Timestamp }>;
+  feedback: Array<{ id: string; kind: string; text: string; expected: string | null; about: string | null; list: string | null; created_at: Timestamp; item_id?: string | null }>;
   claims: ClaimRow[];
   skills: SkillRow[];
 }

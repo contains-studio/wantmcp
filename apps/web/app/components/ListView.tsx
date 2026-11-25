@@ -112,7 +112,9 @@ export function ListView(props: ListViewProps) {
   const now = useNow();
   // Zero counts say nothing: they're left out.
   const meta: MetaItem[] = props.sample ? [<span className="chip">Sample</span>] : [
-    ...(wanted.length ? [<>{wanted.length} open</>] : []),
+    // Held reports (SPEC 16.2) are counted apart, as the API does: "2 open · 1 waiting for you to accept".
+    ...(wanted.length - heldCount > 0 ? [<>{wanted.length - heldCount} open</>] : []),
+    ...(heldCount > 0 ? [<span className="font-medium text-warn">{heldCount} waiting for you to accept</span>] : []),
     ...(bought.length ? [<>{bought.length} {fi.done}</>] : []),
     // On a phone the products count is the one that goes, rather than wrap alone onto a second line.
     ...(productCount ? [{ node: <>{productCount} {productCount === 1 ? fi.entry : fi.entries}</>, className: "max-sm:hidden" }] : []),
@@ -124,7 +126,7 @@ export function ListView(props: ListViewProps) {
     <PreviewContext.Provider value={preview}>
     <div
       className={className}
-      style={{ ...theme.style, ["--list-progress" as string]: items.length ? (items.length - items.filter((i) => !isDone(i)).length) / items.length : 0 } as React.CSSProperties}
+      style={{ ...theme.style, ["--list-progress" as string]: items.length - heldCount > 0 ? items.filter(isDone).length / (items.length - heldCount) : 0 } as React.CSSProperties}
       data-list-theme={theme.slug}
       data-list-format={fi.format}
     >
@@ -503,6 +505,7 @@ function ItemSection({
             statusNoteAt={item.status_note_at}
             fi={fi}
             canWrite={isWriter}
+            outsider={outsider}
           />
         )}
         {/* SPEC 12.1: questions and answers are for writers only, on public lists too. */}

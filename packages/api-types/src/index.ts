@@ -660,4 +660,22 @@ export interface FeedbackInput {
 export interface FeedbackResult {
   id: string;
   received: true;
+  /** SPEC 16.6: https://wantmcp.com/feedback/<id>, where the sender can follow it. Absent from older API builds. */
+  status_url?: string;
+}
+
+/** SPEC 16.6: where a report stands. received = held, not yet accepted; closed = the task was deleted or declined. */
+export type FeedbackStatusValue = "received" | "accepted" | "in_progress" | "done" | "closed";
+
+/**
+ * SPEC 16.6: GET /feedback/{id}, no credential. Never the report's text, the list it concerned or anything about the
+ * sender. `note` is the task's completion note once done (the team's words), otherwise null.
+ */
+export interface FeedbackStatus {
+  id: string;
+  kind: FeedbackKind;
+  status: FeedbackStatusValue;
+  note: string | null;
+  received_at: Timestamp;
+  updated_at: Timestamp;
 }

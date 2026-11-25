@@ -1685,18 +1685,33 @@ route("POST", "/feedback", ({ body, caller }) => {
   const about = text("about", body.about, 80) || null;
   const list = typeof body.list === "string" && body.list ? body.list : null;
   const id = newId("fbk");
-  store.feedback.push({ id, kind, text: t, expected, about, list, created_at: nowIso() });
+  const row: (typeof store.feedback)[number] = { id, kind, text: t, expected, about, list, created_at: nowIso(), item_id: null };
+  store.feedback.push(row);
   // SPEC 16.2: a task on the feedback list, written by an outsider and held until a writer accepts it.
   if (store.feedback_list) {
     const prefix = kind === "bug" ? "Bug" : kind === "expectation" ? "Expected" : "Request";
+    row.item_id = newId("itm");
     store.items.push({
-      id: newId("itm"), list_id: store.feedback_list, text: `${prefix}: ${t.replace(/\s+/g, " ").slice(0, 120)}`,
+      id: row.item_id, list_id: store.feedback_list, text: `${prefix}: ${t.replace(/\s+/g, " ").slice(0, 120)}`,
       details: [t, expected ? `Expected: ${expected}` : "", `${caller?.kind === "user" ? "From a person" : caller ? "From an agent" : "From someone not signed in"} on the web${about ? `, about ${about}` : ""}`].filter(Boolean).join("\n\n"),
       created_by: { kind: "outside", name: null }, created_at: nowIso(), purchase: null, status: "open", claimed_by: null, completion: null,
       text_by: "outsider", pending_review: true,
     });
   }
-  return created({ id, received: true as const });
+  return created({ id, received: true as const, status_url: `${WEB}/feedback/${id}` });
+});
+
+// SPEC 16.6: where a report stands, for whoever holds its id; no credential. Never the report's text or its sender.
+route("GET", "/feedback/{id}", ({ params }) => {
+  const r = store.feedback.find((f) => f.id === params[0]);
+  if (!r) throw notFound("Feedback not found");
+  const i = r.item_id ? store.items.find((x) => x.id === r.item_id) : undefined;
+  const status = !r.item_id ? "received" : !i ? "closed" : i.pending_review ? "received" : i.status === "done" ? "done" : i.status === "in_progress" || i.status === "waiting_on_owner" ? "in_progress" : "accepted";
+  const times = [r.created_at, i?.claimed_at, i?.completion?.completed_at, i?.status_note_at].filter((x): x is string => !!x).sort();
+  return {
+    id: r.id, kind: r.kind, status, note: status === "done" ? (i?.completion?.note ?? null) : null,
+    received_at: r.created_at, updated_at: times.at(-1)!,
+  };
 });
 
 route("GET", "/sitemap", () => ({
