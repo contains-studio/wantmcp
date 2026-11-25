@@ -103,7 +103,7 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
               return (
                 <tr key={e.id} id={e.id} className={`scroll-mt-24 ${highlight}`}>
                   <th scope="row" className={`${td} ${stickyA} ${highlight || "bg-card"} text-left font-normal`}>
-                    <ExtLink href={e.product_url} className="link line-clamp-3 font-semibold leading-snug">
+                    <ExtLink href={e.product_url ?? ""} className="link line-clamp-3 font-semibold leading-snug">
                       {e.title}
                       <span className="sr-only"> (opens retailer site in a new tab)</span>
                     </ExtLink>

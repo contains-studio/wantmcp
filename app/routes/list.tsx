@@ -8,6 +8,7 @@ import { handleWriterIntent } from "~/lib/intents.server";
 import { getSessionToken } from "~/lib/session.server";
 import type { Comment, Entry, Item, ListDetail, ListPrices, Page, PriceObservation } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
+import { formatInfo, visibilityOf } from "~/lib/formats";
 
 /** Comments for the whole list, a few pages deep. */
 async function loadComments(request: Request, listId: string): Promise<{ comments: Comment[]; cursor: string | null }> {
@@ -27,14 +28,15 @@ async function loadComments(request: Request, listId: string): Promise<{ comment
  * Price history for every entry in one call. Requested anonymously so it can never include
  * suggestions. Falls back to one call per entry on an API without `/lists/{id}/prices`.
  */
-async function loadPrices(request: Request, listId: string, items: ItemWithEntries[]): Promise<Record<string, PriceObservation[]>> {
-  const all = await apiOptional<ListPrices>(request, `/lists/${encodeURIComponent(listId)}/prices`, {
-    anonymous: true,
-  });
+async function loadPrices(request: Request, listId: string, items: ItemWithEntries[], asWriter: boolean): Promise<Record<string, PriceObservation[]>> {
+  // Public lists: fetched anonymously, so the result can never include suggestions. Private
+  // lists are only rendered for writers, who need their credential to read them at all.
+  const anonymous = !asWriter;
+  const all = await apiOptional<ListPrices>(request, `/lists/${encodeURIComponent(listId)}/prices`, { anonymous });
   if (all) return all.prices ?? {};
   const need = items.flatMap((it) => it.entries).filter((e) => e.price_count > 1).slice(0, 60);
   const histories = await Promise.all(
-    need.map((e) => api<PriceObservation[]>(request, `/entries/${encodeURIComponent(e.id)}/prices`, { anonymous: true }).catch(() => null)),
+    need.map((e) => api<PriceObservation[]>(request, `/entries/${encodeURIComponent(e.id)}/prices`, { anonymous }).catch(() => null)),
   );
   const prices: Record<string, PriceObservation[]> = {};
   need.forEach((e, i) => {
@@ -53,6 +55,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
   const role = list.my_role ?? null;
   const isWriter = role === "owner" || role === "member";
+  const isPrivate = visibilityOf(list) === "private";
+  // SPEC 11.2: a private list is served only to signed-in writers. The API already returns
+  // not_found to everyone else; this is a second line of defence, and it 404s exactly like
+  // a list that does not exist.
+  if (isPrivate && !isWriter) throw new Response("Not found", { status: 404 });
 
   // Suggestions are writers-only. Never let one reach an anonymous page or a crawler,
   // even if the API were to return it.
@@ -67,7 +74,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   });
 
   const listedIds = new Set(items.flatMap((it) => it.entries.map((e) => e.id)));
-  const [{ comments, cursor: commentsCursor }, prices] = await Promise.all([loadComments(request, id), loadPrices(request, id, items)]);
+  const [{ comments, cursor: commentsCursor }, prices] = await Promise.all([loadComments(request, id), formatInfo(list).format === "shopping" ? loadPrices(request, id, items, isPrivate) : Promise.resolve({} as Record<string, PriceObservation[]>)]);
   // Only listed entries' histories reach the page.
   for (const key of Object.keys(prices)) if (!listedIds.has(key)) delete prices[key];
 
@@ -84,13 +91,19 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       isWriter,
       role,
       origin: siteOrigin(request),
+      isPrivate,
       // Only this list's theme is sent to the page: custom properties and motif, no theme code.
-      theme: getThemeView(summary.theme),
+      // No theme picked: the format's default (Checklist for tasks, Doc for research).
+      theme: getThemeView(summary.theme ?? formatInfo(summary).defaultTheme),
     },
     {
       headers: {
-        "Cache-Control": signedIn ? "private, no-store" : "public, max-age=30, s-maxage=60",
+        // Anything a signed-in person sees may be private or personalised: never stored.
+        // Public pages may be cached briefly by browsers, but shared caches must revalidate,
+        // so a list switched to private stops being served at once.
+        "Cache-Control": signedIn || isPrivate ? "private, no-store" : "public, max-age=30, s-maxage=0, must-revalidate",
         Vary: "Cookie",
+        ...(isPrivate ? { "X-Robots-Tag": "noindex, nofollow" } : {}),
       },
     },
   );
@@ -107,6 +120,14 @@ export async function action({ request, params }: Route.ActionArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return [{ title: "List not found · The Want MCP" }, { name: "robots", content: "noindex" }];
   const { list, items, origin } = loaderData;
+  if (loaderData.isPrivate) {
+    // Private: a title for the owner's tab, nothing for crawlers or link previews.
+    return [
+      { title: `${list.title} · private list · The Want MCP` },
+      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:image", content: `${origin}/og.png` },
+    ];
+  }
   const url = `${origin}/l/${list.id}`;
   const listed = items.flatMap((i) => i.entries);
   const description = clip(

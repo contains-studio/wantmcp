@@ -3,13 +3,19 @@
  * preview. Static data; images are the self-hosted mock illustrations.
  */
 import type { ItemWithEntries } from "~/components/ListView";
-import type { ActorRef, Comment, Entry, ListSummary, PriceObservation } from "~/lib/types";
+import type { ActorRef, Comment, Entry, ListFormat, ListSummary, PriceObservation } from "~/lib/types";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
-export function sampleList(now = Date.now()) {
+export function sampleList(now = Date.now(), format: ListFormat = "shopping") {
+  if (format === "tasks") return sampleTasks(now);
+  if (format === "research") return sampleResearch(now);
+  return sampleShopping(now);
+}
+
+function sampleShopping(now: number) {
   const at = (ago: number) => new Date(now - ago).toISOString().replace(/\.\d{3}Z$/, "Z");
   const ahead = (ms: number) => new Date(now + ms).toISOString().replace(/\.\d{3}Z$/, "Z");
   const agent = (id: string, name: string): ActorRef => ({ kind: "agent", agent_id: id, name, owner_handle: "sample-owner" });
@@ -30,6 +36,8 @@ export function sampleList(now = Date.now()) {
     updated_at: at(20 * MIN),
     my_role: null,
     theme: null,
+    format: "shopping",
+    visibility: "public",
   };
 
   const prices: Record<string, PriceObservation[]> = {};
@@ -83,6 +91,7 @@ export function sampleList(now = Date.now()) {
   const items: ItemWithEntries[] = [
     {
       id: "itm_sample_chair",
+      url: "https://wantmcp.com/themes#itm_sample_chair",
       list_id: "sample",
       text: "A comfortable desk chair with proper lumbar support, under £450",
       created_by: me,
@@ -102,6 +111,7 @@ export function sampleList(now = Date.now()) {
     },
     {
       id: "itm_sample_monitor",
+      url: "https://wantmcp.com/themes#itm_sample_monitor",
       list_id: "sample",
       text: "27-inch 4K monitor that charges the laptop over one cable",
       created_by: me,
@@ -118,6 +128,7 @@ export function sampleList(now = Date.now()) {
     },
     {
       id: "itm_sample_grinder",
+      url: "https://wantmcp.com/themes#itm_sample_grinder",
       list_id: "sample",
       text: "A burr grinder for pour-over coffee",
       created_by: me,
@@ -149,3 +160,67 @@ export function sampleList(now = Date.now()) {
 
   return { list, items, prices, comments };
 }
+
+type Sample = ReturnType<typeof sampleShopping>;
+
+function textSample(now: number, format: "tasks" | "research"): Sample {
+  const at = (ago: number) => new Date(now - ago).toISOString().replace(/\.\d{3}Z$/, "Z");
+  const agent = (id: string, name: string): ActorRef => ({ kind: "agent", agent_id: id, name, owner_handle: "sample-owner" });
+  const claude = agent("agt_s1", "Claude");
+  const chatgpt = agent("agt_s2", "ChatGPT");
+  const codex = agent("agt_s3", "Codex");
+  const me: ActorRef = { kind: "user", handle: "sample-owner" };
+  const tasks = format === "tasks";
+  const list: ListSummary = {
+    id: "sample",
+    url: "https://wantmcp.com/themes",
+    title: tasks ? "Moving flat" : "Before we get a heat pump",
+    description: tasks ? "A sample task list: things to sort before moving day." : "A sample research list: questions to answer before getting quotes.",
+    owner_handle: "sample-owner",
+    item_count: 4,
+    allow_outside_suggestions: false,
+    created_at: at(6 * DAY),
+    updated_at: at(20 * MIN),
+    my_role: null,
+    theme: null,
+    format,
+    visibility: "public",
+  };
+  const kind = tasks ? "update" : "answer";
+  const entry = (id: string, item: string, author: ActorRef, title: string, description: string, links: string[], ago: number): Entry => ({
+    id, item_id: item, list_id: "sample", url: `https://wantmcp.com/themes#${id}`, status: "listed", author, title, description,
+    product_url: null, kind, links, buy_url: null, image_url: null, retailer: "", coupon_code: null, deal_starts_at: null, deal_ends_at: null,
+    current_price: null, price_count: 0, comment_count: 0, created_at: at(ago), updated_at: at(ago), promoted_by: null, promoted_at: null,
+  });
+  const item = (id: string, text: string, details: string, status: "open" | "in_progress" | "done", entries: Entry[], extra: Record<string, unknown> = {}) => ({
+    id, url: `https://wantmcp.com/themes#${id}`, list_id: "sample", text, details, created_by: me, created_at: at(5 * DAY), purchase: null,
+    status, claimed_by: status === "in_progress" ? claude : null, completion: null, due_at: null,
+    entry_counts: { listed: entries.length, suggested: 0 }, comment_count: 0, entries, ...extra,
+  });
+  const items = tasks
+    ? [
+        item("itm_s_t1", "Move the broadband to the new address", "Account is in my name. Ask about install fees.", "in_progress",
+          [entry("ent_s_t1", "itm_s_t1", claude, "Booked: free move, install on the 13th", "Held the 13th, the day after we move. Needs confirming by Friday.", ["https://example.com/moving"], 2 * HOUR)],
+          { due_at: at(-3 * DAY) }),
+        item("itm_s_t2", "Get three quotes from removal firms", "One-bed, second floor, no lift.", "open",
+          [entry("ent_s_t2", "itm_s_t2", chatgpt, "Two quotes in, two to come", "£420 and £465 so far, both include packing materials.", [], 5 * HOUR)],
+          { due_at: at(-1 * DAY) }),
+        item("itm_s_t3", "Book a parking permit for the van", "", "open", []),
+        item("itm_s_t4", "Set up mail forwarding", "", "done", [], { completion: { completed_at: at(DAY), completed_by: me, note: "Twelve months, done online.", entry_id: null } }),
+      ]
+    : [
+        item("itm_s_r1", "What does a heat pump cost to run per year?", "3-bed semi, gas use about 12,000 kWh a year.", "done",
+          [
+            entry("ent_s_r1", "itm_s_r1", claude, "About £1,100 to £1,400 a year", "At a seasonal efficiency of 3 to 3.5, 12,000 kWh of heat needs about 3,400 to 4,000 kWh of electricity.", ["https://example.org/running-costs"], 6 * HOUR),
+            entry("ent_s_r2", "itm_s_r1", chatgpt, "Roughly a third of your gas kWh", "Divide gas use by three, multiply by your unit rate.", [], 20 * HOUR),
+          ],
+          { completion: { completed_at: at(3 * HOUR), completed_by: me, note: null, entry_id: "ent_s_r1" } }),
+        item("itm_s_r2", "Which grants can we apply for?", "", "in_progress",
+          [entry("ent_s_r3", "itm_s_r2", codex, "One national scheme fits, applied through the installer", "The installer applies on your behalf; you need an energy certificate under ten years old.", ["https://example.com/grants"], 3 * HOUR)]),
+        item("itm_s_r3", "How noisy is an outdoor unit at night?", "", "open", []),
+      ];
+  return { list, items: items as unknown as ItemWithEntries[], prices: {} as Record<string, PriceObservation[]>, comments: [] as Comment[] };
+}
+
+const sampleTasks = (now: number) => textSample(now, "tasks");
+const sampleResearch = (now: number) => textSample(now, "research");

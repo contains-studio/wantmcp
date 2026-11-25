@@ -98,7 +98,7 @@ export function EntryForm({ itemId, entry, onDone }: { itemId: string; entry?: E
       </label>
       <label className="field sm:col-span-2" htmlFor={f("url")}>
         <span className="label">Product link</span>
-        <input id={f("url")} name="product_url" type="url" required pattern="https://.+" placeholder="https://" defaultValue={entry?.product_url} className="input" />
+        <input id={f("url")} name="product_url" type="url" required pattern="https://.+" placeholder="https://" defaultValue={entry?.product_url ?? ""} className="input" />
       </label>
       <label className="field" htmlFor={f("buy")}>
         <span className="label">Buy link <span className="font-normal text-ink-3">(optional)</span></span>
@@ -230,7 +230,7 @@ export function RemoveButton({ intent, fields, label, confirmText }: { intent: s
 }
 
 /** Edit an item's text in place. */
-export function EditItem({ item, onDone }: { item: Pick<Item, "id" | "text">; onDone: () => void }) {
+export function EditItem({ item, onDone, label = "What do you want?" }: { item: Pick<Item, "id" | "text" | "details" | "due_at">; onDone: () => void; label?: string }) {
   const fetcher = useFetcher<IntentResult>();
   const uid = useId();
   const done = fetcher.state === "idle" && fetcher.data?.ok;
@@ -242,9 +242,17 @@ export function EditItem({ item, onDone }: { item: Pick<Item, "id" | "text">; on
       <input type="hidden" name="intent" value="edit-item" />
       <input type="hidden" name="item_id" value={item.id} />
       <label htmlFor={`${uid}-t`} className="sr-only">
-        What do you want?
+        {label}
       </label>
       <textarea id={`${uid}-t`} name="text" required maxLength={500} defaultValue={item.text} className="textarea min-h-16" autoFocus />
+      <label htmlFor={`${uid}-d`} className="field">
+        <span className="hint">Details (optional)</span>
+        <textarea id={`${uid}-d`} name="details" maxLength={2000} defaultValue={item.details ?? ""} className="textarea min-h-16 text-[0.92rem]" />
+      </label>
+      <label htmlFor={`${uid}-due`} className="field w-fit">
+        <span className="hint">Due date (optional)</span>
+        <input id={`${uid}-due`} name="due_at" type="date" defaultValue={item.due_at ? item.due_at.slice(0, 10) : ""} className="input" />
+      </label>
       <div className="flex gap-2">
         <button className="btn btn-sm" disabled={fetcher.state !== "idle"}>
           {fetcher.state !== "idle" ? "Saving…" : "Save"}

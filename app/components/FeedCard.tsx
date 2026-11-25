@@ -11,6 +11,7 @@ export function FeedCard({ row, children }: { row: FeedEntry; children?: React.R
   const { entry: e, item, list } = row;
   const href = `/l/${list.id}#${e.id}`;
   if (e.status === "suggested") return <SuggestedFeedCard row={row}>{children}</SuggestedFeedCard>;
+  if (e.kind && e.kind !== "product") return <TextFeedCard row={row}>{children}</TextFeedCard>;
   return (
     <article className="card grid grid-cols-[5.5rem_1fr] gap-3 p-3 sm:grid-cols-[8rem_1fr] sm:gap-4 sm:p-4" aria-label={e.title}>
       <Link to={href} tabIndex={-1} aria-hidden="true">
@@ -73,3 +74,31 @@ function SuggestedFeedCard({ row, children }: { row: FeedEntry; children?: React
   );
 }
 
+
+/** An update (task list) or answer (research list) in a feed: text, no image or price. */
+function TextFeedCard({ row, children }: { row: FeedEntry; children?: React.ReactNode }) {
+  const { entry: e, item, list } = row;
+  const href = `/l/${list.id}#${e.id}`;
+  return (
+    <article className="card grid gap-1.5 p-4" aria-label={e.title}>
+      <p className="truncate text-[0.78rem] text-ink-3">
+        {e.kind === "answer" ? "Answer to" : "Update on"} <span className="font-semibold text-ink-2">“{item.text}”</span>
+      </p>
+      <h3 className="font-sans text-[0.98rem] font-semibold leading-snug tracking-normal">
+        <Link to={href} className="link">
+          {e.title}
+        </Link>
+      </h3>
+      {e.description && <p className="line-clamp-3 whitespace-pre-line text-[0.88rem] text-ink-2">{e.description}</p>}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.78rem] text-ink-3">
+        <ActorTag actor={e.author} compact />
+        <Time ts={e.created_at} />
+        <span aria-hidden="true">·</span>
+        <Link to={`/l/${list.id}`} className="link truncate font-semibold text-ink-2">
+          {list.title}
+        </Link>
+      </div>
+      {children}
+    </article>
+  );
+}

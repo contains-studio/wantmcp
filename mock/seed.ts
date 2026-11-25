@@ -55,6 +55,28 @@ export function seedStore(now = Date.now()): Store {
       updated_at: at(7 * HOUR),
     },
     {
+      id: "lst_tasks",
+      title: "Moving flat: things to sort",
+      description: "Everything to get done before we move on the 12th.",
+      owner_id: "usr_demo",
+      allow_outside_suggestions: false,
+      format: "tasks",
+      visibility: "private",
+      created_at: at(6 * DAY),
+      updated_at: at(40 * 60_000),
+    },
+    {
+      id: "lst_research",
+      title: "Questions before we buy a heat pump",
+      description: "What we need to know before getting quotes.",
+      owner_id: "usr_demo",
+      allow_outside_suggestions: false,
+      format: "research",
+      visibility: "private",
+      created_at: at(4 * DAY),
+      updated_at: at(2 * HOUR),
+    },
+    {
       id: "lst_empty",
       title: "Gift ideas for Mum",
       description: "",
@@ -73,12 +95,15 @@ export function seedStore(now = Date.now()): Store {
     { id: "mem_own2", list_id: "lst_espresso", user_id: "usr_heron", invited_email: null, role: "owner", status: "active", token: null, created_at: at(9 * DAY) },
     { id: "mem_inv2", list_id: "lst_espresso", user_id: null, invited_email: "demo@example.com", role: "member", status: "invited", token: "inv_demo_espresso", created_at: at(6 * HOUR) },
     { id: "mem_own3", list_id: "lst_trail", user_id: "usr_lynx", invited_email: null, role: "owner", status: "active", token: null, created_at: at(5 * DAY) },
+    { id: "mem_own5", list_id: "lst_tasks", user_id: "usr_demo", invited_email: null, role: "owner", status: "active", token: null, created_at: at(6 * DAY) },
+    { id: "mem_her5", list_id: "lst_tasks", user_id: "usr_heron", invited_email: null, role: "member", status: "active", token: null, created_at: at(5 * DAY) },
+    { id: "mem_own6", list_id: "lst_research", user_id: "usr_demo", invited_email: null, role: "owner", status: "active", token: null, created_at: at(4 * DAY) },
     { id: "mem_own4", list_id: "lst_empty", user_id: "usr_demo", invited_email: null, role: "owner", status: "active", token: null, created_at: at(2 * DAY) },
   );
 
   // ---- agents
   s.agents.push(
-    { id: "agt_claude", name: "Claude", kind: "oauth", key: null, list_ids: ["lst_desk2026", "lst_empty"], owner_id: "usr_demo", created_at: at(11 * DAY), last_used_at: at(25 * 60_000) },
+    { id: "agt_claude", name: "Claude", kind: "oauth", key: null, list_ids: ["lst_desk2026", "lst_empty", "lst_tasks", "lst_research"], owner_id: "usr_demo", created_at: at(11 * DAY), last_used_at: at(25 * 60_000) },
     { id: "agt_chatgpt", name: "ChatGPT", kind: "oauth", key: null, list_ids: ["lst_desk2026"], owner_id: "usr_demo", created_at: at(11 * DAY), last_used_at: at(5 * HOUR) },
     { id: "agt_codex", name: "Codex", kind: "key", key: "wk_democodexkeyaaaaaaaaaaaaaaaaaaaaaaa", list_ids: ["lst_desk2026"], owner_id: "usr_demo", created_at: at(8 * DAY), last_used_at: at(2 * DAY) },
     { id: "agt_muse", name: "Muse", kind: "oauth", key: null, list_ids: ["lst_desk2026"], owner_id: "usr_heron", created_at: at(9 * DAY), last_used_at: at(3 * HOUR) },
@@ -110,6 +135,17 @@ export function seedStore(now = Date.now()): Store {
     { id: "itm_keyboard", list_id: "lst_desk2026", text: "Quiet mechanical keyboard, UK layout", created_by: demo, created_at: at(10 * DAY), purchase: { purchased_at: at(2 * DAY), purchased_by: demo, retailer: "Keychron", price: "89.00", currency: "GBP", entry_id: "ent_kb1" } },
     { id: "itm_grinder", list_id: "lst_espresso", text: "Burr grinder that can do espresso fine", created_by: heron, created_at: at(9 * DAY), purchase: null },
     { id: "itm_machine", list_id: "lst_espresso", text: "Single boiler espresso machine, small footprint", created_by: heron, created_at: at(9 * DAY), purchase: null },
+    { id: "itm_t_broadband", list_id: "lst_tasks", text: "Move the broadband contract to the new address", created_by: demo, created_at: at(6 * DAY), purchase: null,
+      details: "Account is in my name. New flat is 14 Elm Road. Ask whether there's an install fee.", due_at: at(-3 * DAY), status: "in_progress", claimed_by: claude, completion: null },
+    { id: "itm_t_movers", list_id: "lst_tasks", text: "Get three quotes from removal firms", created_by: demo, created_at: at(6 * DAY), purchase: null,
+      details: "One-bed flat, second floor, no lift. Moving day is the 12th.", due_at: at(-1 * DAY), status: "open", claimed_by: null, completion: null },
+    { id: "itm_t_post", list_id: "lst_tasks", text: "Set up mail forwarding", created_by: heron, created_at: at(5 * DAY), purchase: null,
+      details: "", due_at: null, status: "done", claimed_by: null, completion: { completed_at: at(DAY), completed_by: demo, note: "Done online, 12 months.", entry_id: null } },
+    { id: "itm_r_cost", list_id: "lst_research", text: "What does an air-source heat pump cost to run per year in a 3-bed semi?", created_by: demo, created_at: at(4 * DAY), purchase: null,
+      details: "Gas boiler now uses about 12,000 kWh a year. Roughly 1970s build, cavity wall insulation done.", due_at: null, status: "done", claimed_by: null,
+      completion: { completed_at: at(3 * HOUR), completed_by: demo, note: null, entry_id: "ent_r_cost1" } },
+    { id: "itm_r_grant", list_id: "lst_research", text: "Which grants are available, and how do we apply?", created_by: demo, created_at: at(4 * DAY), purchase: null,
+      details: "", due_at: at(-6 * DAY), status: "open", claimed_by: null, completion: null },
     { id: "itm_shoes", list_id: "lst_trail", text: "Cushioned trail shoes for long distances, wide toe box", created_by: lynx, created_at: at(5 * DAY), purchase: null },
     { id: "itm_vest", list_id: "lst_trail", text: "Running vest, 10–12L, with soft flasks", created_by: lynx, created_at: at(4 * DAY), purchase: null },
   );
@@ -225,6 +261,26 @@ export function seedStore(now = Date.now()): Store {
       });
     }
   }
+
+  // ---- updates and answers (tasks and research lists: no prices)
+  const textEntry = (id: string, item: string, list: string, author: ActorRef, title: string, body: string, links: string[], ago: number) =>
+    s.entries.push({
+      id, item_id: item, list_id: list, status: "listed", author, title, description: body, product_url: null,
+      kind: list === "lst_tasks" ? "update" : "answer", links, buy_url: null, image_url: null, retailer: "", coupon_code: null,
+      deal_starts_at: null, deal_ends_at: null, created_at: at(ago), updated_at: at(ago), promoted_by: null, promoted_at: null,
+    });
+  textEntry("ent_t_bb1", "itm_t_broadband", "lst_tasks", claude, "Called the provider: moving is free, needs 14 days' notice",
+    "They can move the line with no fee if we book by the 29th. Earliest install slot at the new address is the 13th, the day after we move.\n\nI've held that slot; it needs your confirmation by Friday.",
+    ["https://example.com/broadband/moving-home"], 2 * HOUR);
+  textEntry("ent_t_mv1", "itm_t_movers", "lst_tasks", chatgpt, "Shortlist of four local firms with good reviews",
+    "Asked all four for written quotes for the 12th. Two have replied so far; I'll post the numbers when the rest are in.",
+    ["https://example.com/movers/one", "https://example.org/movers/two"], 5 * HOUR);
+  textEntry("ent_r_cost1", "itm_r_cost", "lst_research", claude, "About £1,100 to £1,400 a year at current prices",
+    "With a seasonal efficiency (SCOP) of 3 to 3.5, 12,000 kWh of heat needs roughly 3,400 to 4,000 kWh of electricity. At 28p/kWh that is about £950 to £1,120, plus standing charges you already pay.\n\nA heat-pump tariff with cheaper off-peak hours could bring it nearer £800. Your current gas cost for the same heat is about £780 plus the boiler service.",
+    ["https://example.org/heat-pumps/running-costs", "https://example.com/tariffs/heat-pump"], 6 * HOUR);
+  textEntry("ent_r_cost2", "itm_r_cost", "lst_research", chatgpt, "Rough rule: a third of your gas kWh, at electricity prices",
+    "Divide your gas use by about 3 and multiply by your unit rate. That gives £1,100 or so for you, depending on the tariff.",
+    [], 20 * HOUR);
 
   // ---- comments
   const c = (id: string, list: string, tt: "item" | "entry", tid: string, author: ActorRef, body: string, ago: number) =>

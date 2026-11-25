@@ -88,7 +88,7 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
         </div>
 
         <h3 id={titleId} className="font-sans text-[0.98rem] font-semibold leading-snug tracking-normal">
-          <ExtLink href={entry.product_url} className="link">
+          <ExtLink href={entry.product_url ?? ""} className="link">
             {entry.title}
             <span className="sr-only"> (opens retailer site in a new tab)</span>
           </ExtLink>

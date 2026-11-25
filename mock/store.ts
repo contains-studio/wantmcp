@@ -1,7 +1,7 @@
 /**
  * In-memory state for the mock API. Everything resets when the process restarts.
  */
-import type { ActorRef, Comment, EventType, PriceObservation, Purchase, Timestamp, WantEvent } from "../app/lib/types.ts";
+import type { ActorRef, Comment, Completion, EntryKind, EventType, ItemStatus, ListFormat, ListVisibility, PriceObservation, Purchase, Timestamp, WantEvent } from "../app/lib/types.ts";
 
 export interface UserRow {
   id: string;
@@ -18,6 +18,8 @@ export interface ListRow {
   owner_id: string;
   allow_outside_suggestions: boolean;
   theme?: string | null;
+  format?: ListFormat;
+  visibility?: ListVisibility;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -51,6 +53,11 @@ export interface ItemRow {
   created_by: ActorRef;
   created_at: Timestamp;
   purchase: Purchase | null;
+  details?: string;
+  due_at?: Timestamp | null;
+  status?: ItemStatus;
+  claimed_by?: ActorRef | null;
+  completion?: Completion | null;
 }
 
 export interface EntryRow {
@@ -61,7 +68,9 @@ export interface EntryRow {
   author: ActorRef;
   title: string;
   description: string;
-  product_url: string;
+  product_url: string | null;
+  kind?: EntryKind;
+  links?: string[];
   buy_url: string | null;
   image_url: string | null;
   retailer: string;

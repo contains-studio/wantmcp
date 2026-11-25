@@ -10,6 +10,8 @@ import { PreviewContext, ReportLink } from "~/components/Report";
 import { Time } from "~/components/Time";
 import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, RemoveButton } from "~/components/WriteTools";
 import { formatMoney, plural } from "~/lib/format";
+import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
+import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
 import type { Layout } from "~/themes/types";
@@ -65,31 +67,41 @@ export function ListView(props: ListViewProps) {
   const commentsFor = (type: "item" | "entry", id: string) => comments.filter((c) => c.target_type === type && c.target_id === id);
   const canDeleteComment = (c: Comment) => canManage(c.author, user, role);
 
-  const wanted = items.filter((i) => !i.purchase).slice(0, previewItems ?? Infinity);
-  const bought = previewItems ? [] : items.filter((i) => i.purchase);
+  const fi = formatInfo(list);
+  const shopping = fi.format === "shopping";
+  const isPrivate = visibilityOf(list) === "private";
+  const isDone = (i: ItemWithEntries) => (shopping ? !!i.purchase : i.status === "done");
+  const wanted = items.filter((i) => !isDone(i)).slice(0, previewItems ?? Infinity);
+  const bought = previewItems ? [] : items.filter(isDone);
   const productCount = items.reduce((n, i) => n + i.entries.length, 0);
+  // The Sheet table compares prices, so it only applies to shopping lists.
+  const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
+  const className = `${theme.className.replace(/\blayout-\w+\b/, `layout-${layout}`)} format-${fi.format}`;
 
   return (
     <PreviewContext.Provider value={preview}>
-    <div className={theme.className} style={theme.style as React.CSSProperties} data-list-theme={theme.slug}>
+    <div className={className} style={theme.style as React.CSSProperties} data-list-theme={theme.slug} data-list-format={fi.format}>
       <section className="list-hero border-b border-line">
         <div className="wrap py-10 sm:py-14">
-          <p className="eyebrow">
-            Want list <span aria-hidden="true">·</span> by <span className="normal-case tracking-normal">{list.owner_handle}</span>
+          <p className="eyebrow flex flex-wrap items-center gap-2">
+            <span>
+              {fi.label} list <span aria-hidden="true">·</span> by <span className="normal-case tracking-normal">{list.owner_handle}</span>
+            </span>
+            {isPrivate && <PrivateBadge />}
           </p>
           <h1 className="mt-3 max-w-4xl text-[2.4rem] font-extrabold sm:text-6xl">{list.title}</h1>
           {list.description && <p className="mt-4 max-w-2xl text-[1.05rem] text-ink-2">{list.description}</p>}
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3 text-[0.9rem] text-ink-3">
             <span>
-              <strong className="text-ink">{wanted.length}</strong> wanted
+              <strong className="text-ink">{wanted.length}</strong> {shopping ? "wanted" : "open"}
             </span>
             {bought.length > 0 && (
               <span>
-                <strong className="text-ink">{bought.length}</strong> bought
+                <strong className="text-ink">{bought.length}</strong> {fi.done}
               </span>
             )}
             <span>
-              <strong className="text-ink">{productCount}</strong> {productCount === 1 ? "product" : "products"} found
+              <strong className="text-ink">{productCount}</strong> {productCount === 1 ? fi.entry : fi.entries} {shopping ? "found" : "posted"}
             </span>
             <span>
               Updated <Time ts={list.updated_at} />
@@ -97,7 +109,7 @@ export function ListView(props: ListViewProps) {
             {!preview && (
               <span className="flex items-center gap-3">
                 <CopyButton text={listUrl} label="Copy link" />
-                <ReportLink type="list" id={list.id} label="Report list" />
+                {!isPrivate && <ReportLink type="list" id={list.id} label="Report list" />}
               </span>
             )}
           </div>
@@ -123,12 +135,14 @@ export function ListView(props: ListViewProps) {
           </div>
         )}
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
-        {isWriter && <AddItem listId={list.id} empty={items.length === 0} />}
+        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} />}
+        {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">Nothing here yet.</p>}
 
         <div className="items-region grid grid-cols-1 gap-12">
         {wanted.map((item, i) => (
           <ItemSection
-            layout={theme.layout}
+            fi={fi}
+            layout={layout}
             checklist={theme.checklist}
             key={item.id}
             n={i + 1}
@@ -146,12 +160,13 @@ export function ListView(props: ListViewProps) {
         {bought.length > 0 && (
           <section aria-labelledby="bought-h" className="bought-group grid content-start gap-10">
             <div className="bought-divider flex items-center gap-4">
-              <h2 id="bought-h" className="text-2xl font-extrabold">Bought</h2>
+              <h2 id="bought-h" className="text-2xl font-extrabold">{fi.doneGroup}</h2>
               <div className="divider-dots flex-1" />
             </div>
             {bought.map((item) => (
               <ItemSection
-                layout={theme.layout}
+                fi={fi}
+                layout={layout}
                 checklist={theme.checklist}
                 key={item.id}
                 item={item}
@@ -170,8 +185,10 @@ export function ListView(props: ListViewProps) {
         {!isWriter && !preview && (
           <aside className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
-              <h2 className="text-xl font-extrabold">Want your agents to shop for you too?</h2>
-              <p className="mt-1 text-ink-2">Make a list, connect ChatGPT, Claude or any MCP client, and compare what they find.</p>
+              <h2 className="text-xl font-extrabold">Get your agents working on what you want</h2>
+              <p className="mt-1 text-ink-2">
+                Make a list of things to buy, get done or find out, and connect ChatGPT, Claude or any MCP client to work on it.
+              </p>
             </div>
             <Link to={user ? "/app" : "/login"} className="btn btn-want">
               Start a list
@@ -196,7 +213,9 @@ function ItemSection({
   eager,
   layout,
   checklist,
+  fi,
 }: {
+  fi: FormatInfo;
   layout: Layout;
   checklist: boolean;
   item: ItemWithEntries;
@@ -214,7 +233,12 @@ function ItemSection({
   const entries = sortByPrice(item.entries);
   const lowest = lowestEntryId(entries);
   const itemComments = commentsFor("item", item.id);
-  const p = item.purchase;
+  const shopping = fi.format === "shopping";
+  const p = shopping ? item.purchase : null;
+  const status = item.status ?? (item.purchase ? "done" : "open");
+  const done = shopping ? !!item.purchase : status === "done";
+  const acceptedId = !shopping && status === "done" ? item.completion?.entry_id ?? null : null;
+  const accepted = acceptedId ? item.entries.find((e) => e.id === acceptedId) : undefined;
   const cheapest = entries.find((e) => e.current_price)?.current_price;
   // Older purchases may only record the entry; fall back to its price and retailer.
   const boughtEntry = p?.entry_id ? entries.find((e) => e.id === p.entry_id) : undefined;
@@ -223,11 +247,11 @@ function ItemSection({
   const headingId = `${item.id}-h`;
 
   return (
-    <section id={item.id} aria-labelledby={headingId} className={`item-section grid scroll-mt-24 gap-5 ${p ? "is-bought" : ""}`}>
+    <section id={item.id} aria-labelledby={headingId} className={`item-section grid scroll-mt-24 gap-5 ${done ? "is-bought" : ""}`}>
       <header className="grid gap-2">
         <div className="flex items-start gap-3">
           {checklist ? (
-            <ChecklistBox itemId={item.id} text={item.text} bought={!!p} canWrite={isWriter} />
+            <ChecklistBox itemId={item.id} text={item.text} bought={done} canWrite={isWriter} shopping={shopping} doneWord={fi.done} />
           ) : (
             n !== undefined && (
               <span aria-hidden="true" className="item-number mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink font-display text-sm font-extrabold text-paper">
@@ -240,10 +264,10 @@ function ItemSection({
               <h2 id={headingId} className="sr-only">
                 Editing: {item.text}
               </h2>
-              <EditItem item={item} onDone={() => setEditing(false)} />
+              <EditItem item={item} onDone={() => setEditing(false)} label={`Edit ${fi.item}`} />
             </div>
           ) : (
-            <h2 id={headingId} className={`item-title text-[1.25rem] font-bold sm:text-[1.7rem] ${p ? "text-ink-2" : ""}`}>
+            <h2 id={headingId} className={`item-title text-[1.25rem] font-bold sm:text-[1.7rem] ${done ? "text-ink-2" : ""}`}>
               {item.text}
             </h2>
           )}
@@ -254,20 +278,23 @@ function ItemSection({
           </span>
           <span>
             {entries.length === 0
-              ? "No products yet"
-              : `${plural(entries.length, "option")}${cheapest && entries.length > 1 ? ` from ${formatMoney(cheapest.price, cheapest.currency)}` : ""}`}
+              ? `No ${fi.entries} yet`
+              : shopping
+                ? `${plural(entries.length, "option")}${cheapest && entries.length > 1 ? ` from ${formatMoney(cheapest.price, cheapest.currency)}` : ""}`
+                : plural(entries.length, fi.entry)}
           </span>
+          <DueChip due={item.due_at} done={done} />
           <ReportLink type="item" id={item.id} />
           {canEditItem && !editing && (
             <>
               <button type="button" className="textlink-btn text-[0.8rem]" onClick={() => setEditing(true)}>
-                Edit<span className="sr-only"> item</span>
+                Edit<span className="sr-only"> {fi.item}</span>
               </button>
               <RemoveButton
                 intent="delete-item"
                 fields={{ item_id: item.id }}
-                label="Remove item"
-                confirmText={`Remove “${item.text.slice(0, 80)}” and all its products, prices and comments?`}
+                label={`Remove ${fi.item}`}
+                confirmText={`Remove “${item.text.slice(0, 80)}” and all its ${fi.entries} and comments?`}
               />
             </>
           )}
@@ -284,9 +311,37 @@ function ItemSection({
             {isWriter && <UndoPurchase itemId={item.id} />}
           </div>
         )}
+        {!editing && <ItemDetails details={item.details} />}
+        {!shopping && (
+          <ItemStatusBar itemId={item.id} status={status} claimedBy={item.claimed_by} completion={item.completion} fi={fi} canWrite={isWriter} />
+        )}
       </header>
 
-      {entries.length > 0 && layout === "sheet" ? (
+      {accepted && <AcceptedAnswer entry={accepted} />}
+
+      {!shopping ? (
+        entries.length > 0 ? (
+          <div className="item-entries item-text-entries item-indent grid gap-3 sm:pl-11">
+            {item.entries.map((e) => (
+              <TextEntryCard
+                key={e.id}
+                entry={e}
+                fi={fi}
+                comments={commentsFor("entry", e.id)}
+                canWrite={isWriter}
+                canEdit={canManage(e.author, user, role)}
+                canDeleteComment={canDeleteComment}
+                accepted={e.id === acceptedId}
+                itemDone={done}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="item-indent rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
+            {isWriter ? fi.waitingWriter : fi.waiting}
+          </p>
+        )
+      ) : entries.length > 0 && layout === "sheet" ? (
         <div className="item-indent grid gap-3 sm:pl-11">
           <EntrySheet entries={entries} lowestId={lowest} boughtId={p?.entry_id ?? null} itemText={item.text} />
           <details className="group">
@@ -333,7 +388,7 @@ function ItemSection({
         </div>
       ) : (
         <p className="item-indent rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
-          Waiting for an agent to find something.{isWriter ? " Ask one of your connected agents to shop for this item." : ""}
+          {isWriter ? fi.waitingWriter : fi.waiting}
         </p>
       )}
 
@@ -341,14 +396,14 @@ function ItemSection({
         <div className="item-indent grid gap-3 sm:pl-11">
           <h3 className="eyebrow">Discussion</h3>
           <CommentList comments={itemComments} canDelete={canDeleteComment} />
-          {isWriter && <CommentForm targetType="item" targetId={item.id} label="Comment on this item" />}
+          {isWriter && <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />}
         </div>
       )}
 
       {isWriter && (
         <div className="item-indent flex flex-wrap gap-2 sm:pl-11">
-          {!p && !checklist && <MarkBoughtElsewhere itemId={item.id} />}
-          <AddEntry itemId={item.id} />
+          {shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} />}
+          <AddEntry itemId={item.id} fi={fi} />
         </div>
       )}
     </section>
@@ -368,46 +423,62 @@ function UndoPurchase({ itemId }: { itemId: string }) {
   );
 }
 
-function AddItem({ listId, empty }: { listId: string; empty: boolean }) {
+function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: boolean; fi: FormatInfo; isPrivate: boolean }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const busy = fetcher.state !== "idle";
   return (
     <section aria-labelledby="add-item-h" className={`card p-5 ${empty ? "border-want" : ""}`}>
       <h2 id="add-item-h" className="text-xl font-extrabold">
-        {empty ? "Add the first thing you want" : "Add something you want"}
+        {empty ? fi.addItemFirst : fi.addItemTitle}
       </h2>
       <p className="mt-1 text-[0.9rem] text-ink-3">
-        Describe it in your own words. Your agents read this and go shopping.{empty ? " The list becomes public once it has an item." : ""}
+        {fi.addItemHint}
+        {empty && !isPrivate ? " The list becomes public once it has an item." : ""}
       </p>
       <fetcher.Form
         method="post"
-        className="mt-4 flex flex-col gap-2 sm:flex-row"
+        className="mt-4 grid gap-2"
         onSubmit={(e) => {
           const form = e.currentTarget;
           requestAnimationFrame(() => form.reset());
         }}
       >
         <input type="hidden" name="intent" value="add-item" />
-        <label htmlFor="new-item" className="sr-only">
-          What do you want?
-        </label>
-        <input id="new-item" name="text" required maxLength={500} placeholder="e.g. A quiet dehumidifier for a small flat, under £200" className="input flex-1" />
-        <button className="btn btn-want" disabled={busy}>
-          {busy ? "Adding…" : "Add item"}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <label htmlFor="new-item" className="sr-only">
+            {fi.addItemTitle}
+          </label>
+          <input id="new-item" name="text" required maxLength={500} placeholder={fi.itemPlaceholder} className="input flex-1" />
+          <button className="btn btn-want" disabled={busy}>
+            {busy ? "Adding…" : `Add ${fi.item}`}
+          </button>
+        </div>
+        <details className="group">
+          <summary className="textlink-btn text-[0.85rem]">
+            Add details or a due date <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+          </summary>
+          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_12rem]">
+            <label className="field" htmlFor="new-item-details">
+              <span className="hint">Details</span>
+              <textarea id="new-item-details" name="details" maxLength={2000} placeholder={fi.detailsPlaceholder} className="textarea min-h-20" />
+            </label>
+            <label className="field content-start" htmlFor="new-item-due">
+              <span className="hint">Due date</span>
+              <input id="new-item-due" name="due_at" type="date" className="input" />
+            </label>
+          </div>
+        </details>
       </fetcher.Form>
       {fetcher.data?.error && <p className="form-error mt-2" role="alert">{fetcher.data.error}</p>}
     </section>
   );
 }
 
-function AddEntry({ itemId }: { itemId: string }) {
+function AddEntry({ itemId, fi }: { itemId: string; fi: FormatInfo }) {
   return (
     <details className="w-full">
-      <summary className="btn btn-ghost btn-xs w-fit">Add a product yourself</summary>
-      <div className="card mt-3 p-4">
-        <EntryForm itemId={itemId} />
-      </div>
+      <summary className="btn btn-ghost btn-xs w-fit">{fi.addEntryLabel}</summary>
+      <div className="card mt-3 p-4">{fi.format === "shopping" ? <EntryForm itemId={itemId} /> : <TextEntryForm itemId={itemId} fi={fi} />}</div>
     </details>
   );
 }
@@ -551,11 +622,15 @@ function useDeepLinks() {
   }, [location.hash, location.key]);
 }
 
-/** Checklist style: a big box per item. Writers tick it to mark the item bought (or untick to undo). */
-function ChecklistBox({ itemId, text, bought, canWrite }: { itemId: string; text: string; bought: boolean; canWrite: boolean }) {
+/**
+ * Checklist style: a big box per item. Writers tick it to mark the item bought (shopping) or
+ * done (tasks, research), and untick to undo.
+ */
+function ChecklistBox({ itemId, text, bought, canWrite, shopping, doneWord }: { itemId: string; text: string; bought: boolean; canWrite: boolean; shopping: boolean; doneWord: string }) {
   const fetcher = useFetcher();
   const pending = fetcher.formData?.get("intent");
-  const checked = pending ? pending === "purchase" : bought;
+  const pendingStatus = fetcher.formData?.get("status");
+  const checked = pending ? pending === "purchase" || pendingStatus === "done" : bought;
   if (!canWrite) {
     return (
       <span className={`check-toggle ${checked ? "is-checked" : ""}`} aria-hidden="true">
@@ -565,18 +640,38 @@ function ChecklistBox({ itemId, text, bought, canWrite }: { itemId: string; text
   }
   return (
     <fetcher.Form method="post">
-      <input type="hidden" name="intent" value={checked ? "unpurchase" : "purchase"} />
+      {shopping ? (
+        <input type="hidden" name="intent" value={checked ? "unpurchase" : "purchase"} />
+      ) : (
+        <>
+          <input type="hidden" name="intent" value="set-status" />
+          <input type="hidden" name="status" value={checked ? "open" : "done"} />
+        </>
+      )}
       <input type="hidden" name="item_id" value={itemId} />
       <button
         type="submit"
         role="checkbox"
         aria-checked={checked}
-        aria-label={`Bought: ${text}`}
+        aria-label={`${doneWord[0].toUpperCase()}${doneWord.slice(1)}: ${text}`}
         className="check-toggle"
         disabled={fetcher.state !== "idle"}
       >
         {checked ? "✓" : ""}
       </button>
     </fetcher.Form>
+  );
+}
+
+/** Lock marker for private lists. */
+export function PrivateBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-line-strong bg-card px-2 py-0.5 font-sans text-[0.72rem] font-bold normal-case tracking-normal text-ink">
+      <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+        <rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor" />
+        <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      </svg>
+      Private
+    </span>
   );
 }

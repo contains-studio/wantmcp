@@ -22,7 +22,12 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
         if (!id) return data({ error: "Pick a list first" }, 400);
         const text = str(form, "text");
         if (!text) return data({ error: "Describe what you want" }, 400);
-        const item = await api<{ id: string }>(request, `/lists/${encodeURIComponent(id)}/items`, { method: "POST", body: { text } });
+        const extra: Record<string, unknown> = {};
+        const details = str(form, "details");
+        if (details) extra.details = details;
+        const due = dueDate(str(form, "due_at"));
+        if (due) extra.due_at = due;
+        const item = await api<{ id: string }>(request, `/lists/${encodeURIComponent(id)}/items`, { method: "POST", body: { text, ...extra } });
         return { ok: true, intent, itemId: item.id };
       }
       case "comment": {
@@ -91,7 +96,36 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
       case "edit-item": {
         const text = str(form, "text");
         if (!text) return data({ error: "Describe what you want", intent }, 400);
-        await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}`, { method: "PATCH", body: { text } });
+        const body: Record<string, unknown> = { text };
+        if (form.has("details")) body.details = str(form, "details");
+        if (form.has("due_at")) body.due_at = dueDate(str(form, "due_at"));
+        await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}`, { method: "PATCH", body });
+        return { ok: true, intent };
+      }
+      case "set-status": {
+        const status = str(form, "status");
+        if (!["open", "in_progress", "done"].includes(status)) return data({ error: "Unknown status", intent }, 400);
+        await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}/status`, {
+          method: "POST",
+          body: { status, note: optional(form, "note"), entry_id: optional(form, "entry_id") },
+        });
+        return { ok: true, intent };
+      }
+      case "add-text-entry":
+      case "edit-text-entry": {
+        const links = str(form, "links")
+          .split(/\s+/)
+          .map((l) => l.trim())
+          .filter(Boolean);
+        if (links.length > 8) return data({ error: "Up to 8 links, please", intent }, 400);
+        const bad = links.find((l) => !/^https:\/\//i.test(l));
+        if (bad) return data({ error: `Links must start with https:// (${bad.slice(0, 60)})`, intent }, 400);
+        const body = { title: str(form, "title"), description: str(form, "description"), links };
+        if (intent === "add-text-entry") {
+          await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}/entries`, { method: "POST", body });
+        } else {
+          await api(request, `/entries/${encodeURIComponent(str(form, "entry_id"))}`, { method: "PATCH", body });
+        }
         return { ok: true, intent };
       }
       case "delete-item":
@@ -103,6 +137,12 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
   } catch (err) {
     return data({ ...formError(err), intent }, 400);
   }
+}
+
+/** A due date from a date input: end of that day, UTC. Empty clears it. */
+function dueDate(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return `${value}T23:59:59Z`;
 }
 
 /** A date input (YYYY-MM-DD) as an ISO timestamp: start of day for a start, end of day for an end. */

@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
+import { PrivateBadge } from "~/components/ListView";
+import { FORMATS, formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import type { Route } from "./+types/app";
 import { CommentForm } from "~/components/Comments";
 import { MarkBought } from "~/components/EntryCard";
@@ -10,7 +13,7 @@ import { plural } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin } from "~/lib/session.server";
 import { LiveUpdates } from "~/components/LiveUpdates";
-import type { AgentInfo, FeedEntry, ListSummary, Page, PendingInvite } from "~/lib/types";
+import type { AgentInfo, FeedEntry, ListFormat, ListSummary, ListVisibility, Page, PendingInvite } from "~/lib/types";
 
 export function meta() {
   return [{ title: "My lists · The Want MCP" }, { name: "robots", content: "noindex" }];
@@ -42,7 +45,12 @@ export async function action({ request }: Route.ActionArgs) {
     try {
       const list = await api<ListSummary>(request, "/lists", {
         method: "POST",
-        body: { title, description: String(form.get("description") ?? "").trim() || undefined },
+        body: {
+          title,
+          description: String(form.get("description") ?? "").trim() || undefined,
+          format: ["shopping", "tasks", "research"].includes(String(form.get("format"))) ? form.get("format") : "shopping",
+          visibility: form.get("visibility") === "private" ? "private" : form.get("visibility") === "public" ? "public" : undefined,
+        },
       });
       return redirect(`/l/${list.id}`);
     } catch (err) {
@@ -85,8 +93,13 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
                 <Link to={`/l/${l.id}`} className="link block font-semibold leading-snug">
                   {l.title}
                 </Link>
+                {visibilityOf(l) === "private" && (
+                  <span className="mt-1 inline-block">
+                    <PrivateBadge />
+                  </span>
+                )}
                 <p className="mt-1 text-[0.78rem] text-ink-3">
-                  {plural(l.item_count, "item")} · {l.my_role} · updated <Time ts={l.updated_at} />
+                  {formatInfo(l).label} · {plural(l.item_count, formatInfo(l).item)} · {l.my_role} · updated <Time ts={l.updated_at} />
                 </p>
                 <p className="mt-1.5 flex gap-3 text-[0.8rem]">
                   <Link to={l.id === listId ? "/app" : `/app?list=${l.id}`} className="link text-ink-2" aria-current={l.id === listId ? "true" : undefined}>
@@ -137,7 +150,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
             {feed.data.map((row) => (
               <li key={row.entry.id}>
                 <FeedCard row={row}>
-                  {row.entry.status === "listed" && (
+                  {row.entry.status === "listed" && (row.entry.kind ?? "product") === "product" && (
                     <div className="mt-1 flex flex-wrap items-start gap-2">
                       {!row.item.purchase && <MarkBought itemId={row.item.id} entryId={row.entry.id} />}
                       <details className="min-w-0 flex-1">
@@ -240,25 +253,69 @@ function CreateList({ first }: { first: boolean }) {
   const nav = useNavigation();
   const result = useActionData<typeof action>() as { error?: string } | undefined;
   const busy = nav.state === "submitting" && nav.formData?.get("intent") === "create-list";
+  const [format, setFormat] = useState<ListFormat>("shopping");
+  // Visibility follows the format's default until the person picks one themselves.
+  const [visibility, setVisibility] = useState<ListVisibility | null>(null);
+  const fi = FORMATS[format];
+  const vis = visibility ?? fi.defaultVisibility;
   return (
     <details open={first || undefined} className="card p-4">
       <summary className="flex items-center justify-between font-display text-lg font-bold">
         New list <span aria-hidden="true" className="text-want">+</span>
       </summary>
-      <Form method="post" className="mt-3 grid gap-3">
+      <Form method="post" className="mt-3 grid gap-4">
         <input type="hidden" name="intent" value="create-list" />
+        <fieldset className="grid gap-2">
+          <legend className="label mb-1">What is this list for?</legend>
+          {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
+            <label
+              key={f.format}
+              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-xl border p-3 ${format === f.format ? "border-want bg-want-soft" : "border-line"}`}
+            >
+              <input
+                type="radio"
+                name="format"
+                value={f.format}
+                checked={format === f.format}
+                onChange={() => setFormat(f.format)}
+                className="mt-1 accent-[var(--want)]"
+              />
+              <span>
+                <span className="block font-semibold">{f.label}</span>
+                <span className="block text-[0.82rem] text-ink-2">{f.blurb}</span>
+                <span className="mt-0.5 block text-[0.76rem] text-ink-3">e.g. {f.examples}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
         <label className="field">
           <span className="label">Title</span>
-          <input name="title" required maxLength={140} placeholder="Black Friday 2026" className="input" />
+          <input name="title" required maxLength={140} placeholder={format === "shopping" ? "Black Friday 2026" : format === "tasks" ? "Moving flat" : "Heat pump questions"} className="input" />
         </label>
         <label className="field">
           <span className="label">Description (optional)</span>
-          <textarea name="description" maxLength={500} className="textarea" placeholder="Budget, sizes, where you can get deliveries…" />
+          <textarea name="description" maxLength={500} className="textarea" placeholder={fi.detailsPlaceholder} />
         </label>
+        <fieldset className="grid gap-2">
+          <legend className="label mb-1">Who can see it?</legend>
+          {(["public", "private"] as const).map((v) => (
+            <label key={v} className="flex cursor-pointer items-start gap-2 text-[0.88rem]">
+              <input type="radio" name="visibility" value={v} checked={vis === v} onChange={() => setVisibility(v)} className="mt-1 accent-[var(--want)]" />
+              <span>
+                <span className="font-semibold">{v === "public" ? "Public" : "Private"}</span>
+                {fi.defaultVisibility === v && <span className="text-ink-3"> (usual for {fi.label.toLowerCase()})</span>}
+                <span className="block text-ink-3">
+                  {v === "public"
+                    ? "Anyone with the link can read it, and search engines can find it once it has an item."
+                    : "Only you, people you invite and your connected agents can see it."}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
         {result?.error && <p className="form-error" role="alert">{result.error}</p>}
-        <p className="hint">Lists are public once they have an item. Anyone can read them; only you and people you invite can write.</p>
         <button className="btn" disabled={busy}>
-          {busy ? "Creating…" : "Create list"}
+          {busy ? "Creating…" : `Create ${fi.label.toLowerCase()} list`}
         </button>
       </Form>
     </details>

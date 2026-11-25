@@ -204,7 +204,9 @@ export async function handleOg(request: Request, ctx: ExecutionContext): Promise
     if (m[1] === "home") {
       element = <HomeCard />;
     } else {
+      // Always anonymous: a private list is not_found here, so it falls back to the generic image.
       const list = await api<ListDetail>(request, `/lists/${encodeURIComponent(m[2])}`, { anonymous: true });
+      if (list.visibility === "private") throw new Error("private list");
       element = <ListCard list={list} />;
     }
     const image = await ImageResponse.async(element, { width: 1200, height: 630, fonts: fonts() });
@@ -212,8 +214,9 @@ export async function handleOg(request: Request, ctx: ExecutionContext): Promise
       status: 200,
       headers: {
         "content-type": "image/png",
-        // The page links include ?v=<updated_at>, so a list change produces a new URL.
-        "cache-control": "public, max-age=3600, s-maxage=86400",
+        // The page links include ?v=<updated_at>, so a list change produces a new URL. Kept short
+        // so a list switched to private stops being shown from any cache within minutes.
+        "cache-control": "public, max-age=300, s-maxage=300",
       },
     });
     try {

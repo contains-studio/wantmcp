@@ -32,15 +32,12 @@ export interface ListSummary {
   owner_handle: string;
   item_count: number;
   allow_outside_suggestions: boolean;
+  /** Owner-picked theme slug (^[a-z0-9][a-z0-9-]{0,39}$); null means the default look. The web app owns the catalogue. */
+  theme: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
   /** Present only for the signed-in caller. */
   my_role?: "owner" | "member" | null;
-  /**
-   * Pending in the API contract: the list's theme slug (see app/themes). Unknown or missing
-   * means the default theme.
-   */
-  theme?: string | null;
 }
 
 export interface Purchase {
@@ -55,6 +52,7 @@ export interface Purchase {
 export interface Item {
   id: string;
   list_id: string;
+  url: string; // https://wantmcp.com/l/{list_id}#itm_...
   text: string;
   created_by: ActorRef;
   created_at: Timestamp;
@@ -85,7 +83,8 @@ export interface Entry {
   author: ActorRef;
   title: string;
   description: string;
-  product_url: string;
+  /** SPEC 11.3: null only on tasks and research lists. */
+  product_url: string | null;
   buy_url: string | null;
   image_url: string | null;
   retailer: string;
@@ -120,8 +119,8 @@ export interface ListDetail extends ListSummary {
 /** A feed row: an entry plus enough context to render it alone. */
 export interface FeedEntry {
   entry: Entry;
-  item: Pick<Item, "id" | "text" | "purchase">;
-  list: Pick<ListSummary, "id" | "url" | "title" | "owner_handle">;
+  item: Pick<Item, "id" | "url" | "text" | "purchase">;
+  list: Pick<ListSummary, "id" | "url" | "title" | "owner_handle" | "theme">;
 }
 
 export interface Member {
@@ -162,7 +161,7 @@ export interface WantEvent {
   /** Link to the thing on wantmcp.com. */
   url: string;
   actor: ActorRef;
-  item?: Pick<Item, "id" | "text">;
+  item?: Pick<Item, "id" | "url" | "text">;
   entry?: Entry;
   comment?: Comment;
   price?: PriceObservation;
@@ -181,7 +180,8 @@ export type ErrorCode =
   | "invalid" // validation failed, including link checks
   | "conflict"
   | "rate_limited"
-  | "not_implemented";
+  | "not_implemented"
+  | "email_unavailable"; // sending email failed (e.g. daily quota): HTTP 503, retry shortly
 
 /** GET /lists/{id}/prices: price history for every entry the caller can see on the list, oldest first. */
 export interface ListPrices {
@@ -192,6 +192,18 @@ export interface ListPrices {
 export interface InvitePreview {
   list: Pick<ListSummary, "id" | "title" | "owner_handle">;
   status: "invited" | "active" | "revoked";
+}
+
+/** GET /whoami: the caller as others see it. `list_ids` (lists it can write) is present for agents only. */
+export interface WhoAmI {
+  actor: ActorRef;
+  list_ids?: string[];
+}
+
+/** GET /me/invites: a pending invite addressed to the signed-in user's email. Accept with POST /me/invites/{list_id}/accept. */
+export interface PendingInvite {
+  list: Pick<ListSummary, "id" | "title" | "owner_handle">;
+  invited_at: Timestamp;
 }
 
 export interface ApiError {
@@ -232,16 +244,40 @@ export interface PurchaseInput {
   entry_id?: string | null;
 }
 
-
 export type ReportTargetType = "list" | "item" | "entry" | "comment";
 
-// ---------- Pending: announced by the API workstream, not yet in the contract ----------
+// ---------- Pending: SPEC section 11 (formats and private lists), not yet in the contract ----------
+// Interface merging adds the new fields to the copied types above; drop this block once the
+// contract has them.
 
-/** GET /me/invites: invites waiting for the signed-in user. */
-export interface PendingInvite {
-  list: Pick<ListSummary, "id" | "title" | "owner_handle">;
-  invited_at: Timestamp;
+export type ListFormat = "shopping" | "tasks" | "research";
+export type ListVisibility = "public" | "private";
+export type ItemStatus = "open" | "in_progress" | "done";
+export type EntryKind = "product" | "update" | "answer";
+
+export interface Completion {
+  completed_at: Timestamp;
+  completed_by: ActorRef;
+  note: string | null;
+  entry_id: string | null;
 }
 
-/** Items are getting a `url` ending `#itm_...`. Optional until every API server sends it. */
-export type ItemWithUrl = Item & { url?: string };
+export interface ListSummary {
+  /** Missing on older servers: treat as "shopping". */
+  format?: ListFormat;
+  /** Missing on older servers: treat as "public". */
+  visibility?: ListVisibility;
+}
+
+export interface Item {
+  details?: string;
+  due_at?: Timestamp | null;
+  status?: ItemStatus;
+  claimed_by?: ActorRef | null;
+  completion?: Completion | null;
+}
+
+export interface Entry {
+  kind?: EntryKind;
+  links?: string[];
+}

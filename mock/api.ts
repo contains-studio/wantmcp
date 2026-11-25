@@ -10,7 +10,7 @@
  * Sign-in: any email, code 123456.
  */
 import type {
-  ActorRef, AgentInfo, Comment, Entry, EntryInput, EventType, FeedEntry, ItemWithUrl, ListDetail, ListSummary,
+  ActorRef, AgentInfo, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
   Member, Page, PriceInput, PriceObservation, PurchaseInput, UserSelf, WantEvent,
 } from "../app/lib/types.ts";
 import { seedStore } from "./seed.ts";
@@ -123,8 +123,14 @@ function canWrite(c: Caller, listId: string): boolean {
 }
 
 function requireWriter(c: Caller, listId: string): NonNullable<Caller> {
-  if (!c) throw unauthorized();
-  if (!canWrite(c, listId)) throw forbidden();
+  if (!c) {
+    if (!isPublic(listId)) throw notFound("Not found");
+    throw unauthorized();
+  }
+  if (!canWrite(c, listId)) {
+    if (!isPublic(listId)) throw notFound("Not found");
+    throw forbidden();
+  }
   return c;
 }
 
@@ -187,6 +193,21 @@ function timestamp(field: string, v: unknown): string | null {
   return new Date(t).toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
+function listFormat(v: unknown): ListFormat {
+  if (v === "shopping" || v === "tasks" || v === "research") return v;
+  throw invalid("format must be shopping, tasks or research");
+}
+function listVisibility(v: unknown): ListVisibility {
+  if (v === "public" || v === "private") return v;
+  throw invalid("visibility must be public or private");
+}
+function timestampOrNull(field: string, v: unknown): string | null {
+  if (v == null || v === "") return null;
+  const t = Date.parse(String(v));
+  if (!Number.isFinite(t)) throw invalid(`${field} must be an ISO 8601 timestamp`);
+  return new Date(t).toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
 /** A theme slug, or null. The mock stores any well-formed slug; the web app falls back for unknown ones. */
 function themeSlug(v: unknown): string | null {
   if (v == null || v === "") return null;
@@ -207,6 +228,23 @@ function decimal(field: string, v: unknown, required = false): string | null {
 
 // ---------- serializers
 
+const fmt = (l: ListRow): ListFormat => l.format ?? "shopping";
+const vis = (l: ListRow): ListVisibility => l.visibility ?? "public";
+
+/**
+ * SPEC 11.2: a private list is readable only by its writers. Everyone else gets not_found,
+ * never forbidden, so its existence is not revealed.
+ */
+function readableList(id: string, c: Caller): ListRow {
+  const l = getList(id);
+  if (vis(l) === "private" && !canWrite(c, l.id)) throw notFound("List not found");
+  return l;
+}
+const isPublic = (listId: string) => {
+  const l = store.lists.find((x) => x.id === listId);
+  return !!l && vis(l) === "public";
+};
+
 function listSummary(l: ListRow, c: Caller): ListSummary {
   const owner = userById(l.owner_id);
   const out: ListSummary = {
@@ -218,6 +256,8 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
     item_count: store.items.filter((i) => i.list_id === l.id).length,
     allow_outside_suggestions: l.allow_outside_suggestions,
     theme: l.theme ?? null,
+    format: fmt(l),
+    visibility: vis(l),
     created_at: l.created_at,
     updated_at: l.updated_at,
   };
@@ -241,6 +281,8 @@ function entryOut(e: EntryRow): Entry {
     title: e.title,
     description: e.description,
     product_url: e.product_url,
+    kind: e.kind ?? "product",
+    links: e.links ?? [],
     buy_url: e.buy_url,
     image_url: e.image_url,
     retailer: e.retailer,
@@ -257,7 +299,7 @@ function entryOut(e: EntryRow): Entry {
   };
 }
 
-function itemOut(i: ItemRow, c: Caller): ItemWithUrl {
+function itemOut(i: ItemRow, c: Caller): Item {
   const entries = store.entries.filter((e) => e.item_id === i.id);
   const writer = canWrite(c, i.list_id);
   return {
@@ -268,6 +310,13 @@ function itemOut(i: ItemRow, c: Caller): ItemWithUrl {
     created_by: i.created_by,
     created_at: i.created_at,
     purchase: i.purchase,
+    details: i.details ?? "",
+    due_at: i.due_at ?? null,
+    status: i.status ?? (i.purchase ? "done" : "open"),
+    claimed_by: i.claimed_by ?? null,
+    completion:
+      i.completion ??
+      (i.purchase ? { completed_at: i.purchase.purchased_at, completed_by: i.purchase.purchased_by, note: null, entry_id: i.purchase.entry_id } : null),
     entry_counts: {
       listed: entries.filter((e) => e.status === "listed").length,
       suggested: writer ? entries.filter((e) => e.status === "suggested").length : 0,
@@ -290,8 +339,8 @@ function feedRow(e: EntryRow): FeedEntry {
   const l = getList(e.list_id);
   return {
     entry: entryOut(e),
-    item: { id: item.id, text: item.text, purchase: item.purchase },
-    list: { id: l.id, url: `${WEB}/l/${l.id}`, title: l.title, owner_handle: userById(l.owner_id).handle },
+    item: { id: item.id, url: `${WEB}/l/${l.id}#${item.id}`, text: item.text, purchase: item.purchase },
+    list: { id: l.id, url: `${WEB}/l/${l.id}`, title: l.title, owner_handle: userById(l.owner_id).handle, theme: l.theme ?? null },
   };
 }
 
@@ -488,7 +537,7 @@ route("GET", "/lists/{id}/agents", ({ caller, params }) => {
 // public feed + lists
 route("GET", "/feed", ({ url }) => {
   const rows = store.entries
-    .filter((e) => e.status === "listed")
+    .filter((e) => e.status === "listed" && isPublic(e.list_id))
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .map(feedRow);
   return paginate(rows, url.searchParams.get("cursor"));
@@ -497,7 +546,7 @@ route("GET", "/feed", ({ url }) => {
 route("GET", "/lists", ({ url, caller }) => {
   const q = (url.searchParams.get("q") ?? "").toLowerCase();
   const rows = store.lists
-    .filter((l) => store.items.some((i) => i.list_id === l.id))
+    .filter((l) => vis(l) === "public" && store.items.some((i) => i.list_id === l.id))
     .filter((l) => !q || l.title.toLowerCase().includes(q) || l.description.toLowerCase().includes(q))
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     .map((l) => listSummary(l, caller));
@@ -508,15 +557,20 @@ route("POST", "/lists", ({ caller, body }) => {
   const c = requireSession(caller);
   const title = text("title", body.title, 140, true);
   const description = text("description", body.description, 500);
+  const format = listFormat(body.format ?? "shopping");
+  const visibility = body.visibility === undefined || body.visibility === null ? (format === "shopping" ? "public" : "private") : listVisibility(body.visibility);
   const t = nowIso();
-  const l: ListRow = { id: newId("lst"), title, description, owner_id: c.user.id, allow_outside_suggestions: true, theme: themeSlug(body.theme), created_at: t, updated_at: t };
+  const l: ListRow = {
+    id: newId("lst"), title, description, owner_id: c.user.id, allow_outside_suggestions: visibility === "public",
+    theme: themeSlug(body.theme), format, visibility, created_at: t, updated_at: t,
+  };
   store.lists.push(l);
   store.members.push({ id: newId("mem"), list_id: l.id, user_id: c.user.id, invited_email: null, role: "owner", status: "active", token: null, created_at: t });
   return created(listSummary(l, c));
 });
 
 route("GET", "/lists/{id}", ({ caller, params }) => {
-  const l = getList(params[0]);
+  const l = readableList(params[0], caller);
   const writer = canWrite(caller, l.id);
   const items = store.items.filter((i) => i.list_id === l.id).sort((a, b) => a.created_at.localeCompare(b.created_at));
   if (!items.length && !writer) throw notFound("List not found");
@@ -534,6 +588,15 @@ route("PATCH", "/lists/{id}", ({ caller, params, body }) => {
   if (body.description !== undefined) l.description = text("description", body.description, 500);
   if (typeof body.allow_outside_suggestions === "boolean") l.allow_outside_suggestions = body.allow_outside_suggestions;
   if (body.theme !== undefined) l.theme = themeSlug(body.theme);
+  if (body.visibility !== undefined) {
+    l.visibility = listVisibility(body.visibility);
+    // Private lists take no outside suggestions.
+    if (l.visibility === "private") l.allow_outside_suggestions = false;
+  }
+  if (body.format !== undefined) {
+    if (store.items.some((i) => i.list_id === l.id)) throw new HttpError(409, "conflict", "The format can only change while the list has no items");
+    l.format = listFormat(body.format);
+  }
   l.updated_at = nowIso();
   return listSummary(l, caller);
 });
@@ -630,10 +693,13 @@ function getItem(id: string): ItemRow {
 
 route("POST", "/lists/{id}/items", ({ caller, params, body }) => {
   const c = requireWriter(caller, getList(params[0]).id);
-  const i: ItemRow = { id: newId("itm"), list_id: params[0], text: text("text", body.text, 500, true), created_by: actorRef(c), created_at: nowIso(), purchase: null };
+  const i: ItemRow = {
+    id: newId("itm"), list_id: params[0], text: text("text", body.text, 500, true), created_by: actorRef(c), created_at: nowIso(), purchase: null,
+    details: text("details", body.details, 2000), due_at: timestampOrNull("due_at", body.due_at), status: "open", claimed_by: null, completion: null,
+  };
   store.items.push(i);
   touch(i.list_id);
-  emit("item.created", i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, text: i.text } });
+  emit("item.created", i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text } });
   return created(itemOut(i, c));
 });
 
@@ -641,7 +707,9 @@ route("PATCH", "/items/{id}", ({ caller, params, body }) => {
   const i = getItem(params[0]);
   const c = requireWriter(caller, i.list_id);
   requireAuthorOrOwner(i.created_by, c, i.list_id, "item");
-  i.text = text("text", body.text, 500, true);
+  if (body.text !== undefined) i.text = text("text", body.text, 500, true);
+  if (body.details !== undefined) i.details = text("details", body.details, 2000);
+  if (body.due_at !== undefined) i.due_at = timestampOrNull("due_at", body.due_at);
   touch(i.list_id);
   return itemOut(i, c);
 });
@@ -672,9 +740,12 @@ route("POST", "/items/{id}/purchase", ({ caller, params, body }) => {
     price = price ?? cur?.price ?? null;
     currency = currency ?? cur?.currency ?? null;
   }
+  if (fmt(getList(i.list_id)) !== "shopping") throw invalid("Purchases are for shopping lists; set the item status instead");
   i.purchase = { purchased_at: nowIso(), purchased_by: actorRef(c), retailer, price, currency, entry_id: input.entry_id ?? null };
+  i.status = "done";
+  i.completion = { completed_at: i.purchase.purchased_at, completed_by: i.purchase.purchased_by, note: null, entry_id: i.purchase.entry_id };
   touch(i.list_id);
-  emit("item.purchased", i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, text: i.text } });
+  emit("item.purchased", i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text } });
   return itemOut(i, c);
 });
 
@@ -682,7 +753,38 @@ route("DELETE", "/items/{id}/purchase", ({ caller, params }) => {
   const i = getItem(params[0]);
   const c = requireWriter(caller, i.list_id);
   i.purchase = null;
+  i.status = "open";
+  i.completion = null;
   touch(i.list_id);
+  return itemOut(i, c);
+});
+
+/** SPEC 11.3: set an item's status on any format. done on a shopping list = purchased without details. */
+route("POST", "/items/{id}/status", ({ caller, params, body }) => {
+  const i = getItem(params[0]);
+  const c = requireWriter(caller, i.list_id);
+  const status = body.status as ItemStatus;
+  if (status !== "open" && status !== "in_progress" && status !== "done") throw invalid("status must be open, in_progress or done");
+  const note = text("note", body.note, 1000) || null;
+  const entryId = body.entry_id ? String(body.entry_id) : null;
+  if (entryId && !store.entries.some((e) => e.id === entryId && e.item_id === i.id && e.status === "listed")) throw invalid("That entry isn't on this item");
+  const shopping = fmt(getList(i.list_id)) === "shopping";
+  i.status = status;
+  if (status === "open") {
+    i.claimed_by = null;
+    i.completion = null;
+    if (shopping) i.purchase = null;
+  } else if (status === "in_progress") {
+    i.claimed_by = actorRef(c);
+    i.completion = null;
+    if (shopping) i.purchase = null;
+  } else {
+    const at = nowIso();
+    i.completion = { completed_at: at, completed_by: actorRef(c), note, entry_id: entryId };
+    if (shopping) i.purchase = { purchased_at: at, purchased_by: actorRef(c), retailer: null, price: null, currency: null, entry_id: entryId };
+  }
+  touch(i.list_id);
+  emit("item.status_changed" as EventType, i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text } });
   return itemOut(i, c);
 });
 
@@ -695,6 +797,7 @@ function getEntry(id: string): EntryRow {
 
 route("GET", "/items/{id}/entries", ({ caller, params, url }) => {
   const i = getItem(params[0]);
+  readableList(i.list_id, caller);
   const inc = url.searchParams.get("include_suggested") === "1";
   return { item: itemOut(i, caller), entries: visibleEntries(i.id, caller, inc).map(entryOut) };
 });
@@ -704,27 +807,39 @@ route("POST", "/items/{id}/entries", ({ caller, params, body }) => {
   const l = getList(i.list_id);
   const input = body as unknown as EntryInput;
   const writer = canWrite(caller, l.id);
+  if (vis(l) === "private" && !writer) throw notFound("Item not found");
   if (caller && !writer) throw forbidden();
   if (!writer && !l.allow_outside_suggestions) throw forbidden("This list doesn't accept outside suggestions");
+  const format = fmt(l);
+  const shopping = format === "shopping";
   const author: ActorRef = writer && caller ? actorRef(caller) : { kind: "outside", name: input.agent_name ? text("agent_name", input.agent_name, 60) : null };
-  const productUrl = checkUrl("product_url", input.product_url, true)!;
+  const productUrl = checkUrl("product_url", input.product_url, shopping);
   const urlKey = (u: string) => {
     const x = new URL(u);
     return (x.hostname.replace(/^www\./, "") + x.pathname.replace(/\/$/, "")).toLowerCase();
   };
-  const dup = store.entries.find((x) => x.item_id === i.id && x.status !== "rejected" && urlKey(x.product_url) === urlKey(productUrl));
-  if (dup) throw new HttpError(409, "conflict", "That product is already on this item", { entry_id: dup.id });
+  if (shopping && productUrl) {
+    const dup = store.entries.find((x) => x.item_id === i.id && x.status !== "rejected" && x.product_url && urlKey(x.product_url) === urlKey(productUrl));
+    if (dup) throw new HttpError(409, "conflict", "That product is already on this item", { entry_id: dup.id });
+  }
   const firstPrice = decimal("price", input.price);
+  if (firstPrice && !shopping) throw invalid("Prices are only for shopping lists");
   if (firstPrice && !input.currency) throw invalid("currency is required when price is given");
+  const rawLinks = (input as { links?: unknown }).links;
+  if (rawLinks !== undefined && !Array.isArray(rawLinks)) throw invalid("links must be a list of https links");
+  const links = ((rawLinks as unknown[]) ?? []).slice(0, 9).map((u, n) => checkUrl(`links[${n}]`, u, true)!);
+  if (links.length > 8) throw invalid("At most 8 links");
   const t = nowIso();
   const e: EntryRow = {
     id: newId("ent"), item_id: i.id, list_id: l.id, status: writer ? "listed" : "suggested", author,
     title: text("title", input.title, 140, true),
-    description: text("description", input.description, 500),
+    description: text("description", input.description, writer && !shopping ? 4000 : 500),
     product_url: productUrl,
+    kind: shopping ? "product" : format === "tasks" ? "update" : "answer",
+    links,
     buy_url: checkUrl("buy_url", input.buy_url),
     image_url: checkUrl("image_url", input.image_url),
-    retailer: text("retailer", input.retailer, 80) || new URL(productUrl).hostname.replace(/^www\./, ""),
+    retailer: text("retailer", input.retailer, 80) || (productUrl ? new URL(productUrl).hostname.replace(/^www\./, "") : ""),
     coupon_code: text("coupon_code", input.coupon_code, 40) || null,
     deal_starts_at: timestamp("deal_starts_at", input.deal_starts_at),
     deal_ends_at: timestamp("deal_ends_at", input.deal_ends_at),
@@ -745,11 +860,17 @@ route("PATCH", "/entries/{id}", ({ caller, params, body }) => {
   requireAuthorOrOwner(e.author, c, e.list_id, "product");
   const input = body as Partial<EntryInput>;
   if (input.title !== undefined) e.title = text("title", input.title, 140, true);
-  if (input.description !== undefined) e.description = text("description", input.description, 500);
-  if (input.product_url !== undefined) e.product_url = checkUrl("product_url", input.product_url, true)!;
+  const shopping = fmt(getList(e.list_id)) === "shopping";
+  if (input.description !== undefined) e.description = text("description", input.description, shopping ? 500 : 4000);
+  if (input.product_url !== undefined) e.product_url = checkUrl("product_url", input.product_url, shopping);
+  const patchLinks = (input as { links?: unknown }).links;
+  if (patchLinks !== undefined) {
+    if (!Array.isArray(patchLinks) || patchLinks.length > 8) throw invalid("links must be at most 8 https links");
+    e.links = patchLinks.map((u, n) => checkUrl(`links[${n}]`, u, true)!);
+  }
   if (input.buy_url !== undefined) e.buy_url = checkUrl("buy_url", input.buy_url);
   if (input.image_url !== undefined) e.image_url = checkUrl("image_url", input.image_url);
-  if (input.retailer !== undefined) e.retailer = text("retailer", input.retailer, 80) || new URL(e.product_url).hostname.replace(/^www\./, "");
+  if (input.retailer !== undefined) e.retailer = text("retailer", input.retailer, 80) || (e.product_url ? new URL(e.product_url).hostname.replace(/^www\./, "") : "");
   if (input.coupon_code !== undefined) e.coupon_code = text("coupon_code", input.coupon_code, 40) || null;
   if (input.deal_starts_at !== undefined) e.deal_starts_at = timestamp("deal_starts_at", input.deal_starts_at);
   if (input.deal_ends_at !== undefined) e.deal_ends_at = timestamp("deal_ends_at", input.deal_ends_at);
@@ -788,7 +909,7 @@ route("POST", "/entries/{id}/reject", ({ caller, params }) => {
 });
 
 route("GET", "/lists/{id}/prices", ({ caller, params }) => {
-  const l = getList(params[0]);
+  const l = readableList(params[0], caller);
   const writer = canWrite(caller, l.id);
   const prices: Record<string, PriceObservation[]> = {};
   for (const e of store.entries) {
@@ -799,7 +920,7 @@ route("GET", "/lists/{id}/prices", ({ caller, params }) => {
 });
 
 route("GET", "/lists/{id}/suggestions", ({ caller, params, url }) => {
-  const l = getList(params[0]);
+  const l = readableList(params[0], caller);
   requireWriter(caller, l.id);
   const rows = store.entries
     .filter((e) => e.list_id === l.id && e.status === "suggested")
@@ -811,6 +932,7 @@ route("GET", "/lists/{id}/suggestions", ({ caller, params, url }) => {
 // prices
 route("GET", "/entries/{id}/prices", ({ params, caller }) => {
   const e = getEntry(params[0]);
+  readableList(e.list_id, caller);
   if (e.status === "suggested" && !canWrite(caller, e.list_id)) throw notFound("Entry not found");
   return pricesFor(e.id);
 });
@@ -818,6 +940,7 @@ route("GET", "/entries/{id}/prices", ({ params, caller }) => {
 route("POST", "/entries/{id}/prices", ({ caller, params, body }) => {
   const e = getEntry(params[0]);
   const c = requireWriter(caller, e.list_id);
+  if (fmt(getList(e.list_id)) !== "shopping") throw invalid("Prices are only for shopping lists");
   const input = body as unknown as PriceInput;
   const p: PriceObservation = {
     id: newId("prc"), entry_id: e.id, price: decimal("price", input.price, true)!,
@@ -833,8 +956,8 @@ route("POST", "/entries/{id}/prices", ({ caller, params, body }) => {
 });
 
 // comments
-route("GET", "/lists/{id}/comments", ({ params, url }) => {
-  const l = getList(params[0]);
+route("GET", "/lists/{id}/comments", ({ params, url, caller }) => {
+  const l = readableList(params[0], caller);
   const tt = url.searchParams.get("target_type");
   const tid = url.searchParams.get("target_id");
   const suggestedIds = new Set(store.entries.filter((e) => e.status !== "listed").map((e) => e.id));
@@ -878,11 +1001,13 @@ function eventsFor(c: Caller, listIds: string[] | null, url: URL) {
     .filter((e) => e.seq > after)
     .filter((e) => !listIds || listIds.includes(e.list_id))
     .filter((e) => e.type !== "entry.suggested" || canWrite(c, e.list_id))
+    // SPEC 11.2: on a private list every event is writers-only.
+    .filter((e) => isPublic(e.list_id) || canWrite(c, e.list_id))
     .filter((e) => !types || types.includes(e.type))
     .slice(0, 100);
   return { events, next: events.at(-1)?.seq ?? after };
 }
-route("GET", "/lists/{id}/events", ({ caller, params, url }) => eventsFor(caller, [getList(params[0]).id], url));
+route("GET", "/lists/{id}/events", ({ caller, params, url }) => eventsFor(caller, [readableList(params[0], caller).id], url));
 route("GET", "/me/events", ({ caller, url }) => {
   if (!caller) throw unauthorized();
   return eventsFor(caller, store.lists.filter((l) => canWrite(caller, l.id)).map((l) => l.id), url);
@@ -899,7 +1024,7 @@ route("POST", "/reports", ({ body }) => {
 });
 
 route("GET", "/sitemap", () => ({
-  lists: store.lists.filter((l) => store.items.some((i) => i.list_id === l.id)).map((l) => ({ id: l.id, updated_at: l.updated_at })),
+  lists: store.lists.filter((l) => vis(l) === "public" && store.items.some((i) => i.list_id === l.id)).map((l) => ({ id: l.id, updated_at: l.updated_at })),
 }));
 
 route("GET", "/health", () => ({ ok: true, mock: true }));

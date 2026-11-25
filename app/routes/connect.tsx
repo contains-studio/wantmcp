@@ -1,21 +1,31 @@
-import { Link } from "react-router";
+import { data, Link } from "react-router";
+import { AgentPromptBuilder } from "~/components/AgentPrompt";
+import { api } from "~/lib/api.server";
+import { getSessionToken } from "~/lib/session.server";
+import type { ListSummary } from "~/lib/types";
 import type { Route } from "./+types/connect";
 import { CopyButton } from "~/components/CopyButton";
 import { siteOrigin } from "~/lib/config.server";
 import { signinUrl, useRootData } from "~/lib/hooks";
 
-export function loader({ request }: Route.LoaderArgs) {
-  return { origin: siteOrigin(request) };
+export async function loader({ request }: Route.LoaderArgs) {
+  // Signed in: offer the person's own lists in the agent prompt (so the page is private then).
+  const signedIn = Boolean(getSessionToken(request));
+  const lists = signedIn ? await api<ListSummary[]>(request, "/me/lists").catch(() => [] as ListSummary[]) : [];
+  return data(
+    { origin: siteOrigin(request), lists: lists.map((l) => ({ title: l.title, url: l.url })) },
+    { headers: { "Cache-Control": signedIn ? "private, no-store" : "public, max-age=300, s-maxage=3600", Vary: "Cookie" } },
+  );
 }
 
-export function headers() {
-  return { "Cache-Control": "public, max-age=300, s-maxage=3600" };
+export function headers({ loaderHeaders }: Route.HeadersArgs) {
+  return loaderHeaders;
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
   const origin = loaderData?.origin ?? "https://wantmcp.com";
   const description =
-    "Add The Want MCP server to ChatGPT, Claude, Claude Code, Codex, Grok, OpenClaw, Cursor or any MCP client, so your agents can shop your want lists.";
+    "An MCP server for getting what you want. Add it to ChatGPT, Claude, Claude Code, Codex, Grok, OpenClaw, Cursor or any MCP client, so your agents can work on your lists: things to buy, things to get done, questions to answer.";
   return [
     { title: "Connect an agent · The Want MCP" },
     { name: "description", content: description },
@@ -225,7 +235,7 @@ const CLIENTS: Client[] = [
 
 const TOOLS: Array<[string, string[]]> = [
   ["Read, no sign-in", ["search_lists", "get_list", "get_item_entries", "get_price_history", "get_comments", "suggest_entry"]],
-  ["Write to your lists", ["my_lists", "create_list", "add_item", "add_entry", "post_price", "add_comment", "mark_purchased"]],
+  ["Work on your lists", ["whoami", "my_lists", "create_list", "add_item", "add_entry", "post_price", "add_comment", "set_item_status", "mark_purchased"]],
   ["Review suggestions", ["list_pending_suggestions", "promote_suggestion", "reject_suggestion"]],
 ];
 
@@ -235,7 +245,7 @@ const STATUS = {
   generic: { label: "Generic instructions", cls: "chip" },
 };
 
-export default function Connect() {
+export default function Connect({ loaderData }: Route.ComponentProps) {
   const { mcpUrl } = useRootData();
   return (
     <div className="wrap grid grid-cols-1 gap-10 py-10 lg:grid-cols-[14rem_1fr]">
@@ -255,8 +265,9 @@ export default function Connect() {
           <p className="eyebrow">Connect</p>
           <h1 className="mt-2 text-4xl font-extrabold sm:text-5xl">Connect your agent</h1>
           <p className="mt-4 max-w-2xl text-[1.05rem] text-ink-2">
-            One server URL works in every client. Reading lists needs no sign-in. To post products, prices and comments, the agent signs in to your
-            account (OAuth) and you pick which lists it may write to, or you give it a write key for one list.
+            One server URL works in every client. Your agent can then work on your lists: find things to buy, get tasks done, or research your
+            questions. Reading public lists needs no sign-in. To post, the agent signs in to your account (OAuth) and you pick which lists it may
+            work on, or you give it a write key for one list.
           </p>
           <div className="mt-5 grid max-w-xl gap-3">
             <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-card p-2 pl-4">
@@ -274,6 +285,18 @@ export default function Connect() {
               With a write key instead of sign-in, use the first address and send the header <code>Authorization: Bearer wk_…</code>.
             </p>
           </div>
+          <section aria-labelledby="prompt-h" className="card mt-6 grid max-w-2xl gap-3 p-4 sm:p-5">
+            <div>
+              <h2 id="prompt-h" className="text-xl font-extrabold">
+                The quick way: hand your agent this
+              </h2>
+              <p className="mt-1 text-[0.9rem] text-ink-2">
+                Paste it into Claude Code, Codex or any agent that can add MCP servers to itself. It adds the server, signs in through your browser,
+                and starts on your list. For a write key instead, create one in your list's settings: it comes with the same prompt, key included.
+              </p>
+            </div>
+            <AgentPromptBuilder mcpUrl={mcpUrl} lists={loaderData.lists} />
+          </section>
           <nav aria-label="Clients" className="mt-5 flex flex-wrap gap-2 lg:hidden">
             {CLIENTS.map((c) => (
               <a key={c.id} href={`#${c.id}`} className="chip">
@@ -326,8 +349,12 @@ export default function Connect() {
         </section>
 
         <section className="card p-5 sm:p-6">
-          <h2 className="text-xl font-extrabold">Then ask it to shop</h2>
-          <p className="mt-2 text-ink-2">Try: “Look at my Want MCP list, check what's already there, and find two better-priced options for each item.”</p>
+          <h2 className="text-xl font-extrabold">Then ask it to get going</h2>
+          <ul className="mt-2 grid gap-1.5 text-ink-2">
+            <li>Shopping: “Look at my Want MCP list, check what's already there, and find two better-priced options for each item.”</li>
+            <li>Tasks: “Take the next open task on my list, post updates as you go, and mark it done when it's finished.”</li>
+            <li>Research: “Answer the open questions on my list, with sources, and don't repeat answers already there.”</li>
+          </ul>
         </section>
       </div>
     </div>

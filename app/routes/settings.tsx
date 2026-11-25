@@ -1,17 +1,20 @@
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import type { Route } from "./+types/settings";
+import { AgentPrompt } from "~/components/AgentPrompt";
 import { CopyButton } from "~/components/CopyButton";
 import { Time } from "~/components/Time";
 import { api, apiOptional, formError, toRouteError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { useRootData } from "~/lib/hooks";
 import { assertSameOrigin } from "~/lib/session.server";
-import type { AgentInfo, ListDetail, Member } from "~/lib/types";
+import type { AgentInfo, ListDetail, ListFormat, ListSummary, ListVisibility, Member } from "~/lib/types";
 import { ListView } from "~/components/ListView";
 import { allThemeViews, getTheme } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeView } from "~/themes/view";
 import { useState } from "react";
+import { PrivateBadge } from "~/components/ListView";
+import { FORMATS, formatInfo, formatOf, visibilityOf, type FormatInfo } from "~/lib/formats";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `Settings${loaderData ? ` · ${loaderData.list.title}` : ""} · The Want MCP` }, { name: "robots", content: "noindex" }];
@@ -38,9 +41,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const { items: _items, ...summary } = list;
   // The owner's theme picker needs every theme (small: custom properties only) and the sample list.
   const themes = list.my_role === "owner" ? allThemeViews() : [];
-  const sample = list.my_role === "owner" ? sampleList() : null;
+  const sample = list.my_role === "owner" ? sampleList(Date.now(), formatOf(summary)) : null;
   return data(
-    { list: summary, role: list.my_role, members, agents, themes, sample, currentTheme: getTheme(summary.theme).slug },
+    { list: summary, role: list.my_role, members, agents, themes, sample, currentTheme: getTheme(summary.theme ?? formatInfo(summary).defaultTheme).slug },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }
@@ -59,11 +62,19 @@ export async function action({ request, params }: Route.ActionArgs) {
         await api(request, `/lists/${id}`, { method: "PATCH", body: { title: s("title"), description: s("description") } });
         return { ok: true, intent } satisfies ActionData;
       case "theme": {
-        const slug = s("theme");
-        // "default" is stored as no theme.
-        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: slug === "default" ? null : getTheme(slug).slug } });
+        const current = await api<ListDetail>(request, `/lists/${id}`);
+        const picked = getTheme(s("theme")).slug;
+        // The format's own default is stored as "no theme" so it follows the format; anything
+        // else (including the site default on a task list) is stored explicitly.
+        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: picked === formatInfo(current).defaultTheme ? null : picked } });
         return { ok: true, intent } satisfies ActionData;
       }
+      case "visibility":
+        await api(request, `/lists/${id}`, { method: "PATCH", body: { visibility: s("visibility") === "private" ? "private" : "public" } });
+        return { ok: true, intent } satisfies ActionData;
+      case "format":
+        await api(request, `/lists/${id}`, { method: "PATCH", body: { format: s("format") } });
+        return { ok: true, intent } satisfies ActionData;
       case "outside":
         await api(request, `/lists/${id}`, { method: "PATCH", body: { allow_outside_suggestions: s("allow") === "true" } });
         return { ok: true, intent } satisfies ActionData;
@@ -138,7 +149,12 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         </Link>
         <p className="eyebrow mt-4">List settings</p>
         <h1 className="mt-1 text-3xl font-extrabold sm:text-4xl">{list.title}</h1>
-        <p className="mt-2 text-[0.9rem] text-ink-3">You are {isOwner ? "the owner" : "a member"} of this list.</p>
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-ink-3">
+          <span>
+            {formatInfo(list).label} list · you are {isOwner ? "the owner" : "a member"}.
+          </span>
+          {visibilityOf(list) === "private" && <PrivateBadge />}
+        </p>
       </div>
 
       <Section
@@ -152,7 +168,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         }
       >
         {result?.intent === "create-key" && result.key ? (
-          <NewKey keyValue={result.key} agentName={result.agent?.name ?? "agent"} />
+          <NewKey keyValue={result.key} agentName={result.agent?.name ?? "agent"} listUrl={list.url} />
         ) : (
           <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
             <input type="hidden" name="intent" value="create-key" />
@@ -266,12 +282,22 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               </>
             }
           >
-            <ThemePicker themes={loaderData.themes} sample={loaderData.sample!} current={loaderData.currentTheme} />
+            <ThemePicker themes={loaderData.themes} sample={loaderData.sample!} current={loaderData.currentTheme} format={formatOf(list)} />
           </Section>
 
-          <Section id="outside-h" title="Outside suggestions" desc="Let any agent suggest products. Suggestions stay hidden from everyone but this list's writers until one of you promotes them.">
-            <OutsideToggle allow={list.allow_outside_suggestions} />
+          <Section id="visibility-h" title="Who can see this list">
+            <VisibilityControl visibility={visibilityOf(list)} />
           </Section>
+
+          <Section id="format-h" title="Format">
+            <FormatControl list={list} />
+          </Section>
+
+          {visibilityOf(list) === "public" ? (
+            <Section id="outside-h" title="Outside suggestions" desc={`Let any agent suggest ${formatInfo(list).entries}. Suggestions stay hidden from everyone but this list's writers until one of you promotes them.`}>
+              <OutsideToggle allow={list.allow_outside_suggestions} />
+            </Section>
+          ) : null}
 
           <Section id="rename-h" title="Title and description">
             <Form method="post" className="grid gap-3">
@@ -376,7 +402,7 @@ function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
   );
 }
 
-function NewKey({ keyValue, agentName }: { keyValue: string; agentName: string }) {
+function NewKey({ keyValue, agentName, listUrl }: { keyValue: string; agentName: string; listUrl: string }) {
   const { mcpUrl } = useRootData();
   const slug = "wantmcp";
   const snippets: Array<[string, string]> = [
@@ -410,8 +436,16 @@ function NewKey({ keyValue, agentName }: { keyValue: string; agentName: string }
         </code>
         <CopyButton text={keyValue} label="Copy key" className="btn btn-sm" />
       </div>
+      <div className="grid gap-2 rounded-xl border border-line bg-card p-3">
+        <AgentPrompt
+          mcpUrl={mcpUrl}
+          listUrl={listUrl}
+          keyValue={keyValue}
+          title="Or hand your agent this prompt: it sets itself up with this key and starts on the list"
+        />
+      </div>
       <div className="grid gap-2">
-        <p className="label">Ready-to-paste setup</p>
+        <p className="label">Or set it up yourself</p>
         {snippets.map(([name, code], i) => (
           <details key={name} open={i === 0} className="rounded-xl border border-line bg-card">
             <summary className="flex items-center justify-between px-3 py-2 font-semibold">
@@ -431,7 +465,8 @@ function NewKey({ keyValue, agentName }: { keyValue: string; agentName: string }
   );
 }
 
-function ThemePicker({ themes, sample, current }: { themes: ThemeView[]; sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>; current: string }) {
+function ThemePicker({ themes, sample, current, format }: { themes: ThemeView[]; sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>; current: string; format: ListFormat }) {
+  const fi = FORMATS[format];
   const fetcher = useFetcher<ActionData>();
   const { origin } = useRootData();
   const [selected, setSelected] = useState(current);
@@ -447,6 +482,8 @@ function ThemePicker({ themes, sample, current }: { themes: ThemeView[]; sample:
           <div className="grid gap-2 sm:grid-cols-2">
             {themes
               .filter((t) => t.group === group)
+              // The Sheet table compares prices: shopping lists only.
+              .filter((t) => format === "shopping" || t.layout !== "sheet")
               .map((t) => (
                 <label
                   key={t.slug}
@@ -455,7 +492,9 @@ function ThemePicker({ themes, sample, current }: { themes: ThemeView[]; sample:
                   <input type="radio" name="theme" value={t.slug} checked={selected === t.slug} onChange={() => setSelected(t.slug)} className="accent-[var(--want)]" />
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold">{t.name}</span>
-                    <span className="block truncate text-[0.78rem] text-ink-3">{t.layout === "grid" ? "Cards" : `Layout: ${t.layout}`}</span>
+                    <span className="block truncate text-[0.78rem] text-ink-3">
+                      {t.slug === fi.defaultTheme ? "Default for this format" : fi.suits.includes(t.slug) ? `Suits ${fi.label.toLowerCase()} lists` : t.layout === "grid" ? "Cards" : `Layout: ${t.layout}`}
+                    </span>
                   </span>
                   <span className="inline-flex overflow-hidden rounded-full border border-line" aria-hidden="true">
                     {[t.swatch.paper, t.swatch.ink, t.swatch.want, t.swatch.darkPaper].map((c, i) => (
@@ -496,6 +535,71 @@ function ThemePicker({ themes, sample, current }: { themes: ThemeView[]; sample:
         {saved && <span className="text-[0.85rem] text-deal">Saved. Your list now uses this theme.</span>}
         {fetcher.data?.error && <span className="form-error">{fetcher.data.error}</span>}
       </div>
+    </fetcher.Form>
+  );
+}
+
+function VisibilityControl({ visibility }: { visibility: ListVisibility }) {
+  const fetcher = useFetcher<ActionData>();
+  const pending = fetcher.formData?.get("visibility") as ListVisibility | undefined;
+  const v = pending ?? visibility;
+  const next = v === "public" ? "private" : "public";
+  return (
+    <fetcher.Form method="post" className="grid gap-3">
+      <input type="hidden" name="intent" value="visibility" />
+      <input type="hidden" name="visibility" value={next} />
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          role="switch"
+          aria-checked={v === "private"}
+          aria-label="Private list"
+          className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition ${v === "private" ? "border-want bg-want" : "border-line-strong bg-sunk"}`}
+          onClick={(e) => {
+            if (next === "public" && !confirm("Make this list public? Anyone with the link will be able to read it, and search engines can find it.")) e.preventDefault();
+          }}
+        >
+          <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-card shadow transition-all ${v === "private" ? "left-[1.6rem]" : "left-0.5"}`} />
+        </button>
+        <span className="font-semibold">{v === "private" ? "Private" : "Public"}</span>
+      </div>
+      <p className="text-[0.9rem] text-ink-2">
+        {v === "private"
+          ? "Only you, the people you invite and your connected agents can see this list. Everyone else gets “not found”: it isn't in search, the public feed, the sitemap or link previews, and outside agents can't suggest anything."
+          : "Anyone with the link can read the list, search engines can find it once it has an item, and its finds can appear in the public feed. Only you and the people you invite can write."}
+      </p>
+      {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
+    </fetcher.Form>
+  );
+}
+
+function FormatControl({ list }: { list: Pick<ListSummary, "format" | "item_count"> }) {
+  const fetcher = useFetcher<ActionData>();
+  const current = formatOf(list);
+  if (list.item_count > 0) {
+    return (
+      <p className="text-[0.9rem] text-ink-2">
+        This is a <strong>{FORMATS[current].label.toLowerCase()}</strong> list: {FORMATS[current].blurb} The format is fixed once a list has
+        items.
+      </p>
+    );
+  }
+  return (
+    <fetcher.Form method="post" className="grid gap-2">
+      <input type="hidden" name="intent" value="format" />
+      <p className="text-[0.9rem] text-ink-2">You can change the format until the first item is added.</p>
+      {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
+        <label key={f.format} className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-xl border p-3 ${current === f.format ? "border-want bg-want-soft" : "border-line"}`}>
+          <input type="radio" name="format" value={f.format} defaultChecked={current === f.format} className="mt-1 accent-[var(--want)]" />
+          <span>
+            <span className="block font-semibold">{f.label}</span>
+            <span className="block text-[0.82rem] text-ink-2">{f.blurb}</span>
+          </span>
+        </label>
+      ))}
+      <button className="btn btn-sm w-fit" disabled={fetcher.state !== "idle"}>
+        {fetcher.state !== "idle" ? "Saving…" : "Save format"}
+      </button>
+      {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
     </fetcher.Form>
   );
 }
