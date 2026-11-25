@@ -89,7 +89,8 @@ test("a bad invite link says so before anyone signs in", async ({ page }) => {
 
 test("price history plots when prices were checked, and says how much they changed", async ({ page }) => {
   await page.goto("/l/lst_desk2026");
-  await page.getByText("Details and price history").first().click();
+  // Product rows open in place: open them all, then read the first chart.
+  for (const s of await page.locator("details.row-toggle summary:visible").all()) await s.click();
   const caption = page.locator(".price-sparkline figcaption").first();
   await expect(caption).toBeVisible();
   await expect(caption).not.toContainText("$0");
@@ -122,7 +123,8 @@ test("people see 'you', not their own handle", async ({ page }) => {
   await signIn(page, DEMO);
   await page.goto("/l/lst_desk2026");
   // The keyboard was bought by the demo owner.
-  await expect(page.locator(".item-section", { hasText: "Quiet mechanical keyboard" }).getByText(/by you/)).toBeVisible();
+  // A bought want is one line: "Bought · $89.00 at Example Keys · you, Tuesday".
+  await expect(page.locator("details.done-row summary", { hasText: "Quiet mechanical keyboard" })).toContainText(/· you\b/);
   // Visible text only (the page's own data script carries handles for its components).
   await expect(page.locator("main").getByText("quiet-otter-4821", { exact: false }).filter({ hasNotText: "/" })).toHaveCount(0);
 });

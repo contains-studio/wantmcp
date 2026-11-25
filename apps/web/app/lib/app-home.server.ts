@@ -38,7 +38,8 @@ export interface ListCard {
 
 /** Lists with something waiting on you first, then by latest activity from anyone, then newest made. */
 export function orderCards(cards: ListCard[]): ListCard[] {
-  const activity = (c: ListCard) => [c.updatedAt, c.latest?.at ?? ""].sort().at(-1)!;
+  // The newest of: the latest thing someone did, the latest progress note, the list's own update.
+  const activity = (c: ListCard) => [c.updatedAt, c.latest?.at ?? "", c.note?.at ?? ""].sort().at(-1)!;
   return [...cards].sort(
     (a, b) => Number(b.waiting > 0) - Number(a.waiting > 0) || activity(b).localeCompare(activity(a)) || b.createdAt.localeCompare(a.createdAt),
   );

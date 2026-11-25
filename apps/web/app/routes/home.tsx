@@ -60,7 +60,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const season = seasonActive(SEASON, now) ? { heading: SEASON.heading, sample, occasions: occasionViews("sheet", SEASON.occasions) } : null;
   // A few of the /for pages, and the way to the rest.
   const jobs = PERSONAS.filter((p) => p.index).slice(0, 8).map(({ slug, label }) => ({ slug, label }));
-  return { feed, cursor, accountDeleted, kinds, looks, season, jobs, origin: siteOrigin(request) };
+  // One kind shown at a time (?kind=, real links): shopping first.
+  const askedKind = new URL(request.url).searchParams.get("kind");
+  const kind = kinds.some((k) => k.format === askedKind) ? askedKind! : "shopping";
+  return { feed, cursor, accountDeleted, kinds, kind, looks, season, jobs, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -105,7 +108,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { feed, cursor, accountDeleted, kinds, looks, season, jobs, origin } = loaderData;
+  const { feed, cursor, accountDeleted, kinds, kind, looks, season, jobs, origin } = loaderData;
   const { user } = useRootData();
 
   return (
@@ -134,32 +137,47 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 
       <TwoWaysIn signedIn={!!user} />
 
-      {/* The three kinds of list: one line, one picture, one action each (owner review: half the height it was). */}
+      {/* The three kinds of list in one card: a switch (real links, so each has an address), one line, one picture, one action. */}
       <section aria-labelledby="kinds-h" className="bg-sunk">
-        <div className="wrap grid gap-8 py-12 sm:py-16">
+        <div className="wrap grid gap-6 py-12 sm:py-16">
           <h2 id="kinds-h" className="serif text-[2rem] sm:text-[2.4rem]">
             Three kinds of list
           </h2>
-          <div className="grid gap-6 md:grid-cols-3">
+          <nav aria-label="Kinds of list" className="view-switch w-fit">
             {kinds.map((k) => (
-              <section key={k.format} aria-labelledby={`kind-${k.format}`} className="card grid content-start gap-4 overflow-hidden p-0">
-                <div className="grid gap-2 px-5 pt-5">
+              <Link
+                key={k.format}
+                to={`?kind=${k.format}#kinds-h`}
+                preventScrollReset
+                replace
+                aria-current={k.format === kind ? "page" : undefined}
+                className={`view-tab ${k.format === kind ? "is-on" : ""}`}
+              >
+                {k.label}
+              </Link>
+            ))}
+          </nav>
+          {kinds
+            .filter((k) => k.format === kind)
+            .map((k) => (
+              <div key={k.format} className="card grid gap-4 overflow-hidden p-0 md:grid-cols-[minmax(0,22rem)_1fr]">
+                <div className="grid content-start gap-3 px-5 pt-5 md:pb-5">
                   <h3 id={`kind-${k.format}`} className="text-[1.25rem] font-semibold">
                     {k.title}
                   </h3>
                   <p className="text-ink-2">{k.line}</p>
-                </div>
-                <div className="mx-5 overflow-hidden rounded-md border border-line bg-paper">
-                  <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} items={2} className="thumb-half h-[9rem] sm:h-[13rem]" />
-                </div>
-                <div className="px-5 pb-5">
-                  <Link to={user ? `/app/new?format=${k.format}` : `/login?next=${encodeURIComponent(`/app/new?format=${k.format}`)}`} className="btn btn-want w-full">
-                    Start a {k.label.toLowerCase()} list
+                  <Link
+                    to={user ? `/app/new?format=${k.format}` : `/login?next=${encodeURIComponent(`/app/new?format=${k.format}`)}`}
+                    className="btn btn-want w-full sm:w-fit"
+                  >
+                    Start a {k.format === "shopping" ? "shopping" : k.format === "tasks" ? "task" : "research"} list
                   </Link>
                 </div>
-              </section>
+                <div className="mx-5 mb-5 overflow-hidden rounded-md border border-line bg-paper md:mt-5">
+                  <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} items={2} className="thumb-half h-[10rem] sm:h-[15rem]" />
+                </div>
+              </div>
             ))}
-          </div>
         </div>
       </section>
 
@@ -299,7 +317,7 @@ function SeasonBand({ season, origin }: { season: { heading: string; sample: The
 /** Every layout as a real miniature of the same list, each linking to its preview. */
 function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: ThemeView[] }; origin: string }) {
   const tile = (v: ThemeView) => (
-    <li key={v.slug}>
+    <li key={v.slug} className="w-40 flex-none snap-start sm:w-auto">
       {/* The miniature holds links of its own, so it sits beside the link, never inside it: the link stretches over the tile. */}
       <div className="look-tile relative grid overflow-hidden rounded-[14px] bg-card shadow-[var(--shadow)]">
         <ThemeThumb theme={v} sample={looks.sample} origin={origin} className="h-24 sm:h-40" />
@@ -311,7 +329,7 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
   );
   return (
     <section aria-labelledby="looks-h">
-      <div className="wrap grid gap-8 py-12 sm:py-20">
+      <div className="wrap grid gap-5 py-10 sm:gap-8 sm:py-20">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="looks-h" className="serif text-[2rem] sm:text-[2.4rem]">
             Pick a look
@@ -320,7 +338,10 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
             All looks
           </Link>
         </div>
-        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">{looks.layouts.map(tile)}</ul>
+        {/* Phones: one row that scrolls sideways; wider screens: a grid. */}
+        <ul className="looks-row -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+          {looks.layouts.map(tile)}
+        </ul>
       </div>
     </section>
   );

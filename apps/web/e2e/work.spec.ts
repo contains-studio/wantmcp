@@ -97,7 +97,11 @@ test("set an item done with a note from its status menu", async ({ page }) => {
   await menu.getByText("Answered, with a note").click();
   await menu.getByLabel("Note").fill("Checked with the installer.");
   await menu.getByRole("button", { name: "Mark answered" }).click();
-  await expect(grant.getByText("Checked with the installer.")).toBeVisible();
+  // Done: the item folds to one line; its note is under it.
+  const row = page.locator("details.done-row", { hasText: "Which rebates and tax credits" });
+  await expect(row.locator("> summary")).toContainText("Answered");
+  await row.locator("> summary").click();
+  await expect(row.getByText("Checked with the installer.")).toBeVisible();
 });
 
 test("mark a want bought from the quiet action on its title row", async ({ page }) => {
@@ -108,5 +112,5 @@ test("mark a want bought from the quiet action on its title row", async ({ page 
   const menu = page.locator(":popover-open");
   await menu.getByLabel("Retailer").fill("Corner shop");
   await menu.getByRole("button", { name: "Mark bought" }).click();
-  await expect(page.locator("section#itm_lamp").getByText(/at Corner shop/)).toBeVisible();
+  await expect(page.locator("details.done-row summary", { hasText: "Warm desk lamp" })).toContainText("at Corner shop");
 });

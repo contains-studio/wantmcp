@@ -874,6 +874,12 @@ button.check-toggle:hover { border-color: var(--ink); }
 .swatch-chip > span { width: 0.85rem; height: 0.85rem; border-radius: 999px; }
 .brand-tile.is-on { background: var(--sunk); box-shadow: inset 0 0 0 2px var(--ink); }
 
+/* Sheet: a product's details row shows while its row's toggle is open (no JavaScript needed). */
+.sheet-detail { display: none; }
+.sheet-group:has(details.row-toggle[open]) > .sheet-detail { display: table-row; }
+.row-toggle[open] .row-toggle-chev { color: var(--ink); }
+.sheet-detail > td { position: sticky; left: 0; }
+
 /* The home feed as plain rows separated by hairlines. Phones show the six newest. */
 @media (max-width: 639px) { .feed-rows-short > :nth-child(n + 7) { display: none; } }
 .feed-rows > article, .feed-rows > li > article { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding-inline: 0; }

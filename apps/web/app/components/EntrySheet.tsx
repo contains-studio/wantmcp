@@ -18,7 +18,20 @@ const updatedOf = (e: Entry) => Date.parse(e.current_price ? checkedAt(e.current
  * freshness. On a phone it shows product, price and saving; each row's Details holds the rest.
  * Each row carries the entry's #ent_… anchor.
  */
-export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries: Entry[]; lowestId: string | null; boughtId: string | null; itemText: string }) {
+export function EntrySheet({
+  entries,
+  lowestId,
+  boughtId,
+  itemText,
+  renderDetail,
+}: {
+  entries: Entry[];
+  lowestId: string | null;
+  boughtId: string | null;
+  itemText: string;
+  /** A product's details, price history and comments, opened under its own row. */
+  renderDetail?: (e: Entry) => React.ReactNode;
+}) {
   const now = useNow();
   const [sort, setSort] = useState<Sort>({ key: "price", dir: "asc" });
   const rows = useMemo(() => {
@@ -57,7 +70,7 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
 
   const th = "whitespace-nowrap border-b border-line-strong px-3 py-2 text-left text-[0.75rem] font-semibold uppercase tracking-[0.05em] text-ink-3";
   const td = "border-b border-line px-3 py-2 align-top sm:py-2.5";
-  // On a phone: product, price and saving; the rest is in the want's one "Details and price history" below the table.
+  // On a phone: product, price and saving; the rest opens under each row.
   const wide = "hidden sm:table-cell";
   const stickyA = "sm:sticky sm:left-0 z-[1] bg-card sm:w-[15rem] sm:min-w-[15rem]";
   const stickyB = "sm:sticky sm:left-[15rem] z-[1] bg-card sm:shadow-[inset_-1px_0_0_var(--line)]";
@@ -96,7 +109,6 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
               </th>
             </tr>
           </thead>
-          <tbody>
             {rows.map((e) => {
               const p = e.current_price;
               const pct = discountPercent(p);
@@ -105,7 +117,18 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
               const stale = !!p && !isFresh(p, now);
               const highlight = e.id === boughtId ? "bg-deal-soft" : e.id === lowestId ? "bg-sunk" : "";
               return (
-                <tr key={e.id} id={e.id} className={`scroll-mt-24 ${highlight} ${stale ? "is-stale" : ""}`}>
+                // Each product is its own group: its row, then its details (shown while the row's toggle is open, app.css).
+                <tbody key={e.id} className="sheet-group">
+                <tr
+                  id={e.id}
+                  className={`scroll-mt-24 ${highlight} ${stale ? "is-stale" : ""} ${renderDetail ? "cursor-pointer" : ""}`}
+                  onClick={(ev) => {
+                    // The whole row opens its details; links and buttons inside keep their own job.
+                    if (!renderDetail || (ev.target as HTMLElement).closest("a, button, summary, input")) return;
+                    const d = ev.currentTarget.querySelector<HTMLDetailsElement>("details.row-toggle");
+                    if (d) d.open = !d.open;
+                  }}
+                >
                   <th scope="row" className={`${td} ${stickyA} ${highlight || "bg-card"} text-left font-normal`}>
                     {/* Two title lines at most, the tag inline after the title: about four products per phone screen. */}
                     <span className="line-clamp-2 leading-snug">
@@ -120,6 +143,16 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
                       <ExtLink href={e.buy_url} className="link mt-1 hidden text-[0.78rem] text-ink-2 sm:inline-block">
                         Buy ↗<span className="sr-only"> {e.title} (new tab)</span>
                       </ExtLink>
+                    )}
+                    {renderDetail && (
+                      <details className="row-toggle">
+                        <summary className="textlink-btn mt-0.5 inline-flex min-h-8 items-center text-[0.8rem]">
+                          <span className="sr-only">Details, price history and comments for {e.title}</span>
+                          <span aria-hidden="true" className="row-toggle-chev">
+                            More ›
+                          </span>
+                        </summary>
+                      </details>
                     )}
                   </th>
                   <td className={`${td} ${stickyB} ${highlight || "bg-card"} text-right`}>
@@ -153,9 +186,16 @@ export function EntrySheet({ entries, lowestId, boughtId, itemText }: { entries:
                     )}
                   </td>
                 </tr>
+                {renderDetail && (
+                  <tr className="sheet-detail">
+                    <td colSpan={10} className="border-b border-line bg-paper px-3 py-3">
+                      {renderDetail(e)}
+                    </td>
+                  </tr>
+                )}
+                </tbody>
               );
             })}
-          </tbody>
         </table>
       </div>
     </div>

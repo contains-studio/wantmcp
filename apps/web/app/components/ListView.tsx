@@ -15,7 +15,7 @@ import { PreviewContext, ReportLink, ReportMenuItem } from "~/components/Report"
 import { closeMenuOf, Icon, Menu, MenuRemove, MenuSub } from "~/components/Actions";
 import { Time } from "~/components/Time";
 import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, MarkBoughtForm } from "~/components/WriteTools";
-import { formatMoney, plural } from "~/lib/format";
+import { formatDate, formatMoney, plural } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm, useActorLabel } from "~/components/ItemWork";
 import { BUILD_ID } from "~/lib/build";
@@ -253,7 +253,8 @@ export function ListView(props: ListViewProps) {
               <H2 id={`${list.id}-bought-h`} className="text-2xl font-semibold">{fi.doneGroup}</H2>
               <div className="divider-dots flex-1" />
             </div>
-            {bought.map((item) => (
+            {bought.map((item) => {
+              const section = (
               <ItemSection
                 fi={fi}
                 layout={layout}
@@ -270,7 +271,10 @@ export function ListView(props: ListViewProps) {
                 ownerHandle={list.owner_handle}
                 listCurrency={listCurrencyHint}
               />
-            ))}
+              );
+              // Index layouts already show a done item as one compact row; elsewhere it collapses to one line, the rest behind it.
+              return indexKind ? section : <DoneRow key={item.id} item={item} fi={fi}>{section}</DoneRow>;
+            })}
           </section>
         )}
         </div>
@@ -485,16 +489,15 @@ function ItemSection({
         )
       ) : entries.length > 0 && layout === "sheet" ? (
         <div className="item-indent grid gap-3 sm:pl-11">
-          <EntrySheet entries={entries} lowestId={lowest} boughtId={p?.entry_id ?? null} itemText={item.text} />
-          <details className="group">
-            <summary className="textlink-btn text-[0.85rem]">
-              Details and price history{" "}
-              <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-            </summary>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {entries.map((e) => (
+          {/* Each product row opens in place: its details, price history and comments under it. */}
+          <EntrySheet
+            entries={entries}
+            lowestId={lowest}
+            boughtId={p?.entry_id ?? null}
+            itemText={item.text}
+            renderDetail={(e) => (
+              <div className="max-w-xl">
                 <EntryCard
-                  key={e.id}
                   anchor={false}
                   entry={e}
                   prices={prices[e.id] ?? null}
@@ -506,9 +509,9 @@ function ItemSection({
                   canEdit={canManage(e.author, user, role)}
                   canDeleteComment={canDeleteComment}
                 />
-              ))}
-            </div>
-          </details>
+              </div>
+            )}
+          />
         </div>
       ) : entries.length > 0 ? (
         <div className={`item-entries item-indent grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 sm:pl-11`}>
@@ -923,6 +926,40 @@ function KeptNote({ listId, kept, isPrivate }: { listId: string; kept: { kind: "
         Got it
       </button>
     </div>
+  );
+}
+
+/** A finished want as one line ("Bought · $649.99 at Harbor Electronics · you, Tuesday"); the whole item opens under it. */
+function DoneRow({ item, fi, children }: { item: ItemWithEntries; fi: FormatInfo; children: React.ReactNode }) {
+  const who = useActorLabel();
+  const now = useNow();
+  const p = item.purchase;
+  const c = item.completion;
+  const at = p?.purchased_at ?? c?.completed_at ?? null;
+  const by = p?.purchased_by ?? c?.completed_by ?? null;
+  const when = at ? (now - Date.parse(at) < 6 * 86_400_000 ? new Date(at).toLocaleDateString("en-US", { weekday: "long" }) : formatDate(at)) : null;
+  const word = fi.done[0].toUpperCase() + fi.done.slice(1);
+  const detail = [
+    word,
+    p?.price ? `${formatMoney(p.price, p.currency ?? "USD", { cents: true })}${p.retailer ? ` at ${p.retailer}` : ""}` : p?.retailer ? `at ${p.retailer}` : null,
+    by || when ? [by ? who(by) : null, when].filter(Boolean).join(", ") : null,
+  ].filter(Boolean);
+  return (
+    <details className="done-row group">
+      <summary className="flex cursor-pointer items-start gap-3 rounded-md px-1 py-2">
+        <span aria-hidden="true" className="mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full bg-deal text-[0.8rem] font-bold text-card">
+          ✓
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-ink-2 line-through decoration-ink-3/60">{item.text}</span>
+          <span className="block text-[0.85rem] text-ink-3">{detail.join(" · ")}</span>
+        </span>
+        <span aria-hidden="true" className="mt-1 text-ink-3 transition group-open:rotate-90">
+          ›
+        </span>
+      </summary>
+      <div className="mt-2">{children}</div>
+    </details>
   );
 }
 

@@ -74,9 +74,12 @@ test("/for index: a swatch and a promise per page, and Start a list top and bott
   await expect(page.getByRole("main").getByRole("link", { name: "Start a list" })).toHaveCount(2);
 });
 
-test("home: three kinds of list, each with its own start", async ({ page }) => {
+test("home: three kinds of list behind one switch, each with its own start", async ({ page }) => {
   await page.goto("/");
-  for (const kind of ["shopping", "tasks", "research"]) {
-    await expect(page.getByRole("link", { name: `Start a ${kind} list` })).toHaveAttribute("href", new RegExp(`format%3D${kind}`));
-  }
+  const kinds = page.getByRole("navigation", { name: "Kinds of list" });
+  await expect(page.getByRole("link", { name: "Start a shopping list" })).toHaveAttribute("href", /format%3Dshopping/);
+  await kinds.getByRole("link", { name: "Tasks" }).click();
+  await expect(page.getByRole("link", { name: "Start a task list" })).toHaveAttribute("href", /format%3Dtasks/);
+  await kinds.getByRole("link", { name: "Research" }).click();
+  await expect(page.getByRole("link", { name: "Start a research list" })).toHaveAttribute("href", /format%3Dresearch/);
 });
