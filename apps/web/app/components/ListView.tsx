@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { HeadingBase, headingTag } from "~/components/preview";
 import { Link, useFetcher, useLocation } from "react-router";
 import { ActorTag } from "~/components/ActorTag";
 import { CommentForm, CommentList } from "~/components/Comments";
@@ -56,6 +57,9 @@ export interface ListViewProps {
 export function ListView(props: ListViewProps) {
   const { list, items, suggestions, comments: firstComments, commentsCursor, prices, isWriter, role, origin, theme, preview = false, previewItems } = props;
   const { user } = useRootData();
+  const base = useContext(HeadingBase);
+  const H1 = headingTag(base, 0);
+  const H2 = headingTag(base, 1);
   const listUrl = `${origin}/l/${list.id}`;
   const more = useMoreComments(list.id, commentsCursor);
   const comments = useMemo(() => {
@@ -108,10 +112,10 @@ export function ListView(props: ListViewProps) {
         <div className="wrap py-5 sm:py-7">
           {/* Two rows at most: the title with its icon-only actions, then one quiet line. */}
           <header className="list-titlebar">
-            <h1 className="list-title max-w-4xl text-[1.6rem] font-semibold sm:text-[2.1rem]">
+            <H1 className="list-title max-w-4xl text-[1.6rem] font-semibold sm:text-[2.1rem]">
               <span className="list-title-mark" aria-hidden="true" />
               <span className="list-title-text">{list.title}</span>
-            </h1>
+            </H1>
             {!preview && (
               <div role="toolbar" aria-label="List" className="list-actions">
                 <CopyButton text={listUrl} label="Copy link" ariaLabel="Copy link to this list" iconOnly className="btn-icon" icon={<Icon name="link" />} />
@@ -189,9 +193,9 @@ export function ListView(props: ListViewProps) {
         ))}
 
         {bought.length > 0 && (
-          <section aria-labelledby="bought-h" className="bought-group grid content-start gap-10">
+          <section aria-labelledby={`${list.id}-bought-h`} className="bought-group grid content-start gap-10">
             <div className="bought-divider flex items-center gap-4">
-              <h2 id="bought-h" className="text-2xl font-semibold">{fi.doneGroup}</h2>
+              <H2 id={`${list.id}-bought-h`} className="text-2xl font-semibold">{fi.doneGroup}</H2>
               <div className="divider-dots flex-1" />
             </div>
             {bought.map((item) => (
@@ -272,6 +276,9 @@ function ItemSection({
   eager?: boolean;
 }) {
   const canEditItem = canManage(item.created_by, user, role);
+  const base = useContext(HeadingBase);
+  const H2 = headingTag(base, 1);
+  const H3 = headingTag(base, 2);
   const now = useNow();
   const entries = sortByPrice(item.entries);
   const lowest = lowestEntryId(entries, now);
@@ -316,9 +323,9 @@ function ItemSection({
               </span>
             )
           )}
-          <h2 id={headingId} className={`item-title min-w-0 flex-1 text-[1.15rem] font-semibold sm:text-[1.35rem] ${done ? "text-ink-2" : ""}`}>
+          <H2 id={headingId} className={`item-title min-w-0 flex-1 text-[1.15rem] font-semibold sm:text-[1.35rem] ${done ? "text-ink-2" : ""}`}>
             {item.text}
-          </h2>
+          </H2>
           {/* The item's actions: at the right end of its title row. */}
           <span className="item-actions">
             {isWriter && shopping && !p && !checklist && <MarkBoughtElsewhere itemId={item.id} itemText={item.text} currency={currencyHint} />}
@@ -489,7 +496,7 @@ function ItemSection({
 
       {(itemComments.length > 0 || isWriter) && (
         <div className="item-comments item-indent grid gap-3 sm:pl-11">
-          {itemComments.length > 0 && <h3 className="eyebrow">Comments</h3>}
+          {itemComments.length > 0 && <H3 className="eyebrow">Comments</H3>}
           <CommentList comments={itemComments} canDelete={canDeleteComment} />
           {isWriter && <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />}
         </div>

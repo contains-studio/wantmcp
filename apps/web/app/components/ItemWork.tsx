@@ -2,7 +2,8 @@
  * Items on task and research lists (SPEC 11): status (open, in progress, done), details and due
  * dates, text entries (updates and answers with links) and accepted answers.
  */
-import { useEffect, useId, useRef } from "react";
+import { useContext, useEffect, useId, useRef } from "react";
+import { HeadingBase, headingTag } from "./preview";
 import { useFetcher } from "react-router";
 import { formatDate } from "~/lib/format";
 import type { FormatInfo } from "~/lib/formats";
@@ -253,14 +254,15 @@ export function TextEntryCard({
   itemDone: boolean;
 }) {
   const titleId = `${entry.id}-title`;
+  const H3 = headingTag(useContext(HeadingBase), 2);
   const research = fi.format === "research";
   const links = entry.links?.length ? entry.links : entry.product_url ? [entry.product_url] : [];
   return (
     <article id={entry.id} aria-labelledby={titleId} className={`text-entry card grid scroll-mt-24 gap-3 p-4 sm:p-5 ${accepted ? "ring-2 ring-deal" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 id={titleId} className="min-w-0 font-sans text-[1.02rem] font-semibold leading-snug tracking-normal">
+        <H3 id={titleId} className="min-w-0 font-sans text-[1.02rem] font-semibold leading-snug tracking-normal">
           {entry.title}
-        </h3>
+        </H3>
         {accepted && <span className="stamp shrink-0">Accepted</span>}
       </div>
       {entry.description && (

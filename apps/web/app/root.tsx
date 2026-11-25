@@ -182,6 +182,7 @@ function Footer() {
         <Wordmark />
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <Link to="/connect" className="link">Connect an agent</Link>
+          <Link to="/for" className="link">Lists for every job</Link>
           <Link to="/privacy" className="link">Privacy</Link>
           <Link to="/terms" className="link">Terms</Link>
           {sourceUrl && (

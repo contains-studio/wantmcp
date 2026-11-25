@@ -19,6 +19,8 @@ import type { ListDetail } from "../app/lib/types";
 import { resolveLook } from "../app/themes/catalogue.server";
 import { lookColors } from "../app/themes/view";
 import { SITE } from "../app/themes/site";
+import { PERSONA_GROUPS } from "../app/lib/personas";
+import { personaBySlug } from "../app/lib/personas.server";
 
 /** The site's light palette (app/themes/site.ts): soft neutrals, near-black ink, the one accent for the mark. */
 const C = SITE.light;
@@ -154,7 +156,19 @@ function ListCard({ list }: { list: ListDetail }) {
   );
 }
 
-const PATH = /^\/og\/(home|l\/([A-Za-z0-9_-]{1,64}))\.png$/;
+/** A /for page: its group and heading, in the home card's type. */
+function PersonaCard({ eyebrow, title }: { eyebrow: string; title: string }) {
+  const size = title.length > 44 ? 64 : 76;
+  return (
+    <Frame>
+      <div style={{ display: "flex", marginTop: 56, fontSize: 26, color: C.ink3, fontWeight: 500 }}>{eyebrow}</div>
+      <div style={{ display: "flex", marginTop: 14, fontSize: size, fontWeight: 600, lineHeight: 1.06, letterSpacing: -2.2, maxWidth: 1040 }}>{title}</div>
+      <div style={{ display: "flex", marginTop: "auto", fontSize: 24, color: C.ink3, fontWeight: 500 }}>Sample lists to buy, to do and to find out</div>
+    </Frame>
+  );
+}
+
+const PATH = /^\/og\/(home|l\/([A-Za-z0-9_-]{1,64})|for\/([a-z0-9-]{1,64}))\.png$/;
 
 export function isOgPath(pathname: string) {
   return PATH.test(pathname);
@@ -177,6 +191,10 @@ export async function handleOg(request: Request, ctx: ExecutionContext): Promise
     let element: React.ReactElement;
     if (m[1] === "home") {
       element = <HomeCard />;
+    } else if (m[3]) {
+      const persona = personaBySlug(m[3]);
+      if (!persona) throw new Error("no such page");
+      element = <PersonaCard eyebrow={PERSONA_GROUPS[persona.group]} title={persona.h1} />;
     } else {
       // Always anonymous: a private list is not_found here, so it falls back to the generic image.
       const list = await api<ListDetail>(request, `/lists/${encodeURIComponent(m[2])}`, { anonymous: true });

@@ -18,9 +18,12 @@ const ROUTES: Array<[RegExp, string]> = [
   [/^\/connect$/, "/connect"],
   [/^\/themes$/, "/themes"],
   [/^\/themes\/[^/]+$/, "/themes/:slug"],
+  [/^\/for$/, "/for"],
+  [/^\/for\/[^/]+$/, "/for/:slug"],
   [/^\/(privacy|terms|report|theme|live|waiting|sitemap\.xml|robots\.txt)$/, "/$1"],
   [/^\/og\/l\/[^/]+$/, "/og/l/:id"],
   [/^\/og\/home\.png$/, "/og/home.png"],
+  [/^\/og\/for\/[^/]+$/, "/og/for/:slug"],
   [/^\/telemetry\/error$/, "/telemetry/error"],
 ];
 

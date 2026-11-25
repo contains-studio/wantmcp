@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
+import { PreviewContext } from "~/components/preview";
 import { DueChip } from "~/components/ItemWork";
 import { ChecklistBox, type ItemWithEntries } from "~/components/ListView";
 import { agentHue, formatMoney, plural } from "~/lib/format";
@@ -27,6 +28,7 @@ export function ItemIndex({
   isDone: (i: ItemWithEntries) => boolean;
 }) {
   useEscapeCloses();
+  const preview = useContext(PreviewContext);
   const shopping = fi.format === "shopping";
   const statusOf = (i: ItemWithEntries) =>
     isDone(i) ? "done" : i.status === "waiting_on_owner" ? "waiting_on_owner" : shopping ? "open" : (i.status ?? "open");
@@ -58,7 +60,7 @@ export function ItemIndex({
   if (kind === "heat") {
     const ordered = [...waiting, ...working, ...open];
     return (
-      <nav id="list-index" aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-heat scroll-mt-24">
+      <nav id={preview ? undefined : "list-index"} aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-heat scroll-mt-24">
         <ol className="ix-bars">
           {ordered.map((item, i) => (
             <li key={item.id} className="ix-bar" style={{ ["--i" as string]: i, ["--n" as string]: Math.max(ordered.length - 1, 1) }}>
@@ -91,7 +93,7 @@ export function ItemIndex({
 
   if (kind === "board") {
     return (
-      <nav id="list-index" aria-label="Board" className="ix ix-board scroll-mt-24">
+      <nav id={preview ? undefined : "list-index"} aria-label="Board" className="ix ix-board scroll-mt-24">
         <div className="ix-columns">
           {shown.map((g) => (
             <section key={g.key} className={`ix-column is-${g.key}`} aria-label={`${g.name}, ${g.items.length}`}>
@@ -133,7 +135,7 @@ export function ItemIndex({
 
   // Sections
   return (
-    <nav id="list-index" aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-sections scroll-mt-24">
+    <nav id={preview ? undefined : "list-index"} aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-sections scroll-mt-24">
       <div className="ix-table-head" aria-hidden="true">
         <span>Name</span>
         <span>{shopping ? "Found" : "Agent"}</span>

@@ -1,4 +1,6 @@
+import { useContext } from "react";
 import { useFetcher } from "react-router";
+import { HeadingBase, headingTag } from "./preview";
 import { dealState, discountPercent, formatMoney, plural } from "~/lib/format";
 import { useNow } from "~/lib/hooks";
 import type { Comment, Entry, PriceObservation } from "~/lib/types";
@@ -67,6 +69,7 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
   const now = useNow();
   const cur = entry.current_price;
   const titleId = `${entry.id}-title${anchor ? "" : "-detail"}`;
+  const H3 = headingTag(useContext(HeadingBase), 2);
   return (
     <article
       id={anchor ? entry.id : undefined}
@@ -89,12 +92,12 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
           ) : null}
         </div>
 
-        <h3 id={titleId} className="font-sans text-[0.98rem] font-semibold leading-snug tracking-normal">
+        <H3 id={titleId} className="font-sans text-[0.98rem] font-semibold leading-snug tracking-normal">
           <ExtLink href={entry.product_url ?? ""} className="link">
             {entry.title}
             <span className="sr-only"> (opens retailer site in a new tab)</span>
           </ExtLink>
-        </h3>
+        </H3>
 
         <PriceBlock price={cur} />
         <Provenance price={cur} />

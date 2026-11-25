@@ -62,11 +62,13 @@ export function Menu({
   const id = useSafeId("m");
   const preview = useContext(PreviewContext);
   const anchor = `--${id}`;
+  // Previews (gallery, persona pages) are read-only: no menu, just whatever the trigger shows.
+  if (preview) return trigger && !iconTrigger ? <span className={triggerClass}>{trigger}</span> : null;
   return (
     <span className="menu-wrap">
       <button
         type="button"
-        popoverTarget={preview ? undefined : id}
+        popoverTarget={id}
         className={triggerClass ?? "menu-trigger"}
         aria-label={trigger && !iconTrigger ? undefined : label}
         title={trigger && !iconTrigger ? undefined : label}
@@ -74,7 +76,7 @@ export function Menu({
       >
         {trigger ?? <span aria-hidden="true">⋯</span>}
       </button>
-      {!preview && (
+      {(
         <div id={id} popover="auto" role="group" aria-label={label} className={`menu-panel ${wide ? "menu-wide" : ""}`} style={{ positionAnchor: anchor } as React.CSSProperties}>
           {children}
         </div>

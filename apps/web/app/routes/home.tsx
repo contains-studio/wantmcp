@@ -10,6 +10,10 @@ import { useRootData } from "~/lib/hooks";
 import type { FeedEntry, Page } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
+import type { ThemeSample } from "~/components/ThemeThumb";
+import type { ThemeView } from "~/themes/view";
+import { occasionViews, templateViews } from "~/themes/catalogue.server";
+import { PERSONAS } from "~/lib/personas.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const cursor = new URL(request.url).searchParams.get("cursor");
@@ -46,7 +50,11 @@ export async function loader({ request }: Route.LoaderArgs) {
       theme: getThemeView("doc"),
     },
   ].map((k) => ({ ...k, sample: sampleList(now, k.format) }));
-  return { feed, cursor, accountDeleted, kinds, origin: siteOrigin(request) };
+  // Every look, rendered with the same sample list so the differences are the looks themselves.
+  const looks = { sample: sampleList(now, "shopping"), layouts: templateViews(), occasions: occasionViews() };
+  // A few of the /for pages, and the way to the rest.
+  const jobs = PERSONAS.filter((p) => p.index).slice(0, 8).map(({ slug, label }) => ({ slug, label }));
+  return { feed, cursor, accountDeleted, kinds, looks, jobs, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -89,7 +97,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { feed, cursor, accountDeleted, kinds, origin } = loaderData;
+  const { feed, cursor, accountDeleted, kinds, looks, jobs, origin } = loaderData;
   const { user } = useRootData();
 
   return (
@@ -140,6 +148,28 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           </div>
         </section>
       ))}
+
+      <Looks looks={looks} origin={origin} />
+
+      <section aria-labelledby="jobs-h" className="wrap grid gap-6 py-16">
+        <h2 id="jobs-h" className="serif text-[2rem] sm:text-[2.4rem]">
+          Lists for every kind of job
+        </h2>
+        <ul className="flex flex-wrap gap-2">
+          {jobs.map((j) => (
+            <li key={j.slug}>
+              <Link to={`/for/${j.slug}`} className="btn btn-sm">
+                {j.label}
+              </Link>
+            </li>
+          ))}
+          <li>
+            <Link to="/for" className="btn-quiet">
+              See all
+            </Link>
+          </li>
+        </ul>
+      </section>
 
       <section aria-labelledby="feed-h" className="wrap py-20">
         <p className="eyebrow">Live</p>
@@ -203,6 +233,36 @@ function WorksWith() {
         </li>
       </ul>
     </nav>
+  );
+}
+
+/** Every layout and occasion as a real miniature of the same list, each linking to its preview. */
+function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: ThemeView[]; occasions: ThemeView[] }; origin: string }) {
+  const tile = (v: ThemeView) => (
+    <li key={v.slug}>
+      <Link to={`/themes/${v.slug}`} className="look-tile grid overflow-hidden rounded-[14px] bg-card shadow-[var(--shadow)]">
+        <ThemeThumb theme={v} sample={looks.sample} origin={origin} className="h-36 sm:h-40" />
+        <span className="px-3 py-2 text-[0.9rem] font-medium">{v.name}</span>
+      </Link>
+    </li>
+  );
+  return (
+    <section aria-labelledby="looks-h">
+      <div className="wrap grid gap-8 py-20">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 id="looks-h" className="serif text-[2rem] sm:text-[2.4rem]">
+            Pick a look
+          </h2>
+          <Link to="/themes" className="btn-quiet">
+            All looks
+          </Link>
+        </div>
+        <h3 className="eyebrow -mb-4">Layouts</h3>
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">{looks.layouts.map(tile)}</ul>
+        <h3 className="eyebrow -mb-4">Occasions</h3>
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">{looks.occasions.map(tile)}</ul>
+      </div>
+    </section>
   );
 }
 

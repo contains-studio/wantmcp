@@ -1,0 +1,151 @@
+import { data, Form, Link, redirect, useNavigation } from "react-router";
+import type { Route } from "./+types/for-persona";
+import { ListView } from "~/components/ListView";
+import { HeadingBase } from "~/components/preview";
+import { api } from "~/lib/api.server";
+import { siteOrigin } from "~/lib/config.server";
+import { PERSONA_GROUPS } from "~/lib/personas";
+import { personaBySlug } from "~/lib/personas.server";
+import { buildSample, DEFAULT_LOOK } from "~/lib/samples";
+import { useRootData } from "~/lib/hooks";
+import { assertSameOrigin, getSessionToken } from "~/lib/session.server";
+import type { ListFormat, ListSummary } from "~/lib/types";
+import { getThemeView, resolveLook } from "~/themes/catalogue.server";
+
+const ORDER: ListFormat[] = ["shopping", "tasks", "research"];
+const LIST_NAME: Record<ListFormat, string> = { shopping: "Shopping list", tasks: "Task list", research: "Research list" };
+
+export function loader({ request, params }: Route.LoaderArgs) {
+  const persona = personaBySlug(params.slug);
+  if (!persona) throw new Response("Not found", { status: 404 });
+  const origin = siteOrigin(request);
+  const now = Date.now();
+  const lists = ORDER.map((format) => {
+    const spec = persona.lists[format];
+    const theme = getThemeView(spec.look ?? DEFAULT_LOOK[format]);
+    return { format, theme, sample: buildSample(spec, { id: `s-${format}`, now, url: `${origin}/for/${persona.slug}` }) };
+  });
+  const { lists: _specs, ...page } = persona;
+  return { persona: page, lists, origin };
+}
+
+export function headers() {
+  // Static content: the same for everyone, so shared caches may keep it.
+  return { "Cache-Control": "public, max-age=300, s-maxage=3600" };
+}
+
+export function meta({ loaderData }: Route.MetaArgs) {
+  if (!loaderData) return [{ title: "Not found · The Want MCP" }, { name: "robots", content: "noindex" }];
+  const { persona: p, origin } = loaderData;
+  const url = `${origin}/for/${p.slug}`;
+  return [
+    { title: `${p.title} · The Want MCP` },
+    { name: "description", content: p.description },
+    { tagName: "link", rel: "canonical", href: url },
+    ...(p.index ? [] : [{ name: "robots", content: "noindex" }]),
+    { property: "og:title", content: p.title },
+    { property: "og:description", content: p.description },
+    { property: "og:url", content: url },
+    { property: "og:image", content: `${origin}/og/for/${p.slug}.png?v=1` },
+    { property: "og:image:alt", content: p.h1 },
+    { name: "twitter:card", content: "summary_large_image" },
+  ];
+}
+
+/** "Start with this list": a private copy of the sample's wants (no products or answers), after sign-in. */
+export async function action({ request, params }: Route.ActionArgs) {
+  assertSameOrigin(request);
+  const persona = personaBySlug(params.slug);
+  if (!persona) throw new Response("Not found", { status: 404 });
+  const form = await request.formData();
+  const format = String(form.get("format")) as ListFormat;
+  if (!ORDER.includes(format)) return data({ error: "Pick a list" }, 400);
+  if (!getSessionToken(request)) throw redirect(`/login?next=${encodeURIComponent(`/for/${persona.slug}#start-${format}`)}`);
+  const spec = persona.lists[format];
+  try {
+    const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: spec.title, format, visibility: "private" } });
+    const look = resolveLook(spec.look ?? DEFAULT_LOOK[format]).slug;
+    if (look !== resolveLook(DEFAULT_LOOK[format]).slug) await api(request, `/lists/${list.id}`, { method: "PATCH", body: { theme: look } }).catch(() => null);
+    for (const item of spec.items) {
+      await api(request, `/lists/${encodeURIComponent(list.id)}/items`, { method: "POST", body: { text: item.want, ...(item.details ? { details: item.details } : {}) } });
+    }
+    return redirect(`/l/${list.id}`);
+  } catch {
+    return data({ error: "That didn't work. Try again in a moment." }, 502);
+  }
+}
+
+export default function ForPersona({ loaderData, actionData }: Route.ComponentProps) {
+  const { persona: p, lists, origin } = loaderData;
+  const nav = useNavigation();
+  const { user } = useRootData();
+  const starting = nav.state !== "idle" ? nav.formData?.get("format") : null;
+  return (
+    <div>
+      <header className="wrap grid max-w-4xl gap-3 pt-12 pb-10 sm:pt-16">
+        <Link to={`/for#${p.group}`} className="eyebrow w-fit hover:text-ink">
+          {PERSONA_GROUPS[p.group]}
+        </Link>
+        <h1 className="display text-[2.25rem] sm:text-[3rem]">{p.h1}</h1>
+        <p className="max-w-[60ch] text-[1.0625rem] text-ink-2">{p.intro}</p>
+      </header>
+
+      {lists.map(({ format, theme, sample }, i) => (
+        <section key={format} id={`start-${format}`} aria-labelledby={`${format}-h`} className={`scroll-mt-20 ${i % 2 === 0 ? "bg-sunk" : ""}`}>
+          <div className="wrap grid gap-4 py-10 sm:py-14">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <h2 id={`${format}-h`} className="serif text-[1.6rem] sm:text-[1.9rem]">
+                {LIST_NAME[format]} <span className="font-normal text-ink-3">· {theme.name}</span>
+              </h2>
+              <Form method="post" className="flex items-center gap-2">
+                <input type="hidden" name="format" value={format} />
+                <button className="btn btn-sm" disabled={starting === format}>
+                  {starting === format ? "Creating…" : "Start with this list"}
+                </button>
+              </Form>
+            </div>
+            {actionData && "error" in actionData && starting === null && <p className="form-error">{actionData.error}</p>}
+            <div className="overflow-hidden rounded-[18px] bg-paper shadow-[var(--shadow)]">
+              <HeadingBase.Provider value={3}>
+                <ListView
+                  list={sample.list}
+                  items={sample.items}
+                  suggestions={[]}
+                  comments={[]}
+                  commentsCursor={null}
+                  prices={sample.prices}
+                  isWriter={false}
+                  role={null}
+                  origin={origin}
+                  theme={theme}
+                  preview
+                />
+              </HeadingBase.Provider>
+            </div>
+          </div>
+        </section>
+      ))}
+
+      <section aria-labelledby="next-h" className="wrap grid justify-items-center gap-5 py-16 text-center">
+        <h2 id="next-h" className="serif text-[1.75rem] sm:text-[2.1rem]">
+          Make one for yourself
+        </h2>
+        <p className="max-w-[52ch] text-ink-2">Write what you want in your own words, then connect the AI app you already use.</p>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
+            Start a list
+          </Link>
+          <Link to="/connect" className="btn btn-lg">
+            Connect an agent
+          </Link>
+        </div>
+        <Link to="/for" className="link text-[0.9rem] text-ink-3">
+          More lists for other jobs
+        </Link>
+      </section>
+    </div>
+  );
+}
+
+/** Cloudflare Web Analytics may count views of this page (root.tsx, AnalyticsBeacon). */
+export const handle = { analytics: true };

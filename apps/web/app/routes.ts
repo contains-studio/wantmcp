@@ -12,6 +12,8 @@ export default [
   route("connect", "routes/connect.tsx"),
   route("themes", "routes/themes.tsx"),
   route("themes/:slug", "routes/theme-preview.tsx"),
+  route("for", "routes/for.tsx"),
+  route("for/:slug", "routes/for-persona.tsx"),
   route("privacy", "routes/privacy.tsx"),
   route("terms", "routes/terms.tsx"),
   route("report", "routes/report.tsx"),
