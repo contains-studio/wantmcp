@@ -28,7 +28,10 @@ export function ItemIndex({
 }) {
   useEscapeCloses();
   const shopping = fi.format === "shopping";
-  const statusOf = (i: ItemWithEntries) => (isDone(i) ? "done" : shopping ? "open" : (i.status ?? "open"));
+  const statusOf = (i: ItemWithEntries) =>
+    isDone(i) ? "done" : i.status === "waiting_on_owner" ? "waiting_on_owner" : shopping ? "open" : (i.status ?? "open");
+  const waiting = items.filter((i) => statusOf(i) === "waiting_on_owner");
+  const waitingName = isWriter ? "Waiting on you" : "Waiting on owner";
   const working = items.filter((i) => statusOf(i) === "in_progress");
   const open = items.filter((i) => statusOf(i) === "open");
   const done = items.filter((i) => statusOf(i) === "done");
@@ -39,15 +42,21 @@ export function ItemIndex({
         ? { working: "In progress", open: "Open", done: "Answered" }
         : { working: "In progress", open: "Open", done: fi.doneGroup };
   const groups = [
+    // SPEC 12.1: shown only when something is waiting.
+    ...(waiting.length ? [{ key: "waiting", name: waitingName, items: waiting }] : []),
     ...(shopping ? [] : [{ key: "working", name: names.working, items: working }]),
     { key: "open", name: names.open, items: open },
     { key: "done", name: names.done, items: done },
   ];
   // Board keeps every column (an empty column is information); Sections hides empty groups.
-  const shown = kind === "board" ? (shopping ? groups : [groups[1], groups[0], groups[2]]) : groups.filter((g) => g.items.length > 0);
+  const byKey = (k: string) => groups.find((g) => g.key === k);
+  const shown =
+    kind === "board"
+      ? ([byKey("waiting"), byKey("open"), byKey("working"), byKey("done")].filter(Boolean) as typeof groups)
+      : groups.filter((g) => g.items.length > 0);
 
   if (kind === "heat") {
-    const ordered = [...working, ...open];
+    const ordered = [...waiting, ...working, ...open];
     return (
       <nav id="list-index" aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-heat scroll-mt-24">
         <ol className="ix-bars">
@@ -56,6 +65,7 @@ export function ItemIndex({
               <a href={`#${item.id}`} className="ix-link">
                 <span className="ix-title">{item.text}</span>
                 <span className="ix-sub">
+                  {statusOf(item) === "waiting_on_owner" && <span className="ix-pill">{waitingName}</span>}
                   {statusOf(item) === "in_progress" && <span className="ix-pill">{names.working}</span>}
                   {countLabel(item, fi)}
                 </span>
@@ -152,7 +162,7 @@ export function ItemIndex({
                   <span className="ix-cell ix-who">{shopping ? item.entries.length || "–" : who ? <Avatars actors={[who]} named /> : "–"}</span>
                   <span className="ix-cell ix-due">{item.due_at ? <DueChip due={item.due_at} done={st === "done"} /> : "–"}</span>
                   <span className="ix-cell">
-                    <span className={`ix-pill is-${st}`}>{st === "done" ? names.done : st === "in_progress" ? names.working : "Open"}</span>
+                    <span className={`ix-pill is-${st}`}>{st === "done" ? names.done : st === "in_progress" ? names.working : st === "waiting_on_owner" ? waitingName : "Open"}</span>
                   </span>
                 </li>
               );

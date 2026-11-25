@@ -12,7 +12,7 @@ import { Time } from "~/components/Time";
 import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, RemoveButton } from "~/components/WriteTools";
 import { formatMoney, plural } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
-import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
+import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
 import { BUILD_ID } from "~/lib/build";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
@@ -351,9 +351,19 @@ function ItemSection({
           </div>
         )}
         {!editing && <ItemDetails details={item.details} />}
-        {!shopping && (
-          <ItemStatusBar itemId={item.id} status={status} claimedBy={item.claimed_by} completion={item.completion} fi={fi} canWrite={isWriter} />
+        {(!shopping || status === "waiting_on_owner") && (
+          <ItemStatusBar
+            itemId={item.id}
+            status={status}
+            claimedBy={item.claimed_by}
+            claimedAt={item.claimed_at}
+            completion={item.completion}
+            fi={fi}
+            canWrite={isWriter}
+          />
         )}
+        {/* SPEC 12.1: questions and answers are for writers only, on public lists too. */}
+        {isWriter && !editing && <OwnerQuestion question={item.open_question ?? null} history={item.questions ?? []} />}
       </header>
 
       {accepted && <AcceptedAnswer entry={accepted} />}

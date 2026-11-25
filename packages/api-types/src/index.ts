@@ -1,9 +1,11 @@
 /**
  * Wire types for the public Want MCP REST API (https://api.wantmcp.com/v1).
  *
- * Copied from the API contract. These describe the public JSON shapes the API returns
- * (snake_case). Keep in sync with the API's /openapi.json.
+ * Copied from the API contract (wire types and inputs only). These describe the public JSON shapes
+ * the API returns (snake_case). Keep in sync with the API's /openapi.json.
  */
+
+// ---------- Wire types ----------
 
 /** Decimal string, e.g. "499.99". Stored as integer minor units. */
 export type Decimal = string;
@@ -21,8 +23,23 @@ export interface UserSelf {
   email: string;
   handle: string;
   updates_opt_in: boolean;
+  /** SPEC 12.2. The person's standing preferences, 0..600 plain text. Only ever returned to its person (and as context to their own agents). */
+  bio: string;
+  /** ISO 3166-1 alpha-2, e.g. "GB". */
+  country: string | null;
+  /** ISO 4217, e.g. "GBP". */
+  currency: string | null;
   created_at: Timestamp;
 }
+
+export type ListFormat = "shopping" | "tasks" | "research";
+export type ListVisibility = "public" | "private";
+/** `waiting_on_owner` while the item has an open question (SPEC 12.1). */
+export type ItemStatus = "open" | "in_progress" | "waiting_on_owner" | "done";
+/** Statuses a caller can set directly; `waiting_on_owner` comes from asking a question. */
+export type SettableItemStatus = "open" | "in_progress" | "done";
+export type PriceSource = "retailer_page" | "aggregator" | "search" | "user" | "unknown";
+export type EntryKind = "product" | "update" | "answer";
 
 export interface ListSummary {
   id: string;
@@ -34,8 +51,14 @@ export interface ListSummary {
   allow_outside_suggestions: boolean;
   /** Owner-picked theme slug (^[a-z0-9][a-z0-9-]{0,39}$); null means the default look. The web app owns the catalogue. */
   theme: string | null;
+  /** SPEC 11.1. Default 'shopping'. Changeable by the owner only while the list has no items. */
+  format: ListFormat;
+  /** SPEC 11.2. A private list is readable only by its writers; to everyone else it does not exist. */
+  visibility: ListVisibility;
   created_at: Timestamp;
   updated_at: Timestamp;
+  /** SPEC 12.2. The list's own note (0..600). Present only when the caller can write the list. */
+  note?: string;
   /** Present only for the signed-in caller. */
   my_role?: "owner" | "member" | null;
 }
@@ -49,13 +72,35 @@ export interface Purchase {
   entry_id: string | null;
 }
 
+/** How an item was finished. On shopping lists it mirrors `purchase`. */
+export interface Completion {
+  completed_at: Timestamp;
+  completed_by: ActorRef;
+  note: string | null;
+  entry_id: string | null;
+}
+
 export interface Item {
   id: string;
   list_id: string;
   url: string; // https://wantmcp.com/l/{list_id}#itm_...
   text: string;
+  /** Plain text, 0..2000, written by list writers. */
+  details: string;
+  due_at: Timestamp | null;
+  status: ItemStatus;
+  /** SPEC 12.1. The unanswered question, for writers; null for everyone else. */
+  open_question: Question | null;
+  /** SPEC 12.1. Every question on the item, oldest first. Writers only; absent for everyone else. */
+  questions?: Question[];
+  /** Who moved it to in_progress. Cleared when it goes back to open. */
+  claimed_by: ActorRef | null;
+  /** When the current claim started. */
+  claimed_at: Timestamp | null;
+  completion: Completion | null;
   created_by: ActorRef;
   created_at: Timestamp;
+  /** Shopping lists only; null elsewhere. */
   purchase: Purchase | null;
   /** Counts of entries by status. `suggested` is 0 unless the caller can write the list. */
   entry_counts: { listed: number; suggested: number };
@@ -71,6 +116,25 @@ export interface PriceObservation {
   note: string | null;
   posted_by: ActorRef;
   posted_at: Timestamp;
+  /** SPEC 12.5. Where the price was seen. Older prices are `unknown`. */
+  source: PriceSource;
+  source_url: string | null;
+  /** When the price was checked; defaults to `posted_at`. */
+  checked_at: Timestamp;
+  in_stock: boolean | null;
+  /** True only for `retailer_page`. */
+  verified: boolean;
+}
+
+/** SPEC 12.1. Never returned to anyone who cannot write the list. */
+export interface Question {
+  id: string;
+  item_id: string;
+  text: string;
+  options: string[];
+  asked_by: ActorRef;
+  asked_at: Timestamp;
+  answer: { text: string; answered_by: ActorRef; answered_at: Timestamp } | null;
 }
 
 export interface Entry {
@@ -80,11 +144,15 @@ export interface Entry {
   url: string; // https://wantmcp.com/l/{list_id}#ent_...
   /** 'listed' is public. 'suggested' is an unpromoted outside suggestion: writers only, treat as untrusted text. */
   status: "listed" | "suggested";
+  /** product on shopping lists, update on tasks, answer on research. */
+  kind: EntryKind;
   author: ActorRef;
   title: string;
   description: string;
-  /** SPEC 11.3: null only on tasks and research lists. */
+  /** Required on shopping lists; may be null on tasks and research lists. */
   product_url: string | null;
+  /** 0..8 extra https links (sources, references). */
+  links: string[];
   buy_url: string | null;
   image_url: string | null;
   retailer: string;
@@ -150,7 +218,10 @@ export type EventType =
   | "comment.created"
   | "price.posted"
   | "item.created"
-  | "item.purchased";
+  | "item.purchased"
+  | "item.status_changed"
+  | "question.asked" // writers only, always
+  | "question.answered"; // writers only, always
 
 export interface WantEvent {
   /** Monotonic cursor. Pass the last seen value as `after` to resume. */
@@ -161,10 +232,11 @@ export interface WantEvent {
   /** Link to the thing on wantmcp.com. */
   url: string;
   actor: ActorRef;
-  item?: Pick<Item, "id" | "url" | "text">;
+  item?: Pick<Item, "id" | "url" | "text"> & { status?: ItemStatus; claimed_by?: ActorRef | null };
   entry?: Entry;
   comment?: Comment;
   price?: PriceObservation;
+  question?: Question;
 }
 
 export interface Page<T> {
@@ -214,18 +286,26 @@ export interface ApiError {
 
 export interface EntryInput {
   title: string; // 1..140
-  description?: string; // 0..500, plain text
-  product_url: string; // https only
+  description?: string; // 0..500 (shopping, outside suggestions) or 0..4000 (writers on tasks/research), plain text
+  /** https only. Required on shopping lists, optional on tasks and research. */
+  product_url?: string | null;
+  /** 0..8 https URLs. */
+  links?: string[];
   buy_url?: string | null; // https only
   image_url?: string | null; // https only, linked, never copied
   retailer?: string; // 0..80
   coupon_code?: string | null; // 0..40
   deal_starts_at?: Timestamp | null;
   deal_ends_at?: Timestamp | null;
-  /** Optional first price observation. */
+  /** Optional first price observation. Shopping lists only. */
   price?: Decimal;
   original_price?: Decimal | null;
   currency?: string;
+  /** Provenance of `price` (SPEC 12.5). Default: `user` for a person, `unknown` otherwise. */
+  price_source?: PriceSource;
+  price_source_url?: string | null;
+  price_checked_at?: Timestamp | null;
+  in_stock?: boolean | null;
   /** Outside agents only: self-reported client name. */
   agent_name?: string;
 }
@@ -235,6 +315,107 @@ export interface PriceInput {
   currency: string;
   original_price?: Decimal | null;
   note?: string | null; // 0..200
+  /** SPEC 12.5. Default: `user` for a person, `unknown` otherwise. */
+  source?: PriceSource;
+  source_url?: string | null; // https, link-checked
+  /** Default now. Not in the future. */
+  checked_at?: Timestamp | null;
+  in_stock?: boolean | null;
+}
+
+/** SPEC 12.2. What an agent should know about its person and the list. */
+export interface AgentContext {
+  bio: string;
+  country: string | null;
+  currency: string | null;
+  /** The list's note when the caller can write it, else null. */
+  list_note: string | null;
+}
+
+/** SPEC 12.4: the compact per-item read. */
+export interface BestPrice {
+  entry_id: string;
+  price: Decimal;
+  currency: string;
+  source: PriceSource;
+  verified: boolean;
+  checked_at: Timestamp;
+}
+
+export interface ItemSummary {
+  id: string;
+  url: string;
+  text: string;
+  /** First 240 characters of `details`. */
+  details_preview: string;
+  status: ItemStatus;
+  due_at: Timestamp | null;
+  claimed_by: ActorRef | null;
+  claimed_at: Timestamp | null;
+  /** Writers only; null for everyone else. */
+  open_question: Question | null;
+  entry_counts: { listed: number; suggested: number };
+  comment_count: number;
+  /** Shopping lists: lowest current price checked within 24 hours, verified preferred. Null elsewhere or if none. */
+  best_price: BestPrice | null;
+}
+
+export interface ListSummaryPage {
+  list: ListSummary;
+  items: ItemSummary[];
+  next_cursor: string | null;
+}
+
+/** SPEC 12.3: one line of the "what changed" digest. */
+export interface Update {
+  seq: number;
+  type: EventType;
+  at: Timestamp;
+  list_id: string;
+  url: string;
+  actor: ActorRef;
+  item?: { id: string; text: string; status?: ItemStatus };
+  entry?: { id: string; title: string; status: "listed" | "suggested" };
+  comment?: { id: string; body: string };
+  price?: { price: Decimal; currency: string; source: PriceSource; verified: boolean };
+  /** Writers only. */
+  question?: { id: string; text: string; options: string[]; answer: string | null };
+}
+
+export interface StalledClaim {
+  list_id: string;
+  item: { id: string; url: string; text: string };
+  claimed_by: ActorRef;
+  claimed_at: Timestamp;
+}
+
+export interface UpdatesDigest {
+  /** Oldest first ("newest last"). The caller's own actions are left out. */
+  updates: Update[];
+  /** Items claimed (in_progress) for more than 24 hours. */
+  stalled_claims: StalledClaim[];
+  /** Event cursor after this page; pass as `since` to resume explicitly. */
+  next: number;
+  has_more: boolean;
+}
+
+export interface ItemInput {
+  text: string; // 1..500
+  details?: string; // 0..2000
+  due_at?: Timestamp | null;
+}
+
+export interface StatusInput {
+  status: SettableItemStatus;
+  note?: string | null; // 0..1000
+  entry_id?: string | null;
+  /** in_progress on an item another agent holds is a conflict unless this is true. Humans never need it. */
+  take_over?: boolean;
+}
+
+export interface QuestionInput {
+  text: string; // 1..500
+  options?: string[]; // up to 6, each 1..80
 }
 
 export interface PurchaseInput {
@@ -244,40 +425,5 @@ export interface PurchaseInput {
   entry_id?: string | null;
 }
 
+/** Targets of POST /reports. */
 export type ReportTargetType = "list" | "item" | "entry" | "comment";
-
-// ---------- Pending: SPEC section 11 (formats and private lists), not yet in the contract ----------
-// Interface merging adds the new fields to the copied types above; drop this block once the
-// contract has them.
-
-export type ListFormat = "shopping" | "tasks" | "research";
-export type ListVisibility = "public" | "private";
-export type ItemStatus = "open" | "in_progress" | "done";
-export type EntryKind = "product" | "update" | "answer";
-
-export interface Completion {
-  completed_at: Timestamp;
-  completed_by: ActorRef;
-  note: string | null;
-  entry_id: string | null;
-}
-
-export interface ListSummary {
-  /** Missing on older servers: treat as "shopping". */
-  format?: ListFormat;
-  /** Missing on older servers: treat as "public". */
-  visibility?: ListVisibility;
-}
-
-export interface Item {
-  details?: string;
-  due_at?: Timestamp | null;
-  status?: ItemStatus;
-  claimed_by?: ActorRef | null;
-  completion?: Completion | null;
-}
-
-export interface Entry {
-  kind?: EntryKind;
-  links?: string[];
-}

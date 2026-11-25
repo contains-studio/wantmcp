@@ -723,3 +723,4 @@ button.check-toggle:hover { border-color: var(--want); }
 .themed.tpl-default.no-occ .price-sparkline { max-width: 15rem; }
 .themed.tpl-default.no-occ .price-sparkline svg { height: 2.25rem; }
 .themed.tpl-default.no-occ .item-number { display: inline-block; }
+.ix-pill.is-waiting_on_owner { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }

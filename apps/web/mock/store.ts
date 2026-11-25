@@ -1,13 +1,21 @@
 /**
  * In-memory state for the mock API. Everything resets when the process restarts.
  */
-import type { ActorRef, Comment, Completion, EntryKind, EventType, ItemStatus, ListFormat, ListVisibility, PriceObservation, Purchase, Timestamp, WantEvent } from "../app/lib/types.ts";
+import type { ActorRef, Comment, Completion, EntryKind, EventType, ItemStatus, ListFormat, ListVisibility, PriceObservation, Purchase, Question, Timestamp, WantEvent } from "../app/lib/types.ts";
+
+/** A stored price: older rows have no provenance yet (SPEC 12.5), the API fills it in. */
+export type PriceRow = Omit<PriceObservation, "source" | "source_url" | "checked_at" | "in_stock" | "verified"> &
+  Partial<Pick<PriceObservation, "source" | "source_url" | "checked_at" | "in_stock" | "verified">>;
 
 export interface UserRow {
   id: string;
   email: string;
   handle: string;
   updates_opt_in: boolean;
+  /** SPEC 12.2 */
+  bio?: string;
+  country?: string | null;
+  currency?: string | null;
   created_at: Timestamp;
 }
 
@@ -20,6 +28,8 @@ export interface ListRow {
   theme?: string | null;
   format?: ListFormat;
   visibility?: ListVisibility;
+  /** SPEC 12.2: writers only. */
+  note?: string;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
@@ -57,6 +67,7 @@ export interface ItemRow {
   due_at?: Timestamp | null;
   status?: ItemStatus;
   claimed_by?: ActorRef | null;
+  claimed_at?: Timestamp | null;
   completion?: Completion | null;
 }
 
@@ -92,7 +103,9 @@ export interface Store {
   agents: AgentRow[];
   items: ItemRow[];
   entries: EntryRow[];
-  prices: PriceObservation[];
+  prices: PriceRow[];
+  /** SPEC 12.1: never shown to anyone who cannot write the list. */
+  questions: Question[];
   comments: Comment[];
   events: WantEvent[];
   reports: Array<{ target_type: string; target_id: string; reason: string; created_at: Timestamp }>;
@@ -126,6 +139,7 @@ export function emptyStore(): Store {
     items: [],
     entries: [],
     prices: [],
+    questions: [],
     comments: [],
     events: [],
     reports: [],

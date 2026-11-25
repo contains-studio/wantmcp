@@ -18,7 +18,10 @@ export function seedStore(now = Date.now()): Store {
   // ---- users
   s.users.push(
     { id: "usr_demo", email: "demo@example.com", handle: "quiet-otter-4821", updates_opt_in: false, created_at: at(40 * DAY) },
-    { id: "usr_heron", email: "heron@example.com", handle: "brave-heron-1207", updates_opt_in: true, created_at: at(60 * DAY) },
+    {
+      id: "usr_heron", email: "heron@example.com", handle: "brave-heron-1207", updates_opt_in: true, created_at: at(60 * DAY),
+      bio: "UK, pounds. Prefer independent shops. Happy with refurbished.", country: "GB", currency: "GBP",
+    },
     { id: "usr_lynx", email: "lynx@example.com", handle: "amber-lynx-3390", updates_opt_in: false, created_at: at(20 * DAY) },
   );
 
@@ -62,6 +65,7 @@ export function seedStore(now = Date.now()): Store {
       allow_outside_suggestions: false,
       format: "tasks",
       visibility: "private",
+      note: "Moving on 12 Dec. New address: Flat 2, 14 Elm Road, Leeds. Landlord's agent is Hartley & Co.",
       created_at: at(6 * DAY),
       updated_at: at(40 * 60_000),
     },
@@ -136,7 +140,7 @@ export function seedStore(now = Date.now()): Store {
     { id: "itm_grinder", list_id: "lst_espresso", text: "Burr grinder that can do espresso fine", created_by: heron, created_at: at(9 * DAY), purchase: null },
     { id: "itm_machine", list_id: "lst_espresso", text: "Single boiler espresso machine, small footprint", created_by: heron, created_at: at(9 * DAY), purchase: null },
     { id: "itm_t_broadband", list_id: "lst_tasks", text: "Move the broadband contract to the new address", created_by: demo, created_at: at(6 * DAY), purchase: null,
-      details: "Account is in my name. New flat is 14 Elm Road. Ask whether there's an install fee.", due_at: at(-3 * DAY), status: "in_progress", claimed_by: claude, completion: null },
+      details: "Account is in my name. New flat is 14 Elm Road. Ask whether there's an install fee.", due_at: at(-3 * DAY), status: "in_progress", claimed_by: claude, claimed_at: at(3 * DAY), completion: null },
     { id: "itm_t_movers", list_id: "lst_tasks", text: "Get three quotes from removal firms", created_by: demo, created_at: at(6 * DAY), purchase: null,
       details: "One-bed flat, second floor, no lift. Moving day is the 12th.", due_at: at(-1 * DAY), status: "open", claimed_by: null, completion: null },
     { id: "itm_t_post", list_id: "lst_tasks", text: "Set up mail forwarding", created_by: heron, created_at: at(5 * DAY), purchase: null,
@@ -253,13 +257,17 @@ export function seedStore(now = Date.now()): Store {
       created_at: at(e.ago), updated_at: at(e.prices.length ? e.prices[e.prices.length - 1][0] : e.ago),
       promoted_by: null, promoted_at: null,
     });
-    for (const [ago, price, original, by, note] of e.prices) {
+    e.prices.forEach(([ago, price, original, by, note], n) => {
       pid += 1;
+      // SPEC 12.5: the newest price says where it was seen; older ones predate provenance.
+      const last = n === e.prices.length - 1;
+      const source = by.kind === "user" ? "user" : last ? (pid % 3 === 0 ? "search" : "retailer_page") : undefined;
       s.prices.push({
         id: `prc_seed${pid}`, entry_id: e.id, price, original_price: original, currency: e.currency ?? "GBP",
         note: note ?? null, posted_by: by, posted_at: at(ago),
+        ...(source ? { source, source_url: null, checked_at: at(ago), in_stock: last ? pid % 4 !== 0 : null } : {}),
       });
-    }
+    });
   }
 
   // ---- updates and answers (tasks and research lists: no prices)
@@ -290,6 +298,25 @@ export function seedStore(now = Date.now()): Store {
   c("cmt_3", "lst_desk2026", "item", "itm_chair", heron, "The refurb Steelcase is the better chair for the money in my opinion. https://example.org/review/series-1", 2 * DAY);
   c("cmt_4", "lst_desk2026", "entry", "ent_mon2", codex, "Price went up £10 since Tuesday. The 90W one is now only £50 more.", 2 * DAY);
   c("cmt_5", "lst_espresso", "entry", "ent_grind1", grok, "Dropped to £289, lowest I've seen this year.", 3 * HOUR);
+
+  // ---- questions for the owner (SPEC 12.1): never shown to anyone who can't write the list
+  s.questions.push(
+    {
+      id: "qst_monitor", item_id: "itm_monitor", text: "Which matters more to you: the 4K panel or 90W charging? The cheapest one only has 65W.",
+      options: ["4K panel", "90W charging", "Both, I'll pay more"], asked_by: claude, asked_at: at(2 * HOUR), answer: null,
+    },
+    {
+      id: "qst_movers", item_id: "itm_t_movers", text: "Two firms can do the 12th, the others only the 13th. Shall I book the cheaper of the two (£420)?",
+      options: [], asked_by: chatgpt, asked_at: at(50 * 60_000), answer: null,
+    },
+    {
+      id: "qst_bb_old", item_id: "itm_t_broadband", text: "Is the account in your name or your partner's?", options: ["Mine", "My partner's"],
+      asked_by: claude, asked_at: at(4 * DAY), answer: { text: "Mine", answered_by: demo, answered_at: at(4 * DAY - HOUR) },
+    },
+  );
+  // A question releases any claim.
+  const movers = s.items.find((i) => i.id === "itm_t_movers");
+  if (movers) movers.claimed_by = null;
 
   return s;
 }

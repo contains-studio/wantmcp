@@ -11,7 +11,7 @@
  */
 import type {
   ActorRef, AgentInfo, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
-  Member, Page, PriceInput, PriceObservation, PurchaseInput, UserSelf, WantEvent,
+  ItemSummary, ListSummaryPage, Member, Page, PriceInput, PriceObservation, PriceSource, PurchaseInput, Question, UserSelf, WantEvent,
 } from "../app/lib/types.ts";
 import { seedStore } from "./seed.ts";
 import { newId, randomToken, type AgentRow, type EntryRow, type ItemRow, type ListRow, type Store, type UserRow } from "./store.ts";
@@ -262,11 +262,20 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
     updated_at: l.updated_at,
   };
   if (c) out.my_role = roleOf(c, l.id);
+  // SPEC 12.2: the note is for writers only.
+  if (canWrite(c, l.id)) out.note = l.note ?? "";
   return out;
 }
 
 function pricesFor(entryId: string): PriceObservation[] {
-  return store.prices.filter((p) => p.entry_id === entryId).sort((a, b) => a.posted_at.localeCompare(b.posted_at));
+  // SPEC 12.5: older prices have no source and count as checked when posted.
+  return store.prices
+    .filter((p) => p.entry_id === entryId)
+    .sort((a, b) => a.posted_at.localeCompare(b.posted_at))
+    .map((p) => {
+      const source: PriceSource = p.source ?? "unknown";
+      return { ...p, source, source_url: p.source_url ?? null, checked_at: p.checked_at ?? p.posted_at, in_stock: p.in_stock ?? null, verified: source === "retailer_page" };
+    });
 }
 
 function entryOut(e: EntryRow): Entry {
@@ -299,6 +308,10 @@ function entryOut(e: EntryRow): Entry {
   };
 }
 
+function openQuestion(itemId: string): Question | null {
+  return store.questions.find((q) => q.item_id === itemId && !q.answer) ?? null;
+}
+
 function itemOut(i: ItemRow, c: Caller): Item {
   const entries = store.entries.filter((e) => e.item_id === i.id);
   const writer = canWrite(c, i.list_id);
@@ -312,8 +325,12 @@ function itemOut(i: ItemRow, c: Caller): Item {
     purchase: i.purchase,
     details: i.details ?? "",
     due_at: i.due_at ?? null,
-    status: i.status ?? (i.purchase ? "done" : "open"),
+    // SPEC 12.1: an item with an unanswered question is waiting on its owner (derived, as on the server).
+    status: openQuestion(i.id) ? "waiting_on_owner" : (i.status ?? (i.purchase ? "done" : "open")),
+    open_question: writer ? openQuestion(i.id) : null,
+    ...(writer ? { questions: store.questions.filter((q) => q.item_id === i.id).sort((a, b) => a.asked_at.localeCompare(b.asked_at)) } : {}),
     claimed_by: i.claimed_by ?? null,
+    claimed_at: i.claimed_by ? (i.claimed_at ?? null) : null,
     completion:
       i.completion ??
       (i.purchase ? { completed_at: i.purchase.purchased_at, completed_by: i.purchase.purchased_by, note: null, entry_id: i.purchase.entry_id } : null),
@@ -370,7 +387,10 @@ function agentOut(a: AgentRow): AgentInfo {
 }
 
 function userSelf(u: UserRow): UserSelf {
-  return { id: u.id, email: u.email, handle: u.handle, updates_opt_in: u.updates_opt_in, created_at: u.created_at };
+  return {
+    id: u.id, email: u.email, handle: u.handle, updates_opt_in: u.updates_opt_in,
+    bio: u.bio ?? "", country: u.country ?? null, currency: u.currency ?? null, created_at: u.created_at,
+  };
 }
 
 const ADJ = ["quiet", "brave", "amber", "lucky", "misty", "swift", "gentle", "bold", "sunny", "velvet"];
@@ -449,6 +469,18 @@ route("PATCH", "/me", ({ caller, body }) => {
     user.handle = h;
   }
   if (typeof body.updates_opt_in === "boolean") user.updates_opt_in = body.updates_opt_in;
+  // SPEC 12.2
+  if (body.bio !== undefined) user.bio = text("bio", body.bio, 600);
+  if (body.country !== undefined) {
+    const v = body.country == null || body.country === "" ? null : String(body.country).toUpperCase();
+    if (v !== null && (!/^[A-Z]{2}$/.test(v) || v === "UK")) throw invalid(v === "UK" ? "country: use GB for the United Kingdom" : "country must be a two-letter ISO code like GB");
+    user.country = v;
+  }
+  if (body.currency !== undefined) {
+    const v = body.currency == null || body.currency === "" ? null : String(body.currency).toUpperCase();
+    if (v !== null && !/^[A-Z]{3}$/.test(v)) throw invalid("currency must be a three-letter ISO code like GBP");
+    user.currency = v;
+  }
   return userSelf(user);
 });
 route("DELETE", "/me", ({ caller }) => {
@@ -562,7 +594,7 @@ route("POST", "/lists", ({ caller, body }) => {
   const t = nowIso();
   const l: ListRow = {
     id: newId("lst"), title, description, owner_id: c.user.id, allow_outside_suggestions: visibility === "public",
-    theme: themeSlug(body.theme), format, visibility, created_at: t, updated_at: t,
+    theme: themeSlug(body.theme), format, visibility, note: text("note", body.note, 600), created_at: t, updated_at: t,
   };
   store.lists.push(l);
   store.members.push({ id: newId("mem"), list_id: l.id, user_id: c.user.id, invited_email: null, role: "owner", status: "active", token: null, created_at: t });
@@ -586,6 +618,7 @@ route("PATCH", "/lists/{id}", ({ caller, params, body }) => {
   const l = getList(params[0]);
   if (body.title !== undefined) l.title = text("title", body.title, 140, true);
   if (body.description !== undefined) l.description = text("description", body.description, 500);
+  if (body.note !== undefined) l.note = text("note", body.note, 600);
   if (typeof body.allow_outside_suggestions === "boolean") l.allow_outside_suggestions = body.allow_outside_suggestions;
   if (body.theme !== undefined) l.theme = themeSlug(body.theme);
   if (body.visibility !== undefined) {
@@ -741,6 +774,8 @@ route("POST", "/items/{id}/purchase", ({ caller, params, body }) => {
     currency = currency ?? cur?.currency ?? null;
   }
   if (fmt(getList(i.list_id)) !== "shopping") throw invalid("Purchases are for shopping lists; set the item status instead");
+  const q = openQuestion(i.id);
+  if (q) throw new HttpError(409, "conflict", `Answer the open question first: “${q.text}”`);
   i.purchase = { purchased_at: nowIso(), purchased_by: actorRef(c), retailer, price, currency, entry_id: input.entry_id ?? null };
   i.status = "done";
   i.completion = { completed_at: i.purchase.purchased_at, completed_by: i.purchase.purchased_by, note: null, entry_id: i.purchase.entry_id };
@@ -769,13 +804,26 @@ route("POST", "/items/{id}/status", ({ caller, params, body }) => {
   const entryId = body.entry_id ? String(body.entry_id) : null;
   if (entryId && !store.entries.some((e) => e.id === entryId && e.item_id === i.id && e.status === "listed")) throw invalid("That entry isn't on this item");
   const shopping = fmt(getList(i.list_id)) === "shopping";
+  const q = openQuestion(i.id);
+  if (q) throw new HttpError(409, "conflict", `Answer the open question first: “${q.text}”`);
+  // Claims: an agent can't take an item someone else holds unless it says take_over; a person always can.
+  if (status === "in_progress" && i.status === "in_progress" && i.claimed_by && !sameActor(i.claimed_by, c)) {
+    if (c.kind === "agent" && body.take_over !== true) {
+      throw new HttpError(409, "conflict", `Already in progress by ${i.claimed_by.kind === "agent" ? i.claimed_by.name : i.claimed_by.kind === "user" ? i.claimed_by.handle : "someone"}. Pass take_over: true to take it over.`);
+    }
+  }
+  const sameHolder = status === "in_progress" && i.status === "in_progress" && i.claimed_by && sameActor(i.claimed_by, c);
   i.status = status;
   if (status === "open") {
     i.claimed_by = null;
+    i.claimed_at = null;
     i.completion = null;
     if (shopping) i.purchase = null;
   } else if (status === "in_progress") {
-    i.claimed_by = actorRef(c);
+    if (!sameHolder) {
+      i.claimed_by = actorRef(c);
+      i.claimed_at = nowIso();
+    }
     i.completion = null;
     if (shopping) i.purchase = null;
   } else {
@@ -786,6 +834,89 @@ route("POST", "/items/{id}/status", ({ caller, params, body }) => {
   touch(i.list_id);
   emit("item.status_changed" as EventType, i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text } });
   return itemOut(i, c);
+});
+
+// SPEC 12.1: questions for the owner
+function priceSource(v: unknown, fallback: PriceSource): PriceSource {
+  if (v == null || v === "") return fallback;
+  if (v === "retailer_page" || v === "aggregator" || v === "search" || v === "user" || v === "unknown") return v;
+  throw invalid("source must be retailer_page, aggregator, search, user or unknown");
+}
+function checkedAt(v: unknown, fallback: string): string {
+  if (v == null || v === "") return fallback;
+  const t = Date.parse(String(v));
+  if (!Number.isFinite(t)) throw invalid("checked_at must be an ISO 8601 timestamp");
+  if (t > Date.now() + 60_000) throw invalid("checked_at can't be in the future");
+  return new Date(t).toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+route("POST", "/items/{id}/questions", ({ caller, params, body }) => {
+  const i = getItem(params[0]);
+  const c = requireWriter(caller, i.list_id);
+  const done = i.status === "done" || !!i.purchase;
+  if (done) throw new HttpError(409, "conflict", "This item is finished: reopen it first");
+  const open = openQuestion(i.id);
+  if (open) throw new HttpError(409, "conflict", `There's already an open question: “${open.text}”`);
+  const qText = text("text", body.text, 500, true);
+  const rawOptions = Array.isArray(body.options) ? body.options : [];
+  const options = [...new Set(rawOptions.map((o: unknown, n: number) => text(`options[${n}]`, o, 80, true)))];
+  if (options.length > 6) throw invalid("At most 6 options");
+  const q: Question = { id: newId("qst"), item_id: i.id, text: qText, options, asked_by: actorRef(c), asked_at: nowIso(), answer: null };
+  store.questions.push(q);
+  // Asking releases any claim.
+  i.status = "open";
+  i.claimed_by = null;
+  i.claimed_at = null;
+  touch(i.list_id);
+  emit("question.asked", i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text }, question: q } as Partial<WantEvent>);
+  return created(q);
+});
+
+route("POST", "/questions/{id}/answer", ({ caller, params, body }) => {
+  const q = store.questions.find((x) => x.id === params[0]);
+  if (!q) throw notFound("Question not found");
+  const i = getItem(q.item_id);
+  const c = requireWriter(caller, i.list_id);
+  if (q.answer) throw new HttpError(409, "conflict", "This question is already answered");
+  q.answer = { text: text("text", body.text, 2000, true), answered_by: actorRef(c), answered_at: nowIso() };
+  i.status = "open";
+  touch(i.list_id);
+  emit("question.answered", i.list_id, actorRef(c), `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text }, question: q } as Partial<WantEvent>);
+  return q;
+});
+
+/** SPEC 12.4: the compact read. Best price: newest observation per listed entry, checked in the last 24 hours, verified first. */
+function bestPrice(itemId: string) {
+  const day = Date.now() - 24 * 3600_000;
+  const fresh = store.entries
+    .filter((e) => e.item_id === itemId && e.status === "listed")
+    .map((e) => pricesFor(e.id).at(-1))
+    .filter((p): p is PriceObservation => !!p && Date.parse(p.checked_at) >= day);
+  const pool = fresh.some((p) => p.verified) ? fresh.filter((p) => p.verified) : fresh;
+  if (!pool.length) return null;
+  const counts = new Map<string, number>();
+  for (const p of pool) counts.set(p.currency, (counts.get(p.currency) ?? 0) + 1);
+  const cur = [...counts].sort((a, b) => b[1] - a[1])[0][0];
+  const best = pool.filter((p) => p.currency === cur).sort((a, b) => Number(a.price) - Number(b.price))[0];
+  return { entry_id: best.entry_id, price: best.price, currency: best.currency, source: best.source, verified: best.verified, checked_at: best.checked_at };
+}
+
+route("GET", "/lists/{id}/summary", ({ caller, params }) => {
+  const l = readableList(params[0], caller);
+  const shopping = fmt(l) === "shopping";
+  const items: ItemSummary[] = store.items
+    .filter((i) => i.list_id === l.id)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .map((i) => {
+      const full = itemOut(i, caller);
+      return {
+        id: full.id, url: full.url, text: full.text, details_preview: full.details.slice(0, 240), status: full.status, due_at: full.due_at,
+        claimed_by: full.claimed_by, claimed_at: full.claimed_at, open_question: full.open_question, entry_counts: full.entry_counts,
+        comment_count: full.comment_count, best_price: shopping ? bestPrice(i.id) : null,
+      };
+    });
+  const page: ListSummaryPage = { list: listSummary(l, caller), items, next_cursor: null };
+  return page;
 });
 
 // entries
@@ -847,7 +978,13 @@ route("POST", "/items/{id}/entries", ({ caller, params, body }) => {
   };
   store.entries.push(e);
   if (firstPrice) {
-    store.prices.push({ id: newId("prc"), entry_id: e.id, price: firstPrice, original_price: decimal("original_price", input.original_price), currency: text("currency", input.currency, 3, true).toUpperCase(), note: null, posted_by: author, posted_at: t });
+    const source = priceSource(input.price_source, writer && caller?.kind === "user" ? "user" : "unknown");
+    store.prices.push({
+      id: newId("prc"), entry_id: e.id, price: firstPrice, original_price: decimal("original_price", input.original_price),
+      currency: text("currency", input.currency, 3, true).toUpperCase(), note: null, posted_by: author, posted_at: t,
+      source, source_url: checkUrl("price_source_url", input.price_source_url), checked_at: checkedAt(input.price_checked_at, t),
+      in_stock: typeof input.in_stock === "boolean" ? input.in_stock : null, verified: source === "retailer_page",
+    });
   }
   touch(l.id);
   emit(writer ? "entry.listed" : "entry.suggested", l.id, author, `${WEB}/l/${l.id}#${e.id}`, { entry: entryOut(e) });
@@ -947,7 +1084,14 @@ route("POST", "/entries/{id}/prices", ({ caller, params, body }) => {
     original_price: decimal("original_price", input.original_price),
     currency: text("currency", input.currency, 3, true).toUpperCase(),
     note: text("note", input.note, 200) || null, posted_by: actorRef(c), posted_at: nowIso(),
+    // SPEC 12.5: a person's price is theirs ("user") unless they say otherwise.
+    source: "unknown", source_url: null, checked_at: "", in_stock: null, verified: false,
   };
+  p.source = priceSource(input.source, c.kind === "user" ? "user" : "unknown");
+  p.source_url = checkUrl("source_url", input.source_url);
+  p.checked_at = checkedAt(input.checked_at, p.posted_at);
+  p.in_stock = typeof input.in_stock === "boolean" ? input.in_stock : null;
+  p.verified = p.source === "retailer_page";
   store.prices.push(p);
   e.updated_at = p.posted_at;
   touch(e.list_id);
@@ -1000,7 +1144,7 @@ function eventsFor(c: Caller, listIds: string[] | null, url: URL) {
   const events = store.events
     .filter((e) => e.seq > after)
     .filter((e) => !listIds || listIds.includes(e.list_id))
-    .filter((e) => e.type !== "entry.suggested" || canWrite(c, e.list_id))
+    .filter((e) => (e.type !== "entry.suggested" && !e.type.startsWith("question.")) || canWrite(c, e.list_id))
     // SPEC 11.2: on a private list every event is writers-only.
     .filter((e) => isPublic(e.list_id) || canWrite(c, e.list_id))
     .filter((e) => !types || types.includes(e.type))

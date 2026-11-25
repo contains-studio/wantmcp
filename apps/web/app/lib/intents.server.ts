@@ -102,6 +102,18 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
         await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}`, { method: "PATCH", body });
         return { ok: true, intent };
       }
+      case "answer-question": {
+        // SPEC 12.1: a writer answers an agent's question; the item goes back to open.
+        const text = str(form, "text");
+        if (!text) return data({ error: "Write an answer", intent }, 400);
+        await api(request, `/questions/${encodeURIComponent(str(form, "question_id"))}/answer`, { method: "POST", body: { text } });
+        return { ok: true, intent };
+      }
+      case "add-details": {
+        // The light prompt after adding an item: what an agent would need, stored in details.
+        await api(request, `/items/${encodeURIComponent(str(form, "item_id"))}`, { method: "PATCH", body: { details: str(form, "details") } });
+        return { ok: true, intent };
+      }
       case "set-status": {
         const status = str(form, "status");
         if (!["open", "in_progress", "done"].includes(status)) return data({ error: "Unknown status", intent }, 400);

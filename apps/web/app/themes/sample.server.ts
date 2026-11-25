@@ -60,6 +60,11 @@ function sampleShopping(now: number) {
       note: null,
       posted_by: author,
       posted_at: at(ago),
+      source: i === history.length - 1 ? "retailer_page" : "search",
+      source_url: null,
+      checked_at: at(ago),
+      in_stock: true,
+      verified: i === history.length - 1,
     }));
     return {
       id,
@@ -84,10 +89,13 @@ function sampleShopping(now: number) {
       updated_at: at(history.at(-1)?.[0] ?? DAY),
       promoted_by: null,
       promoted_at: null,
+      kind: "product",
+      links: [],
       ...extra,
     };
   };
 
+  const itemDefaults = { details: "", due_at: null, status: "open" as const, open_question: null, claimed_by: null, claimed_at: null, completion: null };
   const items: ItemWithEntries[] = [
     {
       id: "itm_sample_chair",
@@ -97,6 +105,7 @@ function sampleShopping(now: number) {
       created_by: me,
       created_at: at(14 * DAY),
       purchase: null,
+      ...itemDefaults,
       entry_counts: { listed: 3, suggested: 0 },
       comment_count: 1,
       entries: [
@@ -117,6 +126,7 @@ function sampleShopping(now: number) {
       created_by: me,
       created_at: at(12 * DAY),
       purchase: null,
+      ...itemDefaults,
       entry_counts: { listed: 2, suggested: 0 },
       comment_count: 0,
       entries: [
@@ -134,6 +144,8 @@ function sampleShopping(now: number) {
       created_by: me,
       created_at: at(9 * DAY),
       purchase: { purchased_at: at(2 * DAY), purchased_by: me, retailer: "Example Coffee", price: "89.00", currency: "GBP", entry_id: "ent_sample_f" },
+      ...itemDefaults,
+      status: "done",
       entry_counts: { listed: 2, suggested: 0 },
       comment_count: 0,
       entries: [
@@ -194,7 +206,8 @@ function textSample(now: number, format: "tasks" | "research"): Sample {
   });
   const item = (id: string, text: string, details: string, status: "open" | "in_progress" | "done", entries: Entry[], extra: Record<string, unknown> = {}) => ({
     id, url: `https://wantmcp.com/themes#${id}`, list_id: "sample", text, details, created_by: me, created_at: at(5 * DAY), purchase: null,
-    status, claimed_by: status === "in_progress" ? claude : null, completion: null, due_at: null,
+    status, claimed_by: status === "in_progress" ? claude : null, claimed_at: status === "in_progress" ? at(2 * HOUR) : null, open_question: null,
+    completion: null, due_at: null,
     entry_counts: { listed: entries.length, suggested: 0 }, comment_count: 0, entries, ...extra,
   });
   const items = tasks

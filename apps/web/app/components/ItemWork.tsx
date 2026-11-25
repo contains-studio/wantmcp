@@ -7,7 +7,7 @@ import { useFetcher } from "react-router";
 import { formatDate } from "~/lib/format";
 import type { FormatInfo } from "~/lib/formats";
 import { useNow } from "~/lib/hooks";
-import type { ActorRef, Comment, Entry, ItemStatus } from "~/lib/types";
+import type { ActorRef, Comment, Entry, ItemStatus, Question } from "~/lib/types";
 import { ActorTag } from "./ActorTag";
 import { CommentForm, CommentList } from "./Comments";
 import { ExtLink, Linkify } from "./ExtLink";
@@ -82,10 +82,25 @@ function StatusButton({ itemId, status, label, kind = "ghost", note }: { itemId:
  * Status line for task and research items: who claimed it, when it was done, and the
  * controls to move it along (writers only).
  */
+/** How long a claim has been held: "4 min", "3 h", "2 days". */
+export function claimAge(iso: string | null | undefined, now: number): string | null {
+  if (!iso) return null;
+  const ms = Math.max(0, now - Date.parse(iso));
+  const min = Math.round(ms / 60_000);
+  if (min < 60) return `${Math.max(1, min)} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? "1 day" : `${d} days`;
+}
+
+const STALE_CLAIM = 24 * 3600_000;
+
 export function ItemStatusBar({
   itemId,
   status,
   claimedBy,
+  claimedAt,
   completion,
   fi,
   canWrite,
@@ -93,17 +108,29 @@ export function ItemStatusBar({
   itemId: string;
   status: ItemStatus;
   claimedBy: ActorRef | null | undefined;
+  claimedAt?: string | null;
   completion: { completed_at: string; completed_by: ActorRef; note: string | null; entry_id: string | null } | null | undefined;
   fi: FormatInfo;
   canWrite: boolean;
 }) {
+  const now = useNow();
   const research = fi.format === "research";
+  const age = claimAge(claimedAt, now);
+  const stale = !!claimedAt && now - Date.parse(claimedAt) > STALE_CLAIM;
   return (
     <div className="item-status item-indent flex flex-wrap items-center gap-2 text-[0.88rem] sm:pl-11">
       {status === "open" && <span className="chip">Open</span>}
+      {status === "waiting_on_owner" && <span className="chip chip-warn">{canWrite ? "Waiting on you" : "Waiting on the owner"}</span>}
       {status === "in_progress" && (
-        <span className="chip chip-warn">
-          In progress{claimedBy ? <> · {actorLabel(claimedBy)} is on it</> : null}
+        <span className={`chip ${stale ? "chip-warn" : ""}`}>
+          In progress
+          {claimedBy ? (
+            <>
+              {" "}
+              · {actorLabel(claimedBy)}
+              {age ? `, ${age}` : ""}
+            </>
+          ) : null}
         </span>
       )}
       {status === "done" && completion && (
@@ -112,10 +139,12 @@ export function ItemStatusBar({
         </span>
       )}
       {status === "done" && !completion && <span className="chip chip-live">{research ? "Answered" : "Done"}</span>}
-      {canWrite && status === "open" && <StatusButton itemId={itemId} status="in_progress" label={research ? "Start researching" : "Start"} />}
-      {canWrite && status === "in_progress" && <StatusButton itemId={itemId} status="open" label="Stop" />}
-      {canWrite && status !== "done" && !research && <StatusButton itemId={itemId} status="done" label="Mark done" kind="solid" note />}
-      {canWrite && status !== "done" && research && <StatusButton itemId={itemId} status="done" label="Mark answered" note />}
+      {canWrite && status === "open" && <StatusButton itemId={itemId} status="in_progress" label="Start" />}
+      {canWrite && status === "in_progress" && <StatusButton itemId={itemId} status="open" label={stale ? "Release" : "Stop"} />}
+      {/* A claim nobody has touched for a day: a person can take it over in one step. */}
+      {canWrite && status === "in_progress" && stale && claimedBy?.kind !== "user" && <StatusButton itemId={itemId} status="in_progress" label="Take over" />}
+      {canWrite && (status === "open" || status === "in_progress") && !research && <StatusButton itemId={itemId} status="done" label="Mark done" kind="solid" note />}
+      {canWrite && (status === "open" || status === "in_progress") && research && <StatusButton itemId={itemId} status="done" label="Mark answered" note />}
       {canWrite && status === "done" && <StatusButton itemId={itemId} status="open" label="Reopen" />}
       {status === "done" && completion?.note && (
         <p className="w-full whitespace-pre-line break-words text-ink-2">
@@ -315,5 +344,101 @@ export function TextEntryForm({ itemId, fi, entry }: { itemId: string; fi: Forma
         {done && <span className="text-[0.85rem] text-deal">{editing ? "Saved." : "Posted."}</span>}
       </div>
     </fetcher.Form>
+  );
+}
+
+/**
+ * SPEC 12.1: an agent's question for the owner, with one-tap options when it gave some and a
+ * box for anything else. Only rendered for people who can write the list: questions and answers
+ * are never public. `compact` is the /app version (no history).
+ */
+export function OwnerQuestion({ question, history = [], compact = false }: { question: Question | null; history?: Question[]; compact?: boolean }) {
+  const answered = history.filter((q) => q.answer);
+  if (!question && !answered.length) return null;
+  return (
+    <div className={`owner-question grid gap-3 ${compact ? "" : "item-indent sm:pl-11"}`}>
+      {question && <QuestionForm question={question} />}
+      {!compact && answered.length > 0 && (
+        <details className="group">
+          <summary className="textlink-btn text-[0.85rem]">
+            {answered.length === 1 ? "1 earlier question" : `${answered.length} earlier questions`}{" "}
+            <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+          </summary>
+          <ul className="mt-2 grid border-t border-line">
+            {answered.map((q) => (
+              <li key={q.id} className="grid gap-1 border-b border-line py-2 text-[0.9rem]">
+                <p className="whitespace-pre-line break-words">
+                  <span className="text-ink-3">{actorLabel(q.asked_by)}: </span>
+                  {q.text}
+                </p>
+                <p className="whitespace-pre-line break-words text-ink-2">
+                  <span className="text-ink-3">{actorLabel(q.answer!.answered_by)}: </span>
+                  {q.answer!.text}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function QuestionForm({ question }: { question: Question }) {
+  const fetcher = useFetcher<IntentResult>();
+  const uid = useId();
+  const busy = fetcher.state !== "idle";
+  const pending = fetcher.formData?.get("text");
+  return (
+    <section aria-labelledby={`${uid}-h`} className="grid gap-3 rounded-md border border-ink p-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h3 id={`${uid}-h`} className="eyebrow text-ink">
+          Waiting on you
+        </h3>
+        <ActorTag actor={question.asked_by} compact />
+        <span className="text-[0.8rem] text-ink-3">
+          <Time ts={question.asked_at} />
+        </span>
+      </div>
+      <p className="whitespace-pre-line break-words text-[1.02rem]">{question.text}</p>
+      {question.options.length > 0 && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Answers">
+          {question.options.map((o) => (
+            <fetcher.Form method="post" key={o}>
+              <input type="hidden" name="intent" value="answer-question" />
+              <input type="hidden" name="question_id" value={question.id} />
+              <input type="hidden" name="text" value={o} />
+              <button className="btn btn-ghost btn-sm" disabled={busy} aria-pressed={pending === o ? true : undefined}>
+                {o}
+              </button>
+            </fetcher.Form>
+          ))}
+        </div>
+      )}
+      <fetcher.Form method="post" className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <input type="hidden" name="intent" value="answer-question" />
+        <input type="hidden" name="question_id" value={question.id} />
+        <label htmlFor={`${uid}-a`} className="sr-only">
+          Your answer
+        </label>
+        <textarea
+          id={`${uid}-a`}
+          name="text"
+          required
+          maxLength={2000}
+          rows={1}
+          placeholder={question.options.length ? "Or write an answer" : "Your answer"}
+          className="textarea textarea-line flex-1"
+        />
+        <button className="btn" disabled={busy}>
+          {busy ? "Sending…" : "Answer"}
+        </button>
+      </fetcher.Form>
+      {fetcher.data?.error && (
+        <p className="form-error" role="alert">
+          {fetcher.data.error}
+        </p>
+      )}
+    </section>
   );
 }
