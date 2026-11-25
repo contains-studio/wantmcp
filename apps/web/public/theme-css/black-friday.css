@@ -1,26 +1,37 @@
 /* Black Friday: real black and signal yellow, heavy capitals, prices on sale tags, a striped warning band. */
-.themed.theme-black-friday { --sig: #ffe600; background: #000; }
-.themed.theme-black-friday .list-hero { border-bottom: 0; background: #000; }
-.themed.theme-black-friday .list-hero::before, .themed.theme-black-friday .list-hero::after {
+
+/* What this occasion lends to any template (see the template stylesheets for where each goes). */
+.themed.occ-black-friday {
+  --occ-art: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Cg transform='rotate(-14 200 150)'%3E%3Cpath d='M110 80 H330 V220 H110 L50 150 Z' fill='%23ffe600'/%3E%3Ccircle cx='95' cy='150' r='14' fill='%23000'/%3E%3Ctext x='215' y='172' text-anchor='middle' font-family='Arial Black, Arial, sans-serif' font-weight='900' font-size='64' fill='%23000'%3ESALE%3C/text%3E%3C/g%3E%3C/svg%3E");
+  --occ-strip: repeating-linear-gradient(-45deg, #ffe600 0 14px, #000 14px 28px);
+  --occ-strip-h: 14px;
+  --occ-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 3h9l9 9-9 9-9-9V3zm4.5 3a1.5 1.5 0 100 3 1.5 1.5 0 000-3z' fill='black'/%3E%3C/svg%3E");
+  --occ-pattern: none;
+}
+
+/* On Default cards the occasion is the whole look: */
+.themed.tpl-default.occ-black-friday { --sig: #ffe600; background: #000; }
+.themed.tpl-default.occ-black-friday .list-hero { border-bottom: 0; background: #000; }
+.themed.tpl-default.occ-black-friday .list-hero::before, .themed.tpl-default.occ-black-friday .list-hero::after {
   content: ""; display: block; height: 18px; background: repeating-linear-gradient(-45deg, var(--sig) 0 16px, #000 16px 32px);
 }
-.themed.theme-black-friday .list-hero > .wrap { padding-block: 2.5rem 2.75rem; }
-.themed.theme-black-friday .list-hero .eyebrow { display: inline-flex; background: var(--sig); color: #000; padding: 0.3rem 0.6rem; font-weight: 800; letter-spacing: 0.14em; }
-.themed.theme-black-friday .list-hero .eyebrow * { color: #000; }
-.themed.theme-black-friday .list-title { font-size: clamp(2.6rem, 9vw, 6.5rem); font-weight: 900; line-height: 0.9; letter-spacing: -0.04em; text-transform: uppercase; }
-.themed.theme-black-friday .list-hero h1 + p { font-size: 1.1rem; font-weight: 600; }
-.themed.theme-black-friday .list-hero strong { color: var(--sig); }
-.themed.theme-black-friday .item-section { border-top: 3px solid var(--sig); padding-top: 1.25rem; }
-.themed.theme-black-friday .item-number { background: var(--sig); color: #000; border-radius: 0; font-weight: 900; }
-.themed.theme-black-friday .item-title { text-transform: uppercase; font-weight: 900; letter-spacing: -0.02em; }
+.themed.tpl-default.occ-black-friday .list-hero > .wrap { padding-block: 2.5rem 2.75rem; }
+.themed.tpl-default.occ-black-friday .list-hero .eyebrow { display: inline-flex; background: var(--sig); color: #000; padding: 0.3rem 0.6rem; font-weight: 800; letter-spacing: 0.14em; }
+.themed.tpl-default.occ-black-friday .list-hero .eyebrow * { color: #000; }
+.themed.tpl-default.occ-black-friday .list-title { font-size: clamp(2.6rem, 9vw, 6.5rem); font-weight: 900; line-height: 0.9; letter-spacing: -0.04em; text-transform: uppercase; }
+.themed.tpl-default.occ-black-friday .list-hero h1 + p { font-size: 1.1rem; font-weight: 600; }
+.themed.tpl-default.occ-black-friday .list-hero strong { color: var(--sig); }
+.themed.tpl-default.occ-black-friday .item-section { border-top: 3px solid var(--sig); padding-top: 1.25rem; }
+.themed.tpl-default.occ-black-friday .item-number { background: var(--sig); color: #000; border-radius: 0; font-weight: 900; }
+.themed.tpl-default.occ-black-friday .item-title { text-transform: uppercase; font-weight: 900; letter-spacing: -0.02em; }
 /* Sale tags: a point on the left with a punched hole. */
-.themed.theme-black-friday .entry-card {
+.themed.tpl-default.occ-black-friday .entry-card {
   clip-path: polygon(1.5rem 0, 100% 0, 100% 100%, 1.5rem 100%, 0 calc(100% - 1.75rem), 0 1.75rem);
   border: 0; border-radius: 0; background: radial-gradient(circle at 1rem 1.75rem, #000 0.35rem, transparent 0.38rem), #151515; padding-left: 0.75rem;
 }
-.themed.theme-black-friday .entry-card .price { color: var(--sig); font-weight: 900; }
-.themed.theme-black-friday .save { background: var(--sig); color: #000; border-radius: 0; }
-.themed.theme-black-friday .lowest { background: #fff; color: #000; border-radius: 0; }
-.themed.theme-black-friday .text-entry { border-color: #4d4d4d; border-radius: 0; }
-.themed.theme-black-friday .bought-divider h2 { text-transform: uppercase; }
-.themed.theme-black-friday .bought-divider .divider-dots { background: repeating-linear-gradient(-45deg, var(--sig) 0 6px, #000 6px 12px); height: 8px; }
+.themed.tpl-default.occ-black-friday .entry-card .price { color: var(--sig); font-weight: 900; }
+.themed.tpl-default.occ-black-friday .save { background: var(--sig); color: #000; border-radius: 0; }
+.themed.tpl-default.occ-black-friday .lowest { background: #fff; color: #000; border-radius: 0; }
+.themed.tpl-default.occ-black-friday .text-entry { border-color: #4d4d4d; border-radius: 0; }
+.themed.tpl-default.occ-black-friday .bought-divider h2 { text-transform: uppercase; }
+.themed.tpl-default.occ-black-friday .bought-divider .divider-dots { background: repeating-linear-gradient(-45deg, var(--sig) 0 6px, #000 6px 12px); height: 8px; }

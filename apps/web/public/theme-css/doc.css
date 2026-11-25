@@ -1,25 +1,31 @@
 /* Doc: a white page on a grey desk, a book serif and numbered sections. */
-.themed.theme-doc { --desk: #eceef0; background: var(--desk); counter-reset: doc-item; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .themed.theme-doc { --desk: #111112; } }
-:root[data-theme="dark"] .themed.theme-doc { --desk: #111112; }
-.themed.theme-doc .list-hero { background: transparent; border: 0; padding-top: 2.5rem; }
-.themed.theme-doc .list-hero > .wrap, .themed.theme-doc > .wrap { max-width: 50rem; background: var(--card); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 12px 40px -20px rgb(0 0 0 / 0.25); }
-.themed.theme-doc .list-hero > .wrap { border-radius: 4px 4px 0 0; padding: 4.5rem clamp(1.25rem, 6vw, 4.5rem) 1rem; }
-.themed.theme-doc > .wrap { border-radius: 0 0 4px 4px; padding: 1rem clamp(1.25rem, 6vw, 4.5rem) 5rem; margin-bottom: 3rem; gap: 2.75rem; }
-.themed.theme-doc .list-title { font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 600; line-height: 1.1; }
-.themed.theme-doc .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
-.themed.theme-doc .list-hero h1 + p { font-size: 1.15rem; line-height: 1.6; font-style: italic; }
-.themed.theme-doc .list-hero > .wrap > div { border-top: 1px solid var(--line); padding-top: 1rem; font-family: var(--font-sans); font-size: 0.82rem; }
-.themed.theme-doc .item-section { counter-increment: doc-item; gap: 1rem; }
-.themed.theme-doc .item-number { display: none; }
-.themed.theme-doc .item-title { font-size: clamp(1.35rem, 2.6vw, 1.7rem) !important; font-weight: 600; }
-.themed.theme-doc .item-title::before { content: counter(doc-item) ".\2002"; color: var(--ink-3); font-weight: 400; }
-.themed.theme-doc .is-bought .item-title::before { content: "✓\2002"; color: var(--deal); }
-.themed.theme-doc .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
-.themed.theme-doc .item-meta { font-family: var(--font-sans); }
-.themed.theme-doc .text-entry, .themed.theme-doc .entry-card { border: 0; border-left: 3px solid var(--line-strong); border-radius: 0; box-shadow: none; background: transparent; padding-left: 1.25rem; }
-.themed.theme-doc .text-entry h3 { font-family: var(--font-display); font-size: 1.15rem; }
-.themed.theme-doc .accepted-answer, .themed.theme-doc .ring-deal { border-left-color: var(--deal) !important; }
-.themed.theme-doc .add-item, .themed.theme-doc aside.card { background: var(--sunk); border: 0; box-shadow: none; }
-.themed.theme-doc .bought-divider h2 { font-size: 1.3rem; }
-.themed.theme-doc .bought-divider .divider-dots { background: var(--line); height: 1px; }
+.themed.tpl-doc { --desk: color-mix(in srgb, var(--paper) 90%, var(--ink)); background: var(--desk); counter-reset: doc-item; }
+.themed.tpl-doc .list-hero { background: transparent; border: 0; padding-top: 2.5rem; }
+.themed.tpl-doc .list-hero > .wrap, .themed.tpl-doc > .wrap { max-width: 50rem; background: var(--card); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 12px 40px -20px rgb(0 0 0 / 0.25); }
+.themed.tpl-doc .list-hero > .wrap { border-radius: 4px 4px 0 0; padding: 4.5rem clamp(1.25rem, 6vw, 4.5rem) 1rem; }
+.themed.tpl-doc > .wrap { border-radius: 0 0 4px 4px; padding: 1rem clamp(1.25rem, 6vw, 4.5rem) 5rem; margin-bottom: 3rem; gap: 2.75rem; }
+.themed.tpl-doc .list-title { font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 600; line-height: 1.1; }
+.themed.tpl-doc .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+.themed.tpl-doc .list-hero h1 + p { font-size: 1.15rem; line-height: 1.6; font-style: italic; }
+.themed.tpl-doc .list-hero > .wrap > div { border-top: 1px solid var(--line); padding-top: 1rem; font-family: var(--font-sans); font-size: 0.82rem; }
+.themed.tpl-doc .item-section { counter-increment: doc-item; gap: 1rem; }
+.themed.tpl-doc .item-number { display: none; }
+.themed.tpl-doc .item-title { font-size: clamp(1.35rem, 2.6vw, 1.7rem) !important; font-weight: 600; }
+.themed.tpl-doc .item-title::before { content: counter(doc-item) ".\2002"; color: var(--ink-3); font-weight: 400; }
+.themed.tpl-doc .is-bought .item-title::before { content: "✓\2002"; color: var(--deal); }
+.themed.tpl-doc .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
+.themed.tpl-doc .item-meta { font-family: var(--font-sans); }
+.themed.tpl-doc .text-entry, .themed.tpl-doc .entry-card { border: 0; border-left: 3px solid var(--line-strong); border-radius: 0; box-shadow: none; background: transparent; padding-left: 1.25rem; }
+.themed.tpl-doc .text-entry h3 { font-family: var(--font-display); font-size: 1.15rem; }
+.themed.tpl-doc .accepted-answer, .themed.tpl-doc .ring-deal { border-left-color: var(--deal) !important; }
+.themed.tpl-doc .add-item, .themed.tpl-doc aside.card { background: var(--sunk); border: 0; box-shadow: none; }
+.themed.tpl-doc .bought-divider h2 { font-size: 1.3rem; }
+.themed.tpl-doc .bought-divider .divider-dots { background: var(--line); height: 1px; }
+
+/* Occasions: the strip along the top edge of the page, the art as a silhouette in the page's
+   top corner, in the accent colour. */
+.themed.tpl-doc.has-occ .list-hero > .wrap { position: relative; border-top: var(--occ-strip-h) solid transparent; background: var(--occ-strip) top / auto var(--occ-strip-h) repeat-x border-box, var(--card) padding-box; background-origin: border-box; }
+.themed.tpl-doc.has-occ .list-hero > .wrap::after {
+  content: ""; position: absolute; right: clamp(1rem, 5vw, 3.5rem); top: 1.75rem; width: min(9rem, 26%); aspect-ratio: 4 / 3; pointer-events: none;
+  background: var(--want); opacity: 0.5; -webkit-mask: var(--occ-art) center / contain no-repeat; mask: var(--occ-art) center / contain no-repeat;
+}

@@ -75,9 +75,19 @@ for (const viewport of Object.keys(VIEWPORTS))
     for (const p of SIGNED_IN_PAGES) runs.push([p, { session, viewport, scheme }]);
   }
 if (WITH_THEMES) {
-  const html = await (await fetch(`${BASE}/themes`)).text();
-  const slugs = [...new Set([...html.matchAll(/href="\/themes\/([a-z0-9-]+)"/g)].map((m) => m[1]))];
-  for (const slug of slugs) for (const scheme of SCHEMES) for (const fmt of ["", "?format=tasks", "?format=research"]) runs.push([`/themes/${slug}${fmt}`, { viewport: "desktop", scheme }]);
+  // Every template with each format, every occasion on Default cards, and every occasion on a
+  // rotating template (so each template is dressed at least once), in both schemes.
+  const { TEMPLATES, OCCASIONS } = await import("../app/themes/catalogue.server.ts");
+  const looks = [
+    ...TEMPLATES.flatMap((t) => ["shopping", "tasks", "research"].map((f) => `/themes/${t.slug}?format=${f}`)),
+    ...OCCASIONS.map((o) => `/themes/${o.slug}`),
+    ...OCCASIONS.map((o, i) => {
+      const t = TEMPLATES[1 + (i % (TEMPLATES.length - 1))];
+      return `/themes/${t.slug}--${o.slug}?format=${t.slug === "sheet" ? "shopping" : "tasks"}`;
+    }),
+  ];
+  for (const path of looks) for (const scheme of SCHEMES) runs.push([path, { viewport: "desktop", scheme }]);
+  runs.push(["/themes?template=board&occasion=christmas", { viewport: "phone", scheme: "dark" }]);
 }
 for (const [p, o] of ONLY ? runs.filter(([p]) => p.startsWith(ONLY)) : runs) {
   try {

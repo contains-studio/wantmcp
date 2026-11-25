@@ -4,24 +4,23 @@ import { ListView } from "~/components/ListView";
 import { siteOrigin } from "~/lib/config.server";
 import { FORMATS, formatOf } from "~/lib/formats";
 import type { ListFormat } from "~/lib/types";
-import { getTheme, getThemeView } from "~/themes/catalogue.server";
+import { getThemeView, parseLook } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 
 export function loader({ request, params }: Route.LoaderArgs) {
-  const t = getTheme(params.slug);
-  if (t.slug !== params.slug) {
-    // An old name for a theme (hanukkah, checklist): send people to its current page.
-    if (t.aliases?.includes(params.slug)) throw redirect(`/themes/${t.slug}${new URL(request.url).search}`, 301);
-    throw new Response("Not found", { status: 404 });
-  }
+  const look = parseLook(params.slug);
+  if (!look) throw new Response("Not found", { status: 404 });
+  // Old names (hanukkah, checklist) and spellings like default--christmas go to the canonical page.
+  if (look.slug !== params.slug) throw redirect(`/themes/${look.slug}${new URL(request.url).search}`, 301);
+  const theme = getThemeView(look.slug);
   const q = new URL(request.url).searchParams.get("format");
-  const natural: ListFormat = t.natural ?? "shopping";
+  const natural: ListFormat = theme.natural;
   const format = q ? formatOf({ format: q as ListFormat }) : natural;
   const sample = sampleList(Date.now(), format);
   // ?items=0 or ?items=1 previews an empty or one-item list.
   const n = new URL(request.url).searchParams.get("items");
   if (n !== null && /^\d+$/.test(n)) sample.items = sample.items.slice(0, Number(n));
-  return { theme: getThemeView(t.slug), sample, format, origin: siteOrigin(request) };
+  return { theme, sample, format, origin: siteOrigin(request) };
 }
 
 export function headers() {

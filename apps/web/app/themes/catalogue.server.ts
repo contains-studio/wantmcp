@@ -70,6 +70,16 @@ export function resolveLook(slug: string | null | undefined): Look {
   return { template: tpl, occasion, slug: lookSlug(tpl.slug, occasion?.slug ?? null) };
 }
 
+/** Like resolveLook, but null when either half is unknown (for URLs, where a typo should 404). */
+export function parseLook(slug: string): Look | null {
+  const raw = slug.toLowerCase();
+  if (raw.includes("--")) {
+    const [t, o] = raw.split("--", 2);
+    if (!TEMPLATE_BY_SLUG.has(t) || !OCCASION_BY_SLUG.has(o)) return null;
+  } else if (!TEMPLATE_BY_SLUG.has(raw) && !OCCASION_BY_SLUG.has(raw)) return null;
+  return resolveLook(raw);
+}
+
 /** Kept for callers that think in single themes: the template, or the occasion on Default cards. */
 export function getTheme(slug: string | null | undefined): Theme {
   const { template, occasion } = resolveLook(slug);

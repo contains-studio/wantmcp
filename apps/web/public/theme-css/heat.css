@@ -1,24 +1,30 @@
-/* Heat: bars graded from hot to cool. Colours must match HEAT_HOT / HEAT_COOL in app/themes/defs/heat.ts. */
-.themed.theme-heat { --hot: #c4122f; --cool: #3a3fc4; background: var(--paper); }
-.themed.theme-heat .list-hero { background: var(--paper); border-bottom: 0; }
-.themed.theme-heat .list-hero > .wrap, .themed.theme-heat > .wrap { max-width: 56rem; }
-.themed.theme-heat .list-hero > .wrap { padding-block: 2.5rem 1.25rem; }
-.themed.theme-heat .list-title { font-size: clamp(2.4rem, 7vw, 4rem); font-weight: 800; letter-spacing: -0.035em; line-height: 0.95; }
-.themed.theme-heat .eyebrow { color: var(--ink-3); }
-.themed.theme-heat > .wrap { padding-top: 0.5rem; gap: 2rem; }
-.themed.theme-heat .ix-bars { border-radius: 14px; overflow: hidden; }
-.themed.theme-heat .ix-bar .ix-link {
+/* Heat: bars graded from hot to cool. The colours come from the accents (an occasion can recolour them). */
+.themed.tpl-heat { --hot: var(--occ-hot); --cool: var(--occ-cool); background: var(--paper); }
+.themed.tpl-heat .list-hero { background: var(--paper); border-bottom: 0; }
+.themed.tpl-heat .list-hero > .wrap, .themed.tpl-heat > .wrap { max-width: 56rem; }
+.themed.tpl-heat .list-hero > .wrap { padding-block: 2.5rem 1.25rem; }
+.themed.tpl-heat .list-title { font-size: clamp(2.4rem, 7vw, 4rem); font-weight: 800; letter-spacing: -0.035em; line-height: 0.95; }
+.themed.tpl-heat .eyebrow { color: var(--ink-3); }
+.themed.tpl-heat > .wrap { padding-top: 0.5rem; gap: 2rem; }
+.themed.tpl-heat .ix-bars { border-radius: 14px; overflow: hidden; }
+.themed.tpl-heat .ix-bar .ix-link {
   background: color-mix(in srgb, var(--hot) calc(100% - var(--i) / var(--n) * 100%), var(--cool));
-  color: #fff; min-height: 4.5rem; padding: 0.9rem 1.25rem; border-bottom: 1px solid rgb(0 0 0 / 0.18);
+  color: var(--occ-bar-ink); min-height: 4.5rem; padding: 0.9rem 1.25rem; border-bottom: 1px solid rgb(0 0 0 / 0.18);
 }
-.themed.theme-heat .ix-bar .ix-link:hover { filter: brightness(1.08); }
-.themed.theme-heat .ix-bar .ix-link:focus-visible { outline-offset: -4px; outline-color: #fff; }
-.themed.theme-heat .ix-bar .ix-title { font-size: clamp(1.15rem, 2.6vw, 1.5rem); font-weight: 800; letter-spacing: -0.015em; line-height: 1.2; }
-.themed.theme-heat .ix-bar .ix-sub { color: #fff; font-weight: 600; }
-.themed.theme-heat .ix-bar .ix-pill { background: rgb(255 255 255 / 0.2); color: #fff; }
-.themed.theme-heat .ix-bar.is-done .ix-link { background: #222226; color: #9e9ea4; }
-.themed.theme-heat .ix-bar.is-done .ix-title { text-decoration: line-through; text-decoration-thickness: 2px; font-weight: 700; color: #9e9ea4; }
-.themed.theme-heat .ix-bar.is-done .ix-sub { color: #9e9ea4; }
-.themed.theme-heat .ix-panel:has(:target) { background: #151518; border-color: #2a2a2e; }
-.themed.theme-heat .ix-panel .item-title { font-size: 1.6rem; font-weight: 800; }
-.themed.theme-heat .add-item { background: #151518; }
+.themed.tpl-heat .ix-bar .ix-link:hover { filter: brightness(1.08); }
+.themed.tpl-heat .ix-bar .ix-link:focus-visible { outline-offset: -4px; outline-color: var(--occ-bar-ink); }
+.themed.tpl-heat .ix-bar .ix-title { font-size: clamp(1.15rem, 2.6vw, 1.5rem); font-weight: 800; letter-spacing: -0.015em; line-height: 1.2; }
+.themed.tpl-heat .ix-bar .ix-sub { color: var(--occ-bar-ink); font-weight: 600; }
+.themed.tpl-heat .ix-bar .ix-pill { background: color-mix(in srgb, var(--occ-bar-ink) 18%, transparent); color: var(--occ-bar-ink); }
+.themed.tpl-heat .ix-bar.is-done .ix-link { background: var(--card); color: var(--ink-3); }
+.themed.tpl-heat .ix-bar.is-done .ix-title { text-decoration: line-through; text-decoration-thickness: 2px; font-weight: 700; color: var(--ink-3); }
+.themed.tpl-heat .ix-bar.is-done .ix-sub { color: var(--ink-3); }
+.themed.tpl-heat .ix-panel:has(:target) { background: var(--card); border-color: var(--line); }
+.themed.tpl-heat .ix-panel .item-title { font-size: 1.6rem; font-weight: 800; }
+.themed.tpl-heat .add-item { background: var(--card); }
+
+/* Occasions: the art at the right of the header, the strip under it. */
+.themed.tpl-heat.has-occ .list-hero { background: var(--occ-art) no-repeat right max(0rem, calc(50% - 30rem)) center / auto 85%, var(--paper); }
+.themed.tpl-heat.has-occ .list-hero > .wrap > * { max-width: min(36rem, 65%); }
+.themed.tpl-heat.has-occ .ix-bars::before { content: ""; display: block; height: var(--occ-strip-h); background: var(--occ-strip); }
+@media (max-width: 639px) { .themed.tpl-heat.has-occ .list-hero { background-size: auto 5rem, auto; background-position: right 0.5rem top 0.5rem, 0 0; } .themed.tpl-heat.has-occ .list-hero > .wrap { padding-top: 5.5rem; } .themed.tpl-heat.has-occ .list-hero > .wrap > * { max-width: none; } }

@@ -1,38 +1,42 @@
 /* Sheet: a spreadsheet. Gridlines on the page, a formula-bar header, row numbers down the side. */
-.themed.theme-sheet { --grid: color-mix(in srgb, var(--line) 70%, transparent); --bar: #0f6b4a; background:
+.themed.tpl-sheet { --grid: color-mix(in srgb, var(--line) 70%, transparent); --bar: var(--occ-band); background:
   linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 2rem,
   linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 7.5rem 100%,
   var(--paper); }
-.themed.theme-sheet .list-hero { background: var(--card); border-bottom: 1px solid var(--line-strong); }
-.themed.theme-sheet .list-hero::before { content: ""; display: block; height: 0.4rem; background: var(--bar); }
-.themed.theme-sheet .list-hero > .wrap { padding-block: 0.9rem 0; display: grid; gap: 0.4rem; }
-.themed.theme-sheet .list-hero .eyebrow { font-family: var(--font-mono); font-size: 0.72rem; }
+.themed.tpl-sheet .list-hero { background: var(--card); border-bottom: 1px solid var(--line-strong); }
+.themed.tpl-sheet .list-hero::before { content: ""; display: block; height: 0.4rem; background: var(--bar); }
+.themed.tpl-sheet .list-hero > .wrap { padding-block: 0.9rem 0; display: grid; gap: 0.4rem; }
+.themed.tpl-sheet .list-hero .eyebrow { font-family: var(--font-mono); font-size: 0.72rem; }
 /* The title sits in a formula bar: a name box, fx, then the value. */
-.themed.theme-sheet .list-title {
+.themed.tpl-sheet .list-title {
   display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 0; margin: 0;
   border: 1px solid var(--line-strong); border-radius: 2px; background: var(--card);
   font-family: var(--font-sans); font-size: clamp(1.15rem, 2.4vw, 1.5rem); font-weight: 650; letter-spacing: 0;
 }
-.themed.theme-sheet .list-title::before { content: "A1"; font: 600 0.8rem var(--font-mono); color: var(--ink-3); padding: 0.55rem 0.9rem; border-right: 1px solid var(--line-strong); }
-.themed.theme-sheet .list-title-mark { display: block; width: 2.2rem; height: 100%; border-right: 1px solid var(--line-strong);
+.themed.tpl-sheet .list-title::before { content: "A1"; font: 600 0.8rem var(--font-mono); color: var(--ink-3); padding: 0.55rem 0.9rem; border-right: 1px solid var(--line-strong); }
+.themed.tpl-sheet .list-title-mark { display: block; width: 2.2rem; height: 100%; border-right: 1px solid var(--line-strong);
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='4' y='17' font-family='Georgia,serif' font-style='italic' font-size='14' fill='%23667085'%3Efx%3C/text%3E%3C/svg%3E") center / 1.4rem no-repeat; }
-.themed.theme-sheet .list-title { padding-right: 0.75rem; }
-.themed.theme-sheet .list-title-text { padding: 0.45rem 0.75rem; }
-.themed.theme-sheet .list-hero h1 + p { font-size: 0.9rem; }
-.themed.theme-sheet .list-hero > .wrap > div { margin-top: 0.25rem; font-family: var(--font-mono); font-size: 0.78rem; }
+.themed.tpl-sheet .list-title { padding-right: 0.75rem; }
+.themed.tpl-sheet .list-title-text { padding: 0.45rem 0.75rem; }
+.themed.tpl-sheet .list-hero h1 + p { font-size: 0.9rem; }
+.themed.tpl-sheet .list-hero > .wrap > div { margin-top: 0.25rem; font-family: var(--font-mono); font-size: 0.78rem; }
 /* Column letters along the bottom of the header. */
-.themed.theme-sheet .list-hero::after {
+.themed.tpl-sheet .list-hero::after {
   content: "A\2003\2003\2003\2003\2003 B\2003\2003\2003\2003\2003 C\2003\2003\2003\2003\2003 D\2003\2003\2003\2003\2003 E\2003\2003\2003\2003\2003 F\2003\2003\2003\2003\2003 G\2003\2003\2003\2003\2003 H";
   display: block; margin-top: 0.9rem; padding: 0.2rem 0 0.2rem 3.5rem; white-space: nowrap; overflow: hidden;
   font: 600 0.72rem var(--font-mono); color: var(--ink-3); background: var(--sunk); border-top: 1px solid var(--line-strong);
 }
-.themed.theme-sheet > .wrap { gap: 2rem; }
-.themed.theme-sheet .item-section { background: var(--card); border: 1px solid var(--line-strong); padding: 0; gap: 0; }
-.themed.theme-sheet .item-section > header { padding: 0.6rem 0.75rem; background: var(--sunk); border-bottom: 1px solid var(--line-strong); }
-.themed.theme-sheet .item-section > :not(header) { padding: 0.75rem; }
-.themed.theme-sheet .item-number { border-radius: 2px; background: var(--card); color: var(--ink-2); border: 1px solid var(--line-strong); font-family: var(--font-mono); font-weight: 600; }
-.themed.theme-sheet .item-title { font-family: var(--font-sans); font-size: 1.1rem !important; font-weight: 650; }
-.themed.theme-sheet .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
-.themed.theme-sheet .item-section .card { border-radius: 2px; box-shadow: none; }
-.themed.theme-sheet .price { font-family: var(--font-mono); letter-spacing: -0.02em; }
-.themed.theme-sheet .bought-divider h2 { font-family: var(--font-mono); font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.themed.tpl-sheet > .wrap { gap: 2rem; }
+.themed.tpl-sheet .item-section { background: var(--card); border: 1px solid var(--line-strong); padding: 0; gap: 0; }
+.themed.tpl-sheet .item-section > header { padding: 0.6rem 0.75rem; background: var(--sunk); border-bottom: 1px solid var(--line-strong); }
+.themed.tpl-sheet .item-section > :not(header) { padding: 0.75rem; }
+.themed.tpl-sheet .item-number { border-radius: 2px; background: var(--card); color: var(--ink-2); border: 1px solid var(--line-strong); font-family: var(--font-mono); font-weight: 600; }
+.themed.tpl-sheet .item-title { font-family: var(--font-sans); font-size: 1.1rem !important; font-weight: 650; }
+.themed.tpl-sheet .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
+.themed.tpl-sheet .item-section .card { border-radius: 2px; box-shadow: none; }
+.themed.tpl-sheet .price { font-family: var(--font-mono); letter-spacing: -0.02em; }
+.themed.tpl-sheet .bought-divider h2 { font-family: var(--font-mono); font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Occasions: the bar along the top of the header widens into a band carrying the art. */
+.themed.tpl-sheet.has-occ .list-hero::before { height: 3.25rem; background: var(--occ-art) no-repeat right 1.25rem center / auto 85%, var(--occ-pattern, none), var(--occ-band); }
+.themed.tpl-sheet.has-occ .list-hero::after { border-top: var(--occ-strip-h) solid transparent; border-image: var(--occ-strip) 1; border-image-slice: fill 0; }

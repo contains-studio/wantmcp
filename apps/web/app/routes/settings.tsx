@@ -1,4 +1,4 @@
-import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
+import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/settings";
 import { AgentPrompt } from "~/components/AgentPrompt";
 import { CopyButton } from "~/components/CopyButton";
@@ -10,7 +10,7 @@ import { assertSameOrigin } from "~/lib/session.server";
 import type { AgentInfo, ListDetail, ListFormat, ListSummary, ListVisibility, Member } from "~/lib/types";
 import { ThemeThumb } from "~/components/ThemeThumb";
 import { ListView } from "~/components/ListView";
-import { allThemeViews, getTheme } from "~/themes/catalogue.server";
+import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeView } from "~/themes/view";
 import { useState } from "react";
@@ -40,11 +40,27 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     ),
   ]);
   const { items: _items, ...summary } = list;
-  // The owner's theme picker needs every theme (small: custom properties only) and the sample list.
-  const themes = list.my_role === "owner" ? allThemeViews() : [];
-  const sample = list.my_role === "owner" ? sampleList(Date.now(), formatOf(summary)) : null;
+  // The owner's look picker: every template, and every occasion on the template being looked at
+  // (?template= while choosing, else the list's own). Views are custom properties only.
+  const owner = list.my_role === "owner";
+  const current = resolveLook(summary.theme ?? formatInfo(summary).defaultTheme);
+  const browsing = new URL(request.url).searchParams.get("template") ?? current.template.slug;
+  const looks = owner
+    ? { templates: templateViews(), occasions: occasionViews(browsing), browsing: resolveLook(browsing).template.slug }
+    : null;
+  const sample = owner ? sampleList(Date.now(), formatOf(summary)) : null;
   return data(
-    { list: summary, role: list.my_role, members, agents, themes, sample, currentTheme: getTheme(summary.theme ?? formatInfo(summary).defaultTheme).slug },
+    {
+      list: summary,
+      role: list.my_role,
+      members,
+      agents,
+      looks,
+      sample,
+      currentTheme: current.slug,
+      currentTemplate: current.template.slug,
+      currentOccasion: current.occasion?.slug ?? null,
+    },
     { headers: { "Cache-Control": "private, no-store" } },
   );
 }
@@ -64,10 +80,10 @@ export async function action({ request, params }: Route.ActionArgs) {
         return { ok: true, intent } satisfies ActionData;
       case "theme": {
         const current = await api<ListDetail>(request, `/lists/${id}`);
-        const picked = getTheme(s("theme")).slug;
+        const picked = resolveLook(s("theme")).slug;
         // The format's own default is stored as "no theme" so it follows the format; anything
         // else (including the site default on a task list) is stored explicitly.
-        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: picked === getTheme(formatInfo(current).defaultTheme).slug ? null : picked } });
+        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: picked === resolveLook(formatInfo(current).defaultTheme).slug ? null : picked } });
         return { ok: true, intent } satisfies ActionData;
       }
       case "visibility":
@@ -283,7 +299,14 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               </>
             }
           >
-            <ThemePicker themes={loaderData.themes} sample={loaderData.sample!} current={loaderData.currentTheme} format={formatOf(list)} />
+            <ThemePicker
+              looks={loaderData.looks!}
+              sample={loaderData.sample!}
+              current={loaderData.currentTheme}
+              currentTemplate={loaderData.currentTemplate}
+              currentOccasion={loaderData.currentOccasion}
+              format={formatOf(list)}
+            />
           </Section>
 
           <Section id="visibility-h" title="Who can see this list">
@@ -466,55 +489,94 @@ function NewKey({ keyValue, agentName, listUrl }: { keyValue: string; agentName:
   );
 }
 
-function ThemePicker({ themes, sample, current, format }: { themes: ThemeView[]; sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>; current: string; format: ListFormat }) {
+function ThemePicker({
+  looks,
+  sample,
+  current,
+  currentTemplate,
+  currentOccasion,
+  format,
+}: {
+  looks: { templates: ThemeView[]; occasions: ThemeView[]; browsing: string };
+  sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>;
+  current: string;
+  currentTemplate: string;
+  currentOccasion: string | null;
+  format: ListFormat;
+}) {
   const fi = FORMATS[format];
   const fetcher = useFetcher<ActionData>();
   const { origin } = useRootData();
-  const [selected, setSelected] = useState(current);
-  const view = themes.find((t) => t.slug === selected) ?? themes[0];
-  const saving = fetcher.state !== "idle";
-  const saved = fetcher.state === "idle" && fetcher.data?.ok && selected === current;
+  const [, setSearchParams] = useSearchParams();
+  const [occasion, setOccasion] = useState<string | null>(currentOccasion);
+  const template = looks.browsing;
   // The Sheet table compares prices: shopping lists only.
-  const usable = themes.filter((t) => format === "shopping" || t.layout !== "sheet");
-  const defaultSlug = usable.find((t) => t.slug === fi.defaultTheme)?.slug ?? fi.defaultTheme;
-  const suits = usable.filter((t) => t.slug === defaultSlug || fi.suits.includes(t.slug));
-  const groups: Array<[string, string, ThemeView[]]> = [
-    ["suits", `Made for ${fi.label.toLowerCase()} lists`, suits],
-    ["workspace", "Other styles", usable.filter((t) => t.group !== "occasion" && !suits.includes(t))],
-    ["occasion", "Occasions", usable.filter((t) => t.group === "occasion" && !suits.includes(t))],
-  ];
+  const templates = looks.templates.filter((t) => format === "shopping" || t.layout !== "sheet");
+  const slug = occasion ? (template === "default" ? occasion : `${template}--${occasion}`) : template;
+  const view =
+    (occasion ? looks.occasions.find((o) => o.occasion === occasion) : templates.find((t) => t.template === template)) ?? templates[0];
+  const defaultTemplate = fi.defaultTheme;
+  const saving = fetcher.state !== "idle";
+  const saved = fetcher.state === "idle" && fetcher.data?.ok && slug === current;
+  const pickTemplate = (t: string) =>
+    setSearchParams((p) => {
+      p.set("template", t);
+      return p;
+    }, { replace: true, preventScrollReset: true });
+
   return (
-    <fetcher.Form method="post" className="grid gap-4">
+    <fetcher.Form method="post" className="grid gap-5">
       <input type="hidden" name="intent" value="theme" />
-      {groups.map(([key, label, list]) => (
-        <fieldset key={key} className="grid gap-2">
-          <legend className="label mb-1">{label}</legend>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((t) => (
-              <label
-                key={t.slug}
-                className={`grid cursor-pointer overflow-hidden rounded-xl border-2 ${selected === t.slug ? "border-want" : "border-line"}`}
-              >
-                <ThemeThumb theme={t} sample={sample} origin={origin} className="h-28 border-b border-line" />
-                <span className="flex items-center gap-3 p-3">
-                  <input type="radio" name="theme" value={t.slug} checked={selected === t.slug} onChange={() => setSelected(t.slug)} className="h-5 w-5 shrink-0 accent-[var(--want)]" />
-                  <span className="min-w-0">
-                    <span className="block font-semibold">{t.name}</span>
-                    <span className="block text-[0.8rem] text-ink-3">
-                      {t.slug === defaultSlug ? "Default for this format" : t.scheme === "dark" ? "Always dark" : "Light and dark"}
-                    </span>
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      ))}
+      <input type="hidden" name="theme" value={slug} />
+      <fieldset className="grid gap-2">
+        <legend className="label mb-1">Template: how the list is laid out</legend>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {templates.map((t) => (
+            <LookOption
+              key={t.slug}
+              name="template-choice"
+              checked={template === t.template}
+              onChange={() => pickTemplate(t.template)}
+              view={t}
+              sample={sample}
+              origin={origin}
+              note={t.template === defaultTemplate ? "Default for this format" : fi.suits.includes(t.template) ? `Made for ${fi.label.toLowerCase()}` : t.scheme === "dark" ? "Always dark" : ""}
+            />
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="grid gap-2">
+        <legend className="label mb-1">Occasion: how it is dressed</legend>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <label className={`grid cursor-pointer place-items-center gap-2 rounded-xl border-2 p-3 text-center ${occasion === null ? "border-want" : "border-line"}`}>
+            <span className="grid h-20 w-full place-items-center rounded-lg bg-sunk text-[0.85rem] text-ink-3" aria-hidden="true">
+              No occasion
+            </span>
+            <span className="flex items-center gap-2">
+              <input type="radio" name="occasion-choice" checked={occasion === null} onChange={() => setOccasion(null)} className="h-5 w-5 accent-[var(--want)]" />
+              <span className="font-semibold">None</span>
+            </span>
+          </label>
+          {looks.occasions.map((o) => (
+            <LookOption
+              key={o.slug}
+              name="occasion-choice"
+              checked={occasion === o.occasion}
+              onChange={() => setOccasion(o.occasion)}
+              view={o}
+              sample={sample}
+              origin={origin}
+              label={o.name.split(" · ").pop()!}
+              note={o.scheme === "dark" ? "Always dark" : ""}
+              small
+            />
+          ))}
+        </div>
+      </fieldset>
       <div className="grid gap-2">
         <p className="label" id="theme-preview-label">
           Preview: {view.name}
         </p>
-        <p className="text-[0.85rem] text-ink-3">{view.idea}</p>
         <div className="max-h-[30rem] overflow-hidden rounded-xl border border-line" aria-hidden="true" inert>
           <ListView
             list={sample.list}
@@ -533,13 +595,51 @@ function ThemePicker({ themes, sample, current, format }: { themes: ThemeView[];
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3" aria-live="polite">
-        <button className="btn" disabled={saving || selected === current}>
-          {saving ? "Saving…" : selected === current ? "Current theme" : `Use ${view.name}`}
+        <button className="btn btn-want" disabled={saving || slug === current}>
+          {saving ? "Saving…" : slug === current ? "Current look" : `Use ${view.name}`}
         </button>
-        {saved && <span className="text-[0.85rem] text-deal">Saved. Your list now uses this theme.</span>}
+        {currentTemplate !== template || currentOccasion !== occasion ? (
+          <span className="text-[0.85rem] text-ink-3">Not saved yet.</span>
+        ) : null}
+        {saved && <span className="text-[0.85rem] text-deal">Saved. Your list now uses this look.</span>}
         {fetcher.data?.error && <span className="form-error">{fetcher.data.error}</span>}
       </div>
     </fetcher.Form>
+  );
+}
+
+function LookOption({
+  name,
+  checked,
+  onChange,
+  view,
+  sample,
+  origin,
+  note,
+  label,
+  small = false,
+}: {
+  name: string;
+  checked: boolean;
+  onChange: () => void;
+  view: ThemeView;
+  sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>;
+  origin: string;
+  note: string;
+  label?: string;
+  small?: boolean;
+}) {
+  return (
+    <label className={`grid cursor-pointer overflow-hidden rounded-xl border-2 ${checked ? "border-want" : "border-line"}`}>
+      <ThemeThumb theme={view} sample={sample} origin={origin} className={`${small ? "h-20" : "h-28"} border-b border-line`} />
+      <span className="flex items-center gap-2 p-2.5">
+        <input type="radio" name={name} checked={checked} onChange={onChange} className="h-5 w-5 shrink-0 accent-[var(--want)]" />
+        <span className="min-w-0">
+          <span className="block text-[0.92rem] font-semibold leading-tight">{label ?? view.name}</span>
+          {note && <span className="block text-[0.75rem] text-ink-3">{note}</span>}
+        </span>
+      </span>
+    </label>
   );
 }
 

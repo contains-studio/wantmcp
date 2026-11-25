@@ -336,7 +336,9 @@
 .ix-row button.check-toggle { position: relative; }
 .ix-row.is-done .ix-title { color: var(--ink-3); text-decoration: line-through; }
 .ix-cell { font-size: 0.875rem; color: var(--ink-3); min-width: 0; }
-@media (max-width: 767px) {
+/* The table follows its own width (it also renders inside narrow previews), not the viewport. */
+.ix-sections { container-type: inline-size; }
+@container (max-width: 720px) {
   .ix-table-head { display: none; }
   .ix-row { grid-template-columns: 2.75rem minmax(0, 1fr) auto; }
   .ix-row .ix-who { display: none; }

@@ -1,20 +1,31 @@
 /* Cyber Monday: electric blue and magenta on a fine grid, chamfered panels, monospace readouts. */
-.themed.theme-cyber-monday { --mag: #b0127a; --grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M32 0H0V32' fill='none' stroke='%23c9d1f5' stroke-width='1'/%3E%3C/svg%3E"); background: var(--grid) 0 0 / 32px 32px, var(--paper); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .themed.theme-cyber-monday { --mag: #ff5fd2; --grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M32 0H0V32' fill='none' stroke='%23141c4a' stroke-width='1'/%3E%3C/svg%3E"); } }
-:root[data-theme="dark"] .themed.theme-cyber-monday { --mag: #ff5fd2; --grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M32 0H0V32' fill='none' stroke='%23141c4a' stroke-width='1'/%3E%3C/svg%3E"); }
-.themed.theme-cyber-monday .list-hero { border-bottom: 2px solid var(--want);
+
+/* What this occasion lends to any template (see the template stylesheets for where each goes). */
+.themed.occ-cyber-monday {
+  --occ-art: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect x='40' y='50' width='320' height='200' fill='%230b1030' stroke='%232ef2ff' stroke-width='4'/%3E%3Cpath d='M40 82 H360' stroke='%232ef2ff' stroke-width='3'/%3E%3Ccircle cx='60' cy='66' r='5' fill='%23ff5fd2'/%3E%3Ccircle cx='78' cy='66' r='5' fill='%232ef2ff'/%3E%3Cpath d='M80 140 l40 30 l-40 30' stroke='%23ff5fd2' stroke-width='10' fill='none' stroke-linecap='square'/%3E%3Crect x='140' y='190' width='70' height='12' fill='%232ef2ff'/%3E%3C/svg%3E");
+  --occ-strip: linear-gradient(90deg, #2ef2ff, #ff5fd2);
+  --occ-strip-h: 4px;
+  --occ-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 5l9 7-9 7V15l4.5-3L4 9V5zm9 12h8v3h-8z' fill='black'/%3E%3C/svg%3E");
+  --occ-pattern: repeating-linear-gradient(0deg, transparent 0 3px, rgb(46 242 255 / 0.06) 3px 4px);
+}
+
+/* On Default cards the occasion is the whole look: */
+.themed.tpl-default.occ-cyber-monday { --mag: #b0127a; --grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M32 0H0V32' fill='none' stroke='%23c9d1f5' stroke-width='1'/%3E%3C/svg%3E"); background: var(--grid) 0 0 / 32px 32px, var(--paper); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .themed.tpl-default.occ-cyber-monday { --mag: #ff5fd2; --grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M32 0H0V32' fill='none' stroke='%23141c4a' stroke-width='1'/%3E%3C/svg%3E"); } }
+:root[data-theme="dark"] .themed.tpl-default.occ-cyber-monday { --mag: #ff5fd2; --grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M32 0H0V32' fill='none' stroke='%23141c4a' stroke-width='1'/%3E%3C/svg%3E"); }
+.themed.tpl-default.occ-cyber-monday .list-hero { border-bottom: 2px solid var(--want);
   background: repeating-linear-gradient(0deg, transparent 0 3px, color-mix(in srgb, var(--want) 7%, transparent) 3px 4px), linear-gradient(120deg, var(--want-soft), transparent 70%); }
-.themed.theme-cyber-monday .list-hero > .wrap { padding-block: 3rem; }
-.themed.theme-cyber-monday .list-title { font-size: clamp(2rem, 5.5vw, 3.6rem); font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; }
-.themed.theme-cyber-monday .list-title::before { content: ">"; color: var(--mag); margin-right: 0.35em; }
-.themed.theme-cyber-monday .list-title::after { content: ""; display: inline-block; width: 0.5em; height: 0.85em; margin-left: 0.2em; vertical-align: -0.08em; background: var(--mag); }
-.themed.theme-cyber-monday .list-hero .eyebrow { color: var(--mag); }
-.themed.theme-cyber-monday .item-section, .themed.theme-cyber-monday .entry-card, .themed.theme-cyber-monday .text-entry, .themed.theme-cyber-monday .add-item {
+.themed.tpl-default.occ-cyber-monday .list-hero > .wrap { padding-block: 3rem; }
+.themed.tpl-default.occ-cyber-monday .list-title { font-size: clamp(2rem, 5.5vw, 3.6rem); font-weight: 700; letter-spacing: -0.03em; text-transform: uppercase; }
+.themed.tpl-default.occ-cyber-monday .list-title::before { content: ">"; color: var(--mag); margin-right: 0.35em; }
+.themed.tpl-default.occ-cyber-monday .list-title::after { content: ""; display: inline-block; width: 0.5em; height: 0.85em; margin-left: 0.2em; vertical-align: -0.08em; background: var(--mag); }
+.themed.tpl-default.occ-cyber-monday .list-hero .eyebrow { color: var(--mag); }
+.themed.tpl-default.occ-cyber-monday .item-section, .themed.tpl-default.occ-cyber-monday .entry-card, .themed.tpl-default.occ-cyber-monday .text-entry, .themed.tpl-default.occ-cyber-monday .add-item {
   clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
 }
-.themed.theme-cyber-monday .item-section { background: var(--card); border: 1px solid var(--line-strong); padding: 1.25rem; }
-.themed.theme-cyber-monday .item-number { background: none; color: var(--mag); border: 1.5px solid var(--mag); border-radius: 0; font-family: var(--font-mono); }
-.themed.theme-cyber-monday .item-title { font-family: var(--font-mono); font-weight: 650; letter-spacing: -0.02em; }
-.themed.theme-cyber-monday .entry-card { background: var(--sunk); border-color: var(--line-strong); box-shadow: none; }
-.themed.theme-cyber-monday .price { color: var(--want); font-family: var(--font-mono); }
-.themed.theme-cyber-monday .save { background: transparent; color: var(--mag); border: 1px solid var(--mag); border-radius: 0; font-family: var(--font-mono); }
+.themed.tpl-default.occ-cyber-monday .item-section { background: var(--card); border: 1px solid var(--line-strong); padding: 1.25rem; }
+.themed.tpl-default.occ-cyber-monday .item-number { background: none; color: var(--mag); border: 1.5px solid var(--mag); border-radius: 0; font-family: var(--font-mono); }
+.themed.tpl-default.occ-cyber-monday .item-title { font-family: var(--font-mono); font-weight: 650; letter-spacing: -0.02em; }
+.themed.tpl-default.occ-cyber-monday .entry-card { background: var(--sunk); border-color: var(--line-strong); box-shadow: none; }
+.themed.tpl-default.occ-cyber-monday .price { color: var(--want); font-family: var(--font-mono); }
+.themed.tpl-default.occ-cyber-monday .save { background: transparent; color: var(--mag); border: 1px solid var(--mag); border-radius: 0; font-family: var(--font-mono); }

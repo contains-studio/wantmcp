@@ -1,47 +1,56 @@
 /* Today: a calm to-do list with lots of air. */
-.themed.theme-today .list-hero, .themed.theme-today { background: var(--paper); }
-.themed.theme-today .list-hero { border-bottom: 0; }
-.themed.theme-today .list-hero > .wrap, .themed.theme-today > .wrap { max-width: 46rem; }
-.themed.theme-today .list-hero > .wrap { padding-block: 5rem 1.5rem; }
-.themed.theme-today .list-title { display: flex; align-items: center; gap: 0.9rem; font-size: clamp(2rem, 5vw, 2.6rem); font-weight: 800; letter-spacing: -0.025em; }
+.themed.tpl-today .list-hero, .themed.tpl-today { background: var(--paper); }
+.themed.tpl-today .list-hero { border-bottom: 0; }
+.themed.tpl-today .list-hero > .wrap, .themed.tpl-today > .wrap { max-width: 46rem; }
+.themed.tpl-today .list-hero > .wrap { padding-block: 5rem 1.5rem; }
+.themed.tpl-today .list-title { display: flex; align-items: center; gap: 0.9rem; font-size: clamp(2rem, 5vw, 2.6rem); font-weight: 800; letter-spacing: -0.025em; }
 /* The round mark fills like a pie as items get done. */
-.themed.theme-today .list-title-mark {
+.themed.tpl-today .list-title-mark {
   display: inline-block; flex: none; width: 1.7rem; height: 1.7rem; border-radius: 999px; border: 2.5px solid var(--want);
   background: conic-gradient(var(--want) calc(var(--list-progress, 0) * 360deg), transparent 0); background-clip: content-box; padding: 2.5px;
 }
-.themed.theme-today .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; font-weight: 500; }
-.themed.theme-today .list-hero h1 + p { color: var(--ink-3); font-size: 1rem; margin-top: 0.5rem; padding-left: 2.6rem; }
+.themed.tpl-today .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; font-weight: 500; }
+.themed.tpl-today .list-hero h1 + p { color: var(--ink-3); font-size: 1rem; margin-top: 0.5rem; padding-left: 2.6rem; }
 /* Almost nothing on the page: the counts and meta lines stay quiet, no boxes anywhere. */
-.themed.theme-today .list-hero > .wrap > div { padding-left: 2.6rem; font-size: 0.8rem; color: var(--ink-3); }
-.themed.theme-today .list-hero > .wrap > div strong { font-weight: 500; color: var(--ink-3); }
-.themed.theme-today > .wrap { gap: 2.5rem; padding-bottom: 7rem; }
-.themed.theme-today .items-region { gap: 0.35rem; }
-.themed.theme-today .item-section { gap: 0.6rem; padding: 0.7rem 0.75rem; border-radius: 12px; }
-.themed.theme-today .item-section:hover { background: var(--sunk); }
-.themed.theme-today .item-section:target { background: var(--want-soft); }
-.themed.theme-today .item-title { font-family: var(--font-sans); font-size: 1.05rem !important; font-weight: 500; line-height: 1.45; letter-spacing: 0; }
-.themed.theme-today .item-indent { padding-left: 2.25rem !important; margin-left: 0 !important; }
-.themed.theme-today .item-details { font-size: 0.9rem; color: var(--ink-3); }
-.themed.theme-today .item-meta { font-size: 0.8rem; gap: 0.6rem; }
-.themed.theme-today .item-meta > span:first-child { display: none; }
-.themed.theme-today .item-meta .chip { background: transparent; border: 0; padding: 0; color: var(--warn); font-weight: 650; }
-.themed.theme-today .item-meta .chip::before { content: "⚑ "; }
-.themed.theme-today .check-toggle {
+.themed.tpl-today .list-hero > .wrap > div { padding-left: 2.6rem; font-size: 0.8rem; color: var(--ink-3); }
+.themed.tpl-today .list-hero > .wrap > div strong { font-weight: 500; color: var(--ink-3); }
+.themed.tpl-today > .wrap { gap: 2.5rem; padding-bottom: 7rem; }
+.themed.tpl-today .items-region { gap: 0.35rem; }
+.themed.tpl-today .item-section { gap: 0.6rem; padding: 0.7rem 0.75rem; border-radius: 12px; }
+.themed.tpl-today .item-section:hover { background: var(--sunk); }
+.themed.tpl-today .item-section:target { background: var(--want-soft); }
+.themed.tpl-today .item-title { font-family: var(--font-sans); font-size: 1.05rem !important; font-weight: 500; line-height: 1.45; letter-spacing: 0; }
+.themed.tpl-today .item-indent { padding-left: 2.25rem !important; margin-left: 0 !important; }
+.themed.tpl-today .item-details { font-size: 0.9rem; color: var(--ink-3); }
+.themed.tpl-today .item-meta { font-size: 0.8rem; gap: 0.6rem; }
+.themed.tpl-today .item-meta > span:first-child { display: none; }
+.themed.tpl-today .item-meta .chip { background: transparent; border: 0; padding: 0; color: var(--warn); font-weight: 650; }
+.themed.tpl-today .item-meta .chip::before { content: "⚑ "; }
+.themed.tpl-today .check-toggle {
   width: 1.3rem; height: 1.3rem; border-radius: 0.38rem; border: 1.5px solid var(--line-strong); background: var(--card); font-size: 0.8rem; margin-top: 0.2rem;
 }
-.themed.theme-today button.check-toggle { position: relative; }
-.themed.theme-today button.check-toggle::before { content: ""; position: absolute; inset: -0.75rem; }
-.themed.theme-today .check-toggle[aria-checked="true"], .themed.theme-today .check-toggle.is-checked { background: var(--want); border-color: var(--want); color: var(--want-ink); }
-.themed.theme-today .item-section > header .flex.items-start { gap: 0.95rem; }
-.themed.theme-today .text-entry, .themed.theme-today .entry-card { background: var(--sunk); border: 0; box-shadow: none; }
-.themed.theme-today .item-entries { gap: 0.5rem !important; }
-.themed.theme-today .bought-group { gap: 0.25rem; opacity: 1; }
-.themed.theme-today .bought-divider h2 { font-family: var(--font-sans); font-size: 0.85rem; font-weight: 700; color: var(--ink-3); letter-spacing: 0.02em; }
-.themed.theme-today .bought-divider .divider-dots { background: var(--line); height: 1px; }
-.themed.theme-today .is-bought .item-title { color: var(--ink-3); text-decoration: none !important; }
-.themed.theme-today .add-item { background: transparent; border: 0; box-shadow: none; padding: 0 0 0 0.75rem; }
-.themed.theme-today .add-item > p { display: none; }
-.themed.theme-today .add-item h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.themed.theme-today .add-item .input { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding-left: 0; }
-.themed.theme-today .item-status, .themed.theme-today .item-section .btn { font-size: 0.85rem; }
-.themed.theme-today .entries-empty { border: 0; padding: 0; text-align: left; font-size: 0.85rem; padding-left: 2.25rem; }
+.themed.tpl-today button.check-toggle { position: relative; }
+.themed.tpl-today button.check-toggle::before { content: ""; position: absolute; inset: -0.75rem; }
+.themed.tpl-today .check-toggle[aria-checked="true"], .themed.tpl-today .check-toggle.is-checked { background: var(--want); border-color: var(--want); color: var(--want-ink); }
+.themed.tpl-today .item-section > header .flex.items-start { gap: 0.95rem; }
+.themed.tpl-today .text-entry, .themed.tpl-today .entry-card { background: var(--sunk); border: 0; box-shadow: none; }
+.themed.tpl-today .item-entries { gap: 0.5rem !important; }
+.themed.tpl-today .bought-group { gap: 0.25rem; opacity: 1; }
+.themed.tpl-today .bought-divider h2 { font-family: var(--font-sans); font-size: 0.85rem; font-weight: 700; color: var(--ink-3); letter-spacing: 0.02em; }
+.themed.tpl-today .bought-divider .divider-dots { background: var(--line); height: 1px; }
+.themed.tpl-today .is-bought .item-title { color: var(--ink-3); text-decoration: none !important; }
+.themed.tpl-today .add-item { background: transparent; border: 0; box-shadow: none; padding: 0 0 0 0.75rem; }
+.themed.tpl-today .add-item > p { display: none; }
+.themed.tpl-today .add-item h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.themed.tpl-today .add-item .input { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding-left: 0; }
+.themed.tpl-today .item-status, .themed.tpl-today .item-section .btn { font-size: 0.85rem; }
+.themed.tpl-today .entries-empty { border: 0; padding: 0; text-align: left; font-size: 0.85rem; padding-left: 2.25rem; }
+
+/* Occasions: almost nothing, as befits a sheet of paper. The art as a faint silhouette in the
+   corner of the header, and a thin strip under it. */
+.themed.tpl-today.has-occ .list-hero > .wrap { position: relative; }
+.themed.tpl-today.has-occ .list-hero > .wrap::before {
+  content: ""; position: absolute; right: 1rem; top: 2rem; width: min(13rem, 34%); aspect-ratio: 4 / 3; opacity: 0.22; pointer-events: none;
+  background: var(--want); -webkit-mask: var(--occ-art) center / contain no-repeat; mask: var(--occ-art) center / contain no-repeat;
+}
+.themed.tpl-today.has-occ .list-hero::after { content: ""; display: block; max-width: 46rem; margin: 0 auto; height: min(var(--occ-strip-h), 6px); background: var(--occ-strip); opacity: 0.85; }
