@@ -826,31 +826,25 @@ button.check-toggle:hover { border-color: var(--ink); }
 .theme-thumb-inner > .themed { min-height: 1600px; }
 .ix-panel .deep-target { animation: none; }
 
-/* "Works with" as one line. It drifts sideways (a full pass in about 40s) and pauses while a pointer
-   rests on it or the keyboard's focus is in it. A touch never pauses it: on a phone both "hover"
-   and plain focus stick to the logo that was tapped, which would freeze the row until the person
-   tapped somewhere else. The track holds the row twice and moves by one copy.
-   Reduced motion (owner's decision, 25 Nov 2026): on a touch screen the row still drifts. One line
-   on a phone cannot show every app, and a still, cut-off row read as broken. It is a slow, steady
-   slide of one small strip, nothing that zooms, bounces or follows the scroll. With a mouse and
-   reduced motion the row stands still and wraps, which shows every app without moving. */
+/* "Works with" is one line, always (owner, 25 Nov 2026: "we should only have one row"). It drifts
+   sideways (a full pass in about 40s) and pauses while a pointer rests on it or the keyboard's
+   focus is in it. A touch never pauses it: on a phone both "hover" and plain focus stick to the
+   logo that was tapped, which would freeze the row until the person tapped somewhere else. The
+   track holds the row twice and moves by one copy.
+   Reduced motion: the row still drifts, on every device. One line cannot show every app, a still
+   cut-off row read as broken on a phone, and a wrapped one took two rows on a desktop. It is a
+   slow, steady slide of one small strip, nothing that zooms, bounces or follows the scroll. */
 .marquee {
   overflow: hidden; padding-block: 0.5rem;
   mask-image: linear-gradient(90deg, transparent, #000 4rem, #000 calc(100% - 4rem), transparent);
 }
 .marquee-track { display: flex; width: max-content; animation: marquee 40s linear infinite; }
-.marquee-list { display: flex; flex: none; align-items: center; gap: 0.25rem; padding-right: 2rem; }
+.marquee-list { display: flex; flex: none; flex-wrap: nowrap; align-items: center; gap: 0.25rem; padding-right: 2rem; }
 .marquee:has(:focus-visible) .marquee-track { animation-play-state: paused; }
 @media (hover: hover) {
   .marquee:hover .marquee-track { animation-play-state: paused; }
 }
 @keyframes marquee { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) and (hover: hover) {
-  .marquee { mask-image: none; }
-  .marquee-track { animation: none; width: auto; justify-content: center; }
-  .marquee-list { flex: 0 1 auto; flex-wrap: wrap; justify-content: center; padding-right: 0; }
-  .marquee-list[aria-hidden] { display: none; }
-}
 
 /* "Works with" tiles on the home page: 52px tall, logos shown unmodified at their own aspect ratio. */
 .brand-tile {
@@ -927,6 +921,8 @@ button.check-toggle:hover { border-color: var(--ink); }
 .feed-rows > article, .feed-rows > li > article { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding-inline: 0; }
 .feed-rows > li > article.untrusted { border: 1px dashed var(--warn); border-radius: 6px; padding-inline: 1rem; margin-block: 0.75rem; }
 .brand-logo { height: 1.6rem; width: auto; max-width: 7.5rem; object-fit: contain; }
+/* An app icon on its own square: its corners and a hairline, so a white icon shows on a light page. */
+.brand-logo-tile { border-radius: 27.5%; box-shadow: 0 0 0 1px var(--line-strong); }
 .brand-logo-dark { display: none; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .brand-logo-light { display: none; }
