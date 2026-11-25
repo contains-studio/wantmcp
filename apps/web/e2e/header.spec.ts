@@ -29,5 +29,7 @@ test("home, signed out: the hero has one action, Start a list @phone", async ({ 
   const hero = page.locator("section", { has: page.getByRole("heading", { level: 1 }) }).first();
   await expect(hero.getByRole("link", { name: "Start a list" })).toBeVisible();
   await expect(hero.getByRole("link")).toHaveCount(1);
+  // The other way in, in the owner's words, right under the button.
+  await expect(hero.getByText("Or just tell your agent to set up wantmcp.com for the things you want")).toBeVisible();
   await expect(page.getByRole("main").getByRole("link", { name: "Connect an agent" })).toHaveCount(0);
 });

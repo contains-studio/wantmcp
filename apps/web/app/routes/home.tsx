@@ -132,6 +132,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             </Link>
           )}
         </div>
+        {/* Owner, 25 Nov 2026: they told Muse exactly this and it worked (the agent reads /llms.txt and starts a list). */}
+        {!user && <p className="-mt-2 text-[0.98rem] italic text-ink-2">Or just tell your agent to set up wantmcp.com for the things you want</p>}
       </section>
 
       <WorksWith />
