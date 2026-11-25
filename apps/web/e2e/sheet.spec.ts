@@ -58,14 +58,35 @@ test.describe("Sheet", () => {
     expect(sideways).toBeLessThanOrEqual(1);
   });
 
-  test("from four products a want can be sorted; with fewer there is no sort bar", async ({ page }) => {
+  test("from four products a want can be sorted, with one compact control; with fewer there is none", async ({ page }) => {
     await page.goto("/l/lst_tesla");
-    await expect(page.locator("section#itm_ty_chains").getByRole("group", { name: /^Sort products/ })).toHaveCount(0);
+    await expect(page.locator("section#itm_ty_chains").getByRole("combobox")).toHaveCount(0);
     const mats = page.locator("section#itm_ty_mats");
     const first = () => mats.locator(".sheet-group").first();
     await expect(first()).toHaveAttribute("id", "ent_ty_m6"); // cheapest first
-    await mats.getByRole("button", { name: "Price" }).click();
-    await expect(first()).toHaveAttribute("id", "ent_ty_m1"); // now dearest first
-    await expect(mats.getByRole("button", { name: "Price" })).toHaveAttribute("aria-pressed", "true");
+    // From 640px the control sits on the want's "Added by" line, not on a row of its own.
+    const sort = mats.getByRole("combobox", { name: /^Sort products/ });
+    await expect(sort).toHaveCount(1);
+    const metaTop = (await mats.locator(".item-meta").boundingBox())!.y;
+    expect(Math.abs((await sort.boundingBox())!.y - metaTop)).toBeLessThan(20);
+    await sort.selectOption({ label: "Price, high to low" });
+    await expect(first()).toHaveAttribute("id", "ent_ty_m1");
+  });
+
+  test("phone: the sort is one short line above the products", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/l/lst_tesla");
+    const sort = page.locator("section#itm_ty_mats").getByRole("combobox", { name: /^Sort products/ });
+    await expect(sort).toHaveCount(1);
+    expect((await page.locator("section#itm_ty_mats .sheet-sort.is-above").boundingBox())!.height).toBeLessThanOrEqual(52);
+  });
+
+  test("'Lowest' never contradicts the order: a cheaper price seen only in search makes the chip say 'Lowest verified'", async ({ page }) => {
+    await page.goto("/l/lst_tesla");
+    await expect(page.locator("#ent_ty_m6 .lowest")).toHaveCount(0); // cheapest, but only a search result
+    await expect(page.locator("#ent_ty_m5 .sheet-row .lowest")).toHaveText(/^Lowest verified/);
+    // The opened details say the same.
+    await page.locator("#ent_ty_m5 .sheet-price").click();
+    await expect(page.locator("#ent_ty_m5 .sheet-detail .lowest")).toHaveText("Lowest verified");
   });
 });

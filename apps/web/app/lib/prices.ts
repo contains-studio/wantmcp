@@ -34,6 +34,22 @@ export function lowestEntryId(entries: Entry[], now: number): string | null {
     .reduce((a, b) => (Number(b.current_price!.price) < Number(a.current_price!.price) ? b : a)).id;
 }
 
+/**
+ * The "Lowest" chip's words. It follows the best-price rule above (verified prices preferred), so when a cheaper price
+ * only seen in a search result or on a price site sits above it, plain "Lowest" would contradict the order: it then
+ * says "Lowest verified" (owner review, 25 Nov 2026). The honesty rule stays; the label says which lowest it is.
+ */
+export function lowestLabel(entries: Entry[], lowestId: string | null, now: number): "Lowest" | "Lowest verified" {
+  const lowest = entries.find((e) => e.id === lowestId)?.current_price;
+  if (!lowest) return "Lowest";
+  const cheaper = entries.some(
+    (e) => e.id !== lowestId && e.current_price && isFresh(e.current_price, now) && e.current_price.currency === lowest.currency && Number(e.current_price.price) < Number(lowest.price),
+  );
+  return cheaper ? "Lowest verified" : "Lowest";
+}
+
+export const LOWEST_VERIFIED_NOTE = "The lowest price read on a retailer's own page in the last day; a cheaper one was only seen in a search result or on a price site";
+
 export const SOURCE_LABEL: Record<string, string> = {
   retailer_page: "Retailer's page",
   aggregator: "Price site",

@@ -825,6 +825,26 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
   .look-tile.look-captioned:hover .look-frame { border-color: var(--line-strong); }
 }
 
+/* List settings › Look: the gallery. Occasions in one swipeable row; layouts as miniatures, two across on a phone. */
+.look-occasions { display: flex; gap: 0.5rem; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; margin-inline: -1.25rem; padding: 0.15rem 1.25rem 0.35rem; scroll-padding-inline: 1.25rem; }
+.look-occasions::-webkit-scrollbar { display: none; }
+.look-occasions > * { scroll-snap-align: start; }
+.look-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 0.75rem; }
+@media (min-width: 640px) { .look-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } .look-occasions { flex-wrap: wrap; overflow: visible; margin-inline: 0; padding-inline: 0; } }
+@media (min-width: 1024px) { .look-gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.look-choice { display: grid; gap: 0.45rem; cursor: pointer; }
+.look-choice-frame { position: relative; display: block; border-radius: 18px; }
+/* Chosen: a ring and a check, never colour alone. */
+.look-choice.is-on .look-frame { border-color: transparent; box-shadow: 0 0 0 2px var(--want); }
+.look-choice:has(input:focus-visible) .look-frame { outline: 3px solid var(--focus); outline-offset: 2px; }
+.look-check { position: absolute; top: 0.4rem; right: 0.4rem; z-index: 2; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 999px; background: var(--want); color: var(--want-ink); font-size: 0.8rem; font-weight: 700; }
+.look-choice.is-on .look-name { color: var(--ink); }
+@media (hover: hover) { .look-choice:not(.is-on):hover .look-frame { border-color: var(--line-strong); } }
+/* The collapsed section's picture of the current look. */
+.look-mini { display: block; width: 4.5rem; height: 2.75rem; flex: none; }
+.look-mini .look-frame { height: 100%; border-radius: 8px; }
+.look-mini .theme-thumb-inner { --z: 0.12; }
+
 /* Theme gallery thumbnails: a whole list page, scaled down. */
 .theme-thumb-fade { position: absolute; inset: auto 0 0; z-index: 1; height: 2.25rem; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--card)); }
 /* The miniature is sized from its frame (a size container), so the scaled page meets every edge. */
@@ -922,10 +942,13 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 /* The bought one: a soft band that reaches a little past the row's edges (a shadow, so nothing overflows). */
 .is-bought > .sheet-row { background: var(--deal-soft); box-shadow: -0.5rem 0 0 var(--deal-soft), 0.5rem 0 0 var(--deal-soft); }
 .sheet-group.is-stale .price { color: var(--ink-3); }
-.sheet-sort { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding-bottom: 0.4rem; font-size: 0.8rem; }
-.sheet-sort-btn { min-height: 2rem; padding: 0 0.55rem; border-radius: 999px; color: var(--ink-2); }
-.sheet-sort-btn.is-on { background: var(--sunk); color: var(--ink); font-weight: 600; }
-@media (pointer: coarse) { .sheet-sort-btn { min-height: var(--ctl); } }
+/* The sort: one compact select, on the want's "Added by" line (from 640px) or one short line above the rows. */
+.sheet-sort { align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+.sheet-sort.is-inline { display: none; margin-left: auto; }
+.sheet-sort.is-above { display: flex; justify-content: flex-end; padding-bottom: 0.35rem; }
+@media (min-width: 640px) { .sheet-sort.is-inline { display: inline-flex; } .sheet-sort.is-above { display: none; } }
+.sheet-sort-select { min-height: 2rem; padding: 0 1.6rem 0 0.6rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 0.6rem center; color: var(--ink); font: inherit; font-weight: 600; appearance: none; }
+@media (pointer: coarse) { .sheet-sort-select { min-height: var(--ctl); } }
 .sheet-detail { display: none; padding: 0.25rem 0 0.9rem; }
 .sheet-group:has(details.row-toggle[open]) > .sheet-detail { display: block; }
 .row-toggle-btn { display: inline-grid; place-items: center; min-width: 1.75rem; min-height: 1.75rem; margin: -0.3rem -0.4rem -0.3rem 0; color: var(--ink-3); cursor: pointer; }

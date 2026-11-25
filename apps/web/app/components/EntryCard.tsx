@@ -10,6 +10,7 @@ import { CopyButton } from "./CopyButton";
 import { ExtLink } from "./ExtLink";
 import { PriceSparkline, PriceTable } from "./PriceHistory";
 import { ProductImage } from "./ProductImage";
+import { LOWEST_VERIFIED_NOTE } from "~/lib/prices";
 import { ReportMenuItem } from "./Report";
 import { Menu, MenuRemove, MenuSub } from "./Actions";
 import { Provenance } from "./Provenance";
@@ -53,6 +54,8 @@ export interface EntryCardProps {
   prices: PriceObservation[] | null;
   comments: Comment[];
   isLowest: boolean;
+  /** The chip's words when this is the lowest: "Lowest", or "Lowest verified" when a cheaper unverified price exists. */
+  lowestText?: "Lowest" | "Lowest verified";
   boughtThis: boolean;
   itemPurchased: boolean;
   canWrite: boolean;
@@ -65,7 +68,7 @@ export interface EntryCardProps {
 }
 
 /** One product found for an item. Price first, then deal details, then who found it. */
-export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemPurchased, canWrite, canEdit, canDeleteComment, eagerImage, anchor = true }: EntryCardProps) {
+export function EntryCard({ entry, prices, comments, isLowest, lowestText = "Lowest", boughtThis, itemPurchased, canWrite, canEdit, canDeleteComment, eagerImage, anchor = true }: EntryCardProps) {
   const now = useNow();
   const cur = entry.current_price;
   const titleId = `${entry.id}-title${anchor ? "" : "-detail"}`;
@@ -88,7 +91,9 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
           {boughtThis ? (
             <span className="stamp shrink-0">Bought</span>
           ) : isLowest ? (
-            <span className="lowest shrink-0">Lowest</span>
+            <span className="lowest shrink-0" title={lowestText === "Lowest verified" ? LOWEST_VERIFIED_NOTE : undefined}>
+              {lowestText}
+            </span>
           ) : null}
         </div>
 

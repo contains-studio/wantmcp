@@ -20,7 +20,8 @@
 .themed.tpl-sheet .item-section > :not(header) { padding: 0; }
 /* The row number repeated nothing the order doesn't say, and put a fourth left edge on every card. */
 .themed.tpl-sheet .item-number { display: none; }
-.themed.tpl-sheet .item-title { font-family: var(--font-sans); font-size: 1.15rem !important; font-weight: 650; line-height: 1.3; }
+.themed.tpl-sheet .item-title { font-family: var(--font-sans); font-size: 1.15rem !important; font-weight: 650; line-height: 1.3; text-wrap: pretty; }
+/* Balanced wrapping (the heading default) left a want's title in 60% of a phone card: it takes the width instead. */
 .themed.tpl-sheet .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
 .themed.tpl-sheet .item-section .card { border-radius: 8px; box-shadow: none; border: 1px solid var(--line); }
 /* Who added it and what they noted read as one quiet unit under the want. */

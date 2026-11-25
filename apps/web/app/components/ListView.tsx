@@ -8,19 +8,19 @@ import { ActorTag } from "~/components/ActorTag";
 import { CommentForm, CommentList } from "~/components/Comments";
 import { CopyButton } from "~/components/CopyButton";
 import { EntryCard } from "~/components/EntryCard";
-import { EntrySheet } from "~/components/EntrySheet";
+import { EntrySheet, SheetSortSelect, SORT_FROM, type SheetSort } from "~/components/EntrySheet";
 import { ItemIndex } from "~/components/ItemIndex";
 import { LiveUpdates } from "~/components/LiveUpdates";
 import { PreviewContext, ReportLink, ReportMenuItem } from "~/components/Report";
 import { closeMenuOf, Icon, Menu, MenuRemove, MenuSub } from "~/components/Actions";
 import { Time } from "~/components/Time";
 import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, MarkBoughtForm } from "~/components/WriteTools";
-import { formatDate, formatMoney, plural } from "~/lib/format";
+import { discountPercent, formatDate, formatMoney, plural } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm, useActorLabel } from "~/components/ItemWork";
 import { BUILD_ID } from "~/lib/build";
 import { itemCurrency, listCurrency } from "~/lib/currency";
-import { lowestEntryId } from "~/lib/prices";
+import { lowestEntryId, lowestLabel } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
@@ -385,6 +385,7 @@ function ItemSection({
   const now = useNow();
   const entries = sortByPrice(item.entries);
   const lowest = lowestEntryId(entries, now);
+  const lowestText = lowestLabel(entries, lowest, now);
   const itemComments = commentsFor("item", item.id);
   const shopping = fi.format === "shopping";
   const p = shopping ? item.purchase : null;
@@ -401,6 +402,18 @@ function ItemSection({
   const headingId = `${item.id}-h`;
   // SPEC 16.2: someone outside the list wrote it (a feedback task); held until a person who can write the list accepts it.
   const outsider = item.text_by === "outsider";
+  const [sheetSort, setSheetSort] = useState<SheetSort>({ key: "price", dir: "asc" });
+  const sortable = layout === "sheet" && shopping && entries.length >= SORT_FROM;
+  const sortControl = (cls: string) =>
+    sortable ? (
+      <SheetSortSelect
+        value={sheetSort}
+        onChange={setSheetSort}
+        saving={entries.some((e) => discountPercent(e.current_price) !== null)}
+        label={`Sort products for ${item.text.slice(0, 60)}`}
+        className={cls}
+      />
+    ) : null;
   const held = !!item.pending_review;
 
   return (
@@ -481,6 +494,7 @@ function ItemSection({
             </span>
           )}
           <DueChip due={item.due_at} done={done} />
+          {sortControl("is-inline")}
         </div>
         {p && (
           <div className="item-indent mt-2 flex flex-wrap items-center gap-3 rounded-md border border-deal/40 bg-deal-soft px-4 py-3 text-[0.9rem] sm:ml-11">
@@ -536,8 +550,10 @@ function ItemSection({
         )
       ) : entries.length > 0 && layout === "sheet" ? (
         <div className="item-indent">
+          {sortControl("is-above")}
           {/* Each product row opens in place: its details, price history and comments under it. */}
           <EntrySheet
+            sort={sheetSort}
             entries={entries}
             lowestId={lowest}
             boughtId={p?.entry_id ?? null}
@@ -550,6 +566,7 @@ function ItemSection({
                   prices={prices[e.id] ?? null}
                   comments={commentsFor("entry", e.id)}
                   isLowest={e.id === lowest}
+                  lowestText={lowestText}
                   boughtThis={p?.entry_id === e.id}
                   itemPurchased={!!p}
                   canWrite={isWriter}
@@ -569,6 +586,7 @@ function ItemSection({
               prices={prices[e.id] ?? null}
               comments={commentsFor("entry", e.id)}
               isLowest={e.id === lowest}
+                  lowestText={lowestText}
               boughtThis={p?.entry_id === e.id}
               itemPurchased={!!p}
               canWrite={isWriter}

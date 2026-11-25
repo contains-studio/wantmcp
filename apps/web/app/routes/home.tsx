@@ -3,6 +3,7 @@ import { RefField } from "~/lib/ref";
 import { Form, Link } from "react-router";
 import type { Route } from "./+types/home";
 import { FeedCard } from "~/components/FeedCard";
+import { LookFrame } from "~/components/LookFrame";
 import { ThemeThumb } from "~/components/ThemeThumb";
 import { api } from "~/lib/api.server";
 import { LIVE_BRANDS, type Brand } from "~/lib/brands";
@@ -323,9 +324,7 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
     <li key={v.slug} className="w-40 flex-none snap-start sm:w-auto">
       {/* The miniature holds links of its own, so it sits beside the link, never inside it: the link stretches over the tile. */}
       <div className="look-tile look-captioned relative grid gap-2.5">
-        <div className="look-frame">
-          <ThemeThumb theme={v} sample={looks.sample} origin={origin} className="h-28 sm:h-44" />
-        </div>
+        <LookFrame view={v} sample={looks.sample} origin={origin} className="h-28 sm:h-44" />
         <Link to={`/themes/${v.slug}`} className="stretched-link grid gap-0.5 px-0.5">
           <span className="look-name">{v.name}</span>
           {v.caption && <span className="look-note">{v.caption}</span>}

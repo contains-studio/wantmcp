@@ -9,11 +9,11 @@ import { requireUser } from "~/lib/auth.server";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin, flashCookie } from "~/lib/session.server";
 import type { AgentInfo, HandoverResult, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
-import { ThemeThumb } from "~/components/ThemeThumb";
+import { LookFrame } from "~/components/LookFrame";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeView } from "~/themes/view";
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { PrivateBadge } from "~/components/ListView";
 import { FORMATS, formatInfo, formatOf, visibilityOf, type FormatInfo } from "~/lib/formats";
 
@@ -42,25 +42,40 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     ),
   ]);
   const { items: _items, ...summary } = list;
-  // The owner's look picker: every template, and every occasion on the template being looked at
-  // (?template= while choosing, else the list's own). Views are custom properties only.
+  // The owner's look gallery: every layout this format offers, each drawn in every offered occasion (plus the list's
+  // own occasion if it is no longer offered), so tapping an occasion re-dresses all of them at once. Views are custom
+  // properties and stylesheet names only.
   const owner = list.my_role === "owner";
-  const current = resolveLook(summary.theme ?? formatInfo(summary).defaultTheme, formatOf(summary));
-  const browsing = new URL(request.url).searchParams.get("template") ?? current.template.slug;
+  const format = formatOf(summary);
+  const current = resolveLook(summary.theme ?? formatInfo(summary).defaultTheme, format);
   const looks = owner
-    ? {
-        templates: templateViews(),
-        // The list's own occasion stays choosable even when it is not offered right now.
-        occasions: [
-          ...occasionViews(resolveLook(browsing, formatOf(summary)).template.slug),
-          ...(current.occasion && current.occasion.offered === false
-            ? occasionViews(resolveLook(browsing, formatOf(summary)).template.slug, [current.occasion.slug]).map((v) => ({ ...v, caption: "Not offered right now" }))
-            : []),
-        ],
-        browsing: resolveLook(browsing, formatOf(summary)).template.slug,
-      }
+    ? (() => {
+        // The Sheet compares prices: shopping lists only.
+        const templates = templateViews().filter((t) => format === "shopping" || t.layout !== "sheet");
+        const keep = current.occasion && current.occasion.offered === false ? [current.occasion.slug] : [];
+        const views: Record<string, ThemeView> = {};
+        for (const t of templates) {
+          views[t.slug] = t;
+          for (const o of [...occasionViews(t.template), ...(keep.length ? occasionViews(t.template, keep) : [])]) views[o.slug] = o;
+        }
+        const occasions = [...occasionViews("sheet"), ...(keep.length ? occasionViews("sheet", keep) : [])].map((o) => ({
+          slug: o.occasion!,
+          name: o.name.split(" · ").pop()!,
+          swatch: o.swatch,
+          offered: !keep.includes(o.occasion!),
+        }));
+        return { templates, occasions, views };
+      })()
     : null;
-  const sample = owner ? sampleList(Date.now(), formatOf(summary)) : null;
+  // The miniatures show this list's own wants when it has a few (it's the owner's page); otherwise the sample, so the
+  // layouts still look different.
+  const own = list.items.filter((i) => !i.pending_review);
+  const sample = owner
+    ? own.length >= 2
+      ? // Notes left out: a long agent note would fill every miniature with the same paragraph.
+        { list: summary, items: own.slice(0, 4).map((i) => ({ ...i, details: "" })), prices: {}, comments: [] }
+      : sampleList(Date.now(), format)
+    : null;
   return data(
     {
       list: summary,
@@ -114,7 +129,9 @@ export async function action({ request, params }: Route.ActionArgs) {
       case "theme": {
         const current = await api<ListDetail>(request, `/lists/${id}`);
         const format = formatOf(current);
-        const picked = resolveLook(s("theme"), format).slug;
+        // With JavaScript the page sends the look; without it, the two radio groups (layout and occasion).
+        const occ = s("occasion");
+        const picked = resolveLook(s("theme") || (occ ? `${s("template")}--${occ}` : s("template")), format).slug;
         // The format's own default is stored as "no theme" so it follows the format; anything
         // else is stored explicitly.
         await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: picked === resolveLook(formatInfo(current).defaultTheme, format).slug ? null : picked } });
@@ -222,7 +239,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
   const currency = useCurrency();
   const { list, role, members, agents } = loaderData;
   const isOwner = role === "owner";
-  const { user } = useRootData();
+  const { user, origin: rootOrigin } = useRootData();
   const mine = agents.filter((a) => a.owner_handle === user?.handle);
   const others = agents.filter((a) => a.owner_handle !== user?.handle);
   const result = useActionData<typeof action>() as ActionData | undefined;
@@ -231,9 +248,19 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
   const err = (intent: string) => (result?.intent === intent && result.error ? <p className="form-error" role="alert">{result.error}</p> : null);
   const openFor = (intents: string[]) => !!result?.intent && intents.includes(result.intent);
   const [searchParams] = useSearchParams();
-  const browsingLooks = searchParams.has("template");
+  const browsingLooks = false;
   const canChangeFormat = list.item_count === 0;
-  const currentLookName = loaderData.looks?.templates.find((t) => t.template === loaderData.currentTemplate)?.name ?? "";
+  const currentView = loaderData.looks?.views[loaderData.currentTheme];
+  const currentLookName = currentView?.name ?? "";
+  // Closed, the section shows the current look itself, small, with its name.
+  const lookDesc = currentView ? (
+    <span className="mt-1.5 flex items-center gap-3">
+      <span className="look-mini" aria-hidden="true">
+        <LookFrame view={currentView} sample={loaderData.sample!} origin={rootOrigin} className="h-full" />
+      </span>
+      <span>{currentLookName}</span>
+    </span>
+  ) : null;
 
   return (
     <div className="wrap grid max-w-3xl grid-cols-1 gap-6 py-8">
@@ -430,7 +457,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
 
       {isOwner && (
         <>
-          <Section id="theme-h" title="Look" desc={currentLookName} open={openFor(["theme"]) || browsingLooks}>
+          <Section id="theme-h" title="Look" desc={lookDesc} open={openFor(["theme"]) || browsingLooks}>
             <ThemePicker
               looks={loaderData.looks!}
               sample={loaderData.sample!}
@@ -596,6 +623,13 @@ function NewKey({ keyValue, agentName, listUrl }: { keyValue: string; agentName:
   );
 }
 
+type LookGallery = NonNullable<Route.ComponentProps["loaderData"]["looks"]>;
+
+/**
+ * The look gallery (owner, 25 Nov 2026: "completely visual"): one row of occasion chips, then every layout as a
+ * miniature of this list, all drawn in the chosen occasion. A tap selects; Save commits, so trying looks never changes
+ * what everyone else sees. Radios underneath: works without JavaScript, arrow keys move within each group.
+ */
 function ThemePicker({
   looks,
   sample,
@@ -604,7 +638,7 @@ function ThemePicker({
   currentOccasion,
   format,
 }: {
-  looks: { templates: ThemeView[]; occasions: ThemeView[]; browsing: string };
+  looks: LookGallery;
   sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>;
   current: string;
   currentTemplate: string;
@@ -614,96 +648,74 @@ function ThemePicker({
   const fi = FORMATS[format];
   const fetcher = useFetcher<ActionData>();
   const { origin } = useRootData();
-  const [, setSearchParams] = useSearchParams();
+  const [template, setTemplate] = useState(currentTemplate);
   const [occasion, setOccasion] = useState<string | null>(currentOccasion);
-  const template = looks.browsing;
-  // The Sheet table compares prices: shopping lists only.
-  const templates = looks.templates.filter((t) => format === "shopping" || t.layout !== "sheet");
-  const slug = occasion ? `${template}--${occasion}` : template;
-  const view =
-    (occasion ? looks.occasions.find((o) => o.occasion === occasion) : templates.find((t) => t.template === template)) ?? templates[0];
-  const defaultTemplate = fi.defaultTheme;
+  // The chip answers the tap at once; the seven miniatures re-dress as deferred work, so a tap never waits on them.
+  const shown = useDeferredValue(occasion);
+  const slugFor = (t: string, o: string | null) => (o ? `${t}--${o}` : t);
+  const slug = slugFor(template, occasion);
   const saving = fetcher.state !== "idle";
   const saved = fetcher.state === "idle" && fetcher.data?.ok && slug === current;
-  const pickTemplate = (t: string) =>
-    setSearchParams((p) => {
-      p.set("template", t);
-      return p;
-    }, { replace: true, preventScrollReset: true });
+  const changed = currentTemplate !== template || currentOccasion !== occasion;
 
   return (
-    <fetcher.Form method="post" className="grid gap-5">
+    <fetcher.Form method="post" className="grid gap-4">
       <input type="hidden" name="intent" value="theme" />
-      <input type="hidden" name="theme" value={slug} />
-      {/* Two compact rows of swatches, name only; the one preview below follows the choice. */}
-      <fieldset className="grid gap-2">
-        <legend className="label mb-1">Layout</legend>
-        <div className="flex flex-wrap gap-2">
-          {templates.map((t) => (
-            <SwatchOption
-              key={t.slug}
-              name="template-choice"
-              checked={template === t.template}
-              onChange={() => pickTemplate(t.template)}
-              view={t}
-              label={t.template === defaultTemplate ? `${t.name} (default)` : t.name}
-            />
-          ))}
-        </div>
-      </fieldset>
-      <fieldset className="grid gap-2">
+      <fieldset className="grid min-w-0 gap-2">
         <legend className="label mb-1">Occasion</legend>
-        <div className="flex flex-wrap gap-2">
-          <label className={`swatch-option ${occasion === null ? "is-on" : ""}`}>
-            <input type="radio" name="occasion-choice" checked={occasion === null} onChange={() => setOccasion(null)} className="swatch-input" />
-            <span className="swatch-chip" aria-hidden="true" />
-            None
-          </label>
-          {looks.occasions.map((o) => (
-            <SwatchOption
-              key={o.slug}
-              name="occasion-choice"
-              checked={occasion === o.occasion}
-              onChange={() => setOccasion(o.occasion)}
-              view={o}
-              label={o.name.split(" · ").pop()!}
-            />
+        {/* One row: it swipes sideways on a phone rather than wrapping into a wall of chips. */}
+        <div className="look-occasions">
+          {[{ slug: null, name: "None", swatch: null, offered: true }, ...looks.occasions].map((o) => (
+            <label key={o.slug ?? "none"} className={`swatch-option flex-none ${occasion === o.slug ? "is-on" : ""}`}>
+              <input type="radio" name="occasion" value={o.slug ?? ""} checked={occasion === o.slug} onChange={() => setOccasion(o.slug)} className="swatch-input" />
+              <span className="swatch-chip" aria-hidden="true" style={o.swatch ? { background: o.swatch.paper } : undefined}>
+                {o.swatch && <span style={{ background: o.swatch.want }} />}
+              </span>
+              {o.name}
+              {!o.offered && <span className="sr-only"> (not offered right now)</span>}
+            </label>
           ))}
         </div>
       </fieldset>
-      <div className="grid gap-2">
-        <p className="label" id="theme-preview-label">
-          Preview: {view.name}
-        </p>
-        {/* A picture of the list in this look, scaled to the frame: nothing inside it scrolls. */}
-        <div className="overflow-hidden rounded-[14px] border border-line">
-          <ThemeThumb theme={view} sample={sample} origin={origin} items={2} className="thumb-half h-[12rem] sm:h-[15rem]" />
+      <fieldset className="grid min-w-0 gap-2">
+        <legend className="label mb-1">Layout</legend>
+        <div className="look-gallery">
+          {looks.templates.map((t) => {
+            const view = looks.views[slugFor(t.template, shown)] ?? t;
+            const on = template === t.template;
+            return (
+              <label key={t.slug} className={`look-choice ${on ? "is-on" : ""}`}>
+                <input type="radio" name="template" value={t.template} checked={on} onChange={() => setTemplate(t.template)} className="sr-only" />
+                <span className="look-choice-frame">
+                  <LookFrame view={view} sample={sample} origin={origin} className="h-36 sm:h-40" />
+                  {on && (
+                    <span className="look-check" aria-hidden="true">
+                      ✓
+                    </span>
+                  )}
+                </span>
+                <span className="grid gap-0.5 px-0.5">
+                  <span className="look-name">{t.name}</span>
+                  <span className="look-note">{t.template === fi.defaultTheme ? `${t.caption} · default` : t.caption}</span>
+                </span>
+              </label>
+            );
+          })}
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-3" aria-live="polite">
-        <button className="btn btn-want" disabled={saving || slug === current}>
+      </fieldset>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
+        {/* Never disabled before JavaScript runs: without it, this button is how the radios are saved. */}
+        <button className="btn btn-want" disabled={saving}>
           {saving ? "Saving…" : "Save"}
         </button>
-        {currentTemplate !== template || currentOccasion !== occasion ? (
-          <span className="text-[0.85rem] text-ink-3">Not saved yet.</span>
-        ) : null}
+        {changed ? <span className="text-[0.85rem] text-ink-3">Not saved yet.</span> : null}
         {saved && <span className="text-[0.85rem] text-deal">Saved. Your list now uses this look.</span>}
+        <Link to={`/themes/${slug}`} className="link text-[0.85rem] text-ink-2">
+          See it full size
+        </Link>
         {fetcher.data?.error && <span className="form-error">{fetcher.data.error}</span>}
       </div>
     </fetcher.Form>
-  );
-}
-
-/** One look as a small chip: its paper and accent, and its name. The radio is the chip (selection shown on it). */
-function SwatchOption({ name, checked, onChange, view, label }: { name: string; checked: boolean; onChange: () => void; view: ThemeView; label: string }) {
-  return (
-    <label className={`swatch-option ${checked ? "is-on" : ""}`}>
-      <input type="radio" name={name} checked={checked} onChange={onChange} className="swatch-input" />
-      <span className="swatch-chip" aria-hidden="true" style={{ background: view.swatch.paper }}>
-        <span style={{ background: view.swatch.want }} />
-      </span>
-      {label}
-    </label>
   );
 }
 

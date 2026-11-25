@@ -1,21 +1,54 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { dealState, discountPercent, formatDateTime, formatMoney, timeAgo } from "~/lib/format";
 import { useNow } from "~/lib/hooks";
-import { checkedAt, isFresh, SOURCE_LABEL } from "~/lib/prices";
+import { checkedAt, isFresh, LOWEST_VERIFIED_NOTE, lowestLabel, SOURCE_LABEL } from "~/lib/prices";
 import type { Entry } from "~/lib/types";
 import { ActorTag } from "./ActorTag";
 import { ExtLink } from "./ExtLink";
 import { ProductImage } from "./ProductImage";
 
 type SortKey = "price" | "discount" | "updated";
-type Sort = { key: SortKey; dir: "asc" | "desc" };
+export type SheetSort = { key: SortKey; dir: "asc" | "desc" };
+type Sort = SheetSort;
 
 const priceOf = (e: Entry) => (e.current_price ? Number(e.current_price.price) : Number.POSITIVE_INFINITY);
 const discountOf = (e: Entry) => discountPercent(e.current_price) ?? -1;
 const updatedOf = (e: Entry) => Date.parse(e.current_price ? checkedAt(e.current_price) : e.updated_at) || 0;
 
-/** From this many products a want gets sort controls; below it the list is already in price order, cheapest first. */
-const SORT_FROM = 4;
+/** From this many products a want gets a sort control; below it the list is already in price order, cheapest first. */
+export const SORT_FROM = 4;
+
+const SORTS: Array<[string, SheetSort, string]> = [
+  ["price-asc", { key: "price", dir: "asc" }, "Price, low to high"],
+  ["price-desc", { key: "price", dir: "desc" }, "Price, high to low"],
+  ["discount-desc", { key: "discount", dir: "desc" }, "Biggest saving"],
+  ["updated-desc", { key: "updated", dir: "desc" }, "Checked most recently"],
+];
+
+/**
+ * The Sheet's sort, as one compact control (owner review: three pills on their own row read as a third heading). The
+ * want puts it on its "Added by" line from 640px and on one short line above the products on a phone.
+ */
+export function SheetSortSelect({ value, onChange, saving, label, className = "" }: { value: SheetSort; onChange: (s: SheetSort) => void; saving: boolean; label: string; className?: string }) {
+  const id = `${value.key}-${value.dir}`;
+  return (
+    <label className={`sheet-sort ${className}`}>
+      <span className="text-ink-3">Sort</span>
+      <select
+        aria-label={label}
+        value={id}
+        onChange={(e) => onChange(SORTS.find(([k]) => k === e.target.value)![1])}
+        className="sheet-sort-select"
+      >
+        {SORTS.filter(([k]) => saving || k !== "discount-desc").map(([k, , text]) => (
+          <option key={k} value={k}>
+            {text}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
 /**
  * The Sheet layout: the products found for one want, cheapest first, one row each. Usually one to three, so no table
@@ -29,7 +62,10 @@ export function EntrySheet({
   boughtId,
   itemText,
   renderDetail,
+  sort: sortProp,
 }: {
+  /** The sort, when the want shows the control (SheetSortSelect); cheapest first otherwise. */
+  sort?: SheetSort;
   entries: Entry[];
   lowestId: string | null;
   boughtId: string | null;
@@ -38,7 +74,7 @@ export function EntrySheet({
   renderDetail?: (e: Entry) => React.ReactNode;
 }) {
   const now = useNow();
-  const [sort, setSort] = useState<Sort>({ key: "price", dir: "asc" });
+  const sort: Sort = sortProp ?? { key: "price", dir: "asc" };
   const rows = useMemo(() => {
     const val = sort.key === "price" ? priceOf : sort.key === "discount" ? discountOf : updatedOf;
     const sign = sort.dir === "asc" ? 1 : -1;
@@ -55,37 +91,11 @@ export function EntrySheet({
   // A photo column only when some product has a photo; then every row keeps the frame (the neutral tile) so rows align.
   const photos = entries.some((e) => !!e.image_url);
 
-  const sortButton = (key: SortKey, label: string, defaultDir: "asc" | "desc") => {
-    const active = sort.key === key;
-    return (
-      <button
-        type="button"
-        aria-pressed={active}
-        className={`sheet-sort-btn ${active ? "is-on" : ""}`}
-        onClick={() => setSort(active ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: defaultDir })}
-      >
-        {label}
-        {active && <span aria-hidden="true"> {sort.dir === "asc" ? "↑" : "↓"}</span>}
-        {active && <span className="sr-only">, {sort.dir === "asc" ? "lowest first" : "highest first"}</span>}
-      </button>
-    );
-  };
+  const lowestText = lowestLabel(entries, lowestId, now);
 
   return (
     <div className="sheet-list">
-      {(entries.length >= SORT_FROM || currencies.size > 1) && (
-        <div className="sheet-sort">
-          {currencies.size > 1 && <span className="mr-auto text-warn">Mixed currencies: compare with care</span>}
-          {entries.length >= SORT_FROM && (
-            <div role="group" aria-label={`Sort products for ${itemText}`} className="ml-auto flex items-center gap-1">
-              <span className="text-ink-3">Sort</span>
-              {sortButton("price", "Price", "asc")}
-              {entries.some((e) => discountPercent(e.current_price) !== null) && sortButton("discount", "Saving", "desc")}
-              {sortButton("updated", "Checked", "desc")}
-            </div>
-          )}
-        </div>
-      )}
+      {currencies.size > 1 && <p className="pb-1 text-[0.8rem] text-warn">Mixed currencies: compare with care</p>}
       <ul aria-label={`Products for ${itemText}`} className="sheet-rows">
         {rows.map((e) => {
           const p = e.current_price;
@@ -93,7 +103,8 @@ export function EntrySheet({
           const deal = dealState(e.deal_starts_at, e.deal_ends_at, now);
           const updated = p ? checkedAt(p) : e.updated_at;
           const stale = !!p && !isFresh(p, now);
-          const state = e.id === boughtId ? "is-bought" : e.id === lowestId ? "is-lowest" : "";
+          // Green price only for the truly lowest: a "Lowest verified" row with a cheaper one above stays plain.
+          const state = e.id === boughtId ? "is-bought" : e.id === lowestId && lowestText === "Lowest" ? "is-lowest" : "";
           return (
             // Each product is its own group: its row, then its details (shown while the row's toggle is open, app.css).
             <li key={e.id} id={e.id} className={`sheet-group scroll-mt-24 ${state} ${stale ? "is-stale" : ""}`}>
@@ -119,7 +130,12 @@ export function EntrySheet({
                       <span className="sr-only"> (opens retailer site in a new tab)</span>
                     </ExtLink>
                     {e.id === boughtId && <span className="stamp ml-1.5 align-middle text-[0.6rem]">Bought</span>}
-                    {e.id === lowestId && e.id !== boughtId && <span className="lowest ml-1.5 align-middle text-[0.6rem]">Lowest</span>}
+                    {e.id === lowestId && e.id !== boughtId && (
+                      <span className="lowest ml-1.5 align-middle text-[0.6rem]" title={lowestText === "Lowest verified" ? LOWEST_VERIFIED_NOTE : undefined}>
+                        {lowestText}
+                        {lowestText === "Lowest verified" && <span className="sr-only">: {LOWEST_VERIFIED_NOTE}</span>}
+                      </span>
+                    )}
                   </span>
                   {/* Who found it and how sure the price is: one quiet line, the trust words as everywhere else. */}
                   <span className="sheet-meta">

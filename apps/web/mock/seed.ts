@@ -184,6 +184,8 @@ export function seedStore(now = Date.now()): Store {
     dealStart?: string | null; dealEnd?: string | null; ago: number; status?: "listed" | "suggested";
     prices: Array<[ago: number, price: string, original: string | null, by: ActorRef, note?: string]>;
     currency?: string;
+    /** Where the newest price was seen, when it matters to the fixture. */
+    source?: "retailer_page" | "search" | "aggregator";
   };
   const seeds: Seed[] = [
     {
@@ -285,6 +287,8 @@ export function seedStore(now = Date.now()): Store {
       // One posted by Hermes, to see an app-icon (tile) agent mark in a row.
       id, item: "itm_ty_mats", list: "lst_tesla", author: id === "ent_ty_m5" ? ({ kind: "agent", agent_id: "agt_hermes", name: "Hermes", owner_handle: "steady-otter-5150" } as ActorRef) : muse, title, description: "", url: `https://example.com/mats/${id}`,
       image, retailer, ago: 4 * HOUR - n * 600_000, prices: [[4 * HOUR - n * 600_000, price, was, muse]] as Seed["prices"],
+      // The cheapest was only seen in a search result, as on the owner's list: "Lowest" goes to the cheapest verified one.
+      ...(id === "ent_ty_m6" ? { source: "search" as const } : id === "ent_ty_m5" ? { source: "retailer_page" as const } : {}),
     })),
     {
       id: "ent_ty_tyre1", item: "itm_ty_tyres", list: "lst_tesla", author: muse,
@@ -312,7 +316,7 @@ export function seedStore(now = Date.now()): Store {
       pid += 1;
       // SPEC 12.5: the newest price says where it was seen; older ones predate provenance.
       const last = n === e.prices.length - 1;
-      const source = by.kind === "user" ? "user" : last ? (pid % 3 === 0 ? "search" : "retailer_page") : undefined;
+      const source = by.kind === "user" ? "user" : last ? (e.source ?? (pid % 3 === 0 ? "search" : "retailer_page")) : undefined;
       s.prices.push({
         id: `prc_seed${pid}`, entry_id: e.id, price, original_price: original, currency: e.currency ?? "USD",
         note: note ?? null, posted_by: by, posted_at: at(ago),
