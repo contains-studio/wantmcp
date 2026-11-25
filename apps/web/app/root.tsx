@@ -87,7 +87,9 @@ function Header({ minimal = false }: { minimal?: boolean }) {
         className={`absolute inset-x-0 top-0 h-0.5 origin-left bg-want transition-transform duration-500 ${nav.state === "idle" ? "scale-x-0" : "scale-x-75"}`}
       />
       <div className="wrap flex h-16 items-center gap-1 sm:gap-2">
-        <Link to="/" className="mr-auto flex-none rounded-md py-1" aria-label="The Want MCP, home">
+        {/* `flex`, not an inline box: an inline box leaves room for descenders under the mark and
+            lifts it 3px above the links beside it. */}
+        <Link to="/" className="mr-auto flex flex-none items-center rounded-md py-1" aria-label="The Want MCP, home">
           {/* Very narrow screens: the mark alone, so the links keep one row. */}
           <Wordmark textClass={user ? "max-[339px]:sr-only" : ""} />
         </Link>
