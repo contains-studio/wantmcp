@@ -1,12 +1,24 @@
 import { useState } from "react";
 
 /** Copies `text` to the clipboard. Announces the result to screen readers. */
-export function CopyButton({ text, label = "Copy", className = "btn btn-ghost btn-xs" }: { text: string; label?: string; className?: string }) {
+export function CopyButton({
+  text,
+  label = "Copy",
+  className = "btn btn-ghost btn-xs",
+  ariaLabel,
+}: {
+  text: string;
+  label?: string;
+  className?: string;
+  /** A fuller name for screen readers when the visible label is short. */
+  ariaLabel?: string;
+}) {
   const [state, setState] = useState<"idle" | "done" | "fail">("idle");
   return (
     <button
       type="button"
       className={className}
+      aria-label={state === "idle" ? ariaLabel : undefined}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);

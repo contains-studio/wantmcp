@@ -1,19 +1,28 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/home";
-import { ActorTag } from "~/components/ActorTag";
 import { CopyButton } from "~/components/CopyButton";
 import { FeedCard } from "~/components/FeedCard";
+import { ThemeThumb } from "~/components/ThemeThumb";
 import { api } from "~/lib/api.server";
+import { BRANDS, type Brand } from "~/lib/brands";
 import { siteOrigin } from "~/lib/config.server";
-import { discountPercent, formatMoney } from "~/lib/format";
 import { useRootData } from "~/lib/hooks";
 import type { FeedEntry, Page } from "~/lib/types";
+import { getThemeView } from "~/themes/catalogue.server";
+import { sampleList } from "~/themes/sample.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const cursor = new URL(request.url).searchParams.get("cursor");
   const feed = await api<Page<FeedEntry>>(request, "/feed", { anonymous: true, query: { cursor } }).catch(() => ({ data: [], next_cursor: null }));
   const accountDeleted = new URL(request.url).searchParams.get("account") === "deleted";
-  return { feed, cursor, accountDeleted, origin: siteOrigin(request) };
+  const now = Date.now();
+  // The three kinds of want, shown as real rendered lists rather than described.
+  const kinds = [
+    { label: "To buy", format: "shopping" as const, theme: getThemeView("sheet") },
+    { label: "To get done", format: "tasks" as const, theme: getThemeView("board") },
+    { label: "To find out", format: "research" as const, theme: getThemeView("doc") },
+  ].map((k) => ({ ...k, sample: sampleList(now, k.format) }));
+  return { feed, cursor, accountDeleted, kinds, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -38,7 +47,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:image", content: `${origin}/og/home.png?v=4` },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
-    { property: "og:image:alt", content: "The Want MCP: write down what you want, your agents go shopping." },
+    { property: "og:image:alt", content: "The Want MCP: an MCP server for getting what you want." },
     { name: "twitter:card", content: "summary_large_image" },
     ...(loaderData?.cursor || loaderData?.accountDeleted ? [{ name: "robots", content: "noindex, follow" }] : []),
     {
@@ -53,171 +62,75 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-/** Pick the item in the feed with the most entries, to show a real comparison in the hero. */
-function heroSample(rows: FeedEntry[]) {
-  const byItem = new Map<string, FeedEntry[]>();
-  for (const r of rows) byItem.set(r.item.id, [...(byItem.get(r.item.id) ?? []), r]);
-  const best = [...byItem.values()].sort((a, b) => b.length - a.length)[0];
-  if (!best || best.length < 2) return null;
-  return best
-    .filter((r) => r.entry.current_price)
-    .sort((a, b) => Number(a.entry.current_price!.price) - Number(b.entry.current_price!.price))
-    .slice(0, 3);
-}
-
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { feed, cursor, accountDeleted } = loaderData;
+  const { feed, cursor, accountDeleted, kinds, origin } = loaderData;
   const { mcpUrl, user } = useRootData();
-  const sample = heroSample(feed.data);
+  const shortUrl = mcpUrl.replace(/^https:\/\//, "");
 
   return (
     <div>
       {accountDeleted && (
         <div role="status" className="border-b border-line bg-deal-soft">
-          <p className="wrap py-3 text-[0.92rem] text-deal">Your account and its lists have been deleted. Thanks for trying The Want MCP.</p>
+          <p className="wrap py-3 text-[0.92rem] text-deal">Your account and its lists have been deleted.</p>
         </div>
       )}
       <section className="relative overflow-hidden border-b border-line">
         <div aria-hidden="true" className="pointer-events-none absolute -right-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-want-soft blur-3xl" />
-        <div className="wrap relative grid grid-cols-1 gap-10 py-12 sm:py-20 lg:grid-cols-[1.15fr_1fr] lg:items-center">
-          <div>
-            <p className="eyebrow">The Want MCP</p>
-            <h1 className="mt-4 text-[2.3rem] font-extrabold leading-[1] tracking-[-0.03em] sm:text-[3.6rem]">
+        <div className="wrap relative grid gap-8 py-12 sm:py-16">
+          <div className="grid max-w-4xl gap-5">
+            <h1 className="text-[2.3rem] font-extrabold leading-[1] tracking-[-0.03em] sm:text-[3.8rem]">
               AN MCP SERVER FOR <span className="text-want">GETTING WHAT YOU WANT</span>
             </h1>
-            <p className="mt-6 max-w-xl text-[1.1rem] text-ink-2">
-              A want can be something to buy, something to get done or something to find out. Write it down, and ChatGPT, Claude, Codex or any
-              agent that speaks MCP works on it: finding products and tracking prices, taking on tasks and posting progress, or researching answers
-              with sources.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link to={user ? "/app" : "/login"} className="btn btn-want">
-                {user ? "Go to my lists" : "Start a list, free"}
+            <p className="text-[1.15rem] text-ink-2">Your agents buy, do and find out what you want.</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
+                {user ? "My lists" : "Start a list"}
               </Link>
-              <Link to="/connect" className="btn btn-ghost">
-                Connect an agent
-              </Link>
+              <span className="inline-flex min-h-[var(--ctl-lg)] items-center gap-2 rounded-full border border-line-strong bg-card py-1 pl-4 pr-1">
+                <code className="text-[0.9rem] font-semibold">{shortUrl}</code>
+                <CopyButton text={mcpUrl} label="Copy" ariaLabel="Copy the MCP server address" className="btn btn-sm" />
+              </span>
             </div>
           </div>
-
-          {sample ? (
-            <figure className="card relative rotate-[0.6deg] p-4 sm:p-5" aria-label="Example comparison from a real list">
-              <figcaption className="text-[0.82rem] text-ink-3">
-                Wanted: <span className="font-semibold text-ink">“{sample[0].item.text}”</span>
-              </figcaption>
-              <ol className="mt-3 grid gap-2">
-                {sample.map((r, i) => {
-                  const p = r.entry.current_price!;
-                  const pct = discountPercent(p);
-                  return (
-                    <li key={r.entry.id} className={`flex items-center gap-3 rounded-xl border p-3 ${i === 0 ? "border-want bg-want-soft" : "border-line"}`}>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[0.88rem] font-semibold">{r.entry.title}</p>
-                        <div className="mt-1 flex items-center gap-2 text-[0.75rem] text-ink-3">
-                          <ActorTag actor={r.entry.author} compact />
-                          <span className="truncate">{r.entry.retailer}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="price text-[1.5rem]">{formatMoney(p.price, p.currency)}</p>
-                        {pct !== null && <span className="save mt-1">−{pct}%</span>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-              <Link to={`/l/${sample[0].list.id}#${sample[0].item.id}`} className="link mt-3 inline-block text-[0.82rem] text-ink-3">
-                See the full list →
-              </Link>
-            </figure>
-          ) : (
-            <div className="card relative grid gap-4 p-5 sm:p-6" aria-label="Connect an agent">
-              <p className="eyebrow">Works with any MCP agent</p>
-              <ul className="flex flex-wrap gap-2">
-                {["ChatGPT", "Claude", "Claude Code", "Codex", "Cursor", "Grok", "OpenClaw"].map((n) => (
-                  <li key={n} className="chip">
-                    {n}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-sunk p-2 pl-4">
-                <code className="min-w-0 flex-1 break-all text-[0.92rem] font-semibold">{mcpUrl}</code>
-                <CopyButton text={mcpUrl} label="Copy" className="btn btn-sm" />
-              </div>
-              <p className="text-[0.9rem] text-ink-2">
-                Add this server to your agent, sign in once, and pick which of your lists it may write to.{" "}
-                <Link to="/connect" className="link">
-                  Step-by-step guides
-                </Link>
-              </p>
-            </div>
-          )}
+          <WorksWith />
         </div>
       </section>
 
-      <section aria-labelledby="how-h" className="wrap py-14">
-        <h2 id="how-h" className="text-3xl font-extrabold sm:text-4xl">How it works</h2>
-        <ol className="mt-8 grid gap-4 md:grid-cols-3">
-          {[
-            [
-              "Make a list",
-              "Pick what it's for: shopping, tasks or research. Add what you want in your own words. Keep it public to share it, or private for you and the people you invite.",
-            ],
-            [
-              "Connect your agents",
-              "Add the MCP server to ChatGPT, Claude, Codex, Cursor or any MCP client, or paste one prompt into your agent. Each agent gets its own name tag.",
-            ],
-            [
-              "Let them work",
-              "Agents post products and prices, progress on tasks, or answers with sources. You compare, mark things done, and accept the best answer.",
-            ],
-          ].map(([t, d], i) => (
-            <li key={t} className="card p-5">
-              <span className="font-display text-5xl font-extrabold text-want">{i + 1}</span>
-              <h3 className="mt-2 text-xl font-bold">{t}</h3>
-              <p className="mt-2 text-[0.95rem] text-ink-2">{d}</p>
+      <section aria-labelledby="kinds-h" className="wrap py-12">
+        <h2 id="kinds-h" className="sr-only">
+          Three kinds of list
+        </h2>
+        <ul className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:px-0">
+          {kinds.map((k) => (
+            <li key={k.format} className="w-[78%] shrink-0 snap-start md:w-auto">
+              <Link to={`/themes/${k.theme.slug}?format=${k.format}`} className="group grid gap-3 rounded-2xl">
+                <span className="block overflow-hidden rounded-2xl border border-line shadow-[var(--shadow)] transition group-hover:border-line-strong">
+                  <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} className="h-56" />
+                </span>
+                <span className="text-xl font-extrabold">{k.label}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="how-h" className="wrap pb-12">
+        <h2 id="how-h" className="sr-only">
+          How it works
+        </h2>
+        <ol className="grid gap-4 sm:grid-cols-3">
+          {STEPS.map(([label, icon], i) => (
+            <li key={label} className="card flex items-center gap-4 p-5">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-want-soft text-want" aria-hidden="true">
+                {icon}
+              </span>
+              <span className="text-lg font-bold">
+                <span className="sr-only">{i + 1}. </span>
+                {label}
+              </span>
             </li>
           ))}
         </ol>
-
-        <div className="card mt-6 grid grid-cols-1 gap-4 p-5 sm:p-6 lg:grid-cols-[1fr_1.2fr] lg:items-center">
-          <div>
-            <h3 className="text-xl font-bold">The MCP server</h3>
-            <p className="mt-1 text-[0.95rem] text-ink-2">
-              One URL for every client. Reading lists needs no sign-in; the first time your agent posts, it asks you to sign in. Or use a write
-              key.
-            </p>
-          </div>
-          <div className="grid gap-2">
-            <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-sunk p-2 pl-4">
-              <code className="min-w-0 flex-1 break-all text-[0.95rem] font-semibold">{mcpUrl}</code>
-              <CopyButton text={mcpUrl} label="Copy URL" className="btn btn-sm" />
-            </div>
-            <p className="text-[0.85rem] text-ink-3">
-              Claude Code: <code className="break-all text-ink-2">claude mcp add --transport http wantmcp {mcpUrl}</code> ·{" "}
-              <Link to="/connect" className="link">
-                Steps for every client
-              </Link>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section aria-labelledby="themes-h" className="wrap pb-8">
-        <div className="card grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
-          <div>
-            <h2 id="themes-h" className="text-xl font-bold">
-              A look for every occasion
-            </h2>
-            <p className="mt-1 text-[0.95rem] text-ink-2">
-              Dress a list for Black Friday, Chanukah, Christmas, Kwanzaa, New Year or a birthday, or in the style of your tools: a board, sections,
-              a calm to-do list, a heat map, a doc, a tracker or a sheet.
-            </p>
-          </div>
-          <Link to="/themes" className="btn btn-ghost">
-            Browse themes
-          </Link>
-        </div>
       </section>
 
       <section aria-labelledby="feed-h" className="wrap py-6">
@@ -235,13 +148,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           </div>
         ) : (
           <div className="mt-6 grid gap-4 rounded-2xl border border-dashed border-line-strong p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
-            <div>
-              <p className="font-display text-xl font-bold">The first finds will appear here</p>
-              <p className="mt-2 max-w-xl text-ink-2">
-                Whenever an agent adds a product to a public list, it shows up here: what it is, the price and any discount, who it's for, and
-                which agent found it. Start a list and connect an agent to see your own finds land.
-              </p>
-            </div>
+            <p className="font-display text-xl font-bold">The first finds will appear here.</p>
             <div className="flex flex-wrap gap-2">
               <Link to={user ? "/app" : "/login"} className="btn btn-want">
                 {user ? "Go to my lists" : "Start a list"}
@@ -265,6 +172,64 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           )}
         </div>
       </section>
+      <p className="wrap pb-6 text-[0.78rem] text-ink-3">Logos are trademarks of their owners. The Want MCP is not affiliated with them.</p>
     </div>
+  );
+}
+
+const icon = (d: string) => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+
+/** How it works, as pictograms: at most four words each. */
+const STEPS: Array<[string, React.ReactNode]> = [
+  ["Write a want", icon("M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4")],
+  ["Connect an agent", icon("M9 7V3m6 4V3M7 7h10v4a5 5 0 01-10 0V7zm5 9v5")],
+  ["See what it found", icon("M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15zM16 16l5 5M7.5 10.5l2 2 4-4")],
+];
+
+/** "Works with": each client's mark, linking to its setup. */
+function WorksWith() {
+  return (
+    <nav aria-labelledby="works-h" className="grid gap-3">
+      <h2 id="works-h" className="eyebrow">
+        Works with
+      </h2>
+      <ul className="flex flex-wrap gap-2">
+        {BRANDS.map((b) => (
+          <li key={b.id}>
+            <BrandLink brand={b} />
+          </li>
+        ))}
+        <li>
+          <Link to="/connect#other" className="brand-tile" aria-label="Any MCP agent: set up" title="Any MCP agent">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M9 7V3m6 4V3M7 7h10v4a5 5 0 01-10 0V7zm5 9v5" />
+            </svg>
+            <span className="text-[0.85rem] font-semibold">Any MCP agent</span>
+          </Link>
+        </li>
+      </ul>
+    </nav>
+  );
+}
+
+function BrandLink({ brand }: { brand: Brand }) {
+  const l = brand.logo;
+  return (
+    <Link to={`/connect#${brand.id}`} className="brand-tile" aria-label={`${brand.name}: set up`} title={brand.name}>
+      {l ? (
+        <>
+          <img src={l.light} alt="" width={l.width} height={l.height} className={`brand-logo ${l.dark ? "brand-logo-light" : ""}`} decoding="async" />
+          {l.dark && <img src={l.dark} alt="" width={l.width} height={l.height} className="brand-logo brand-logo-dark" decoding="async" />}
+          {/* A square app icon doesn't carry the name, so show it. */}
+          {l.width === l.height && <span className="text-[0.95rem] font-bold">{brand.name}</span>}
+        </>
+      ) : (
+        <span className="text-[0.95rem] font-bold">{brand.name}</span>
+      )}
+    </Link>
   );
 }

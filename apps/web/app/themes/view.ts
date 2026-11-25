@@ -83,6 +83,7 @@ export function lookView(template: Theme, occasion: Theme | null, slug: string):
     const { palette: p, accents: a } = lookColors(template, occasion, mode);
     for (const [k, css] of KEYS) style[`--${prefix}-${css}`] = p[k] as string;
     for (const [k, css] of ACCENT_KEYS) style[`--${prefix}-occ-${css}`] = a[k];
+    style[`--${prefix}-motif`] = "none"; // header art now comes from occasion stylesheets
     const flat = dressed.card === "flat" || dressed.card === "outline";
     style[`--${prefix}-shadow`] = flat
       ? "none"

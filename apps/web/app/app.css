@@ -192,6 +192,12 @@
   --danger: var(--tl-danger);
   --shadow: var(--tl-shadow);
   --motif: var(--tl-motif);
+  --occ-band: var(--tl-occ-band);
+  --occ-band-alt: var(--tl-occ-band-alt);
+  --occ-band-ink: var(--tl-occ-band-ink);
+  --occ-hot: var(--tl-occ-hot);
+  --occ-cool: var(--tl-occ-cool);
+  --occ-bar-ink: var(--tl-occ-bar-ink);
   --focus: var(--want);
   --color-paper: var(--paper);
   --color-card: var(--card);
@@ -233,6 +239,12 @@
   --danger: var(--td-danger);
   --shadow: var(--td-shadow);
   --motif: var(--td-motif);
+  --occ-band: var(--td-occ-band);
+  --occ-band-alt: var(--td-occ-band-alt);
+  --occ-band-ink: var(--td-occ-band-ink);
+  --occ-hot: var(--td-occ-hot);
+  --occ-cool: var(--td-occ-cool);
+  --occ-bar-ink: var(--td-occ-bar-ink);
   }
 }
 :root[data-theme="dark"] .themed {
@@ -254,6 +266,12 @@
   --danger: var(--td-danger);
   --shadow: var(--td-shadow);
   --motif: var(--td-motif);
+  --occ-band: var(--td-occ-band);
+  --occ-band-alt: var(--td-occ-band-alt);
+  --occ-band-ink: var(--td-occ-band-ink);
+  --occ-hot: var(--td-occ-hot);
+  --occ-cool: var(--td-occ-cool);
+  --occ-bar-ink: var(--td-occ-bar-ink);
 }
 .themed .list-hero {
   background:
@@ -271,6 +289,8 @@
 .themed.scheme-dark { color-scheme: dark; }
 .themed.scheme-light { color-scheme: light; }
 .list-title-mark { display: none; }
+/* An occasion lends its display face to the list title on every template. */
+.themed.has-occ .list-title { font-family: var(--font-occ-display, var(--font-display)); }
 
 /* ---- Item index (Sections, Heat, task Board) and the item panel ----
    Structure only; each theme's stylesheet gives it its look. */
@@ -640,3 +660,18 @@ button.check-toggle:hover { border-color: var(--want); }
 @media (min-width: 640px) and (max-width: 1023px) { .theme-thumb-inner { zoom: 0.31; } }
 .theme-thumb-inner .list-fab, .theme-thumb-inner .ix-panel { display: none !important; }
 .ix-panel .deep-target { animation: none; }
+
+/* "Works with" tiles on the home page: 52px tall, logos shown unmodified at their own aspect ratio. */
+.brand-tile {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: var(--ctl-lg); min-width: var(--ctl-lg);
+  padding: 0 1rem; border-radius: 0.9rem; border: 1px solid var(--line); background: var(--card); color: var(--ink); text-decoration: none;
+}
+.brand-tile:hover { border-color: var(--line-strong); }
+.brand-logo { height: 1.6rem; width: auto; max-width: 7.5rem; object-fit: contain; }
+.brand-logo-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo-light { display: none; }
+  :root:not([data-theme="light"]) .brand-logo-dark { display: block; }
+}
+:root[data-theme="dark"] .brand-logo-light { display: none; }
+:root[data-theme="dark"] .brand-logo-dark { display: block; }

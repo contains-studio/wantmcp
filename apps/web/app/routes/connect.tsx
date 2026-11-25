@@ -208,6 +208,36 @@ const CLIENTS: Client[] = [
     ),
   },
   {
+    id: "gemini",
+    name: "Gemini",
+    status: "partial",
+    sources: [["Google: MCP servers with Gemini CLI", "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md"]],
+    body: (mcp) => (
+      <>
+        <p>
+          Gemini CLI: add the server to <code>~/.gemini/settings.json</code>, then run <code>/mcp auth wantmcp</code> in Gemini CLI and sign in in the
+          browser.
+        </p>
+        <Code>{`{\n  "mcpServers": {\n    "wantmcp": { "httpUrl": "${mcp}" }\n  }\n}`}</Code>
+        <p className="hint">The Gemini app itself doesn't take custom MCP servers yet.</p>
+      </>
+    ),
+  },
+  {
+    id: "msgblast",
+    name: "msgblast",
+    status: "generic",
+    sources: [],
+    body: () => (
+      <>
+        <p>
+          msgblast for Mac connects to The Want MCP itself: open <strong>View › Show Wants</strong> (⌘3) and sign in with your Want MCP account. From
+          there it can send an item to the agents you pick and show what they post.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "other",
     name: "Any other MCP client",
     status: "generic",
@@ -227,7 +257,7 @@ const CLIENTS: Client[] = [
             <code>{signinUrl(mcp)}</code> instead.
           </li>
         </Steps>
-        <p className="hint">This covers Muse, msgblast and anything else that speaks MCP. If your client only supports local servers, use an MCP proxy that bridges stdio to HTTP.</p>
+        <p className="hint">This covers Muse and anything else that speaks MCP. If your client only supports local servers, use an MCP proxy that bridges stdio to HTTP.</p>
       </>
     ),
   },
