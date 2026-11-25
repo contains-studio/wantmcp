@@ -2,8 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The "Works with" row on the home page. Whatever the device and its motion setting, every app in
- * the row must be reachable: by waiting (it drifts), by swiping (reduced motion on a touch screen)
- * or because it wraps (reduced motion with a mouse).
+ * the row must be reachable: by waiting (it drifts, on a phone even with reduced motion) or
+ * because it wraps (reduced motion with a mouse).
  */
 const row = (page: Page) => page.getByRole("navigation", { name: "Works with" });
 
@@ -60,21 +60,15 @@ test("with a keyboard: the row pauses while focus is in it", async ({ page, isMo
 test.describe("with reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
-  test("phone: the row stands still on one line and swipes to the last app @phone", async ({ page, isMobile }) => {
+  test("phone: the row still drifts, on one line @phone", async ({ page, isMobile }) => {
     test.skip(!isMobile, "a touch screen only");
     await page.goto("/");
     const start = await measure(page);
-    await page.waitForTimeout(800);
-    expect((await measure(page)).trackLeft).toBe(start.trackLeft);
+    await page.waitForTimeout(1500);
+    const later = await measure(page);
+    // One line on a phone cannot show every app, so it keeps moving: the owner's decision.
+    expect(later.trackLeft).toBeLessThan(start.trackLeft - 10);
     expect(start.height).toBeLessThan(80);
-    expect(start.shown).toBeLessThan(start.total);
-    // It starts at its beginning, not centred with both ends cut off.
-    await expect(row(page).getByText("Works with").first()).toBeInViewport({ ratio: 1 });
-    expect(start.overflowX).toBe("auto");
-    expect(start.canScroll).toBeGreaterThan(100);
-
-    await row(page).evaluate((nav) => nav.scrollTo({ left: nav.scrollWidth }));
-    await expect(row(page).getByRole("link", { name: "Other apps" }).first()).toBeInViewport({ ratio: 1 });
     // The page itself never scrolls sideways.
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   });
@@ -88,4 +82,12 @@ test.describe("with reduced motion", () => {
     // Only one copy of the row is left.
     await expect(row(page).getByRole("link", { name: "Other apps" })).toHaveCount(1);
   });
+});
+
+test("the row starts with ChatGPT and ends with Codex, so the two OpenAI products are apart", async ({ page }) => {
+  await page.goto("/");
+  const names = await row(page).locator(".marquee-list:not([aria-hidden]) a").evaluateAll((links) => links.map((a) => a.textContent!.trim()));
+  expect(names[0]).toBe("ChatGPT");
+  expect(names.at(-2)).toBe("Codex");
+  expect(names.at(-1)).toBe("Other apps");
 });

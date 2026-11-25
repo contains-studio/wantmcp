@@ -25,11 +25,10 @@ export interface Brand {
   };
 }
 
-/** In the order the owner uses: ChatGPT, Codex, Claude, Grok Bot, Muse, OpenClaw, then the rest. */
+/** In the order the owner chose: ChatGPT, Claude, Grok Bot, Muse, OpenClaw, the rest, and Codex last. */
 export const BRANDS: Brand[] = [
-  // OpenAI publishes only its company mark (the Blossom), so the product name goes beside it.
+  // OpenAI publishes only its company mark (the Blossom), so the product name goes beside it (Codex too).
   { id: "chatgpt", name: "ChatGPT", logo: { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg", width: 716, height: 716, nameBeside: true, optical: 1.6 } },
-  { id: "codex", name: "Codex", logo: { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg", width: 716, height: 716, nameBeside: true, optical: 1.6 } },
   { id: "claude", name: "Claude", logo: { light: "/brands/claude-on-light.svg", dark: "/brands/claude-on-dark.svg", width: 9156, height: 2000, optical: 1.2 } },
   // Grok Bot's own mark from xAI's product page (x.ai/bot): a solid disc, so it is drawn a little smaller than the open marks.
   { id: "grok-bot", name: "Grok Bot", logo: { light: "/brands/grok-bot-on-light.svg", dark: "/brands/grok-bot-on-dark.svg", width: 100, height: 100, nameBeside: true, optical: 1.25 } },
@@ -38,6 +37,8 @@ export const BRANDS: Brand[] = [
   { id: "cursor", name: "Cursor", logo: { light: "/brands/cursor-on-light.svg", dark: "/brands/cursor-on-dark.svg", width: 2239, height: 532, optical: 1.15 } },
   { id: "grok", name: "Grok", logo: { light: "/brands/grok-mark.svg", width: 512, height: 512, nameBeside: true, optical: 1.4 } },
   { id: "gemini", name: "Gemini", logo: { light: "/brands/gemini-sparkle.svg", width: 192, height: 192, nameBeside: true, optical: 1.3 } },
+  // Codex goes last (owner, 25 Nov 2026): two OpenAI products side by side read as a repeat.
+  { id: "codex", name: "Codex", logo: { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg", width: 716, height: 716, nameBeside: true, optical: 1.6 } },
   // Not shipped yet (its pull requests are drafts).
   { id: "msgblast", name: "msgblast", comingSoon: true, logo: { light: "/brands/msgblast.png", width: 206, height: 206, nameBeside: true, optical: 1.4 } },
 ];

@@ -181,7 +181,9 @@
   ::selection { background: var(--want); color: var(--want-ink); }
   code, kbd, pre, samp { font-family: var(--font-mono); }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+    /* The one exception is the home page's "Works with" row: see `.marquee`. */
+    *:not(.marquee-track), *::before, *::after { animation: none !important; }
+    *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; }
   }
 }
 
@@ -842,9 +844,10 @@ button.check-toggle:hover { border-color: var(--ink); }
    rests on it or the keyboard's focus is in it. A touch never pauses it: on a phone both "hover"
    and plain focus stick to the logo that was tapped, which would freeze the row until the person
    tapped somewhere else. The track holds the row twice and moves by one copy.
-   With reduced motion nothing drifts, so every logo must be reachable another way: on a touch
-   screen the line swipes sideways (the right edge fades to show there is more); with a mouse,
-   where a sideways swipe may not exist, the row wraps. */
+   Reduced motion (owner's decision, 25 Nov 2026): on a touch screen the row still drifts. One line
+   on a phone cannot show every app, and a still, cut-off row read as broken. It is a slow, steady
+   slide of one small strip, nothing that zooms, bounces or follows the scroll. With a mouse and
+   reduced motion the row stands still and wraps, which shows every app without moving. */
 .marquee {
   overflow: hidden; padding-block: 0.5rem;
   mask-image: linear-gradient(90deg, transparent, #000 4rem, #000 calc(100% - 4rem), transparent);
@@ -856,20 +859,11 @@ button.check-toggle:hover { border-color: var(--ink); }
   .marquee:hover .marquee-track { animation-play-state: paused; }
 }
 @keyframes marquee { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) {
-  .marquee {
-    overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
-    mask-image: linear-gradient(90deg, #000 calc(100% - 3rem), transparent);
-  }
-  .marquee::-webkit-scrollbar { display: none; }
-  .marquee-track { animation: none; }
-  .marquee-list { padding-right: 3rem; }
-  .marquee-list[aria-hidden] { display: none; }
-}
 @media (prefers-reduced-motion: reduce) and (hover: hover) {
-  .marquee { overflow: hidden; mask-image: none; }
-  .marquee-track { width: auto; justify-content: center; }
+  .marquee { mask-image: none; }
+  .marquee-track { animation: none; width: auto; justify-content: center; }
   .marquee-list { flex: 0 1 auto; flex-wrap: wrap; justify-content: center; padding-right: 0; }
+  .marquee-list[aria-hidden] { display: none; }
 }
 
 /* "Works with" tiles on the home page: 52px tall, logos shown unmodified at their own aspect ratio. */
