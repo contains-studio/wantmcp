@@ -59,14 +59,15 @@ test("list settings: sections in order, Format only while the list is empty", as
   await signIn(page, freshEmail("settings-order"));
   const id = await createList(page, { format: "Tasks", title: "Order check" });
   await page.goto(`/app/lists/${id}/settings`);
-  const titles = await page.locator("details.settings-section > summary h2").allTextContents();
+  // Section titles carry ids; the closed Look section also holds a decorative, aria-hidden miniature with headings of its own.
+  const titles = await page.locator("details.settings-section > summary h2[id]").allTextContents();
   expect(titles).toEqual(["Details", "Sharing", "Agents", "Look", "Format", "Delete"]);
   await page.goto(`/l/${id}`);
   await page.locator("#new-item").fill("Book the van");
   await page.getByRole("button", { name: "Add task" }).click();
   await expect(page.locator(".item-section", { hasText: "Book the van" })).toBeVisible();
   await page.goto(`/app/lists/${id}/settings`);
-  await expect(page.locator("details.settings-section > summary h2")).toHaveText(["Details", "Sharing", "Agents", "Look", "Delete"]);
+  await expect(page.locator("details.settings-section > summary h2[id]")).toHaveText(["Details", "Sharing", "Agents", "Look", "Delete"]);
 });
 
 test("/for index: a swatch and a promise per page, and Start a list top and bottom", async ({ page }) => {
