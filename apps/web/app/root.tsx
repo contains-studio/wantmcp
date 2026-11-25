@@ -20,6 +20,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { Wordmark } from "./components/Logo";
+import { STYLESHEET_GUARD, useNonce } from "./lib/nonce";
 import { feedbackAbout } from "./lib/feedback";
 import { getUser } from "./lib/auth.server";
 import { mcpUrl, siteOrigin, sourceUrl, webAnalyticsToken } from "./lib/config.server";
@@ -49,6 +50,7 @@ export async function loader({ request }: Route.LoaderArgs) {
 export function Layout({ children }: { children: React.ReactNode }) {
   const root = useRouteLoaderData<typeof loader>("root");
   const theme = root?.theme ?? "system";
+  const nonce = useNonce();
   return (
     <html lang="en-US" data-theme={theme === "system" ? undefined : theme}>
       <head>
@@ -56,6 +58,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+        {/* Before the stylesheets: reload once if one of ours is missing (a deploy's in-between moment). */}
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: STYLESHEET_GUARD }} />
         <Meta />
         <Links />
       </head>

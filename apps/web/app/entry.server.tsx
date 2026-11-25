@@ -1,4 +1,5 @@
 import type { EntryContext, RouterContextProvider } from "react-router";
+import { NonceContext } from "./lib/nonce";
 import { ServerRouter } from "react-router";
 import { isbot } from "isbot";
 import { renderToReadableStream } from "react-dom/server";
@@ -61,17 +62,22 @@ export default async function handleRequest(
   let shellRendered = false;
   const userAgent = request.headers.get("user-agent");
 
-  const body = await renderToReadableStream(<ServerRouter context={routerContext} url={request.url} nonce={nonce} />, {
-    nonce,
-    signal: AbortSignal.timeout(streamTimeout + 1000),
-    onError(error: unknown) {
-      responseStatusCode = 500;
-      // Errors during the initial shell render are logged by handleDocumentRequest.
-      if (shellRendered) {
-        console.error(error);
-      }
+  const body = await renderToReadableStream(
+    <NonceContext.Provider value={nonce}>
+      <ServerRouter context={routerContext} url={request.url} nonce={nonce} />
+    </NonceContext.Provider>,
+    {
+      nonce,
+      signal: AbortSignal.timeout(streamTimeout + 1000),
+      onError(error: unknown) {
+        responseStatusCode = 500;
+        // Errors during the initial shell render are logged by handleDocumentRequest.
+        if (shellRendered) {
+          console.error(error);
+        }
+      },
     },
-  });
+  );
   shellRendered = true;
 
   // Crawlers get the complete document in one go.
