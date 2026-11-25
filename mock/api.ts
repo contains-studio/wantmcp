@@ -187,6 +187,14 @@ function timestamp(field: string, v: unknown): string | null {
   return new Date(t).toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
+/** A theme slug, or null. The mock stores any well-formed slug; the web app falls back for unknown ones. */
+function themeSlug(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  const s = String(v);
+  if (!/^[a-z0-9-]{1,40}$/.test(s)) throw invalid("theme must be a slug like black-friday");
+  return s;
+}
+
 function decimal(field: string, v: unknown, required = false): string | null {
   if (v == null || v === "") {
     if (required) throw invalid(`${field} is required`);
@@ -209,6 +217,7 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
     owner_handle: owner.handle,
     item_count: store.items.filter((i) => i.list_id === l.id).length,
     allow_outside_suggestions: l.allow_outside_suggestions,
+    theme: l.theme ?? null,
     created_at: l.created_at,
     updated_at: l.updated_at,
   };
@@ -500,7 +509,7 @@ route("POST", "/lists", ({ caller, body }) => {
   const title = text("title", body.title, 140, true);
   const description = text("description", body.description, 500);
   const t = nowIso();
-  const l: ListRow = { id: newId("lst"), title, description, owner_id: c.user.id, allow_outside_suggestions: true, created_at: t, updated_at: t };
+  const l: ListRow = { id: newId("lst"), title, description, owner_id: c.user.id, allow_outside_suggestions: true, theme: themeSlug(body.theme), created_at: t, updated_at: t };
   store.lists.push(l);
   store.members.push({ id: newId("mem"), list_id: l.id, user_id: c.user.id, invited_email: null, role: "owner", status: "active", token: null, created_at: t });
   return created(listSummary(l, c));
@@ -524,6 +533,7 @@ route("PATCH", "/lists/{id}", ({ caller, params, body }) => {
   if (body.title !== undefined) l.title = text("title", body.title, 140, true);
   if (body.description !== undefined) l.description = text("description", body.description, 500);
   if (typeof body.allow_outside_suggestions === "boolean") l.allow_outside_suggestions = body.allow_outside_suggestions;
+  if (body.theme !== undefined) l.theme = themeSlug(body.theme);
   l.updated_at = nowIso();
   return listSummary(l, caller);
 });

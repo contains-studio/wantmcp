@@ -15,6 +15,7 @@ import inter700 from "@fontsource/inter/files/inter-latin-700-normal.woff?inline
 import { api } from "../app/lib/api.server";
 import { formatMoney } from "../app/lib/format";
 import type { ListDetail } from "../app/lib/types";
+import { getTheme } from "../app/themes/catalogue.server";
 
 const C = {
   paper: "#f7f2ea",
@@ -48,7 +49,21 @@ const fonts = () => [
   new CustomFont("Inter", dataUrlToBuffer(inter700), { weight: 700 }),
 ];
 
-function Frame({ children }: { children: React.ReactNode }) {
+type Colors = typeof C;
+
+/** The share card takes the list theme's light palette and motif. */
+function themeColors(slug: string | null | undefined): { colors: Colors; motif: string | null } {
+  const t = getTheme(slug);
+  if (t.slug === "default") return { colors: C, motif: null };
+  const p = t.light;
+  const colors: Colors = { paper: p.paper, card: p.card, ink: p.ink, ink2: p.ink2, ink3: p.ink3, line: p.line, want: p.want, wantSoft: p.wantSoft, deal: p.deal };
+  const motifColor = t.motifColor?.light ?? p.want;
+  const motif = t.motif ? "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(t.motif(motifColor)))) : null;
+  return { colors, motif };
+}
+
+function Frame({ children, colors = C, motif = null }: { children: React.ReactNode; colors?: Colors; motif?: string | null }) {
+  const C = colors;
   return (
     <div
       style={{
@@ -63,7 +78,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         position: "relative",
       }}
     >
-      {/* soft pink glow, as on the site */}
+      {/* soft accent glow, as on the site, and the theme's motif if it has one */}
       <div
         style={{
           position: "absolute",
@@ -76,6 +91,7 @@ function Frame({ children }: { children: React.ReactNode }) {
           display: "flex",
         }}
       />
+      {motif && <img src={motif} width={560} height={420} style={{ position: "absolute", right: 0, top: 10 }} />}
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <img src={TAG_SVG} width={56} height={56} />
         <div style={{ display: "flex", fontFamily: "Bricolage", fontSize: 36, letterSpacing: -1 }}>
@@ -112,6 +128,7 @@ function HomeCard() {
 }
 
 function ListCard({ list }: { list: ListDetail }) {
+  const { colors: C, motif } = themeColors(list.theme);
   const listed = list.items.flatMap((it) => (it.purchase ? [] : it.entries.filter((e) => e.status === "listed")));
   const priced = listed.filter((e) => e.current_price);
   const currency = priced[0]?.current_price?.currency;
@@ -124,7 +141,7 @@ function ListCard({ list }: { list: ListDetail }) {
   const titleSize = title.length > 40 ? 64 : 84;
 
   return (
-    <Frame>
+    <Frame colors={C} motif={motif}>
       <div style={{ display: "flex", marginTop: 44, fontSize: 26, color: C.ink3, fontWeight: 700, letterSpacing: 3 }}>
         A WANT LIST BY {list.owner_handle.toUpperCase()}
       </div>

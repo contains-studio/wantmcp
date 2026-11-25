@@ -163,6 +163,167 @@
   }
 }
 
+
+/*
+ * List themes (app/themes). A themed area sets --tl-* (light) and --td-* (dark) custom
+ * properties in a style attribute; these rules pick the right set for the visitor's
+ * light/dark preference. Tailwind's --color-* are re-derived here so utilities follow.
+ */
+.themed {
+  --paper: var(--tl-paper);
+  --card: var(--tl-card);
+  --sunk: var(--tl-sunk);
+  --ink: var(--tl-ink);
+  --ink-2: var(--tl-ink-2);
+  --ink-3: var(--tl-ink-3);
+  --line: var(--tl-line);
+  --line-strong: var(--tl-line-strong);
+  --want: var(--tl-want);
+  --want-ink: var(--tl-want-ink);
+  --want-soft: var(--tl-want-soft);
+  --deal: var(--tl-deal);
+  --deal-soft: var(--tl-deal-soft);
+  --warn: var(--tl-warn);
+  --warn-soft: var(--tl-warn-soft);
+  --danger: var(--tl-danger);
+  --shadow: var(--tl-shadow);
+  --motif: var(--tl-motif);
+  --focus: var(--want);
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-sunk: var(--sunk);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-want: var(--want);
+  --color-want-ink: var(--want-ink);
+  --color-want-soft: var(--want-soft);
+  --color-deal: var(--deal);
+  --color-deal-soft: var(--deal-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .themed {
+  --paper: var(--td-paper);
+  --card: var(--td-card);
+  --sunk: var(--td-sunk);
+  --ink: var(--td-ink);
+  --ink-2: var(--td-ink-2);
+  --ink-3: var(--td-ink-3);
+  --line: var(--td-line);
+  --line-strong: var(--td-line-strong);
+  --want: var(--td-want);
+  --want-ink: var(--td-want-ink);
+  --want-soft: var(--td-want-soft);
+  --deal: var(--td-deal);
+  --deal-soft: var(--td-deal-soft);
+  --warn: var(--td-warn);
+  --warn-soft: var(--td-warn-soft);
+  --danger: var(--td-danger);
+  --shadow: var(--td-shadow);
+  --motif: var(--td-motif);
+  }
+}
+:root[data-theme="dark"] .themed {
+  --paper: var(--td-paper);
+  --card: var(--td-card);
+  --sunk: var(--td-sunk);
+  --ink: var(--td-ink);
+  --ink-2: var(--td-ink-2);
+  --ink-3: var(--td-ink-3);
+  --line: var(--td-line);
+  --line-strong: var(--td-line-strong);
+  --want: var(--td-want);
+  --want-ink: var(--td-want-ink);
+  --want-soft: var(--td-want-soft);
+  --deal: var(--td-deal);
+  --deal-soft: var(--td-deal-soft);
+  --warn: var(--td-warn);
+  --warn-soft: var(--td-warn-soft);
+  --danger: var(--td-danger);
+  --shadow: var(--td-shadow);
+  --motif: var(--td-motif);
+}
+.themed .list-hero {
+  background:
+    var(--motif) no-repeat right max(-2rem, calc(50% - 38rem)) top 0.5rem / min(30rem, 62%) auto,
+    radial-gradient(ellipse at top left, var(--want-soft), transparent 60%);
+}
+@media (max-width: 639px) {
+  .themed .list-hero { background-size: min(16rem, 58%) auto, auto; background-position: right -1.5rem top 0.25rem, 0 0; }
+}
+
+/* ---- Traits: small reusable style switches a theme can opt into ---- */
+.themed.t-serif-display h1, .themed.t-serif-display h2, .themed.t-serif-display h3 { font-weight: 600; letter-spacing: -0.01em; }
+.themed.t-upper-display h1, .themed.t-upper-display .item-title { text-transform: uppercase; letter-spacing: -0.01em; }
+.themed.t-italic-display h1 { font-style: italic; }
+.themed.t-soft h1, .themed.t-soft h2 { font-weight: 700; }
+.themed.t-mono-meta .item-meta, .themed.t-mono-meta .entry-meta, .themed.t-mono-meta .eyebrow { font-family: var(--font-mono); font-size: 0.78rem; }
+.themed.t-dense .item-section { gap: 0.75rem; }
+.themed.t-dense .list-hero > div { padding-block: 1.5rem; }
+.themed.t-dense h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); }
+.themed.t-dense .item-title { font-size: 1.05rem; }
+.themed.t-roomy .item-title { font-size: clamp(1.35rem, 2.6vw, 1.9rem); line-height: 1.25; }
+.themed.t-roomy { font-size: 1.06rem; line-height: 1.7; }
+.themed.t-checklist .is-bought .item-title { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--ink-3); }
+
+/* Big checkbox for the checklist style */
+.check-toggle {
+  display: grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; margin-top: 0.1rem;
+  border: 2.5px solid var(--ink); border-radius: 0.6rem; background: var(--card); color: var(--want-ink);
+  font-weight: 900; font-size: 1.25rem; line-height: 1;
+}
+.check-toggle[aria-checked="true"], .check-toggle.is-checked { background: var(--deal); border-color: var(--deal); color: var(--card); }
+button.check-toggle { cursor: pointer; }
+button.check-toggle:hover { border-color: var(--want); }
+
+/* ---- Layouts ---- */
+/* Doc and Checklist: one readable column of entries, thumbnail on the left. */
+.layout-list .item-entries, .layout-rows .item-entries { grid-template-columns: 1fr !important; }
+.layout-list .entry-card, .layout-rows .entry-card, .layout-board .entry-card {
+  grid-template-columns: 6.5rem 1fr !important; grid-template-rows: auto !important; gap: 0.9rem !important; padding: 0.9rem !important;
+}
+.layout-list .entry-card > div, .layout-rows .entry-card > div, .layout-board .entry-card > div { padding: 0 !important; }
+.layout-list .entry-card > .entry-tools, .layout-rows .entry-card > .entry-tools, .layout-board .entry-card > .entry-tools { grid-column: 1 / -1 !important; margin: 0 !important; }
+@media (min-width: 640px) {
+  .layout-list .entry-card { grid-template-columns: 9rem 1fr !important; }
+}
+
+/* Tracker: compact rows. */
+.layout-rows .entry-card { grid-template-columns: 3.75rem 1fr !important; gap: 0.75rem !important; padding: 0.6rem 0.75rem !important; }
+.layout-rows .entry-card .price { font-size: 1.35rem !important; }
+.layout-rows .entry-card .product-img { aspect-ratio: 1; }
+.layout-rows .entry-desc { display: none; }
+.layout-rows .item-entries { gap: 0.4rem !important; }
+
+/* Board: items become columns of cards. */
+.layout-board .items-region {
+  display: grid; grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: minmax(17.5rem, 85vw); gap: 1rem;
+  overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 1rem; align-items: start;
+}
+@media (min-width: 640px) { .layout-board .items-region { grid-auto-columns: minmax(19rem, 23rem); } }
+.layout-board .item-section {
+  scroll-snap-align: start; background: var(--sunk); border: var(--card-border-w, 1px) solid var(--line);
+  border-radius: var(--r-card, 0.75rem); padding: 0.9rem; gap: 0.9rem;
+}
+.layout-board .item-section .item-title { font-size: 1.1rem; }
+.layout-board .item-entries { grid-template-columns: 1fr !important; padding-left: 0 !important; gap: 0.6rem !important; }
+.layout-board .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
+.layout-board .item-number { display: none; }
+.layout-board .entry-card { grid-template-columns: 4.5rem 1fr !important; }
+.layout-board .entry-card .price { font-size: 1.5rem !important; }
+.layout-board .entry-desc { display: none; }
+/* Bought items form their own column at the end of the board. */
+.layout-board .bought-group { gap: 1rem; scroll-snap-align: start; }
+.layout-board .bought-group .bought-divider .divider-dots { display: none; }
+
 @layer components {
   .wrap { width: 100%; max-width: 76rem; margin-inline: auto; padding-inline: 1rem; }
   @media (min-width: 640px) { .wrap { padding-inline: 1.5rem; } }
@@ -182,13 +343,14 @@
   .link:hover { text-decoration-color: var(--want); color: var(--want); }
 
   .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 1.1rem; box-shadow: var(--shadow);
+    background: var(--card); border: var(--card-border-w, 1px) solid var(--line); border-radius: var(--r-card, 1.1rem);
+    box-shadow: var(--card-shadow, var(--shadow));
   }
 
   /* Buttons */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
-    min-height: 2.75rem; padding: 0 1.1rem; border-radius: 999px; font-weight: 650; font-size: 0.95rem;
+    min-height: 2.75rem; padding: 0 1.1rem; border-radius: var(--r-control, 999px); font-weight: 650; font-size: 0.95rem;
     border: 1.5px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer;
     transition: transform 120ms ease, background 120ms ease, color 120ms ease, border-color 120ms ease;
     white-space: nowrap; text-decoration: none;
@@ -215,7 +377,7 @@
   .label { font-weight: 600; font-size: 0.9rem; }
   .hint { font-size: 0.82rem; color: var(--ink-3); }
   .input, .textarea, .select {
-    width: 100%; min-height: 2.75rem; padding: 0.55rem 0.8rem; border-radius: 0.75rem;
+    width: 100%; min-height: 2.75rem; padding: 0.55rem 0.8rem; border-radius: var(--r-input, 0.75rem);
     border: 1.5px solid var(--line-strong); background: var(--card); color: var(--ink); font: inherit;
   }
   .textarea { min-height: 5rem; resize: vertical; }
@@ -234,7 +396,7 @@
 
   /* Prices: the easiest thing on the page to read */
   .price {
-    font-family: var(--font-display); font-weight: 750; font-variant-numeric: tabular-nums lining-nums;
+    font-family: var(--font-price, var(--font-display)); font-weight: var(--price-weight, 750); font-variant-numeric: tabular-nums lining-nums;
     letter-spacing: -0.03em; line-height: 1; color: var(--ink);
   }
   .price-was { font-variant-numeric: tabular-nums; color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1.5px; }
@@ -275,7 +437,7 @@
 
   /* Product image: fixed ratio, never layout-shifts */
   .product-img {
-    position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 0.8rem; background: var(--sunk);
+    position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-image, 0.8rem); background: var(--sunk);
     border: 1px solid var(--line);
   }
   .product-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -297,7 +459,7 @@
   /* Untrusted suggestions: visibly different, plain text only */
   .untrusted {
     background: repeating-linear-gradient(-45deg, var(--warn-soft) 0 14px, color-mix(in srgb, var(--warn-soft) 70%, var(--card)) 14px 28px);
-    border: 1.5px dashed color-mix(in srgb, var(--warn) 55%, transparent); border-radius: 1.1rem;
+    border: 1.5px dashed color-mix(in srgb, var(--warn) 55%, transparent); border-radius: var(--r-card, 1.1rem);
   }
   .plain-url { font-family: var(--font-mono); font-size: 0.78rem; word-break: break-all; color: var(--ink-2); }
 
@@ -325,6 +487,8 @@
   /* Deep links (#ent_…, #itm_…, #cmt_…): a brief highlight on the target. */
   .deep-target { animation: deep-flash 2.2s ease-out; border-radius: 1.1rem; }
   :target { scroll-margin-top: 6rem; }
+  tr.deep-target > * { animation: deep-flash-row 2.2s ease-out; }
+  @keyframes deep-flash-row { 0%, 35% { background-color: var(--want-soft); } }
   @keyframes deep-flash {
     0%, 35% { box-shadow: 0 0 0 4px var(--want), 0 0 0 12px color-mix(in srgb, var(--want) 25%, transparent); }
     100% { box-shadow: 0 0 0 0 transparent; }

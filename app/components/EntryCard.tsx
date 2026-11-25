@@ -56,18 +56,20 @@ export interface EntryCardProps {
   canEdit?: boolean;
   canDeleteComment: (c: Comment) => boolean;
   eagerImage?: boolean;
+  /** Carries the #ent_… anchor. False where another element (the Sheet row) holds it. */
+  anchor?: boolean;
 }
 
 /** One product found for an item. Price first, then deal details, then who found it. */
-export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemPurchased, canWrite, canEdit, canDeleteComment, eagerImage }: EntryCardProps) {
+export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemPurchased, canWrite, canEdit, canDeleteComment, eagerImage, anchor = true }: EntryCardProps) {
   const now = useNow();
   const cur = entry.current_price;
-  const titleId = `${entry.id}-title`;
+  const titleId = `${entry.id}-title${anchor ? "" : "-detail"}`;
   return (
     <article
-      id={entry.id}
+      id={anchor ? entry.id : undefined}
       aria-labelledby={titleId}
-      className={`card relative grid scroll-mt-24 grid-cols-[6.5rem_1fr] content-start gap-3 p-3 sm:grid-cols-1 sm:grid-rows-[auto_1fr_auto] sm:gap-0 sm:p-0 ${
+      className={`entry-card card relative grid scroll-mt-24 grid-cols-[6.5rem_1fr] content-start gap-3 p-3 sm:grid-cols-1 sm:grid-rows-[auto_1fr_auto] sm:gap-0 sm:p-0 ${
         boughtThis ? "outline-2 outline-deal" : ""
       } ${isLowest && !itemPurchased ? "ring-2 ring-want" : ""}`}
     >
@@ -107,11 +109,11 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
           </div>
         )}
 
-        {entry.description && <p className="line-clamp-3 text-[0.86rem] text-ink-2">{entry.description}</p>}
+        {entry.description && <p className="entry-desc line-clamp-3 text-[0.86rem] text-ink-2">{entry.description}</p>}
 
         {prices && prices.length > 1 && <PriceSparkline prices={prices} now={now} />}
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.78rem] text-ink-3">
+        <div className="entry-meta flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.78rem] text-ink-3">
           <ActorTag actor={entry.author} />
           <Time ts={entry.created_at} />
           {entry.promoted_by && (
@@ -136,9 +138,9 @@ export function EntryCard({ entry, prices, comments, isLowest, boughtThis, itemP
       </div>
 
         {(entry.price_count > 1 || comments.length > 0 || canWrite) && (
-          <div className="col-span-2 grid gap-1 border-t border-line pt-2 sm:col-span-1 sm:mx-4 sm:mb-4">
+          <div className="entry-tools col-span-2 grid gap-1 border-t border-line pt-2 sm:col-span-1 sm:mx-4 sm:mb-4">
             {canWrite && (
-              <details id={`${entry.id}-price`} className="group">
+              <details id={anchor ? `${entry.id}-price` : `${entry.id}-price-detail`} className="group">
                 <summary className="textlink-btn text-[0.8rem]">
                   Post a new price <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
                 </summary>

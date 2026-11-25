@@ -199,6 +199,23 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
+      <section aria-labelledby="themes-h" className="wrap pb-8">
+        <div className="card grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
+          <div>
+            <h2 id="themes-h" className="text-xl font-bold">
+              A look for every occasion
+            </h2>
+            <p className="mt-1 text-[0.95rem] text-ink-2">
+              Dress a list for Black Friday, Christmas, Hanukkah, a birthday or Valentine's Day, or in the style of your tools: a doc, a board, a
+              tracker, a checklist or a sheet.
+            </p>
+          </div>
+          <Link to="/themes" className="btn btn-ghost">
+            Browse themes
+          </Link>
+        </div>
+      </section>
+
       <section aria-labelledby="feed-h" className="wrap py-6">
         <div className="flex items-end justify-between gap-4">
           <div>

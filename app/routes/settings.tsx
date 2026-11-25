@@ -7,6 +7,11 @@ import { requireUser } from "~/lib/auth.server";
 import { useRootData } from "~/lib/hooks";
 import { assertSameOrigin } from "~/lib/session.server";
 import type { AgentInfo, ListDetail, Member } from "~/lib/types";
+import { ListView } from "~/components/ListView";
+import { allThemeViews, getTheme } from "~/themes/catalogue.server";
+import { sampleList } from "~/themes/sample.server";
+import type { ThemeView } from "~/themes/view";
+import { useState } from "react";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `Settings${loaderData ? ` · ${loaderData.list.title}` : ""} · The Want MCP` }, { name: "robots", content: "noindex" }];
@@ -31,7 +36,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     ),
   ]);
   const { items: _items, ...summary } = list;
-  return data({ list: summary, role: list.my_role, members, agents }, { headers: { "Cache-Control": "private, no-store" } });
+  // The owner's theme picker needs every theme (small: custom properties only) and the sample list.
+  const themes = list.my_role === "owner" ? allThemeViews() : [];
+  const sample = list.my_role === "owner" ? sampleList() : null;
+  return data(
+    { list: summary, role: list.my_role, members, agents, themes, sample, currentTheme: getTheme(summary.theme).slug },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }
 
 type ActionData = { ok?: boolean; error?: string; intent?: string; key?: string; agent?: AgentInfo; devInvite?: string };
@@ -47,6 +58,12 @@ export async function action({ request, params }: Route.ActionArgs) {
       case "rename":
         await api(request, `/lists/${id}`, { method: "PATCH", body: { title: s("title"), description: s("description") } });
         return { ok: true, intent } satisfies ActionData;
+      case "theme": {
+        const slug = s("theme");
+        // "default" is stored as no theme.
+        await api(request, `/lists/${id}`, { method: "PATCH", body: { theme: slug === "default" ? null : getTheme(slug).slug } });
+        return { ok: true, intent } satisfies ActionData;
+      }
       case "outside":
         await api(request, `/lists/${id}`, { method: "PATCH", body: { allow_outside_suggestions: s("allow") === "true" } });
         return { ok: true, intent } satisfies ActionData;
@@ -239,6 +256,19 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
 
       {isOwner && (
         <>
+          <Section
+            id="theme-h"
+            title="Theme"
+            desc={
+              <>
+                Dress the list for its occasion, or in the style of the tools you work in. Everyone who opens the list sees it, in their own light
+                or dark mode. <Link to="/themes" className="link">Browse all themes</Link>
+              </>
+            }
+          >
+            <ThemePicker themes={loaderData.themes} sample={loaderData.sample!} current={loaderData.currentTheme} />
+          </Section>
+
           <Section id="outside-h" title="Outside suggestions" desc="Let any agent suggest products. Suggestions stay hidden from everyone but this list's writers until one of you promotes them.">
             <OutsideToggle allow={list.allow_outside_suggestions} />
           </Section>
@@ -398,5 +428,74 @@ function NewKey({ keyValue, agentName }: { keyValue: string; agentName: string }
         Done, I've saved it
       </Link>
     </div>
+  );
+}
+
+function ThemePicker({ themes, sample, current }: { themes: ThemeView[]; sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>; current: string }) {
+  const fetcher = useFetcher<ActionData>();
+  const { origin } = useRootData();
+  const [selected, setSelected] = useState(current);
+  const view = themes.find((t) => t.slug === selected) ?? themes[0];
+  const saving = fetcher.state !== "idle";
+  const saved = fetcher.state === "idle" && fetcher.data?.ok && selected === current;
+  return (
+    <fetcher.Form method="post" className="grid gap-4">
+      <input type="hidden" name="intent" value="theme" />
+      {(["default", "occasion", "workspace"] as const).map((group) => (
+        <fieldset key={group} className="grid gap-2">
+          <legend className="label mb-1">{group === "default" ? "Default" : group === "occasion" ? "Occasions" : "Workspace styles"}</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {themes
+              .filter((t) => t.group === group)
+              .map((t) => (
+                <label
+                  key={t.slug}
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${selected === t.slug ? "border-want bg-want-soft" : "border-line"}`}
+                >
+                  <input type="radio" name="theme" value={t.slug} checked={selected === t.slug} onChange={() => setSelected(t.slug)} className="accent-[var(--want)]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{t.name}</span>
+                    <span className="block truncate text-[0.78rem] text-ink-3">{t.layout === "grid" ? "Cards" : `Layout: ${t.layout}`}</span>
+                  </span>
+                  <span className="inline-flex overflow-hidden rounded-full border border-line" aria-hidden="true">
+                    {[t.swatch.paper, t.swatch.ink, t.swatch.want, t.swatch.darkPaper].map((c, i) => (
+                      <span key={i} className="h-4 w-4" style={{ background: c }} />
+                    ))}
+                  </span>
+                </label>
+              ))}
+          </div>
+        </fieldset>
+      ))}
+      <div className="grid gap-2">
+        <p className="label" id="theme-preview-label">
+          Preview: {view.name}
+        </p>
+        <p className="text-[0.85rem] text-ink-3">{view.idea}</p>
+        <div className="max-h-[26rem] overflow-hidden rounded-xl border border-line" aria-hidden="true" inert>
+          <ListView
+            list={sample.list}
+            items={sample.items}
+            suggestions={[]}
+            comments={sample.comments}
+            commentsCursor={null}
+            prices={sample.prices}
+            isWriter={false}
+            role={null}
+            origin={origin}
+            theme={view}
+            preview
+            previewItems={view.layout === "board" ? 3 : 1}
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3" aria-live="polite">
+        <button className="btn" disabled={saving || selected === current}>
+          {saving ? "Saving…" : selected === current ? "Current theme" : `Use ${view.name}`}
+        </button>
+        {saved && <span className="text-[0.85rem] text-deal">Saved. Your list now uses this theme.</span>}
+        {fetcher.data?.error && <span className="form-error">{fetcher.data.error}</span>}
+      </div>
+    </fetcher.Form>
   );
 }

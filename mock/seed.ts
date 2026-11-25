@@ -37,6 +37,7 @@ export function seedStore(now = Date.now()): Store {
     {
       id: "lst_espresso",
       title: "Getting into espresso",
+      theme: "doc",
       description: "First proper espresso setup. Happy with second-hand if it's in good shape.",
       owner_id: "usr_heron",
       allow_outside_suggestions: false,
@@ -46,6 +47,7 @@ export function seedStore(now = Date.now()): Store {
     {
       id: "lst_trail",
       title: "Trail running kit",
+      theme: "tracker",
       description: "Training for my first 50k in spring.",
       owner_id: "usr_lynx",
       allow_outside_suggestions: true,

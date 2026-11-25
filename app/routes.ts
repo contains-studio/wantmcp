@@ -10,6 +10,8 @@ export default [
   route("app/lists/:id/settings", "routes/settings.tsx"),
   route("invite/:token", "routes/invite.tsx"),
   route("connect", "routes/connect.tsx"),
+  route("themes", "routes/themes.tsx"),
+  route("themes/:slug", "routes/theme-preview.tsx"),
   route("privacy", "routes/privacy.tsx"),
   route("terms", "routes/terms.tsx"),
   route("report", "routes/report.tsx"),

@@ -36,6 +36,11 @@ export interface ListSummary {
   updated_at: Timestamp;
   /** Present only for the signed-in caller. */
   my_role?: "owner" | "member" | null;
+  /**
+   * Pending in the API contract: the list's theme slug (see app/themes). Unknown or missing
+   * means the default theme.
+   */
+  theme?: string | null;
 }
 
 export interface Purchase {

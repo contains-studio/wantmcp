@@ -1,4 +1,8 @@
+import { createContext, useContext } from "react";
 import { useFetcher } from "react-router";
+
+/** True inside theme previews (gallery, settings): no report links on sample content. */
+export const PreviewContext = createContext(false);
 import type { ReportTargetType } from "~/lib/types";
 
 const REASONS = ["Spam or scam", "Misleading price or product", "Offensive or abusive", "Personal information", "Something else"];
@@ -6,6 +10,8 @@ const REASONS = ["Spam or scam", "Misleading price or product", "Offensive or ab
 /** "Report" disclosure on lists, entries and comments. Works without JavaScript. */
 export function ReportLink({ type, id, label = "Report" }: { type: ReportTargetType; id: string; label?: string }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const preview = useContext(PreviewContext);
+  if (preview) return null;
   const done = fetcher.data?.ok;
   return (
     <details className="relative inline-block text-[0.78rem]">

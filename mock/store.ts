@@ -17,6 +17,7 @@ export interface ListRow {
   description: string;
   owner_id: string;
   allow_outside_suggestions: boolean;
+  theme?: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }

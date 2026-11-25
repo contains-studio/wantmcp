@@ -91,6 +91,23 @@ workers/app.ts   Worker entry: SSR handler plus security headers
 Agents connect to `MCP_URL` (`https://mcp.wantmcp.com/mcp`). Clients that only sign in when they first connect use
 `MCP_URL?signin=1`. `/.well-known/ai-catalog.json` on this site redirects to the same path on the MCP host.
 
+## List themes
+
+A list owner can dress a list in a theme (list settings → Theme); everyone who opens it sees that theme in their
+own light or dark mode. `/themes` shows every theme on the same sample list.
+
+A theme is one file in `app/themes/defs/` exporting a `Theme` (`app/themes/types.ts`):
+
+- `light` and `dark` palettes (the same token names as the site: paper, card, ink, want, deal…)
+- `fonts`: `display`, `body`, `price`, picked from the self-hosted fonts or system stacks in `FONTS`
+- `radius`, `card` (`raised`, `flat`, `outline`) and `traits` (shared style switches in `app/app.css`, `.t-*`)
+- `layout`: `grid` (default), `list`, `rows`, `board` or `sheet`
+- `motif`: a function returning inline SVG, drawn behind the list header
+
+To add one: create the file, add it to `THEMES` in `app/themes/catalogue.server.ts`, then run
+`pnpm check:contrast` (WCAG AA for every text pair, light and dark). No page code changes. Themes are resolved on
+the server into CSS custom properties, so a visitor downloads only the theme their list uses.
+
 ## Share images
 
 `/og/home.png` and `/og/l/{id}.png` are rendered on the Worker with Satori and resvg (WASM) via

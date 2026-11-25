@@ -25,9 +25,11 @@ function conflictEntryId(r: IntentResult | undefined): string | null {
 
 /** Opens the "New price" panel on an entry and scrolls to it. */
 function openPricePanel(entryId: string) {
-  const panel = document.getElementById(`${entryId}-price`) as HTMLDetailsElement | null;
-  if (panel) panel.open = true;
-  document.getElementById(entryId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  const panel = (document.getElementById(`${entryId}-price`) ?? document.getElementById(`${entryId}-price-detail`)) as HTMLDetailsElement | null;
+  for (let el: HTMLElement | null = panel; el; el = el.parentElement) {
+    if (el instanceof HTMLDetailsElement) el.open = true;
+  }
+  (panel ?? document.getElementById(entryId))?.scrollIntoView({ behavior: "smooth", block: "center" });
   setTimeout(() => panel?.querySelector<HTMLInputElement>("input[name=price]")?.focus(), 400);
 }
 
