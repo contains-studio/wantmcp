@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 /** Love letters: blush paper, deep red, a script-like italic serif and scalloped cards. */
@@ -6,7 +7,12 @@ export const valentines: Theme = {
   name: "Valentine's Day",
   group: "occasion",
   stylesheet: true,
+  art: ART.valentines,
   idea: "Love letters: blush paper and deep red, an italic serif, scalloped notes and a sealed-envelope header.",
+  accents: {
+    light: { band: "#a8113b", bandAlt: "#5e0a26", bandInk: "#ffffff", hot: "#b8124a", cool: "#5e0a26", barInk: "#ffffff" },
+    dark: { band: "#4a1424", bandAlt: "#24080f", bandInk: "#ffe9ee", hot: "#b8124a", cool: "#5e0a26", barInk: "#ffffff" },
+  },
   light: {
     paper: "#fff0f2", card: "#fffafa", sunk: "#fde2e7", ink: "#3b0a17", ink2: "#62212f", ink3: "#80414e",
     line: "#f6cfd7", lineStrong: "#e399a8", want: "#b3123f", wantInk: "#ffffff", wantSoft: "#fdd9e1",

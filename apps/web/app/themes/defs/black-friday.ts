@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 const p = {
@@ -13,6 +14,7 @@ export const blackFriday: Theme = {
   group: "occasion",
   scheme: "dark",
   stylesheet: true,
+  art: ART.blackFriday,
   idea: "Real black and signal yellow: heavy capitals, prices on sale tags and a striped warning band.",
   light: p,
   dark: p,
@@ -20,8 +22,9 @@ export const blackFriday: Theme = {
   radius: { card: "0", control: "0", input: "0", image: "0" },
   card: "outline",
   traits: ["upper-display"],
-  contrast: {
-    light: [{ label: "black on yellow tag", fg: "#000000", bg: "#ffe600" }],
-    dark: [{ label: "black on yellow tag", fg: "#000000", bg: "#ffe600" }],
+  accents: {
+    light: { band: "#000000", bandAlt: "#1f1f1f", bandInk: "#ffffff", hot: "#ffe600", cool: "#bfa900", barInk: "#000000" },
+    dark: { band: "#000000", bandAlt: "#1f1f1f", bandInk: "#ffffff", hot: "#ffe600", cool: "#bfa900", barInk: "#000000" },
   },
+  contrast: () => [{ label: "black on yellow tag", fg: "#000000", bg: "#ffe600" }],
 };

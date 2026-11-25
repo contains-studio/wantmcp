@@ -8,6 +8,7 @@ export const sections: Theme = {
   natural: "tasks",
   stylesheet: true,
   idea: "A project tracker: collapsible sections of rows with a round tick, agent, due date and a status pill; items open in a side panel.",
+  accents: { light: { band: "#2a2b2e" }, dark: { band: "#0f1011" } },
   light: {
     paper: "#ffffff", card: "#ffffff", sunk: "#f5f4f3", ink: "#1e1f21", ink2: "#3d3e40", ink3: "#646567",
     line: "#ebeaea", lineStrong: "#b8b7b6", want: "#c0392f", wantInk: "#ffffff", wantSoft: "#fdeceb",

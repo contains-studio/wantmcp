@@ -1,7 +1,11 @@
 /**
- * List themes. A theme is data: palettes, fonts, shapes, traits, a layout and an optional
- * motif. It is turned into CSS custom properties on the server (see view.ts), so a visitor
- * downloads only the values of the theme their list uses.
+ * List looks. A look is a template (how the list is laid out: Default cards, Board, Sections…)
+ * optionally dressed with an occasion (Christmas, Chanukah…). Both are data: palettes, accents,
+ * fonts, shapes, traits, a layout and a stylesheet. They are combined on the server into CSS
+ * custom properties (see view.ts), so a visitor downloads only what the chosen look uses.
+ *
+ * A list stores its look as one slug: `board`, `christmas` (an occasion on Default cards) or
+ * `board--christmas`. See catalogue.server.ts.
  */
 
 export interface Palette {
@@ -22,6 +26,20 @@ export interface Palette {
   warnSoft: string;
   danger: string;
   shadow?: string;
+}
+
+/**
+ * Colours an occasion (or a template) lends to the places a template has room for: a band
+ * (Board's backdrop, Heat's header, Sections' rail), text on that band, and the two ends of Heat's
+ * bars with the text on them. Every pair is checked by `pnpm check:contrast`.
+ */
+export interface Accents {
+  band: string;
+  bandAlt: string; // second stop of a band gradient; bandInk must read on it too
+  bandInk: string;
+  hot: string;
+  cool: string;
+  barInk: string; // text on Heat's bars, from hot to cool
 }
 
 /** Font stacks. Only self-hosted fonts (Bricolage, Inter, JetBrains Mono) or system stacks. */
@@ -67,10 +85,15 @@ export interface Theme {
   stylesheet?: boolean;
   /** Format the theme is designed around; the gallery previews it with that format. */
   natural?: "shopping" | "tasks" | "research";
-  /** Extra pairs for `pnpm check:contrast`, per mode. */
-  contrast?: { light?: ContrastPair[]; dark?: ContrastPair[] };
+  /** Extra pairs for `pnpm check:contrast`, per mode, given the combined palette and accents. */
+  contrast?: (p: Palette, a: Accents, mode: "light" | "dark") => ContrastPair[];
   name: string;
+  /** Templates are "default" and "workspace"; occasions dress any template. */
   group: "default" | "occasion" | "workspace";
+  /** Accents per mode (missing ones fall back to the template's, then to the palette). */
+  accents?: { light?: Partial<Accents>; dark?: Partial<Accents> };
+  /** Occasions: the drawn art as SVG markup, for the share image (the stylesheet carries its own copy). */
+  art?: string;
   /** One line: the design idea. */
   idea: string;
   light: Palette;
@@ -82,8 +105,4 @@ export interface Theme {
   card?: "raised" | "flat" | "outline";
   traits?: Trait[];
   layout?: Layout;
-  /** Decorative SVG drawn behind the list header. Receives a stroke/fill colour; returns <svg> markup. */
-  motif?: (color: string) => string;
-  /** Motif colour per mode; defaults to the accent. */
-  motifColor?: { light: string; dark: string };
 }

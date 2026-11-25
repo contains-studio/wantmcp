@@ -23,14 +23,13 @@ export const board: Theme = {
   card: "flat",
   traits: ["soft"],
   layout: "board",
-  contrast: {
-    light: [
-      { label: "hero text on backdrop (top-left)", fg: "#ffffff", bg: "#0055cc" },
-      { label: "hero text on backdrop (bottom-right)", fg: "#ffffff", bg: "#6e3ab8" },
-    ],
-    dark: [
-      { label: "hero text on backdrop (top-left)", fg: "#ffffff", bg: "#09326c" },
-      { label: "hero text on backdrop (bottom-right)", fg: "#ffffff", bg: "#352c63" },
-    ],
+  accents: {
+    light: { band: "#0055cc", bandAlt: "#6e3ab8", bandInk: "#ffffff" },
+    dark: { band: "#09326c", bandAlt: "#352c63", bandInk: "#ffffff" },
   },
+  // The header text sits on the backdrop, a gradient from band to bandAlt.
+  contrast: (_p, a) => [
+    { label: "header text on backdrop (start)", fg: a.bandInk, bg: a.band },
+    { label: "header text on backdrop (end)", fg: a.bandInk, bg: a.bandAlt },
+  ],
 };

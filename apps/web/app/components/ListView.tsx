@@ -90,8 +90,10 @@ export function ListView(props: ListViewProps) {
       data-list-theme={theme.slug}
       data-list-format={fi.format}
     >
-      {/* Only this theme's stylesheet (React hoists it into <head> and loads each one once). */}
-      {theme.stylesheet && <link rel="stylesheet" href={`${theme.stylesheet}?v=${BUILD_ID}`} precedence="theme" />}
+      {/* Only what this look needs: its template's and its occasion's stylesheets (React hoists them into <head> and loads each once). */}
+      {theme.stylesheets.map((href) => (
+        <link key={href} rel="stylesheet" href={`${href}?v=${BUILD_ID}`} precedence="theme" />
+      ))}
       {/* data-year: the year ahead (from October on), for themes that print it. */}
       <section className="list-hero border-b border-line" data-year={yearAhead(list.created_at)}>
         <div className="wrap py-10 sm:py-14">

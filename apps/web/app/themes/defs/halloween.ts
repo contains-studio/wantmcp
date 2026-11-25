@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 const p = {
@@ -13,7 +14,12 @@ export const halloween: Theme = {
   group: "occasion",
   scheme: "dark",
   stylesheet: true,
+  art: ART.halloween,
   idea: "A purple-black night in pumpkin orange: a full moon with bats, a cobweb corner and torn-edged cards.",
+  accents: {
+    light: { band: "#1b1224", bandAlt: "#3d1d06", bandInk: "#f6eefc", hot: "#b83c08", cool: "#4b2a7a", barInk: "#ffffff" },
+    dark: { band: "#1b1224", bandAlt: "#3d1d06", bandInk: "#f6eefc", hot: "#b83c08", cool: "#4b2a7a", barInk: "#ffffff" },
+  },
   light: p,
   dark: p,
   fonts: { display: "grotesque" },

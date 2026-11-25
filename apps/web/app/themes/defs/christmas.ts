@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 /** Evergreen, cranberry and gold: a full-bleed evergreen band, items wrapped like parcels, finds on gift tags. */
@@ -6,6 +7,7 @@ export const christmas: Theme = {
   name: "Christmas",
   group: "occasion",
   stylesheet: true,
+  art: ART.christmas,
   idea: "Evergreen, cranberry and gold: a full-bleed evergreen band, every item wrapped like a parcel and every find on a gift tag.",
   light: {
     paper: "#f7f1e4", card: "#fffbf2", sunk: "#efe6d2", ink: "#16261d", ink2: "#3b4a40", ink3: "#5a6a5f",
@@ -20,11 +22,13 @@ export const christmas: Theme = {
   fonts: { display: "serif" },
   radius: { card: "10px", control: "999px", input: "10px", image: "8px" },
   traits: ["serif-display"],
-  contrast: {
-    light: [
-      { label: "band text on evergreen", fg: "#fbf3e2", bg: "#0e3b28" },
-      { label: "gold eyebrow on evergreen band", fg: "#e9bf55", bg: "#0e3b28" },
-    ],
-    dark: [{ label: "band text on evergreen", fg: "#fbf3e2", bg: "#06180f" }],
+  accents: {
+    light: { band: "#0e3b28", bandAlt: "#165a3d", bandInk: "#fbf3e2", hot: "#a3152f", cool: "#0e5a3a", barInk: "#ffffff" },
+    dark: { band: "#06180f", bandAlt: "#0e3b28", bandInk: "#fbf3e2", hot: "#b3203a", cool: "#145c3c", barInk: "#ffffff" },
   },
+  // On Default cards the header is an evergreen band with a gold eyebrow.
+  contrast: (_p, _a, mode) => [
+    { label: "band text on evergreen", fg: "#fbf3e2", bg: mode === "light" ? "#0e3b28" : "#06180f" },
+    { label: "gold eyebrow on evergreen band", fg: "#e9bf55", bg: mode === "light" ? "#0e3b28" : "#06180f" },
+  ],
 };

@@ -15,7 +15,8 @@ import inter700 from "@fontsource/inter/files/inter-latin-700-normal.woff?inline
 import { api } from "../app/lib/api.server";
 import { formatMoney } from "../app/lib/format";
 import type { ListDetail } from "../app/lib/types";
-import { getTheme } from "../app/themes/catalogue.server";
+import { resolveLook } from "../app/themes/catalogue.server";
+import { lookColors } from "../app/themes/view";
 
 const C = {
   paper: "#f7f2ea",
@@ -51,14 +52,13 @@ const fonts = () => [
 
 type Colors = typeof C;
 
-/** The share card takes the list theme's light palette and motif. */
+/** The share card takes the look's palette (light, unless the look is always dark) and the occasion's art. */
 function themeColors(slug: string | null | undefined): { colors: Colors; motif: string | null } {
-  const t = getTheme(slug);
-  if (t.slug === "default") return { colors: C, motif: null };
-  const p = t.light;
+  const { template, occasion } = resolveLook(slug);
+  if (template.slug === "default" && !occasion) return { colors: C, motif: null };
+  const p = lookColors(template, occasion, "light").palette;
   const colors: Colors = { paper: p.paper, card: p.card, ink: p.ink, ink2: p.ink2, ink3: p.ink3, line: p.line, want: p.want, wantSoft: p.wantSoft, deal: p.deal };
-  const motifColor = t.motifColor?.light ?? p.want;
-  const motif = t.motif ? "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(t.motif(motifColor)))) : null;
+  const motif = occasion?.art ? "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(occasion.art))) : null;
   return { colors, motif };
 }
 

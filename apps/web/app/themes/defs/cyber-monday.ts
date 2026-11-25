@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 /** Electric blue and magenta on a grid: chamfered panels, monospace readouts. */
@@ -6,6 +7,7 @@ export const cyberMonday: Theme = {
   name: "Cyber Monday",
   group: "occasion",
   stylesheet: true,
+  art: ART.cyberMonday,
   idea: "Electric blue and magenta on a fine grid: chamfered panels, monospace readouts and scan lines.",
   light: {
     paper: "#eef1ff", card: "#ffffff", sunk: "#e1e6fb", ink: "#0a0f2e", ink2: "#2c3463", ink3: "#4a5284",
@@ -21,8 +23,11 @@ export const cyberMonday: Theme = {
   radius: { card: "0", control: "0", input: "0", image: "0" },
   card: "outline",
   traits: ["mono-meta"],
-  contrast: {
-    light: [{ label: "magenta accent text on card", fg: "#b0127a", bg: "#ffffff" }],
-    dark: [{ label: "magenta accent text on card", fg: "#ff5fd2", bg: "#0b1030" }],
+  accents: {
+    light: { band: "#1a1f6b", bandAlt: "#5a19d6", bandInk: "#ffffff", hot: "#5a19d6", cool: "#006a76", barInk: "#ffffff" },
+    dark: { band: "#05071a", bandAlt: "#2a0a55", bandInk: "#e8ecff", hot: "#5a19d6", cool: "#006a76", barInk: "#ffffff" },
   },
+  contrast: (_p, _a, mode) => [
+    mode === "light" ? { label: "magenta accent text on card", fg: "#b0127a", bg: "#ffffff" } : { label: "magenta accent text on card", fg: "#ff5fd2", bg: "#0b1030" },
+  ],
 };

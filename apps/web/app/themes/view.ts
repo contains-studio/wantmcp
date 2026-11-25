@@ -1,9 +1,12 @@
-import { FONTS, type Layout, type Palette, type Theme } from "./types.ts";
+import { FONTS, type Accents, type Layout, type Palette, type Theme } from "./types.ts";
 
-/** What a page needs to render a theme: serialisable, no theme code on the client. */
+/** What a page needs to render a look: serialisable, no theme code on the client. */
 export interface ThemeView {
+  /** The look's slug as stored on a list: `board`, `christmas`, `board--christmas`. */
   slug: string;
   name: string;
+  template: string;
+  occasion: string | null;
   group: Theme["group"];
   idea: string;
   layout: Layout;
@@ -11,8 +14,8 @@ export interface ThemeView {
   fab: boolean;
   scheme: "light" | "dark" | null;
   natural: "shopping" | "tasks" | "research";
-  /** The theme's own stylesheet, or null. */
-  stylesheet: string | null;
+  /** The stylesheets this look needs (template, then occasion), each loaded only where used. */
+  stylesheets: string[];
   /** Class names for the themed wrapper. */
   className: string;
   /** Custom properties for the themed wrapper's style attribute. */
@@ -40,43 +43,93 @@ const KEYS: Array<[keyof Palette, string]> = [
   ["danger", "danger"],
 ];
 
-const svgUrl = (svg: string) => `url("data:image/svg+xml,${encodeURIComponent(svg.replace(/\s+/g, " ").trim())}")`;
+const ACCENT_KEYS: Array<[keyof Accents, string]> = [
+  ["band", "band"],
+  ["bandAlt", "band-alt"],
+  ["bandInk", "band-ink"],
+  ["hot", "hot"],
+  ["cool", "cool"],
+  ["barInk", "bar-ink"],
+];
 
-export function themeView(t: Theme): ThemeView {
+export const HEAT_HOT = "#c4122f";
+export const HEAT_COOL = "#3a3fc4";
+
+/** The palette and accents a look uses in one mode. */
+export function lookColors(template: Theme, occasion: Theme | null, mode: "light" | "dark"): { palette: Palette; accents: Accents } {
+  // If either half is always dark, the look is always dark and uses the dark palette in both modes.
+  const fixedDark = template.scheme === "dark" || occasion?.scheme === "dark";
+  const m = fixedDark ? "dark" : mode;
+  const palette = (occasion ?? template)[m];
+  const accents: Accents = {
+    band: palette.ink,
+    bandAlt: palette.ink2,
+    bandInk: palette.paper,
+    hot: HEAT_HOT,
+    cool: HEAT_COOL,
+    barInk: "#ffffff",
+    ...template.accents?.[m],
+    ...occasion?.accents?.[m],
+  };
+  return { palette, accents };
+}
+
+/** Combines a template and an optional occasion into what a page needs. */
+export function lookView(template: Theme, occasion: Theme | null, slug: string): ThemeView {
+  // On Default cards an occasion is the whole look (as before the two were separate choices).
+  const dressed = occasion && template.slug === "default" ? occasion : template;
   const style: Record<string, string> = {};
-  const shadow = (p: Palette, dark: boolean) =>
-    t.card === "flat" || t.card === "outline"
+  for (const [mode, prefix] of [["light", "tl"], ["dark", "td"]] as const) {
+    const { palette: p, accents: a } = lookColors(template, occasion, mode);
+    for (const [k, css] of KEYS) style[`--${prefix}-${css}`] = p[k] as string;
+    for (const [k, css] of ACCENT_KEYS) style[`--${prefix}-occ-${css}`] = a[k];
+    const flat = dressed.card === "flat" || dressed.card === "outline";
+    style[`--${prefix}-shadow`] = flat
       ? "none"
-      : p.shadow ?? (dark ? "0 1px 0 rgb(0 0 0 / 0.3), 0 10px 30px -14px rgb(0 0 0 / 0.7)" : "0 1px 0 rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.18)");
-  for (const [mode, p] of [["tl", t.light], ["td", t.dark]] as const) {
-    for (const [k, css] of KEYS) style[`--${mode}-${css}`] = p[k] as string;
-    style[`--${mode}-shadow`] = shadow(p, mode === "td");
-    const motifColor = t.motifColor ? (mode === "tl" ? t.motifColor.light : t.motifColor.dark) : p.want;
-    style[`--${mode}-motif`] = t.motif ? svgUrl(t.motif(motifColor)) : "none";
+      : p.shadow ?? (mode === "dark" ? "0 1px 0 rgb(0 0 0 / 0.3), 0 10px 30px -14px rgb(0 0 0 / 0.7)" : "0 1px 0 rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.18)");
   }
-  if (t.fonts?.display) style["--font-display"] = FONTS[t.fonts.display];
-  if (t.fonts?.body) style["--font-sans"] = FONTS[t.fonts.body];
-  if (t.fonts?.price) style["--font-price"] = FONTS[t.fonts.price];
-  if (t.radius?.card) style["--r-card"] = t.radius.card;
-  if (t.radius?.control) style["--r-control"] = t.radius.control;
-  if (t.radius?.input) style["--r-input"] = t.radius.input;
-  if (t.radius?.image) style["--r-image"] = t.radius.image;
-  if (t.card === "outline") style["--card-border-w"] = "1.5px";
-  const layout = t.layout ?? "grid";
-  const traits = t.traits ?? [];
+  if (dressed.fonts?.display) style["--font-display"] = FONTS[dressed.fonts.display];
+  if (dressed.fonts?.body) style["--font-sans"] = FONTS[dressed.fonts.body];
+  if (dressed.fonts?.price) style["--font-price"] = FONTS[dressed.fonts.price];
+  // On other templates the occasion lends its display face to the list title only.
+  if (occasion && dressed !== occasion && occasion.fonts?.display) style["--font-occ-display"] = FONTS[occasion.fonts.display];
+  if (dressed.radius?.card) style["--r-card"] = dressed.radius.card;
+  if (dressed.radius?.control) style["--r-control"] = dressed.radius.control;
+  if (dressed.radius?.input) style["--r-input"] = dressed.radius.input;
+  if (dressed.radius?.image) style["--r-image"] = dressed.radius.image;
+  if (dressed.card === "outline") style["--card-border-w"] = "1.5px";
+
+  const layout = template.layout ?? "grid";
+  const traits = dressed.traits ?? [];
+  const scheme = template.scheme === "dark" || occasion?.scheme === "dark" ? "dark" : (template.scheme ?? occasion?.scheme ?? null);
+  const light = lookColors(template, occasion, "light").palette;
+  const dark = lookColors(template, occasion, "dark").palette;
+  const stylesheets = [template, occasion].filter((t): t is Theme => !!t?.stylesheet).map((t) => `/theme-css/${t.slug}.css`);
   return {
-    slug: t.slug,
-    name: t.name,
-    group: t.group,
-    idea: t.idea,
+    slug,
+    name: occasion ? (template.slug === "default" ? occasion.name : `${template.name} · ${occasion.name}`) : template.name,
+    template: template.slug,
+    occasion: occasion?.slug ?? null,
+    group: occasion ? "occasion" : template.group,
+    idea: occasion && template.slug !== "default" ? `${template.idea} Dressed for ${occasion.name}.` : (occasion ?? template).idea,
     layout,
-    checklist: traits.includes("checklist"),
-    fab: traits.includes("fab"),
-    scheme: t.scheme ?? null,
-    natural: t.natural ?? "shopping",
-    stylesheet: t.stylesheet ? `/theme-css/${t.slug}.css` : null,
-    className: ["themed", `theme-${t.slug}`, `layout-${layout}`, t.scheme ? `scheme-${t.scheme}` : "", ...traits.map((x) => `t-${x}`)].filter(Boolean).join(" "),
+    checklist: traits.includes("checklist") || !!template.traits?.includes("checklist"),
+    fab: !!template.traits?.includes("fab"),
+    scheme,
+    natural: template.slug === "default" ? (occasion?.natural ?? "shopping") : (template.natural ?? "shopping"),
+    stylesheets,
+    className: [
+      "themed",
+      `theme-${slug}`,
+      `tpl-${template.slug}`,
+      occasion ? `occ-${occasion.slug} has-occ` : "no-occ",
+      `layout-${layout}`,
+      scheme ? `scheme-${scheme}` : "",
+      ...traits.map((x) => `t-${x}`),
+    ]
+      .filter(Boolean)
+      .join(" "),
     style,
-    swatch: { paper: t.light.paper, card: t.light.card, ink: t.light.ink, want: t.light.want, darkPaper: t.dark.paper, darkWant: t.dark.want },
+    swatch: { paper: light.paper, card: light.card, ink: light.ink, want: light.want, darkPaper: dark.paper, darkWant: dark.want },
   };
 }

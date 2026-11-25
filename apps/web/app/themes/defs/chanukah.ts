@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 const p = {
@@ -14,14 +15,16 @@ export const chanukah: Theme = {
   group: "occasion",
   scheme: "dark",
   stylesheet: true,
+  art: ART.chanukah,
   idea: "A deep blue night in silver and gold: a nine-branch menorah with the shamash raised in the middle, and a high-contrast serif.",
   light: p,
   dark: p,
   fonts: { display: "didone" },
   radius: { card: "14px", control: "10px", input: "10px", image: "8px" },
   traits: ["serif-display"],
-  contrast: {
-    light: [{ label: "silver rule text on card", fg: "#c9d3e6", bg: "#0f2150" }],
-    dark: [{ label: "silver rule text on card", fg: "#c9d3e6", bg: "#0f2150" }],
+  accents: {
+    light: { band: "#061030", bandAlt: "#1c3a86", bandInk: "#f1f4fb", hot: "#7d5f12", cool: "#1c3a86", barInk: "#ffffff" },
+    dark: { band: "#061030", bandAlt: "#1c3a86", bandInk: "#f1f4fb", hot: "#7d5f12", cool: "#1c3a86", barInk: "#ffffff" },
   },
+  contrast: () => [{ label: "silver text on card", fg: "#c9d3e6", bg: "#0f2150" }],
 };

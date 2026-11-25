@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 const p = {
@@ -13,7 +14,12 @@ export const newYear: Theme = {
   group: "occasion",
   scheme: "dark",
   stylesheet: true,
+  art: ART.newYear,
   idea: "Black and gold: deco numerals for the year ahead, framed cards and still confetti.",
+  accents: {
+    light: { band: "#0b0b0c", bandAlt: "#2a2414", bandInk: "#f6f1e4", hot: "#7d6119", cool: "#1c1c1e", barInk: "#ffffff" },
+    dark: { band: "#0b0b0c", bandAlt: "#2a2414", bandInk: "#f6f1e4", hot: "#7d6119", cool: "#1c1c1e", barInk: "#ffffff" },
+  },
   light: p,
   dark: p,
   fonts: { display: "didone" },

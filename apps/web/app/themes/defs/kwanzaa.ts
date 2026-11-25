@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 /** Black, red and green: a kinara with seven candles over a woven border. */
@@ -6,6 +7,7 @@ export const kwanzaa: Theme = {
   name: "Kwanzaa",
   group: "occasion",
   stylesheet: true,
+  art: ART.kwanzaa,
   idea: "Black, red and green: a kinara with seven candles (three red, one black, three green) above a woven border.",
   light: {
     paper: "#faf5ea", card: "#fffdf7", sunk: "#f0e8d6", ink: "#14110d", ink2: "#3c352c", ink3: "#5d5446",
@@ -20,11 +22,13 @@ export const kwanzaa: Theme = {
   fonts: { display: "grotesque" },
   radius: { card: "6px", control: "6px", input: "6px", image: "4px" },
   traits: ["upper-display"],
-  contrast: {
-    light: [
-      { label: "band text on black", fg: "#f8f2e5", bg: "#0d0c0b" },
-      { label: "green eyebrow on black band", fg: "#2fae63", bg: "#0d0c0b" },
-    ],
-    dark: [{ label: "band text on black", fg: "#f8f2e5", bg: "#000000" }],
+  accents: {
+    light: { band: "#0d0c0b", bandAlt: "#4a0d17", bandInk: "#f8f2e5", hot: "#b3122a", cool: "#0b6b35", barInk: "#ffffff" },
+    dark: { band: "#000000", bandAlt: "#3a0a12", bandInk: "#f8f2e5", hot: "#b3122a", cool: "#0b6b35", barInk: "#ffffff" },
   },
+  // On Default cards the header is a black band with a green eyebrow.
+  contrast: (_p, _a, mode) => [
+    { label: "band text on black", fg: "#f8f2e5", bg: mode === "light" ? "#0d0c0b" : "#000000" },
+    { label: "green eyebrow on black band", fg: "#2fae63", bg: mode === "light" ? "#0d0c0b" : "#000000" },
+  ],
 };

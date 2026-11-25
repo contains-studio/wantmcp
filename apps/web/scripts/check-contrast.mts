@@ -7,7 +7,8 @@
  * Each theme can add pairs its stylesheet relies on (`contrast` in its definition), such as
  * text over a gradient or a full-bleed band; gradients are sampled at several points.
  */
-import { THEMES } from "../app/themes/catalogue.server.ts";
+import { OCCASIONS, TEMPLATES } from "../app/themes/catalogue.server.ts";
+import { lookColors } from "../app/themes/view.ts";
 import type { Palette } from "../app/themes/types.ts";
 
 function lum(hex: string): number {
@@ -39,36 +40,48 @@ const CHECKS: Array<[string, keyof Palette, keyof Palette, number]> = [
 ];
 
 let failures = 0;
+let checked = 0;
 const rows: string[] = [];
-for (const t of THEMES) {
-  for (const mode of ["light", "dark"] as const) {
-    const p = t[mode];
-    let min = Infinity;
-    let minName = "";
-    for (const [name, fg, bg, need] of CHECKS) {
-      const r = ratio(p[fg] as string, p[bg] as string);
-      if (r < need) {
-        failures++;
-        rows.push(`FAIL ${t.slug} ${mode}: ${name} ${r.toFixed(2)} < ${need}`);
+// Every template alone and with every occasion, in each scheme the combination supports.
+for (const template of TEMPLATES) {
+  for (const occasion of [null, ...OCCASIONS]) {
+    const name = occasion ? (template.slug === "default" ? occasion.slug : `${template.slug}--${occasion.slug}`) : template.slug;
+    const fixedDark = template.scheme === "dark" || occasion?.scheme === "dark";
+    for (const mode of fixedDark ? (["dark"] as const) : (["light", "dark"] as const)) {
+      checked++;
+      const { palette: p, accents: a } = lookColors(template, occasion, mode);
+      let min = Infinity;
+      let minName = "";
+      for (const [label, fg, bg, need] of CHECKS) {
+        const r = ratio(p[fg] as string, p[bg] as string);
+        if (r < need) {
+          failures++;
+          rows.push(`FAIL ${name} ${mode}: ${label} ${r.toFixed(2)} < ${need}`);
+        }
+        if (need === 4.5 && r < min) {
+          min = r;
+          minName = label;
+        }
       }
-      if (need === 4.5 && r < min) {
-        min = r;
-        minName = name;
+      // Pairs the stylesheets rely on: text on the template's band or Heat's bars in the occasion's
+      // colours, and, on Default cards, the occasion's own bands.
+      const extra = [...(template.contrast?.(p, a, mode) ?? []), ...(occasion && template.slug === "default" ? (occasion.contrast?.(p, a, mode) ?? []) : [])];
+      for (const x of extra) {
+        const need = x.need ?? 4.5;
+        const r = ratio(x.fg, x.bg);
+        if (r < need) {
+          failures++;
+          rows.push(`FAIL ${name} ${mode}: ${x.label} ${r.toFixed(2)} < ${need}`);
+        }
       }
+      if (!occasion) rows.push(`${name.padEnd(13)} ${mode.padEnd(5)}  price ${ratio(p.ink, p.card).toFixed(1).padStart(5)}:1   lowest text pair ${min.toFixed(2)}:1 (${minName})`);
     }
-    // Pairs the theme's own stylesheet relies on: text over gradients, backdrops, bands.
-    for (const x of t.contrast?.[mode] ?? []) {
-      const need = x.need ?? 4.5;
-      const r = ratio(x.fg, x.bg);
-      if (r < need) {
-        failures++;
-        rows.push(`FAIL ${t.slug} ${mode}: ${x.label} ${r.toFixed(2)} < ${need}`);
-      }
-    }
-    const price = ratio(p.ink, p.card);
-    rows.push(`${t.slug.padEnd(13)} ${mode.padEnd(5)}  price ${price.toFixed(1).padStart(5)}:1   lowest text pair ${min.toFixed(2)}:1 (${minName})`);
   }
 }
 console.log(rows.join("\n"));
-console.log(failures ? `\n${failures} failure(s)` : `\nAll ${THEMES.length} themes pass: every text pair >= 4.5:1, accent outlines >= 3:1, extra pairs (gradients, bands) met, light and dark.`);
+console.log(
+  failures
+    ? `\n${failures} failure(s)`
+    : `\nAll ${TEMPLATES.length} templates x ${OCCASIONS.length + 1} occasions (incl. none) pass in every scheme they support (${checked} checks of palettes): text pairs >= 4.5:1, accent outlines >= 3:1, bands and Heat bars in each occasion's colours.`,
+);
 process.exit(failures ? 1 : 0);

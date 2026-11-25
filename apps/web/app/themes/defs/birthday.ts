@@ -1,3 +1,4 @@
+import { ART } from "../art.ts";
 import type { Theme } from "../types.ts";
 
 /** Bunting, sprinkles and bubbly shapes in party colours. */
@@ -6,7 +7,12 @@ export const birthday: Theme = {
   name: "Birthday",
   group: "occasion",
   stylesheet: true,
+  art: ART.birthday,
   idea: "Bunting across the top, sprinkles on the page, bubbly rounded cards with candy-coloured tops.",
+  accents: {
+    light: { band: "#6b2bd9", bandAlt: "#b8215a", bandInk: "#ffffff", hot: "#b8215a", cool: "#5b23c4", barInk: "#ffffff" },
+    dark: { band: "#3a1f7a", bandAlt: "#7a1640", bandInk: "#fbf6ff", hot: "#b8215a", cool: "#5b23c4", barInk: "#ffffff" },
+  },
   light: {
     paper: "#fff8ec", card: "#ffffff", sunk: "#fdeeda", ink: "#241536", ink2: "#47385a", ink3: "#665879",
     line: "#f1e2cc", lineStrong: "#d2b98f", want: "#6b2bd9", wantInk: "#ffffff", wantSoft: "#ece2fc",
