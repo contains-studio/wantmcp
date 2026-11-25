@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   data,
   isRouteErrorResponse,
@@ -199,11 +200,35 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
         <p className="eyebrow">Error {status}</p>
         <h1 className="mt-2 text-5xl font-extrabold">{title}</h1>
         <p className="mt-4 max-w-prose text-ink-2">{details}</p>
-        <Link to="/" className="btn mt-8">
+        {/* A full page load, not a client-side route change: after a deploy the open tab may hold an old build. */}
+        <a href="/" className="btn mt-8">
           Go home
-        </Link>
+        </a>
       </main>
       <Footer />
+      <RecoverOnce active={status >= 500} />
     </>
   );
+}
+
+/**
+ * A tab that was open across a deploy can fail on its next client-side navigation or background refresh,
+ * because the build it loaded no longer matches the server. Reload the document once to pick up the
+ * current build. Guarded by a timestamp so a real server error cannot cause a reload loop.
+ */
+function RecoverOnce({ active }: { active: boolean }) {
+  useEffect(() => {
+    if (!active) return;
+    try {
+      const key = "wm_recovered_at";
+      const last = Number(window.sessionStorage.getItem(key) ?? 0);
+      if (Date.now() - last > 60_000) {
+        window.sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+      }
+    } catch {
+      // sessionStorage unavailable: leave the error page as it is.
+    }
+  }, [active]);
+  return null;
 }
