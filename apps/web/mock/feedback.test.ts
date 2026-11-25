@@ -72,6 +72,16 @@ test("SPEC 16.2: feedback is an outsider's task, held: writers see it, readers a
     assert.equal(r.body.item_count, 1);
   }
 
+  // awaiting_review: the real number for writers (list, detail and the /app summary), 0 for everyone else.
+  assert.equal(mine.body.awaiting_review, 2);
+  assert.equal(mine.body.item_count, 1);
+  const home = await call("GET", "/me/lists?include=summary", team);
+  const card = home.body.data.find((l: { id: string }) => l.id === "lst_feedback");
+  assert.equal(card.awaiting_review, 2);
+  assert.equal(card.summary.awaiting_review, 2);
+  assert.equal(card.summary.items, 1);
+  assert.equal((await call("GET", "/lists/lst_feedback")).body.awaiting_review, 0);
+
   // Accepting: a person writer only; it then shows to readers like any other, still marked as an outsider's words.
   const id = held.find((i: { text: string }) => i.text === "Bug: Held for review").id;
   assert.equal((await call("POST", `/items/${id}/accept`)).status, 401);
@@ -82,4 +92,5 @@ test("SPEC 16.2: feedback is an outsider's task, held: writers see it, readers a
   const after = await call("GET", "/lists/lst_feedback");
   assert.ok(after.body.items.some((i: { text: string }) => i.text === "Bug: Held for review"));
   assert.equal(after.body.item_count, 2);
+  assert.equal((await call("GET", "/lists/lst_feedback", team)).body.awaiting_review, 1, "accepting moves one across");
 });

@@ -50,7 +50,13 @@ export interface ListSummary {
   title: string;
   description: string;
   owner_handle: string;
+  /** Live items, without those awaiting review. */
   item_count: number;
+  /**
+   * SPEC 16.2: outsiders' items (feedback) no writer has accepted yet. The real number for writers, always 0 for everyone
+   * else. item_count + awaiting_review is every live item. Absent from older API builds.
+   */
+  awaiting_review?: number;
   allow_outside_suggestions: boolean;
   /** Owner-picked theme slug (^[a-z0-9][a-z0-9-]{0,39}$); null means the default look. The web app owns the catalogue. */
   theme: string | null;
@@ -310,6 +316,8 @@ export interface ListWithSummary extends ListSummary {
     done: number;
     /** Open questions someone other than the caller asked. */
     waiting: number;
+    /** SPEC 16.2: as ListSummary.awaiting_review. Absent from older API builds. */
+    awaiting_review?: number;
     /** The newest thing by someone other than the caller (the caller's own agents count as someone else). */
     latest: {
       actor: ActorRef;

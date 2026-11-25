@@ -256,6 +256,8 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
     owner_handle: owner.handle,
     // An outsider's item counts once a writer accepts it (SPEC 16.2), as on the server.
     item_count: store.items.filter((i) => i.list_id === l.id && !i.pending_review).length,
+    // The real number for writers only; 0 for everyone else, so readers can't tell any exist.
+    awaiting_review: canWrite(c, l.id) ? store.items.filter((i) => i.list_id === l.id && i.pending_review).length : 0,
     allow_outside_suggestions: l.allow_outside_suggestions,
     theme: l.theme ?? null,
     format: fmt(l),
@@ -296,6 +298,8 @@ function listsWithSummary(c: NonNullable<Caller>): ListWithSummary[] {
           items: items.length,
           done,
           waiting,
+          // SPEC 16.2: the caller writes these lists, so the real number.
+          awaiting_review: store.items.filter((i) => i.list_id === l.id && i.pending_review).length,
           latest: e
             ? { actor: e.author, kind: "entry" as const, title: e.title, ...(price ? { price: { amount: price.price, currency: price.currency } } : {}), at: e.created_at, anchor: e.item_id }
             : null,

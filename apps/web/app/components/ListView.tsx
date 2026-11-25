@@ -89,7 +89,7 @@ export function ListView(props: ListViewProps) {
   const isDone = (i: ItemWithEntries) => (shopping ? !!i.purchase : i.status === "done");
   // SPEC 16.2: outsiders' items waiting for a writer to accept them. They keep their place in the list (re-sorting on
   // Accept would slide the next one under the finger), and the connect card waits until after them.
-  const heldCount = isWriter ? items.filter((i) => i.pending_review).length : 0;
+  const heldCount = isWriter ? (list.awaiting_review ?? items.filter((i) => i.pending_review).length) : 0;
   const wanted = items.filter((i) => !isDone(i)).slice(0, previewItems ?? Infinity);
   const bought = previewItems ? [] : items.filter(isDone);
   const listCurrencyHint = listCurrency(items);

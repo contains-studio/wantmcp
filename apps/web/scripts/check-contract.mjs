@@ -170,6 +170,30 @@ for (const [specPath, mockPath, paged] of ROUTES) {
   }
 }
 
+// /app's cards: each row of GET /me/lists?include=summary and its summary (SPEC 16.2 adds awaiting_review to both).
+{
+  const page = ref(spec.paths["/me/lists"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema);
+  // allOf [ListSummary, { summary }]: one object with every part's required keys and properties.
+  const merged = (x) => {
+    const r = ref(x);
+    if (!r?.allOf) return r;
+    const parts = r.allOf.map(merged);
+    return { required: parts.flatMap((q) => q?.required ?? []), properties: Object.assign({}, ...parts.map((q) => q?.properties ?? {})) };
+  };
+  const rowSchema = shapes(page).map((o) => merged(o.properties?.data?.items)).find((r) => r?.properties?.summary);
+  if (!rowSchema) console.log("note GET /me/lists: no ListWithSummary schema in the document");
+  else {
+    const res = await handleMockRequest(new Request("http://mock/v1/me/lists?include=summary", { headers: { authorization: `Bearer ${token}` } }));
+    const row = (await res.json()).data?.[0];
+    const missing = [
+      ...(rowSchema.required ?? []).filter((k) => !(k in row)),
+      ...(ref(rowSchema.properties.summary)?.required ?? []).filter((k) => !(k in row.summary)).map((k) => `summary.${k}`),
+    ];
+    console.log(`${missing.length ? "FAIL" : "ok  "} GET /me/lists?include=summary: each row and its summary${missing.length ? `: mock lacks ${missing.join(", ")}` : ""}`);
+    if (missing.length) failures++;
+  }
+}
+
 if (failures) {
   console.log(`\n${failures} route(s) differ from the API.`);
   process.exit(1);

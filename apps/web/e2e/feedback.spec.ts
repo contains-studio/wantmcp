@@ -120,3 +120,12 @@ test("a held report on a phone: compact, Accept in reach, said once; the connect
   }
 });
 });
+
+test("/app: a list with reports waiting says so, and doesn't look empty or idle", async ({ page }) => {
+  await signIn(page, "team@example.com");
+  await page.goto("/app");
+  const card = page.locator("li.card", { has: page.getByRole("link", { name: "What we're working on" }) });
+  await expect(card.getByText(/^\d+ waiting for you to accept$/)).toBeVisible();
+  await expect(card.getByText("0 tasks")).toHaveCount(0);
+  await expect(card.getByText("No agent has worked on this yet.")).toHaveCount(0);
+});

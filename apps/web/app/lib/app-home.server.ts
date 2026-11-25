@@ -43,7 +43,7 @@ export function orderCards(cards: ListCard[]): ListCard[] {
   // The newest of: the latest thing someone did, the latest progress note, the list's own update.
   const activity = (c: ListCard) => [c.updatedAt, c.latest?.at ?? "", c.note?.at ?? ""].sort().at(-1)!;
   return [...cards].sort(
-    (a, b) => Number(b.waiting > 0) - Number(a.waiting > 0) || activity(b).localeCompare(activity(a)) || b.createdAt.localeCompare(a.createdAt),
+    (a, b) => Number(b.waiting + b.held > 0) - Number(a.waiting + a.held > 0) || activity(b).localeCompare(activity(a)) || b.createdAt.localeCompare(a.createdAt),
   );
 }
 
@@ -74,7 +74,7 @@ export async function listCards(request: Request, lists: ListSummary[], waiting:
       updatedAt: l.updated_at,
       createdAt: l.created_at,
       items: d ? items.length : l.item_count,
-      held: all.length - items.length,
+      held: l.awaiting_review ?? all.length - items.length,
       done,
       waiting: waiting.filter((q) => q.list.id === l.id).length,
       latest: last
@@ -137,8 +137,7 @@ export async function loadCards(request: Request, waiting: Parameters<typeof lis
       updatedAt: l.updated_at,
       createdAt: l.created_at,
       items: s.items,
-      // The API's summary doesn't count held items yet (asked for); the list page itself shows them.
-      held: 0,
+      held: s.awaiting_review ?? 0,
       done: s.done,
       waiting: s.waiting,
       latest: s.latest

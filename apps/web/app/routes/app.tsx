@@ -136,7 +136,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
           </p>
         )}
         {firstRun && !loaderData.listsError && (
-          <FirstRun hasList={listCount > 0} hasItem={cards.some((c) => c.items > 0)} hasAgent={hasAgent} firstListId={cards[0]?.id ?? null} needsBio={!bio} />
+          <FirstRun hasList={listCount > 0} hasItem={cards.some((c) => c.items + c.held > 0)} hasAgent={hasAgent} firstListId={cards[0]?.id ?? null} needsBio={!bio} />
         )}
 
         {listCount > 0 && (
@@ -345,7 +345,8 @@ function ListCardRow({ card: c }: { card: ListCard }) {
                   <LockGlyph /> Private
                 </span>
               ),
-              plural(c.items, fi.item),
+              // "0 tasks" beside reports waiting to be accepted would read as an empty list.
+              !(c.items === 0 && c.held > 0) && plural(c.items, fi.item),
               c.done > 0 && `${c.done} ${fi.done}`,
               c.role === "member" && `by ${c.ownerHandle}`,
               c.role === "owner" && c.access && c.access.people > 1 && `Shared with ${plural(c.access.people - 1, "person", "people")}`,
@@ -416,6 +417,15 @@ function ListCardRow({ card: c }: { card: ListCard }) {
             <span className="flex-none text-[0.82rem] text-ink-3">
               <Time ts={c.latest.at} />
             </span>
+          </p>
+        ) : c.held > 0 ? (
+          // Reports from outside are the list's news until an agent has done something.
+          <p className="text-ink-2">
+            From outside, not public yet.{" "}
+            <Link to={`/l/${c.id}`} className="relative z-[2] link font-medium text-ink">
+              Review {c.held === 1 ? "it" : "them"}
+              <span className="sr-only"> on {c.title}</span>
+            </Link>
           </p>
         ) : (
           <p className="text-ink-2">
