@@ -1,5 +1,6 @@
 import { useRouteLoaderData } from "react-router";
 import type { UserSelf } from "./types";
+import { defaultCurrency } from "./currency";
 
 type RootData = { user: UserSelf | null; now: number; theme: "light" | "dark" | "system"; mcpUrl: string; origin: string; sourceUrl?: string | null };
 
@@ -9,19 +10,15 @@ export function useRootData(): RootData {
 }
 
 /**
- * The currency to suggest in forms and placeholders: the list's own prices when there are any,
- * else the person's chosen currency, else US dollars.
+ * The currency to suggest in forms and placeholders (app/lib/currency.ts): the hint (an existing
+ * price, the item's or the list's prices), else the person's chosen currency, else US dollars.
  */
 export function useCurrency(hint?: string | null): string {
   const { user } = useRootData();
-  return hint || (user as { currency?: string | null } | null)?.currency || "USD";
+  return defaultCurrency([hint], (user as { currency?: string | null } | null)?.currency);
 }
 
-/** Fills "{200}" in a placeholder with that amount in the currency. */
-export function moneyPlaceholder(text: string, currency: string): string {
-  const sym: Record<string, string> = { USD: "$", GBP: "£", EUR: "€", CAD: "C$", AUD: "A$", NZD: "NZ$", INR: "₹", JPY: "¥" };
-  return text.replace(/\{(\d+)\}/g, (_, n) => (sym[currency] ? `${sym[currency]}${n}` : `${n} ${currency}`));
-}
+export { moneyPlaceholder } from "./currency";
 
 /** The request time from the server, so relative times match between SSR and hydration. */
 export function useNow(): number {

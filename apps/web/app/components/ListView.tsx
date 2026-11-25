@@ -15,6 +15,7 @@ import { formatMoney, plural } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
 import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
 import { BUILD_ID } from "~/lib/build";
+import { itemCurrency, listCurrency } from "~/lib/currency";
 import { lowestEntryId } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useNow } from "~/lib/hooks";
 import { EntryRows } from "~/components/EntryRows";
@@ -72,7 +73,7 @@ export function ListView(props: ListViewProps) {
   const isDone = (i: ItemWithEntries) => (shopping ? !!i.purchase : i.status === "done");
   const wanted = items.filter((i) => !isDone(i)).slice(0, previewItems ?? Infinity);
   const bought = previewItems ? [] : items.filter(isDone);
-  const listCurrency = items.flatMap((i) => i.entries).find((e) => e.current_price)?.current_price?.currency;
+  const listCurrencyHint = listCurrency(items);
   const productCount = items.reduce((n, i) => n + i.entries.length, 0);
   // The Sheet table compares prices, so it only applies to shopping lists.
   const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
@@ -151,7 +152,7 @@ export function ListView(props: ListViewProps) {
           </div>
         )}
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
-        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={listCurrency} />}
+        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={listCurrencyHint} />}
         {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">No {fi.items} yet.</p>}
 
         {indexKind && (
@@ -183,7 +184,7 @@ export function ListView(props: ListViewProps) {
             eager={i === 0}
             inPanel={!!indexKind}
             ownerHandle={list.owner_handle}
-            listCurrency={listCurrency}
+            listCurrency={listCurrencyHint}
           />
         ))}
 
@@ -209,7 +210,7 @@ export function ListView(props: ListViewProps) {
                 canDeleteComment={canDeleteComment}
                 inPanel={!!indexKind}
                 ownerHandle={list.owner_handle}
-                listCurrency={listCurrency}
+                listCurrency={listCurrencyHint}
               />
             ))}
           </section>
@@ -282,7 +283,7 @@ function ItemSection({
   const acceptedId = !shopping && status === "done" ? item.completion?.entry_id ?? null : null;
   const accepted = acceptedId ? item.entries.find((e) => e.id === acceptedId) : undefined;
   const cheapest = entries.find((e) => e.current_price)?.current_price;
-  const currencyHint = cheapest?.currency ?? listCurrency;
+  const currencyHint = itemCurrency(item, listCurrency);
   // Older purchases may only record the entry; fall back to its price and retailer.
   const boughtEntry = p?.entry_id ? entries.find((e) => e.id === p.entry_id) : undefined;
   const boughtPrice = p?.price ? { price: p.price, currency: p.currency } : boughtEntry?.current_price ?? null;
