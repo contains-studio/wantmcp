@@ -5,14 +5,27 @@
 import { readFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
-const ART = { "muse-mark": 100, "gemini-sparkle": 192 }; // file name: its square viewBox
-const SIZE = 128; // drawn at up to 30px on a 1200px card; 128 keeps it crisp at 2x and above
+// file name in public/brands: the output name, and (for a file that holds a mark beside lettering) the
+// element that is the mark alone. The share card shows marks without lettering (owner, 25 Nov 2026).
+const ART = [
+  { file: "muse-mark", out: "muse-mark" },
+  { file: "gemini-sparkle", out: "gemini-sparkle" },
+  { file: "openclaw-on-light", out: "openclaw-mark", part: "svg > g" },
+];
+const SIZE = 192; // drawn at up to 80px on a 1200px card; 192 keeps it crisp at 2x and above
 const browser = await chromium.launch({ channel: process.env.CI ? undefined : "chrome" });
-const page = await browser.newPage({ viewport: { width: SIZE, height: SIZE }, deviceScaleFactor: 1 });
-for (const name of Object.keys(ART)) {
-  const svg = readFileSync(new URL(`../public/brands/${name}.svg`, import.meta.url), "utf8");
-  await page.setContent(`<style>html,body{margin:0;background:transparent}svg{display:block;width:${SIZE}px;height:${SIZE}px}</style>${svg}`);
-  await page.screenshot({ path: new URL(`../workers/og-art/${name}.png`, import.meta.url).pathname, omitBackground: true });
-  console.log(`workers/og-art/${name}.png`);
+const page = await browser.newPage({ viewport: { width: 1600, height: 600 }, deviceScaleFactor: 1 });
+for (const { file, out, part } of ART) {
+  const svg = readFileSync(new URL(`../public/brands/${file}.svg`, import.meta.url), "utf8");
+  const path = new URL(`../workers/og-art/${out}.png`, import.meta.url).pathname;
+  if (part) {
+    // Draw the whole file large, then photograph only the mark.
+    await page.setContent(`<style>html,body{margin:0;background:transparent}svg{display:block;height:${SIZE * 1.6}px;width:auto}</style>${svg}`);
+    await page.locator(part).first().screenshot({ path, omitBackground: true });
+  } else {
+    await page.setContent(`<style>html,body{margin:0;background:transparent}svg{display:block;width:${SIZE}px;height:${SIZE}px}</style>${svg}`);
+    await page.locator("svg").first().screenshot({ path, omitBackground: true });
+  }
+  console.log(`workers/og-art/${out}.png`);
 }
 await browser.close();

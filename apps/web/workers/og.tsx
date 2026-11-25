@@ -14,14 +14,15 @@ import inter400 from "@fontsource/inter/files/inter-latin-400-normal.woff?inline
 import inter500 from "@fontsource/inter/files/inter-latin-500-normal.woff?inline";
 import inter600 from "@fontsource/inter/files/inter-latin-600-normal.woff?inline";
 import openaiSvg from "../public/brands/openai-blossom-on-light.svg?raw";
-import claudeSvg from "../public/brands/claude-on-light.svg?raw";
+import claudeSparkSvg from "../public/brands/claude-spark.svg?raw";
 import grokBotSvg from "../public/brands/grok-bot-on-light.svg?raw";
-import openclawSvg from "../public/brands/openclaw-on-light.svg?raw";
 import cursorSvg from "../public/brands/cursor-on-light.svg?raw";
 import grokSvg from "../public/brands/grok-mark.svg?raw";
-// Drawn from public/brands by scripts/make-og-art.mjs: resvg cannot render these two as SVG.
+// Drawn from public/brands by scripts/make-og-art.mjs: resvg cannot render Muse's and Gemini's files as SVG, and
+// OpenClaw's file holds its mark beside lettering.
 import musePng from "./og-art/muse-mark.png?inline";
 import geminiPng from "./og-art/gemini-sparkle.png?inline";
+import openclawPng from "./og-art/openclaw-mark.png?inline";
 import { LIVE_BRANDS } from "../app/lib/brands";
 import { api } from "../app/lib/api.server";
 import { formatMoney } from "../app/lib/format";
@@ -43,54 +44,32 @@ const TAG_SVG =
 
 const svgUrl = (svg: string) => "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
 
-/** The light-background marks from public/brands, by the path the site uses for them. */
-const BRAND_ART: Record<string, string> = {
-  // OpenAI's file leaves half its canvas empty around the mark; the card draws the mark itself.
-  "/brands/openai-blossom-on-light.svg": svgUrl(openaiSvg.replace('viewBox="0 0 716 716"', 'viewBox="170 170 376 376"')),
-  "/brands/claude-on-light.svg": svgUrl(claudeSvg),
-  "/brands/grok-bot-on-light.svg": svgUrl(grokBotSvg),
-  "/brands/muse-mark.svg": musePng,
-  "/brands/openclaw-on-light.svg": svgUrl(openclawSvg),
-  "/brands/cursor-on-light.svg": svgUrl(cursorSvg),
-  "/brands/grok-mark.svg": svgUrl(grokSvg),
-  "/brands/gemini-sparkle.svg": geminiPng,
+/**
+ * The apps it works with, as marks only, no lettering (owner, 25 Nov 2026: "remove claude openclaw and cursor
+ * lettering and just make the logo marks bigger"). Keyed by brand id (brands.ts); `ratio` is width over height.
+ * ChatGPT and Codex share OpenAI's mark, so Codex has no entry. OpenAI's and Cursor's files are cropped to the
+ * mark by their viewBox; Claude has a mark of its own.
+ */
+const MARKS: Record<string, { art: string; ratio: number; scale?: number }> = {
+  chatgpt: { art: svgUrl(openaiSvg.replace('viewBox="0 0 716 716"', 'viewBox="170 170 376 376"')), ratio: 1, scale: 1.04 },
+  claude: { art: svgUrl(claudeSparkSvg), ratio: 1 },
+  "grok-bot": { art: svgUrl(grokBotSvg), ratio: 1, scale: 0.96 },
+  muse: { art: musePng, ratio: 1, scale: 1.22 },
+  openclaw: { art: openclawPng, ratio: 255 / 243, scale: 1.04 },
+  cursor: { art: svgUrl(cursorSvg.replace('viewBox="0 0 2238.7 532.09"', 'viewBox="0 0 467 532.09"')), ratio: 467 / 532.09, scale: 1.04 },
+  grok: { art: svgUrl(grokSvg), ratio: 1, scale: 0.94 },
+  gemini: { art: geminiPng, ratio: 1, scale: 1.04 },
 };
 
-/**
- * Heights on the card, in px, tuned by eye so every logo reads at one size: symbols about 48,
- * wordmarks by their letter height. Keyed like BRAND_ART.
- */
-const BRAND_HEIGHT: Record<string, number> = {
-  "/brands/openai-blossom-on-light.svg": 52,
-  "/brands/claude-on-light.svg": 40,
-  "/brands/grok-bot-on-light.svg": 48,
-  "/brands/muse-mark.svg": 62,
-  "/brands/openclaw-on-light.svg": 48,
-  "/brands/cursor-on-light.svg": 38,
-  "/brands/grok-mark.svg": 46,
-  "/brands/gemini-sparkle.svg": 52,
-};
-
-/**
- * The apps it works with, as logos only (owner, 25 Nov 2026: bigger, no "Works with", as many as
- * fit, for recognition). One line across the card in the site's order, each art once (ChatGPT and
- * Codex share OpenAI's mark). A brand whose art is not listed above is left out rather than drawn
- * as a gap; if a new one makes the row wider than the card, lower the heights.
- */
-function LogoRow() {
-  const seen = new Set<string>();
-  const logos = LIVE_BRANDS.flatMap((b) => {
-    const src = b.logo?.light;
-    if (!b.logo || !src || !BRAND_ART[src] || seen.has(src)) return [];
-    seen.add(src);
-    const height = BRAND_HEIGHT[src] ?? 44;
-    return [{ id: b.id, art: BRAND_ART[src], height, width: Math.round((height * b.logo.width) / b.logo.height) }];
-  });
+/** One row of marks across the top of the card, where the product's own lockup used to be, in the site's order. */
+function MarkRow({ size = 80 }: { size?: number }) {
+  const marks = LIVE_BRANDS.flatMap((b) => (MARKS[b.id] ? [{ id: b.id, ...MARKS[b.id] }] : []));
   return (
-    <div style={{ display: "flex", marginTop: "auto", alignItems: "center", justifyContent: "space-between", height: 64 }}>
-      {logos.map((l) => (
-        <img key={l.id} src={l.art} width={l.width} height={l.height} />
-      ))}
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: size + 16 }}>
+      {marks.map((m) => {
+        const h = Math.round(size * (m.scale ?? 1));
+        return <img key={m.id} src={m.art} width={Math.round(h * m.ratio)} height={h} />;
+      })}
     </div>
   );
 }
@@ -122,7 +101,7 @@ function themeColors(slug: string | null | undefined): { colors: Colors; motif: 
   return { colors, motif };
 }
 
-function Frame({ children, colors = C, motif = null }: { children: React.ReactNode; colors?: Colors; motif?: string | null }) {
+function Frame({ children, colors = C, motif = null, brand = true }: { children: React.ReactNode; colors?: Colors; motif?: string | null; brand?: boolean }) {
   const C = colors;
   return (
     <div
@@ -140,51 +119,65 @@ function Frame({ children, colors = C, motif = null }: { children: React.ReactNo
     >
       {/* the occasion's motif, if the look has one; no glows or washes */}
       {motif && <img src={motif} width={560} height={420} style={{ position: "absolute", right: 0, top: 10 }} />}
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <img src={TAG_SVG} width={48} height={48} />
-        <div style={{ display: "flex", fontSize: 32, fontWeight: 600, letterSpacing: -0.6 }}>The Want MCP</div>
-      </div>
+      {brand && (
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <img src={TAG_SVG} width={48} height={48} />
+          <div style={{ display: "flex", fontSize: 32, fontWeight: 600, letterSpacing: -0.6 }}>The Want MCP</div>
+        </div>
+      )}
       {children}
     </div>
   );
 }
 
 /**
- * What the home card shows (owner, 25 Nov 2026: no line that the link preview already prints under
- * the image, and "actionable based on the most common findings from persona research").
- * The preview's own title carries the name and the tagline, so the card carries what to do and
- * what you get. The three examples are the jobs the persona research found most often and ranked
- * as the clearest proof for people who do not build software: one big purchase compared (to buy),
- * a deadline project handed off (to do), an everyday decision researched with sources (to find
- * out). Its messaging rules apply: lead with the want, say what the agent did, promise no buying.
+ * The home card (owner, 25 Nov 2026). It exists to get a click, and the link preview prints the name, the tagline
+ * and the address under it, so the card repeats none of them and carries no logo of ours:
+ *  - the marks of the apps it works with, where our lockup used to be;
+ *  - the three kinds of list as stickers, the loudest thing on the card;
+ *  - the one thing to do, in the owner's words.
  */
-const EXAMPLES: Array<{ kind: string; want: string; result: string; by: string }> = [
-  { kind: "To buy", want: "A 65-inch TV under $900", result: "$649.99, was $799.99", by: "found by Claude" },
-  { kind: "To do", want: "Get three quotes from movers", result: "2 of 3 in", by: "ChatGPT is on it" },
-  { kind: "To find out", want: "Is a heat pump worth it for our house?", result: "Answered, 4 sources", by: "by Gemini" },
+const STICKERS: Array<{ text: string; color: string; tilt: number }> = [
+  { text: "TO BUY", color: "#0a6fe0", tilt: -3 },
+  { text: "TO DO", color: "#17a34a", tilt: 2 },
+  { text: "TO FIND OUT", color: "#f2600c", tilt: -2 },
 ];
 
 function HomeCard() {
   return (
-    <Frame>
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 22 }}>
-        <div style={{ display: "flex", fontSize: 64, fontWeight: 600, lineHeight: 1.05, letterSpacing: -2 }}>Tell your agent what you want.</div>
-        <div style={{ display: "flex", marginTop: 10, fontSize: 28, color: C.ink2, fontWeight: 400 }}>It finds it, does it or looks it up, and keeps the list.</div>
-      </div>
-      <div style={{ display: "flex", gap: 20, marginTop: 24 }}>
-        {EXAMPLES.map((e) => (
+    <Frame brand={false}>
+      <MarkRow />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, margin: "auto -24px 0" }}>
+        {STICKERS.map((k) => (
           <div
-            key={e.kind}
-            style={{ display: "flex", flexDirection: "column", flex: 1, background: C.card, borderRadius: 22, border: `1px solid ${C.line}`, padding: "16px 22px 18px" }}
+            key={k.text}
+            style={{
+              display: "flex",
+              background: k.color,
+              color: "#ffffff",
+              fontSize: 58,
+              whiteSpace: "nowrap",
+              fontWeight: 600,
+              letterSpacing: 0.5,
+              lineHeight: 1,
+              padding: "50px 30px",
+              borderRadius: 30,
+              border: "7px solid #ffffff",
+              boxShadow: "0 10px 26px rgba(0,0,0,0.16), 0 2px 5px rgba(0,0,0,0.12)",
+              transform: `rotate(${k.tilt}deg)`,
+            }}
           >
-            <div style={{ display: "flex", fontSize: 19, fontWeight: 600, color: C.want, letterSpacing: 0.2 }}>{e.kind}</div>
-            <div style={{ display: "flex", marginTop: 6, fontSize: 27, fontWeight: 600, lineHeight: 1.18, letterSpacing: -0.5, height: 64 }}>{e.want}</div>
-            <div style={{ display: "flex", marginTop: 10, fontSize: 24, fontWeight: 500 }}>{e.result}</div>
-            <div style={{ display: "flex", marginTop: 2, fontSize: 21, color: C.ink3, fontWeight: 400 }}>{e.by}</div>
+            {k.text}
           </div>
         ))}
       </div>
-      <LogoRow />
+      <div style={{ display: "flex", flexDirection: "column", marginTop: "auto", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, fontSize: 36, letterSpacing: -0.6 }}>
+          <span style={{ color: C.ink2, fontWeight: 400 }}>Tell your agent</span>
+          <span style={{ fontWeight: 600 }}>“set up wantmcp.com for the things I want”</span>
+        </div>
+        <div style={{ display: "flex", fontSize: 36, color: C.ink2, fontWeight: 400, letterSpacing: -0.6 }}>and it will take care of the rest.</div>
+      </div>
     </Frame>
   );
 }

@@ -84,12 +84,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/` },
     // Bump v when the home card design changes.
-    { property: "og:image", content: `${origin}/og/home.png?v=9` },
+    { property: "og:image", content: `${origin}/og/home.png?v=10` },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
     {
       property: "og:image:alt",
-      content: "Tell your agent what you want. Three examples: a 65-inch TV under $900, found for $649.99; three quotes from movers, two in; is a heat pump worth it, answered with four sources. Logos of the AI apps it works with.",
+      content: "The marks of ChatGPT, Claude, Grok, Muse, OpenClaw, Cursor and Gemini. Three stickers: To buy, To do, To find out. Tell your agent \u201cset up wantmcp.com for the things I want\u201d and it will take care of the rest.",
     },
     { name: "twitter:card", content: "summary_large_image" },
     // Instructions for agents reading the site (SPEC 13.4).
