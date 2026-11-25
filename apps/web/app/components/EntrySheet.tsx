@@ -144,16 +144,6 @@ export function EntrySheet({
                         Buy ↗<span className="sr-only"> {e.title} (new tab)</span>
                       </ExtLink>
                     )}
-                    {renderDetail && (
-                      <details className="row-toggle">
-                        <summary className="textlink-btn mt-0.5 inline-flex min-h-8 items-center text-[0.8rem]">
-                          <span className="sr-only">Details, price history and comments for {e.title}</span>
-                          <span aria-hidden="true" className="row-toggle-chev">
-                            More ›
-                          </span>
-                        </summary>
-                      </details>
-                    )}
                   </th>
                   <td className={`${td} ${stickyB} ${highlight || "bg-card"} text-right`}>
                     {p ? <span className="price text-[1.25rem]">{formatMoney(p.price, p.currency)}</span> : <span className="text-ink-3">–</span>}
@@ -161,7 +151,22 @@ export function EntrySheet({
                   <td className={`${td} ${wide} text-right text-ink-2`}>
                     {p?.original_price && pct !== null ? <span className="price-was">{formatMoney(p.original_price, p.currency)}</span> : <span className="text-ink-3">–</span>}
                   </td>
-                  <td className={`${td} text-right`}>{pct !== null ? <span className="save">−{pct}%</span> : <span className="text-ink-3">–</span>}</td>
+                  <td className={`${td} text-right`}>
+                    <span className="inline-flex items-start justify-end gap-1">
+                      {pct !== null ? <span className="save">−{pct}%</span> : <span className="text-ink-3">–</span>}
+                      {/* The row's own toggle (the whole row opens it too): a chevron, no extra line. */}
+                      {renderDetail && (
+                        <details className="row-toggle">
+                          <summary className="row-toggle-btn" title="Details, price history and comments">
+                            <span className="sr-only">Details, price history and comments for {e.title}</span>
+                            <span aria-hidden="true" className="row-toggle-chev">
+                              ›
+                            </span>
+                          </summary>
+                        </details>
+                      )}
+                    </span>
+                  </td>
                   <td className={`${td} ${wide} text-ink-2`}>{e.retailer || "–"}</td>
                   <td className={`${td} ${wide}`}>{e.coupon_code ? <code className="font-semibold">{e.coupon_code}</code> : <span className="text-ink-3">–</span>}</td>
                   <td className={`${td} ${wide} whitespace-nowrap text-ink-2`}>{deal ? deal.label.replace(/^Deal /, "") : <span className="text-ink-3">–</span>}</td>

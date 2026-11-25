@@ -20,7 +20,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Most recently active first; ?list=<id> (from a list page or its settings) preselects that list.
   const mine = [...lists]
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
-    .map((l) => ({ id: l.id, title: l.title, url: l.url, shared: l.my_role !== "owner" }));
+    .map((l) => ({ id: l.id, title: l.title, url: l.url, shared: l.my_role !== "owner", format: l.format ?? "shopping" }));
   const asked = new URL(request.url).searchParams.get("list");
   const selected = mine.find((l) => l.id === asked)?.id ?? mine[0]?.id ?? null;
   const base = apiBaseUrl();
@@ -187,7 +187,7 @@ function Steps({ children }: { children: React.ReactNode }) {
 const b64 = (s: string) => (typeof btoa === "function" ? btoa(s) : Buffer.from(s).toString("base64"));
 
 type Ctx = { mcp: string; signedIn: boolean; lists: MyList[]; selected: string | null };
-type MyList = { id: string; title: string; url: string; shared: boolean };
+type MyList = { id: string; title: string; url: string; shared: boolean; format?: string };
 
 const CLIENT_LIST: Client[] = [
   {
@@ -641,6 +641,9 @@ function AppPicker({ app, ctx, listParam }: { app: string; ctx: Ctx; listParam: 
   const c = CLIENTS.find((x) => x.id === app) ?? CLIENTS.find((x) => x.id === "claude")!;
   const status = STATUS[c.status];
   const brand = brandFor(c);
+  // What to say next, in the chosen list's own terms (shopping until there is a list).
+  const chosenFormat = ctx.lists.find((l) => l.id === ctx.selected)?.format ?? "shopping";
+  const thenSay = (ASKS.find(([k]) => k.toLowerCase() === (chosenFormat === "tasks" ? "tasks" : chosenFormat === "research" ? "research" : "shopping")) ?? ASKS[0])[1];
   const href = (id: string) => `/connect?${new URLSearchParams({ app: id, ...(listParam ? { list: listParam } : {}) })}#steps`;
   return (
     <>
@@ -680,8 +683,8 @@ function AppPicker({ app, ctx, listParam }: { app: string; ctx: Ctx; listParam: 
           {c.steps(ctx)}
           {c.status !== "soon" && (
             <p className="rounded-md bg-sunk px-4 py-3">
-              <span className="font-semibold">Then say:</span> “{ASKS[0][1]}”{" "}
-              <CopyButton text={ASKS[0][1]} label="Copy" ariaLabel="Copy what to say" className="btn btn-ghost btn-xs" />
+              <span className="font-semibold">Then say:</span> “{thenSay}”{" "}
+              <CopyButton text={thenSay} label="Copy" ariaLabel="Copy what to say" className="btn btn-ghost btn-xs" />
             </p>
           )}
           {(c.more || c.sources.length > 0) && (

@@ -119,6 +119,8 @@ export async function action({ request, params }: Route.ActionArgs) {
       }
       case "visibility":
         await api(request, `/lists/${id}`, { method: "PATCH", body: { visibility: s("visibility") === "private" ? "private" : "public" } });
+        // From the list's own Share menu: back to the list.
+        if (s("return") === `/l/${params.id}`) return redirect(`/l/${params.id}`);
         return { ok: true, intent } satisfies ActionData;
       case "format":
         await api(request, `/lists/${id}`, { method: "PATCH", body: { format: s("format") } });
@@ -314,7 +316,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           {members.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{m.handle ?? m.invited_email ?? "Invited"}</p>
+                <p className="truncate font-semibold">{m.handle && m.handle === user?.handle ? "You" : (m.handle ?? m.invited_email ?? "Invited")}</p>
                 <p className="text-[0.78rem] text-ink-3">
                   {m.role === "owner" ? "Owner" : m.status === "invited" ? "Invite sent" : "Member"} · <Time ts={m.created_at} />
                 </p>
@@ -702,32 +704,34 @@ function SwatchOption({ name, checked, onChange, view, label }: { name: string; 
   );
 }
 
+/** Who can see the list: two plain choices, the current one marked; going public asks once. Works without JavaScript. */
 function VisibilityControl({ visibility }: { visibility: ListVisibility }) {
   const fetcher = useFetcher<ActionData>();
   const pending = fetcher.formData?.get("visibility") as ListVisibility | undefined;
   const v = pending ?? visibility;
-  const next = v === "public" ? "private" : "public";
   return (
     <fetcher.Form method="post" className="grid gap-3">
       <input type="hidden" name="intent" value="visibility" />
-      <input type="hidden" name="visibility" value={next} />
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          role="switch"
-          aria-checked={v === "private"}
-          aria-label="Private list"
-          className={`relative h-8 w-14 shrink-0 rounded-full border-2 transition ${v === "private" ? "border-ink bg-ink" : "border-line-strong bg-sunk"}`}
-          onClick={(e) => {
-            if (next === "public" && !confirm("Make this list public? Anyone with the link will be able to read it, and search engines can find it.")) e.preventDefault();
-          }}
-        >
-          <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-card transition-all ${v === "private" ? "left-[1.6rem]" : "left-0.5"}`} />
-        </button>
-        <span className="font-semibold">{v === "private" ? "Private" : "Public"}</span>
+      <div role="group" aria-label="Who can see this list" className="view-switch w-fit">
+        {(["private", "public"] as const).map((choice) => (
+          <button
+            key={choice}
+            name="visibility"
+            value={choice}
+            aria-pressed={v === choice}
+            className={`view-tab ${v === choice ? "is-on" : ""}`}
+            onClick={(e) => {
+              if (choice === v) return e.preventDefault();
+              if (choice === "public" && !confirm("Make this list public? Anyone with the link will be able to read it, and search engines can find it.")) e.preventDefault();
+            }}
+          >
+            {choice === "private" ? "Private" : "Public"}
+          </button>
+        ))}
       </div>
       <p className="text-[0.9rem] text-ink-2">
         {v === "private"
-          ? "Only you, people you invite and your agents. Not in search or the public feed."
+          ? "Only you, people you invite and your agents can see it."
           : "Anyone with the link can read it, and search engines can find it. Only invited people can write."}
       </p>
       {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}

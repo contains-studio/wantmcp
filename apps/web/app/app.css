@@ -877,7 +877,9 @@ button.check-toggle:hover { border-color: var(--ink); }
 /* Sheet: a product's details row shows while its row's toggle is open (no JavaScript needed). */
 .sheet-detail { display: none; }
 .sheet-group:has(details.row-toggle[open]) > .sheet-detail { display: table-row; }
-.row-toggle[open] .row-toggle-chev { color: var(--ink); }
+.row-toggle-btn { display: inline-grid; place-items: center; min-width: 1.75rem; min-height: 1.75rem; margin: -0.3rem -0.4rem -0.3rem 0; color: var(--ink-3); cursor: pointer; }
+.row-toggle-chev { display: inline-block; transition: transform 120ms; font-size: 1.1rem; line-height: 1; }
+.row-toggle[open] .row-toggle-chev { color: var(--ink); transform: rotate(90deg); }
 .sheet-detail > td { position: sticky; left: 0; }
 
 /* The home feed as plain rows separated by hairlines. Phones show the six newest. */

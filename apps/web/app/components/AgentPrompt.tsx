@@ -12,11 +12,22 @@ export function AgentPrompt({ mcpUrl, listUrl, keyValue, title }: { mcpUrl: stri
   return (
     <div className="grid gap-2">
       {title && <p className="label">{title}</p>}
-      <pre className="codeblock text-[0.78rem]" tabIndex={0} role="region" aria-label="Prompt for your agent">{text}</pre>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <CopyButton text={text} label="Copy prompt" className="btn btn-sm w-fit" />
-        <p className="text-[0.82rem] text-ink-3">{AGENT_PROMPT_RESTART_NOTE}</p>
+      {/* Three lines and Copy; the whole text one tap away (people paste it, they don't read it). */}
+      <div className="prompt-box grid gap-2">
+        <span className="codeblock prompt-peek-text text-[0.78rem]" aria-hidden="true">
+          {text.split("\n").slice(0, 3).join("\n")}
+        </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <CopyButton text={text} label="Copy prompt" className="btn btn-want btn-sm w-fit" />
+          <details className="prompt-peek">
+            <summary className="add-link text-[0.85rem]">Show all</summary>
+            <pre className="codeblock text-[0.78rem]" tabIndex={0} role="region" aria-label="Prompt for your agent">
+              {text}
+            </pre>
+          </details>
+        </div>
       </div>
+      <p className="text-[0.82rem] text-ink-3">{AGENT_PROMPT_RESTART_NOTE}</p>
     </div>
   );
 }

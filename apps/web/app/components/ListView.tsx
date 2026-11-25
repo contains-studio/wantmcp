@@ -3,7 +3,7 @@ import { SEASON, seasonActive } from "~/lib/season";
 import { MetaLine } from "~/components/MetaLine";
 import { GiveToAgent } from "~/components/GiveToAgent";
 import { HeadingBase, headingTag } from "~/components/preview";
-import { Link, useFetcher, useLocation } from "react-router";
+import { Form, Link, useFetcher, useLocation } from "react-router";
 import { ActorTag } from "~/components/ActorTag";
 import { CommentForm, CommentList } from "~/components/Comments";
 import { CopyButton } from "~/components/CopyButton";
@@ -140,16 +140,47 @@ export function ListView(props: ListViewProps) {
             {!preview && (
               <div role="toolbar" aria-label="List" className="list-actions">
                 {/* Public: the link carries ?ref=share so sign-ups from shared lists can be counted. Private: the plain link, and who can open it. */}
-                <CopyButton
-                  text={isPrivate ? listUrl : `${listUrl}?ref=share`}
-                  label="Share"
-                  labelClass="btn-tool-label"
-                  doneText={isPrivate ? "Link copied. Only people with access can open it." : "Link copied"}
-                  tooltip={isPrivate ? "Copy link (only people with access can open it)" : "Copy link"}
-                  className="btn-tool"
-                  icon={<Icon name="share" />}
-                  shareTitle={list.title}
-                />
+                {isPrivate && isWriter ? (
+                  // A private list's link opens for no one else: Share says so and offers the two ways to change that.
+                  <Menu
+                    label="Share"
+                    triggerClass="btn-tool"
+                    trigger={
+                      <>
+                        <Icon name="share" />
+                        <span className="btn-tool-label">Share</span>
+                      </>
+                    }
+                    wide
+                  >
+                    <div className="grid gap-2 p-3 text-[0.9rem]">
+                      <p className="text-ink-2">Only you and people you invite can open this list.</p>
+                      {role === "owner" && (
+                        <Form method="post" action={`/app/lists/${list.id}/settings`} onSubmit={(e) => !confirm("Make this list public? Anyone with the link will be able to read it, and search engines can find it.") && e.preventDefault()}>
+                          <input type="hidden" name="intent" value="visibility" />
+                          <input type="hidden" name="visibility" value="public" />
+                          <input type="hidden" name="return" value={`/l/${list.id}`} />
+                          <button className="menu-item w-full">Make it public…</button>
+                        </Form>
+                      )}
+                      <Link to={`/app/lists/${list.id}/settings#sharing-h`} className="menu-item">
+                        Invite people
+                      </Link>
+                      <CopyButton text={listUrl} label="Copy link" doneText="Link copied" className="menu-item" />
+                    </div>
+                  </Menu>
+                ) : (
+                  <CopyButton
+                    text={isPrivate ? listUrl : `${listUrl}?ref=share`}
+                    label="Share"
+                    labelClass="btn-tool-label"
+                    doneText={isPrivate ? "Link copied. Only people with access can open it." : "Link copied"}
+                    tooltip={isPrivate ? "Copy link (only people with access can open it)" : "Copy link"}
+                    className="btn-tool"
+                    icon={<Icon name="share" />}
+                    shareTitle={list.title}
+                  />
+                )}
                 {isWriter && (
                   <Link to={`/app/lists/${list.id}/settings`} className="btn-tool" title="List settings">
                     <Icon name="gear" />

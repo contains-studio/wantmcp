@@ -85,73 +85,35 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
       <h1 id="new-h" className="text-[1.75rem] leading-tight font-semibold tracking-[-0.02em]">
         New list
       </h1>
+      {/* Title first and focused; the rest fits on one phone screen with Create; extras one tap away. */}
       <Form method="post" className="grid gap-4">
         <input type="hidden" name="intent" value="create-list" />
         <RefField />
         {params.get("look") && <input type="hidden" name="look" value={params.get("look")!} />}
-        <fieldset className="grid gap-2">
-          <legend className="label mb-1">What is this list for?</legend>
-          {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
-            <label
-              key={f.format}
-              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${format === f.format ? "border-ink-3 bg-sunk" : "border-line"}`}
-            >
-              <input
-                type="radio"
-                name="format"
-                value={f.format}
-                checked={format === f.format}
-                onChange={() => setFormat(f.format)}
-                className="mt-1 accent-[var(--ink)]"
-              />
-              <span>
-                <span className="block font-semibold">{f.label}</span>
-                <span className="block text-[0.82rem] text-ink-2">{f.blurb}</span>
-                <span className="mt-0.5 block text-[0.76rem] text-ink-3">e.g. {f.examples}</span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
         <label className="field">
           <span className="label">Title</span>
           <input
             name="title"
             required
+            autoFocus
             maxLength={140}
-            placeholder={format === "shopping" ? "Black Friday 2026" : format === "tasks" ? "Moving day" : "Heat pump questions"}
+            placeholder={format === "shopping" ? "Christmas gifts" : format === "tasks" ? "Moving day" : "Heat pump questions"}
             className="input"
           />
         </label>
-        <label className="field">
-          <span className="label">Description (optional)</span>
-          <textarea name="description" maxLength={500} className="textarea" placeholder={fi.detailsPlaceholder} />
-        </label>
-        <details className="group">
-          <summary className="textlink-btn text-[0.85rem]">
-            Note for agents{" "}
-            <span aria-hidden="true" className="inline-block transition group-open:rotate-90">
-              ›
-            </span>
-          </summary>
-          <label className="field mt-2">
-            <span className="label">Note for agents (optional)</span>
-            <textarea
-              name="note"
-              maxLength={600}
-              className="textarea min-h-16"
-              placeholder={moneyPlaceholder("Gifts for Dad, about {50} each, ship to Denver", currency)}
-            />
-            <span className="hint">Everyone who can write this list, and their agents, can see it. Never public.</span>
-          </label>
-        </details>
-        {first && !hasBio && (
-          <label className="field">
-            <span className="label">Tell your agents about you (optional)</span>
-            <textarea name="bio" maxLength={600} className="textarea min-h-16" placeholder={BIO_PLACEHOLDER} />
-            <span className="hint">Only your own agents see this. Change it any time in Account.</span>
-          </label>
-        )}
-        <fieldset className="grid gap-2">
+        <fieldset className="grid gap-1.5">
+          <legend className="label mb-1">What is it for?</legend>
+          {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
+            <label key={f.format} className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 ${format === f.format ? "border-ink-3 bg-sunk" : "border-line"}`}>
+              <input type="radio" name="format" value={f.format} checked={format === f.format} onChange={() => setFormat(f.format)} className="accent-[var(--ink)]" />
+              <span className="min-w-0">
+                <span className="font-semibold">{f.label}</span>
+                <span className="text-[0.85rem] text-ink-3"> · {f.format === "shopping" ? "things to buy" : f.format === "tasks" ? "things to get done" : "questions to answer"}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="grid gap-1.5">
           <legend className="label mb-1">Who can see it?</legend>
           {(["private", "public"] as const).map((v) => (
             <label key={v} className="flex cursor-pointer items-start gap-2 text-[0.88rem]">
@@ -170,9 +132,32 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
             {result.error}
           </p>
         )}
-        <button className="btn btn-want w-fit" disabled={busy}>
+        <button className="btn btn-want w-full sm:w-fit" disabled={busy}>
           {busy ? "Creating…" : `Create ${fi.label.toLowerCase()} list`}
         </button>
+        <details className="group">
+          <summary className="textlink-btn inline-flex min-h-11 items-center text-[0.9rem]">
+            Add a description or a note for agents <span aria-hidden="true" className="ml-1 inline-block transition group-open:rotate-90">›</span>
+          </summary>
+          <div className="mt-2 grid gap-4">
+            <label className="field">
+              <span className="label">Description (optional)</span>
+              <textarea name="description" maxLength={500} className="textarea" placeholder={fi.detailsPlaceholder} />
+            </label>
+            <label className="field">
+              <span className="label">Note for agents (optional)</span>
+              <textarea name="note" maxLength={600} className="textarea min-h-16" placeholder={moneyPlaceholder("Gifts for Dad, about {50} each, ship to Denver", currency)} />
+              <span className="hint">Everyone who can write this list, and their agents, can see it. Never public.</span>
+            </label>
+            {first && !hasBio && (
+              <label className="field">
+                <span className="label">Tell your agents about you (optional)</span>
+                <textarea name="bio" maxLength={600} className="textarea min-h-16" placeholder={BIO_PLACEHOLDER} />
+                <span className="hint">Only your own agents see this. Change it any time in Account.</span>
+              </label>
+            )}
+          </div>
+        </details>
       </Form>
     </section>
   );
