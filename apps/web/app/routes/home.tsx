@@ -125,9 +125,12 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           <Link to={user ? "/app" : "/login?next=/app/new"} className="btn btn-want btn-lg">
             {user ? "My lists" : "Start a list"}
           </Link>
-          <Link to="/connect" className="btn btn-ghost btn-lg">
-            Connect an agent
-          </Link>
+          {/* Signed out there is no list to connect yet: one action, and "Connect" stays in the header. */}
+          {user && (
+            <Link to="/connect" className="btn btn-ghost btn-lg">
+              Connect an agent
+            </Link>
+          )}
         </div>
       </section>
 

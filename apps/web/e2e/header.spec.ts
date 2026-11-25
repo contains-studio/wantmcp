@@ -23,3 +23,11 @@ test("header: the logo and the links sit on the same line @phone", async ({ page
     for (const y of [mids.mark, mids.name, ...mids.links]) expect(Math.abs(y - mids.bar), path).toBeLessThanOrEqual(1);
   }
 });
+
+test("home, signed out: the hero has one action, Start a list @phone", async ({ page }) => {
+  await page.goto("/");
+  const hero = page.locator("section", { has: page.getByRole("heading", { level: 1 }) }).first();
+  await expect(hero.getByRole("link", { name: "Start a list" })).toBeVisible();
+  await expect(hero.getByRole("link")).toHaveCount(1);
+  await expect(page.getByRole("main").getByRole("link", { name: "Connect an agent" })).toHaveCount(0);
+});
