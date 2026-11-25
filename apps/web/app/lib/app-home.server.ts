@@ -4,7 +4,7 @@
  * older way (each list's detail, in parallel).
  */
 import { api } from "./api.server";
-import type { ActorRef, ListDetail, ListFormat, ListSummary, ListWithSummary } from "./types";
+import type { ActorRef, ListDetail, ListFormat, ListSummary, ListWithSummary, Page } from "./types";
 import type { WaitingQuestion } from "./waiting.server";
 
 export interface ListCard {
@@ -108,10 +108,11 @@ const VERB: Record<string, (format: ListFormat) => string> = {
 
 /** The person's lists as /app cards, from GET /me/lists?include=summary, or the older way if the API doesn't have it. */
 export async function loadCards(request: Request, waiting: Parameters<typeof listCards>[2]): Promise<ListCard[]> {
-  const res = await api<{ items: ListWithSummary[] } | ListSummary[]>(request, "/me/lists", { query: { include: "summary", limit: 100 } });
+  const res = await api<Page<ListWithSummary> | ListSummary[]>(request, "/me/lists", { query: { include: "summary", limit: 100 } });
   // An API without summaries ignores the parameter and returns the plain array.
   if (Array.isArray(res)) return listCards(request, res, waiting);
-  return res.items.map((l) => {
+  // The API pages its results as { data, next_cursor }, like every other list route.
+  return res.data.map((l) => {
     const format = l.format ?? "shopping";
     const s = l.summary;
     return {

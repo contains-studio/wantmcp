@@ -573,7 +573,7 @@ route("POST", "/me/invites/{list_id}/accept", ({ caller, params }) => {
 
 route("GET", "/me/lists", ({ caller, url }) => {
   if (!caller) throw unauthorized();
-  if (url.searchParams.get("include") === "summary") return { items: listsWithSummary(caller), next_cursor: null };
+  if (url.searchParams.get("include") === "summary") return { data: listsWithSummary(caller), next_cursor: null };
   return store.lists
     .filter((l) => canWrite(caller, l.id))
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at))
