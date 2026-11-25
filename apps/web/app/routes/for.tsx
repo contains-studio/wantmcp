@@ -34,7 +34,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:title", content: "Lists for every kind of job" },
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/for` },
-    { property: "og:image", content: `${origin}/og/home.png?v=7` },
+    { property: "og:image", content: `${origin}/og/home.png?v=8` },
     { name: "twitter:card", content: "summary_large_image" },
   ];
 }

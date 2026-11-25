@@ -45,7 +45,8 @@ const svgUrl = (svg: string) => "data:image/svg+xml;base64," + btoa(unescape(enc
 
 /** The light-background marks from public/brands, by the path the site uses for them. */
 const BRAND_ART: Record<string, string> = {
-  "/brands/openai-blossom-on-light.svg": svgUrl(openaiSvg),
+  // OpenAI's file leaves half its canvas empty around the mark; the card draws the mark itself.
+  "/brands/openai-blossom-on-light.svg": svgUrl(openaiSvg.replace('viewBox="0 0 716 716"', 'viewBox="170 170 376 376"')),
   "/brands/claude-on-light.svg": svgUrl(claudeSvg),
   "/brands/grok-bot-on-light.svg": svgUrl(grokBotSvg),
   "/brands/muse-mark.svg": musePng,
@@ -56,28 +57,40 @@ const BRAND_ART: Record<string, string> = {
 };
 
 /**
- * "Works with", as on the home page: every live client on one line, in the site's order and at
- * the site's optical sizes (brands.ts), spread across the card. A brand whose art is not listed
- * above is left out rather than drawn as a gap.
+ * Heights on the card, in px, tuned by eye so every logo reads at one size: symbols about 48,
+ * wordmarks by their letter height. Keyed like BRAND_ART.
  */
-function WorksWithRow({ scale = 17 }: { scale?: number }) {
-  const brands = LIVE_BRANDS.filter((b) => b.logo && BRAND_ART[b.logo.light]);
+const BRAND_HEIGHT: Record<string, number> = {
+  "/brands/openai-blossom-on-light.svg": 52,
+  "/brands/claude-on-light.svg": 40,
+  "/brands/grok-bot-on-light.svg": 48,
+  "/brands/muse-mark.svg": 62,
+  "/brands/openclaw-on-light.svg": 48,
+  "/brands/cursor-on-light.svg": 38,
+  "/brands/grok-mark.svg": 46,
+  "/brands/gemini-sparkle.svg": 52,
+};
+
+/**
+ * The apps it works with, as logos only (owner, 25 Nov 2026: bigger, no "Works with", as many as
+ * fit, for recognition). One line across the card in the site's order, each art once (ChatGPT and
+ * Codex share OpenAI's mark). A brand whose art is not listed above is left out rather than drawn
+ * as a gap; if a new one makes the row wider than the card, lower the heights.
+ */
+function LogoRow() {
+  const seen = new Set<string>();
+  const logos = LIVE_BRANDS.flatMap((b) => {
+    const src = b.logo?.light;
+    if (!b.logo || !src || !BRAND_ART[src] || seen.has(src)) return [];
+    seen.add(src);
+    const height = BRAND_HEIGHT[src] ?? 44;
+    return [{ id: b.id, art: BRAND_ART[src], height, width: Math.round((height * b.logo.width) / b.logo.height) }];
+  });
   return (
-    <div style={{ display: "flex", flexDirection: "column", marginTop: "auto", gap: 20 }}>
-      <div style={{ display: "flex", fontSize: 20, color: C.ink3, fontWeight: 500 }}>Works with</div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        {brands.map((b) => {
-          const logo = b.logo!;
-          const h = Math.round((logo.optical ?? 1.4) * scale);
-          const w = Math.round((h * logo.width) / logo.height);
-          return (
-            <div key={b.id} style={{ display: "flex", alignItems: "center", gap: Math.round(scale * 0.45) }}>
-              <img src={BRAND_ART[logo.light]} width={w} height={h} />
-              {logo.nameBeside && <div style={{ display: "flex", fontSize: Math.round(scale * 1.2), fontWeight: 600, letterSpacing: -0.3 }}>{b.name}</div>}
-            </div>
-          );
-        })}
-      </div>
+    <div style={{ display: "flex", marginTop: "auto", alignItems: "center", justifyContent: "space-between", height: 64 }}>
+      {logos.map((l) => (
+        <img key={l.id} src={l.art} width={l.width} height={l.height} />
+      ))}
     </div>
   );
 }
@@ -145,7 +158,7 @@ function HomeCard() {
           Things to buy, to get done, to find out. Your agents work on them.
         </div>
       </div>
-      <WorksWithRow />
+      <LogoRow />
     </Frame>
   );
 }
