@@ -91,10 +91,23 @@ workers/app.ts   Worker entry: SSR handler plus security headers
 Agents connect to `MCP_URL` (`https://mcp.wantmcp.com/mcp`). Clients that only sign in when they first connect use
 `MCP_URL?signin=1`. `/.well-known/ai-catalog.json` on this site redirects to the same path on the MCP host.
 
+## Share images
+
+`/og/home.png` and `/og/l/{id}.png` are rendered on the Worker with Satori and resvg (WASM) via
+[`@cf-wasm/og`](https://www.npmjs.com/package/@cf-wasm/og), using static Fontsource woff files, and cached with the
+Workers Cache API. On any error they redirect to the static `public/og.png`. If you change the home card in
+`workers/og.tsx`, save a fresh render over `public/og.png` and bump the `?v=` in `app/routes/home.tsx`.
+
+## Live updates
+
+The list page and `/app` poll `/live` every 15 seconds while the tab is visible. `/live` reads the API's events
+log server-side (`/lists/{id}/events`, `/me/events`) and the page revalidates when something new arrives.
+
 ## Deploying
 
 The production Worker is named `wantmcp-web`. Set `API_BASE_URL`, `SITE_ORIGIN` and `MCP_URL` in
-`wrangler.jsonc` (or as Worker variables), add the `WEB_PROXY_SECRET` secret, then
+`wrangler.jsonc` (or as Worker variables), add the `WEB_PROXY_SECRET` secret, optionally set `SOURCE_URL` to show a
+"Source" link in the footer (hidden when unset), then
 `pnpm build && pnpm wrangler deploy`.
 
 ## Licence

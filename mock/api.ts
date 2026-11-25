@@ -20,7 +20,9 @@ export const MOCK_LOGIN_CODE = "123456";
 const WEB = "https://wantmcp.com";
 const PAGE_SIZE = 20;
 
-let store: Store = seedStore();
+// Seeded on the first request, not at import: in a Worker, Date.now() is frozen at 0
+// during global-scope evaluation, which would date all seed data to 1970.
+let store: Store = undefined as unknown as Store;
 
 /** Reset to the seed data (used by tests and `POST /__reset`). */
 export function resetMockStore() {
@@ -904,6 +906,7 @@ route("POST", "/__reset", () => {
  * `new Request("http://mock/v1/lists/lst_desk2026")`.
  */
 export async function handleMockRequest(req: Request): Promise<Response> {
+  store ??= seedStore();
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/v1/, "").replace(/\/$/, "") || "/";
   try {

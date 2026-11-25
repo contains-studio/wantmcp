@@ -77,6 +77,12 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
     console.error("API unreachable", url.pathname, err);
     throw new ApiError(503, "network", "We couldn't reach the Want MCP API. Try again in a moment.");
   }
+  // A stale session cookie (expired, signed out elsewhere, account deleted) must not break
+  // public pages: retry reads anonymously. The root loader clears the dead cookie.
+  const cookieToken = !init.anonymous && init.token === undefined && token;
+  if (res.status === 401 && cookieToken && (init.method ?? "GET") === "GET") {
+    return api<T>(request, path, { ...init, anonymous: true });
+  }
   init.onHeaders?.(res.headers);
   if (res.status === 204) return undefined as T;
   const text = await res.text();

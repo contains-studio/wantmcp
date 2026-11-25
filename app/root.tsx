@@ -19,7 +19,7 @@ import { Wordmark } from "./components/Logo";
 import { getUser } from "./lib/auth.server";
 import { mcpUrl, siteOrigin, sourceUrl } from "./lib/config.server";
 import { useRootData } from "./lib/hooks";
-import { readCookie } from "./lib/session.server";
+import { clearSessionCookie, getSessionToken, readCookie } from "./lib/session.server";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
@@ -29,7 +29,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const user = await getUser(request);
   const t = readCookie(request, "wm_theme");
   const theme = t === "light" || t === "dark" ? t : "system";
-  return data({ user, now: Date.now(), theme, mcpUrl: mcpUrl(), origin: siteOrigin(request), sourceUrl: sourceUrl() });
+  // The cookie names a session the API no longer knows: drop it.
+  const headers = !user && getSessionToken(request) ? { "set-cookie": clearSessionCookie(request) } : undefined;
+  return data({ user, now: Date.now(), theme, mcpUrl: mcpUrl(), origin: siteOrigin(request), sourceUrl: sourceUrl() }, { headers });
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
