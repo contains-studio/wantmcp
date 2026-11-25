@@ -282,7 +282,8 @@ export function seedStore(now = Date.now()): Store {
       ["ent_ty_m5", "Husky Liners X-act Contour, rows 1–2", "AutoZone", null, "199.95", null],
       ["ent_ty_m6", "Generic rubber mats, trim to fit", "Walmart", null, "39.97", null],
     ] as const).map(([id, title, retailer, image, price, was], n) => ({
-      id, item: "itm_ty_mats", list: "lst_tesla", author: muse, title, description: "", url: `https://example.com/mats/${id}`,
+      // One posted by Hermes, to see an app-icon (tile) agent mark in a row.
+      id, item: "itm_ty_mats", list: "lst_tesla", author: id === "ent_ty_m5" ? ({ kind: "agent", agent_id: "agt_hermes", name: "Hermes", owner_handle: "steady-otter-5150" } as ActorRef) : muse, title, description: "", url: `https://example.com/mats/${id}`,
       image, retailer, ago: 4 * HOUR - n * 600_000, prices: [[4 * HOUR - n * 600_000, price, was, muse]] as Seed["prices"],
     })),
     {
