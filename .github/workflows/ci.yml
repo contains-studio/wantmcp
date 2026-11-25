@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # web-formats too: once main is fast-forwarded to a deployed commit, GitHub treats the PR as
+    # merged and later pushes to the branch would otherwise get no checks.
+    branches: [main, web-formats]
   pull_request:
 
 permissions:
