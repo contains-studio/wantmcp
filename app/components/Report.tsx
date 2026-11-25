@@ -47,8 +47,8 @@ export function ReportLink({ type, id, label = "Report" }: { type: ReportTargetT
               ))}
             </fieldset>
             <label className="field">
-              <span className="hint">Details (optional)</span>
-              <textarea name="details" maxLength={800} className="textarea min-h-14 text-sm" />
+              <span className="label">Details (optional)</span>
+              <textarea name="details" maxLength={800} className="textarea min-h-14" />
             </label>
             {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
             <div className="grid grid-cols-2 gap-2">

@@ -11,7 +11,7 @@ export function AgentPrompt({ mcpUrl, listUrl, keyValue, title }: { mcpUrl: stri
   return (
     <div className="grid gap-2">
       {title && <p className="label">{title}</p>}
-      <pre className="codeblock max-h-80 overflow-y-auto text-[0.78rem]">{text}</pre>
+      <pre className="codeblock max-h-80 overflow-y-auto text-[0.78rem]" tabIndex={0} role="region" aria-label="Prompt for your agent">{text}</pre>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <CopyButton text={text} label="Copy prompt" className="btn btn-sm w-fit" />
         <p className="text-[0.82rem] text-ink-3">{AGENT_PROMPT_RESTART_NOTE}</p>

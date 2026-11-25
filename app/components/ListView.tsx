@@ -369,7 +369,7 @@ function ItemSection({
           </details>
         </div>
       ) : entries.length > 0 ? (
-        <div className={`item-entries item-indent grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 sm:pl-11 ${p ? "opacity-80" : ""}`}>
+        <div className={`item-entries item-indent grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 sm:pl-11`}>
           {entries.map((e, i) => (
             <EntryCard
               key={e.id}
@@ -459,11 +459,11 @@ function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: bool
           </summary>
           <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_12rem]">
             <label className="field" htmlFor="new-item-details">
-              <span className="hint">Details</span>
+              <span className="label">Details</span>
               <textarea id="new-item-details" name="details" maxLength={2000} placeholder={fi.detailsPlaceholder} className="textarea min-h-20" />
             </label>
             <label className="field content-start" htmlFor="new-item-due">
-              <span className="hint">Due date</span>
+              <span className="label">Due date</span>
               <input id="new-item-due" name="due_at" type="date" className="input" />
             </label>
           </div>

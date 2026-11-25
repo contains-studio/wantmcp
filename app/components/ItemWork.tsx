@@ -54,8 +54,8 @@ function StatusButton({ itemId, status, label, kind = "ghost", note }: { itemId:
           <input type="hidden" name="item_id" value={itemId} />
           <input type="hidden" name="status" value={status} />
           <label className="field" htmlFor={`${uid}-n`}>
-            <span className="hint">Note (optional)</span>
-            <textarea id={`${uid}-n`} name="note" maxLength={1000} className="textarea min-h-14 text-sm" placeholder="What was done, anything to know…" />
+            <span className="label">Note (optional)</span>
+            <textarea id={`${uid}-n`} name="note" maxLength={1000} className="textarea min-h-14" placeholder="What was done, anything to know…" />
           </label>
           <button className="btn btn-sm" disabled={busy}>
             {busy ? "Saving…" : label}

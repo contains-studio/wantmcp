@@ -70,8 +70,8 @@ export function CommentForm({ targetType, targetId, label }: { targetType: "item
         {label}
       </label>
       <div className="flex items-end gap-2">
-        <textarea id={inputId} name="body" required maxLength={1000} rows={1} placeholder={label} className="textarea min-h-11 flex-1 py-2 text-[0.92rem]" />
-        <button className="btn btn-sm" disabled={fetcher.state !== "idle"}>
+        <textarea id={inputId} name="body" required maxLength={1000} rows={1} placeholder={label} className="textarea min-h-11 flex-1 py-2" />
+        <button className="btn" disabled={fetcher.state !== "idle"}>
           {fetcher.state !== "idle" ? "Posting…" : "Post"}
         </button>
       </div>

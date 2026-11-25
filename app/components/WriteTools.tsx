@@ -117,18 +117,18 @@ export function EntryForm({ itemId, entry, onDone }: { itemId: string; entry?: E
         <input id={f("coupon")} name="coupon_code" maxLength={40} defaultValue={entry?.coupon_code ?? ""} className="input font-mono" />
       </label>
       {!editing && (
-        <fieldset className="grid grid-cols-[1fr_1fr_5.5rem] gap-2 sm:col-span-2">
+        <fieldset className="grid grid-cols-[1fr_1fr_6rem] items-end gap-2 sm:col-span-2">
           <legend className="label mb-1">Price <span className="font-normal text-ink-3">(optional)</span></legend>
           <label className="field" htmlFor={f("price")}>
-            <span className="hint">Now</span>
+            <span className="label">Now</span>
             <input id={f("price")} name="price" inputMode="decimal" pattern="\d+(\.\d{1,2})?" placeholder="429.00" className="input" />
           </label>
           <label className="field" htmlFor={f("was")}>
-            <span className="hint">Was</span>
+            <span className="label">Was</span>
             <input id={f("was")} name="original_price" inputMode="decimal" pattern="\d+(\.\d{1,2})?" placeholder="549.00" className="input" />
           </label>
           <label className="field" htmlFor={f("cur")}>
-            <span className="hint">Currency</span>
+            <span className="label">Currency</span>
             <input id={f("cur")} name="currency" defaultValue={cur?.currency ?? "GBP"} maxLength={3} pattern="[A-Za-z]{3}" className="input uppercase" />
           </label>
         </fieldset>
@@ -169,22 +169,22 @@ export function PostPrice({ entry }: { entry: Entry }) {
     <fetcher.Form method="post" ref={ref} className="mt-2 grid gap-2">
       <input type="hidden" name="intent" value="post-price" />
       <input type="hidden" name="entry_id" value={entry.id} />
-      <div className="grid grid-cols-[1fr_1fr_5rem] gap-2">
+      <div className="grid grid-cols-[1fr_1fr_6rem] items-end gap-2">
         <label className="field" htmlFor={`${uid}-p`}>
-          <span className="hint">Now</span>
+          <span className="label">Now</span>
           <input id={`${uid}-p`} name="price" required inputMode="decimal" pattern="\d+(\.\d{1,2})?" placeholder={cur?.price ?? "0.00"} className="input" />
         </label>
         <label className="field" htmlFor={`${uid}-o`}>
-          <span className="hint">Was</span>
+          <span className="label">Was</span>
           <input id={`${uid}-o`} name="original_price" inputMode="decimal" pattern="\d+(\.\d{1,2})?" defaultValue={cur?.original_price ?? ""} className="input" />
         </label>
         <label className="field" htmlFor={`${uid}-c`}>
-          <span className="hint">Cur.</span>
+          <span className="label">Currency</span>
           <input id={`${uid}-c`} name="currency" required defaultValue={cur?.currency ?? "GBP"} maxLength={3} pattern="[A-Za-z]{3}" className="input px-2 uppercase" />
         </label>
       </div>
       <label className="field" htmlFor={`${uid}-n`}>
-        <span className="hint">Note (optional)</span>
+        <span className="label">Note (optional)</span>
         <input id={`${uid}-n`} name="note" maxLength={200} placeholder="e.g. Black Friday price" className="input" />
       </label>
       <div className="flex items-center gap-2" aria-live="polite">
@@ -246,11 +246,11 @@ export function EditItem({ item, onDone, label = "What do you want?" }: { item: 
       </label>
       <textarea id={`${uid}-t`} name="text" required maxLength={500} defaultValue={item.text} className="textarea min-h-16" autoFocus />
       <label htmlFor={`${uid}-d`} className="field">
-        <span className="hint">Details (optional)</span>
-        <textarea id={`${uid}-d`} name="details" maxLength={2000} defaultValue={item.details ?? ""} className="textarea min-h-16 text-[0.92rem]" />
+        <span className="label">Details (optional)</span>
+        <textarea id={`${uid}-d`} name="details" maxLength={2000} defaultValue={item.details ?? ""} className="textarea min-h-16" />
       </label>
       <label htmlFor={`${uid}-due`} className="field w-fit">
-        <span className="hint">Due date (optional)</span>
+        <span className="label">Due date (optional)</span>
         <input id={`${uid}-due`} name="due_at" type="date" defaultValue={item.due_at ? item.due_at.slice(0, 10) : ""} className="input" />
       </label>
       <div className="flex gap-2">
@@ -281,17 +281,17 @@ export function MarkBoughtElsewhere({ itemId }: { itemId: string }) {
         <input type="hidden" name="intent" value="purchase" />
         <input type="hidden" name="item_id" value={itemId} />
         <p className="text-[0.85rem] text-ink-2">Bought one of the products below? Use its “Bought this” button. Otherwise, optionally say where:</p>
-        <div className="grid grid-cols-[1fr_6rem_4.5rem] gap-2">
+        <div className="grid grid-cols-[1fr_6rem_6rem] items-end gap-2">
           <label className="field" htmlFor={`${uid}-r`}>
-            <span className="hint">Retailer</span>
+            <span className="label">Retailer</span>
             <input id={`${uid}-r`} name="retailer" maxLength={80} className="input" />
           </label>
           <label className="field" htmlFor={`${uid}-p`}>
-            <span className="hint">Price</span>
+            <span className="label">Price</span>
             <input id={`${uid}-p`} name="price" inputMode="decimal" pattern="\d+(\.\d{1,2})?" className="input" />
           </label>
           <label className="field" htmlFor={`${uid}-c`}>
-            <span className="hint">Cur.</span>
+            <span className="label">Currency</span>
             <input id={`${uid}-c`} name="currency" defaultValue="GBP" maxLength={3} pattern="[A-Za-z]{3}" className="input px-2 uppercase" />
           </label>
         </div>

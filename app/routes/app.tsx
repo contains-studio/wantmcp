@@ -13,6 +13,7 @@ import { plural } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin } from "~/lib/session.server";
 import { LiveUpdates } from "~/components/LiveUpdates";
+import { Button, Field, Input, Select } from "~/components/ui";
 import type { AgentInfo, FeedEntry, ListFormat, ListSummary, ListVisibility, Page, PendingInvite } from "~/lib/types";
 
 export function meta() {
@@ -75,47 +76,6 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="wrap grid grid-cols-1 gap-8 py-8 lg:grid-cols-[19rem_1fr] lg:gap-10">
-      <aside className="grid content-start gap-6 lg:sticky lg:top-24">
-        <div>
-          <p className="eyebrow">Signed in as</p>
-          <p className="mt-1 font-display text-xl font-extrabold">{user.handle}</p>
-          <Link to="/app/account" className="link text-[0.85rem] text-ink-3">
-            Account
-          </Link>
-        </div>
-
-        <nav aria-labelledby="lists-h" className="grid gap-2">
-          <h2 id="lists-h" className="eyebrow">Your lists</h2>
-          {lists.length === 0 && <p className="text-[0.9rem] text-ink-3">No lists yet. Make your first one below.</p>}
-          <ul className="grid gap-1.5">
-            {lists.map((l) => (
-              <li key={l.id} className={`rounded-xl border p-3 ${l.id === listId ? "border-want bg-want-soft" : "border-line bg-card"}`}>
-                <Link to={`/l/${l.id}`} className="link block font-semibold leading-snug">
-                  {l.title}
-                </Link>
-                {visibilityOf(l) === "private" && (
-                  <span className="mt-1 inline-block">
-                    <PrivateBadge />
-                  </span>
-                )}
-                <p className="mt-1 text-[0.78rem] text-ink-3">
-                  {formatInfo(l).label} · {plural(l.item_count, formatInfo(l).item)} · {l.my_role} · updated <Time ts={l.updated_at} />
-                </p>
-                <p className="mt-1.5 flex gap-3 text-[0.8rem]">
-                  <Link to={l.id === listId ? "/app" : `/app?list=${l.id}`} className="link text-ink-2" aria-current={l.id === listId ? "true" : undefined}>
-                    {l.id === listId ? "Show all" : "Filter feed"}
-                  </Link>
-                  <Link to={`/app/lists/${l.id}/settings`} className="link text-ink-2">
-                    Settings<span className="sr-only"> for {l.title}</span>
-                  </Link>
-                </p>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <CreateList first={lists.length === 0} />
-      </aside>
 
       <section aria-labelledby="feed-h" className="grid content-start gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -127,6 +87,18 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
           </div>
           {lists.length > 1 && <ListFilter lists={lists} listId={listId} />}
         </div>
+
+        {/* Phones: the list sidebar comes after the feed, so give quick links to it here. */}
+        <nav aria-label="Your lists, quick links" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden">
+          {lists.map((l) => (
+            <Link key={l.id} to={`/l/${l.id}`} className="btn btn-ghost btn-sm max-w-[15rem] shrink-0">
+              <span className="truncate">{l.title}</span>
+            </Link>
+          ))}
+          <a href="#new-list" className="btn btn-ghost btn-sm shrink-0" onClick={() => document.getElementById("new-list")?.setAttribute("open", "")}>
+            + New list
+          </a>
+        </nav>
 
         {lists.length > 0 && <QuickAddItem lists={lists} listId={listId} />}
 
@@ -179,6 +151,47 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
           )}
         </div>
       </section>
+      <aside className="grid content-start gap-6 lg:sticky lg:top-24 lg:order-first">
+        <div>
+          <p className="eyebrow">Signed in as</p>
+          <p className="mt-1 font-display text-xl font-extrabold">{user.handle}</p>
+          <Link to="/app/account" className="link text-[0.85rem] text-ink-3">
+            Account
+          </Link>
+        </div>
+
+        <nav aria-labelledby="lists-h" className="grid gap-2">
+          <h2 id="lists-h" className="eyebrow">Your lists</h2>
+          {lists.length === 0 && <p className="text-[0.9rem] text-ink-3">No lists yet. Make your first one below.</p>}
+          <ul className="grid gap-1.5">
+            {lists.map((l) => (
+              <li key={l.id} className={`rounded-xl border p-3 ${l.id === listId ? "border-want bg-want-soft" : "border-line bg-card"}`}>
+                <Link to={`/l/${l.id}`} className="link block font-semibold leading-snug">
+                  {l.title}
+                </Link>
+                {visibilityOf(l) === "private" && (
+                  <span className="mt-1 inline-block">
+                    <PrivateBadge />
+                  </span>
+                )}
+                <p className="mt-1 text-[0.78rem] text-ink-3">
+                  {formatInfo(l).label} · {plural(l.item_count, formatInfo(l).item)} · {l.my_role} · updated <Time ts={l.updated_at} />
+                </p>
+                <p className="mt-1.5 flex gap-3 text-[0.8rem]">
+                  <Link to={l.id === listId ? "/app" : `/app?list=${l.id}`} className="link text-ink-2" aria-current={l.id === listId ? "true" : undefined}>
+                    {l.id === listId ? "Show all" : "Filter feed"}
+                  </Link>
+                  <Link to={`/app/lists/${l.id}/settings`} className="link text-ink-2">
+                    Settings<span className="sr-only"> for {l.title}</span>
+                  </Link>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <CreateList first={lists.length === 0} />
+      </aside>
     </div>
   );
 }
@@ -186,8 +199,8 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
 function ListFilter({ lists, listId }: { lists: ListSummary[]; listId: string | null }) {
   return (
     <Form method="get" className="flex items-center gap-2">
-      <label htmlFor="list-filter" className="text-[0.85rem] text-ink-3">
-        Show
+      <label htmlFor="list-filter" className="sr-only">
+        Show the feed for
       </label>
       <select
         id="list-filter"
@@ -214,36 +227,38 @@ function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string 
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const busy = fetcher.state !== "idle";
   const added = fetcher.state === "idle" && fetcher.data?.ok;
+  const [target, setTarget] = useState(listId ?? lists[0]?.id ?? "");
+  const fi = formatInfo(lists.find((l) => l.id === target));
   return (
     <fetcher.Form
       method="post"
-      className="card grid gap-2 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-end"
+      className="card grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_auto] sm:items-end"
       onSubmit={(e) => {
         const input = e.currentTarget.elements.namedItem("text") as HTMLInputElement | null;
         requestAnimationFrame(() => input && (input.value = ""));
       }}
     >
       <input type="hidden" name="intent" value="add-item" />
-      <label className="field">
-        <span className="label">Add something you want</span>
-        <input name="text" required maxLength={500} placeholder="e.g. Waterproof walking boots, size 9 UK" className="input" />
-      </label>
-      <label className="field">
-        <span className="label">to</span>
-        <select name="list_id" defaultValue={listId ?? lists[0]?.id} className="select sm:max-w-52">
-          {lists.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.title}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button className="btn btn-want" disabled={busy}>
-        {busy ? "Adding…" : "Add item"}
-      </button>
-      <div aria-live="polite" className="sm:col-span-3">
+      <Field label={fi.addItemTitle}>
+        {(p) => <Input {...p} name="text" required maxLength={500} placeholder={fi.itemPlaceholder} />}
+      </Field>
+      <Field label="List">
+        {(p) => (
+          <Select {...p} name="list_id" value={target} onChange={(e) => setTarget(e.currentTarget.value)}>
+            {lists.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.title}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
+      <Button variant="primary" disabled={busy}>
+        {busy ? "Adding…" : `Add ${fi.item}`}
+      </Button>
+      <div aria-live="polite" className="empty:hidden sm:col-span-3">
         {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
-        {added && <p className="text-[0.85rem] text-deal">Added. Your agents will see it next time they check the list.</p>}
+        {added && <p className="text-[0.875rem] text-deal">Added. Your agents will see it next time they check the list.</p>}
       </div>
     </fetcher.Form>
   );
@@ -259,7 +274,7 @@ function CreateList({ first }: { first: boolean }) {
   const fi = FORMATS[format];
   const vis = visibility ?? fi.defaultVisibility;
   return (
-    <details open={first || undefined} className="card p-4">
+    <details id="new-list" open={first || undefined} className="card scroll-mt-24 p-4">
       <summary className="flex items-center justify-between font-display text-lg font-bold">
         New list <span aria-hidden="true" className="text-want">+</span>
       </summary>

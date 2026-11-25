@@ -35,6 +35,10 @@
 
 :root {
   color-scheme: light;
+  /* Control sizes (docs/design-standards.md). One height per size; fields and buttons share them. */
+  --ctl-sm: 2.25rem;
+  --ctl: 2.75rem;
+  --ctl-lg: 3.25rem;
   --paper: #f7f2ea;
   --card: #fffdf9;
   --sunk: #efe8dc;
@@ -43,7 +47,7 @@
   --ink-3: #6f645c;
   --line: #e3d9ca;
   --line-strong: #c9bba7;
-  --want: #d1236f;
+  --want: #c21d64;
   --want-ink: #ffffff;
   --want-soft: #fbe3ee;
   --deal: #0f7a47;
@@ -51,7 +55,7 @@
   --warn: #9a5a00;
   --warn-soft: #fdf0d5;
   --danger: #b42318;
-  --focus: #d1236f;
+  --focus: #c21d64;
   --shadow: 0 1px 0 rgb(27 21 18 / 0.04), 0 8px 24px -12px rgb(27 21 18 / 0.18);
 
   /* Agent tag hues: same order everywhere, picked by a hash of the agent's name. */
@@ -151,10 +155,10 @@
   /* Grid and flex children may shrink below their content width (long URLs, codes). */
   .grid > *, .flex > * { min-width: 0; }
   a { color: inherit; }
+  /* One focus ring everywhere: 3px, offset 2px, in the focus colour (3:1 against the page). */
   :focus-visible {
     outline: 3px solid var(--focus);
     outline-offset: 2px;
-    border-radius: 4px;
   }
   ::selection { background: var(--want); color: var(--want-ink); }
   code, kbd, pre, samp { font-family: var(--font-mono); }
@@ -347,43 +351,59 @@ button.check-toggle:hover { border-color: var(--want); }
     box-shadow: var(--card-shadow, var(--shadow));
   }
 
-  /* Buttons */
+  /* Controls. Sizes, focus and label rules live here and in app/components/ui.tsx; themes may
+     change colours, radius and fonts, never height, padding rhythm or the focus ring. */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
-    min-height: 2.75rem; padding: 0 1.1rem; border-radius: var(--r-control, 999px); font-weight: 650; font-size: 0.95rem;
+    min-height: var(--ctl); padding: 0 1.1rem; border-radius: var(--r-control, 999px); font-weight: 650; font-size: 0.95rem; line-height: 1.2;
     border: 1.5px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer;
-    transition: transform 120ms ease, background 120ms ease, color 120ms ease, border-color 120ms ease;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease, filter 120ms ease;
     white-space: nowrap; text-decoration: none;
   }
-  .btn:hover { transform: translateY(-1px); }
-  .btn:active { transform: translateY(0); }
-  .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; transform: none; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; filter: none; }
   .btn-want { background: var(--want); border-color: var(--want); color: var(--want-ink); }
   .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
-  .btn-ghost:hover { border-color: var(--ink); }
+  .btn-ghost:hover { border-color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); filter: none; }
   .btn-danger { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
-  .btn-danger:hover { border-color: var(--danger); }
-  .btn-sm { min-height: 2.25rem; padding: 0 0.85rem; font-size: 0.85rem; }
-  .btn-xs { min-height: 1.9rem; padding: 0 0.65rem; font-size: 0.8rem; }
+  .btn-danger:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 6%, transparent); filter: none; }
+  .btn-sm, .btn-xs { min-height: var(--ctl-sm); padding: 0 0.85rem; font-size: 0.875rem; }
+  .btn-lg { min-height: var(--ctl-lg); padding: 0 1.4rem; font-size: 1rem; }
 
   .textlink-btn {
+    display: inline-flex; align-items: center; min-height: 1.5rem;
     background: none; border: 0; padding: 0; font: inherit; color: var(--ink-3); cursor: pointer;
     text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong);
   }
   .textlink-btn:hover { color: var(--want); }
 
-  /* Forms */
-  .field { display: grid; gap: 0.35rem; }
-  .label { font-weight: 600; font-size: 0.9rem; }
-  .hint { font-size: 0.82rem; color: var(--ink-3); }
+  /* Fields: label above, control, then hint or error. */
+  .field { display: grid; gap: 0.375rem; align-content: start; }
+  .label { font-weight: 600; font-size: 0.875rem; line-height: 1.25; }
+  .hint { font-size: 0.8125rem; line-height: 1.4; color: var(--ink-3); }
+  .field-error { font-size: 0.8125rem; line-height: 1.4; color: var(--danger); font-weight: 600; }
   .input, .textarea, .select {
-    width: 100%; min-height: 2.75rem; padding: 0.55rem 0.8rem; border-radius: var(--r-input, 0.75rem);
-    border: 1.5px solid var(--line-strong); background: var(--card); color: var(--ink); font: inherit;
+    width: 100%; min-height: var(--ctl); padding: 0 0.85rem; border-radius: var(--r-input, 0.75rem);
+    border: 1.5px solid var(--line-strong); background: var(--card); color: var(--ink);
+    font: inherit; font-size: 1rem; line-height: 1.25; /* 16px: phones do not zoom into the field */
+    transition: border-color 120ms ease;
   }
-  .textarea { min-height: 5rem; resize: vertical; }
-  .input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--want); box-shadow: 0 0 0 3px color-mix(in srgb, var(--want) 25%, transparent); }
-  .input::placeholder, .textarea::placeholder { color: var(--ink-3); opacity: 0.85; }
-  .check { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.92rem; }
+  .textarea { min-height: 5.5rem; padding-block: 0.6rem; line-height: 1.45; resize: vertical; }
+  /* A one-line textarea that grows (comments): starts at the control height. */
+  .textarea-line { min-height: var(--ctl); padding-block: calc((var(--ctl) - 3px - 1.45em) / 2); field-sizing: content; max-height: 12rem; }
+  .select {
+    appearance: none; -webkit-appearance: none; padding-right: 2.4rem; text-overflow: ellipsis; cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+    background-position: right 1.15rem center, right 0.8rem center; background-size: 0.35rem 0.35rem; background-repeat: no-repeat;
+  }
+  .select option { background: var(--card); color: var(--ink); }
+  .input-sm, .select.input-sm { min-height: var(--ctl-sm); font-size: 0.9375rem; }
+  .input:hover, .textarea:hover, .select:hover { border-color: var(--ink-3); }
+  .input:focus, .textarea:focus, .select:focus { border-color: var(--ink-2); }
+  .input[aria-invalid="true"], .textarea[aria-invalid="true"], .select[aria-invalid="true"] { border-color: var(--danger); }
+  .input:disabled, .textarea:disabled, .select:disabled { opacity: 0.55; cursor: not-allowed; }
+  .input::placeholder, .textarea::placeholder { color: var(--ink-3); opacity: 1; }
+  .check { display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.92rem; min-height: 1.5rem; }
   .check input { width: 1.15rem; height: 1.15rem; margin-top: 0.15rem; accent-color: var(--want); flex: none; }
   .form-error {
     border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent);
@@ -392,6 +412,11 @@ button.check-toggle:hover { border-color: var(--want); }
   .form-ok {
     border: 1px solid color-mix(in srgb, var(--deal) 40%, transparent); background: var(--deal-soft);
     color: var(--deal); padding: 0.6rem 0.8rem; border-radius: 0.7rem; font-size: 0.9rem;
+  }
+  /* Touch screens: every control is at least 44px tall. */
+  @media (pointer: coarse) {
+    .btn-sm, .btn-xs, .input-sm, .select.input-sm { min-height: var(--ctl); }
+    .textlink-btn { min-height: var(--ctl); }
   }
 
   /* Prices: the easiest thing on the page to read */
