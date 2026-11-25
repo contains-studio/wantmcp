@@ -1,4 +1,5 @@
 import { createRequestHandler } from "react-router";
+import { canonicalRedirect } from "../app/lib/canonical";
 import { errorLine, newRef } from "../app/lib/telemetry";
 import { requestTrace } from "../app/lib/trace.server";
 
@@ -49,11 +50,9 @@ const NOINDEX = /^\/(app|login|logout|invite|claim|report|theme)(\/|\.data|$)/;
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    // One canonical host: www.wantmcp.com -> wantmcp.com, keeping path and query.
-    if (url.hostname.startsWith("www.")) {
-      url.hostname = url.hostname.slice(4);
-      return new Response(null, { status: 301, headers: { location: url.toString(), "cache-control": "public, max-age=86400" } });
-    }
+    // One canonical address: always https://wantmcp.com, never www. or plain HTTP (local development excepted).
+    const canonical = canonicalRedirect(request.url);
+    if (canonical) return new Response(null, { status: 301, headers: { location: canonical, "cache-control": "public, max-age=86400" } });
     // Share images (rendered lazily so ordinary pages never load the renderer).
     if (url.pathname.startsWith("/og/")) {
       const og = await import("./og");
