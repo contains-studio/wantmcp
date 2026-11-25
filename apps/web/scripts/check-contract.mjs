@@ -118,6 +118,28 @@ for (const [specPath, mockPath, paged] of ROUTES) {
   console.log(`${ok ? "ok  " : "FAIL"} ${specPath}${missing.length ? `: mock lacks ${missing.join(", ")}` : ""}${extra.length ? ` (mock-only keys: ${extra.join(", ")})` : ""}`);
   if (!ok) failures++;
 }
+// The claim preview (SPEC 15.1), read through POST /claims/lookup: the preview, each item and each entry.
+{
+  const schema = ref(spec.paths["/claims/lookup"]?.post?.responses?.["200"]?.content?.["application/json"]?.schema);
+  if (!schema?.properties) console.log("note POST /claims/lookup: no ClaimPreview schema in the document yet");
+  else {
+    const res = await handleMockRequest(new Request("http://mock/v1/claims/lookup", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: "clm_e2e_car_contract" }) }));
+    const preview = await res.json();
+    const need = (sch, obj, where) => (ref(sch)?.required ?? []).filter((k) => !(k in obj)).map((k) => `${where}${k}`);
+    const itemSchema = ref(schema.properties.items?.items);
+    const entrySchema = ref(itemSchema?.properties?.entries?.items);
+    const counts = ref(ref(schema.properties.list)?.properties?.counts);
+    const missing = [
+      ...need(schema, preview, ""),
+      ...need(counts, preview.list.counts, "list.counts."),
+      ...need(itemSchema, preview.items[0], "items[]."),
+      ...need(entrySchema, preview.items[0].entries[0], "items[].entries[]."),
+    ];
+    console.log(`${missing.length ? "FAIL" : "ok  "} POST /claims/lookup: ClaimPreview, its items and entries${missing.length ? `: mock lacks ${missing.join(", ")}` : ""}`);
+    if (missing.length) failures++;
+  }
+}
+
 if (failures) {
   console.log(`\n${failures} route(s) differ from the API.`);
   process.exit(1);

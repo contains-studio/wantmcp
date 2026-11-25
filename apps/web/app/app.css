@@ -885,6 +885,10 @@ button.check-toggle:hover { border-color: var(--ink); }
 .swatch-chip > span { width: 0.85rem; height: 0.85rem; border-radius: 999px; }
 .brand-tile.is-on { background: var(--sunk); box-shadow: inset 0 0 0 2px var(--ink); }
 
+/* Claim page: "Keep this list" stays in reach on a phone however long the list is; after the list on wider screens. */
+.claim-actions { position: sticky; bottom: 0; z-index: 3; margin: 0 -1rem; padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--paper) 94%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line); }
+@media (min-width: 640px) { .claim-actions { position: static; margin: 0; padding: 0; background: none; backdrop-filter: none; border: 0; } }
+
 /* Skills: the instructions grow with the text (no inner scrolling); Save stays above the phone keyboard. */
 /* A skill that is off: kept in the list, on the sunk surface with a dashed edge (and the words "Off"). */
 .skill-off { background: var(--sunk); box-shadow: none; border: 1px dashed var(--line-strong); }

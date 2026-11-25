@@ -913,12 +913,67 @@ function acceptInvite(caller: Caller, token: string) {
 // claims (SPEC 13)
 const isoIn = (ms: number) => new Date(Date.now() + ms).toISOString().replace(/\.\d{3}Z$/, "Z");
 
+/** Mock only: richer claim previews for the e2e tests and reviews (SPEC 15). */
+function claimFixture(kind: string, l: ListRow, by: ActorRef, t: string) {
+  // Replace the default two wants.
+  store.items = store.items.filter((i) => i.list_id !== l.id);
+  const addItem = (text: string, extra: Partial<ItemRow> = {}) => {
+    const i: ItemRow = { id: newId("itm"), list_id: l.id, text, created_by: by, created_at: nowIso(), purchase: null, status: "open", claimed_by: null, completion: null, ...extra };
+    store.items.push(i);
+    return i;
+  };
+  const addProduct = (item: ItemRow, title: string, retailer: string, price: string | null, original: string | null = null, image: string | null = null) => {
+    const e: EntryRow = {
+      id: newId("ent"), item_id: item.id, list_id: l.id, status: "listed", author: by, title, description: "", product_url: `https://example.com/p/${encodeURIComponent(title.toLowerCase().replace(/\W+/g, "-"))}`,
+      kind: "product", links: [], buy_url: null, image_url: image, retailer, coupon_code: null, deal_starts_at: null, deal_ends_at: null, created_at: nowIso(), updated_at: nowIso(), promoted_by: null, promoted_at: null,
+    };
+    store.entries.push(e);
+    if (price) store.prices.push({ id: newId("prc"), entry_id: e.id, price, original_price: original, currency: "USD", note: null, posted_by: by, posted_at: nowIso(), source: "search" });
+  };
+  if (kind === "car") {
+    l.title = "Car accessories for the new Outback";
+    const cover = addItem("All-weather floor mats that fit a 2025 Subaru Outback");
+    addProduct(cover, "WeatherTech FloorLiner HP, front and rear", "WeatherTech", "239.99", "259.99", "/mock-images/monitor.svg");
+    addProduct(cover, "Husky Liners X-act Contour, 2025 Outback", "AutoZone", "189.95");
+    const mount = addItem("A magnetic phone mount for the dashboard vent");
+    addProduct(mount, "iOttie Velox magnetic vent mount", "Best Buy", "26.99", "34.99", "/mock-images/keyboard.svg");
+    addProduct(mount, "Belkin MagSafe vent mount Pro", "Apple", "39.99");
+    const cargo = addItem("A cargo organizer for the trunk, collapsible");
+    addProduct(cargo, "Drive Auto collapsible trunk organizer", "Amazon", "59.37", "79.99");
+    addItem("Sunshade for the windshield that folds small");
+    addItem("A dash cam with parking mode, front and rear");
+    addItem("Seat-back organizers for the kids, two of them");
+    addItem("A portable jump starter that fits in the glovebox");
+  } else if (kind === "long") {
+    l.title = "Everything we still need for the new apartment before the lease starts in January, including furniture, kitchen";
+    for (let n = 1; n <= 20; n++) {
+      const i = addItem(`Want number ${n}: something with a size, a colour and a budget, written the way people actually write wants`);
+      if (n % 4 === 1) addProduct(i, `A product for want ${n} with a fairly long name to see how it wraps`, "Target", `${(n * 7.5).toFixed(2)}`);
+    }
+  } else if (kind === "tasks") {
+    l.title = "Moving out";
+    l.format = "tasks";
+    addItem("Book a moving van for Saturday", { status: "in_progress", claimed_by: by, claimed_at: t, status_note: "Two quotes in: U-Haul $129, Budget $119. Waiting on Penske." });
+    addItem("Cancel the gym membership", { status: "done", completion: { completed_at: t, completed_by: by, note: "Cancelled; last charge Dec 1.", entry_id: null } });
+    addItem("Forward the mail");
+  } else if (kind === "research") {
+    l.title = "Is a heat pump worth it here?";
+    l.format = "research";
+    const q = addItem("What would it cost to run per year?", { status: "done" });
+    store.entries.push({
+      id: newId("ent"), item_id: q.id, list_id: l.id, status: "listed", author: by, title: "About $650 a year", description: "About $650 a year at 18 cents a kWh, against $560 for gas today.", product_url: null,
+      kind: "answer", links: [], buy_url: null, image_url: null, retailer: "", coupon_code: null, deal_starts_at: null, deal_ends_at: null, created_at: t, updated_at: t, promoted_by: null, promoted_at: null,
+    });
+    addItem("Which rebates apply in Washington?");
+  }
+}
+
 /**
  * Mock only: a token shaped clm_e2e_<unclaimed|soon|expired|handover>_<anything> makes its own fresh list the first
  * time it is seen, so each test (and each retry) gets a claim link nobody has used.
  */
 function e2eClaim(token: string) {
-  const m = /^clm_e2e_(unclaimed|soon|expired|handover)_[a-z0-9_-]{1,40}$/i.exec(token);
+  const m = /^clm_e2e_(unclaimed|soon|expired|handover|car|long|tasks|research)_[a-z0-9_-]{1,40}$/i.exec(token);
   if (!m || store.claims.some((x) => x.token === token)) return;
   const kind = m[1];
   const t = nowIso();
@@ -926,7 +981,7 @@ function e2eClaim(token: string) {
     ? (store.users.find((u) => u.id === "usr_kit") ?? userById("usr_demo"))
     : { id: newId("usr"), email: "", handle: newHandle(), updates_opt_in: false, created_at: t, placeholder: true };
   if (owner.placeholder) store.users.push(owner);
-  const agentName = kind === "handover" ? "Kit" : kind === "soon" ? "ChatGPT" : "Claude";
+  const agentName = kind === "handover" ? "Kit" : kind === "soon" ? "ChatGPT" : kind === "car" ? "Muse" : "Claude";
   const l: ListRow = {
     id: newId("lst"), title: kind === "soon" ? "Packing for the move" : "Winter boots for Sam", description: "", owner_id: owner.id,
     allow_outside_suggestions: false, format: kind === "soon" ? "tasks" : "shopping", visibility: "private", created_at: t, updated_at: t,
@@ -941,7 +996,8 @@ function e2eClaim(token: string) {
   if (kind === "unclaimed") {
     store.questions.push({ id: newId("qst"), item_id: item.id, text: "Velcro or laces? Velcro is easier for Sam to do alone.", options: ["Velcro", "Laces"], asked_by: by, asked_at: t, answer: null });
   }
-  const LEFT: Record<string, number> = { unclaimed: 22 * 3_600_000, soon: 59 * 60_000, expired: -3_600_000, handover: 6 * 86_400_000 };
+  if (kind === "car" || kind === "long" || kind === "tasks" || kind === "research") claimFixture(kind, l, by, t);
+  const LEFT: Record<string, number> = { unclaimed: 22 * 3_600_000, soon: 59 * 60_000, expired: -3_600_000, handover: 6 * 86_400_000, car: 22 * 3_600_000, long: 20 * 3_600_000, tasks: 22 * 3_600_000, research: 22 * 3_600_000 };
   store.claims.push({
     token, list_id: l.id, kind: kind === "handover" ? "handover" : "unclaimed", agent_name: agentName,
     from_user_id: kind === "handover" ? owner.id : null, expires_at: isoIn(LEFT[kind]), used_by: null,
@@ -1011,17 +1067,58 @@ function claimPreview(token: string): ClaimPreview {
   const k = liveClaim(token);
   if (!k || k.used_by || expired(k)) throw notFound("This link has expired or was already used");
   const l = getList(k.list_id);
-  const items = store.items.filter((i) => i.list_id === l.id);
+  const format = fmt(l);
+  const items = store.items.filter((i) => i.list_id === l.id).sort((a, b) => a.created_at.localeCompare(b.created_at));
   const ids = new Set(items.map((i) => i.id));
   const open = store.questions.filter((q) => ids.has(q.item_id) && !q.answer);
+  const listed = (itemId: string) => store.entries.filter((e) => e.item_id === itemId && e.status === "listed");
+  // SPEC 15.1: up to three listed entries, cheapest current price first, then unpriced ones newest first.
+  const claimEntries = (itemId: string) =>
+    listed(itemId)
+      .map((e) => ({ e, p: pricesFor(e.id).at(-1) ?? null }))
+      .sort((x, y) => {
+        if (x.p && y.p) return Number(x.p.price) - Number(y.p.price);
+        if (x.p) return -1;
+        if (y.p) return 1;
+        return y.e.created_at.localeCompare(x.e.created_at);
+      })
+      .slice(0, 3)
+      .map(({ e, p }) => ({
+        title: e.title, retailer: e.retailer ?? "", image_url: e.image_url, product_url: e.product_url,
+        price: p?.price ?? null, original_price: p?.original_price ?? null, currency: p?.currency ?? null,
+      }));
+  const summary = (i: ItemRow): string | null => {
+    if (format === "tasks") {
+      const note = itemOut(i, null).status === "done" ? i.completion?.note : i.status_note;
+      return note ? note.slice(0, 140) : null;
+    }
+    if (format === "research") {
+      const answer = listed(i.id).find((e) => e.kind === "answer");
+      return answer ? (answer.description || answer.title).slice(0, 140) : null;
+    }
+    return null;
+  };
+  // As on the list: open, in_progress, waiting_on_owner (an open question), done (bought, done or answered).
+  const status = (i: ItemRow) => itemOut(i, null).status;
   const out: ClaimPreview = {
     kind: k.kind,
     ...(k.kind === "handover" && k.from_user_id ? { from: { handle: userById(k.from_user_id).handle } } : {}),
     list: {
-      title: l.title, format: fmt(l), theme: l.theme ?? null,
-      counts: { items: items.length, entries: store.entries.filter((e) => ids.has(e.item_id) && e.status === "listed").length, open_questions: open.length },
+      title: l.title, format, theme: l.theme ?? null,
+      counts: {
+        items: items.length,
+        entries: store.entries.filter((e) => ids.has(e.item_id) && e.status === "listed").length,
+        open_questions: open.length,
+        items_with_entries: items.filter((i) => listed(i.id).length > 0).length,
+      },
     },
-    items: items.slice(0, 10).map((i) => ({ text: i.text })),
+    items: items.slice(0, 20).map((i) => ({
+      text: i.text.slice(0, 140),
+      status: status(i),
+      entry_count: listed(i.id).length,
+      entries: format === "shopping" ? claimEntries(i.id) : [],
+      summary: summary(i),
+    })),
     agent_name: k.agent_name,
     expires_at: k.expires_at,
     open_questions: open.map((q) => {

@@ -14,7 +14,8 @@ test("a list an agent started: keep it by signing up, then land on it as its own
   expect(res?.headers()["cache-control"]).toBe("private, no-store");
   await expect(page.getByRole("heading", { level: 1, name: "Winter boots for Sam" })).toBeVisible();
   await expect(page.getByText("Claude started a list for you")).toBeVisible();
-  await expect(page.getByText(/^Keep this list\. It is deleted in 2[12] hours unless you do\.$/)).toBeVisible();
+  // The deadline is one quiet line under the button, in the visitor's own clock (SPEC 15.3).
+  await expect(page.getByText(/^Confirm your email to keep it\. Otherwise it's deleted (today|tomorrow) at \d{1,2}:\d{2}\s?[AP]M\.$/)).toBeVisible();
   await expect(page.getByText("Velcro or laces?", { exact: false })).toBeVisible();
   // Never the hidden placeholder account.
   await expect(page.getByText("hidden-holder", { exact: false })).toHaveCount(0);
@@ -50,7 +51,7 @@ test("a list an agent started: keep it by signing up, then land on it as its own
 test("signed in already: one button keeps the list", async ({ page }) => {
   await signIn(page, freshEmail("claimsigned"));
   await page.goto(`/claim/${token("soon")}`);
-  await expect(page.getByText("Keep this list. It is deleted in less than an hour unless you do.")).toBeVisible();
+  await expect(page.getByText(/Otherwise it's deleted (today|tomorrow) at /)).toBeVisible();
   await expect(page.getByText(/^As /)).toBeVisible();
   await page.getByRole("button", { name: "Keep this list" }).click();
   await expect(page).toHaveURL(/\/l\/lst_[a-z0-9]+$/);

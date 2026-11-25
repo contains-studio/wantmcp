@@ -386,13 +386,43 @@ export interface ClaimPreview {
   kind: "unclaimed" | "handover";
   /** Handover only: who is handing the list over. */
   from?: { handle: string };
-  list: { title: string; format: ListFormat; theme: string | null; counts: { items: number; entries: number; open_questions: number } };
-  /** The first ten wants, in order. Absent from older API builds. */
-  items?: Array<{ text: string }>;
+  list: {
+    title: string;
+    format: ListFormat;
+    theme: string | null;
+    /** items_with_entries: live items with at least one listed entry (any format), for "3 of 7 found". Absent from older API builds. */
+    counts: { items: number; entries: number; open_questions: number; items_with_entries?: number };
+  };
+  /** The first 20 items, in order, with what was found under each (SPEC 15.1). Older API builds send only `text`. */
+  items?: ClaimItem[];
   /** Empty when the owner made a hand-over link on the web. */
   agent_name: string;
   expires_at: Timestamp;
   open_questions: Array<{ id: string; text: string; options: string[]; item: { id: string; text: string } }>;
+}
+
+/** SPEC 15.1: one item on a claim preview, and the work under it. */
+export interface ClaimItem {
+  /** 140 characters. */
+  text: string;
+  /** As on the list: open, in_progress, waiting_on_owner (an open question), done (bought, done or answered). */
+  status?: ItemStatus;
+  /** Listed entries on this item. */
+  entry_count?: number;
+  /** Shopping: up to three listed entries, cheapest current price first, then unpriced newest first. [] elsewhere. */
+  entries?: ClaimEntry[];
+  /** Tasks: the current status note (or, when done, the completion note). Research: the start of the answer. 140 characters; null on shopping. */
+  summary?: string | null;
+}
+
+export interface ClaimEntry {
+  title: string;
+  retailer: string;
+  image_url: string | null;
+  product_url: string | null;
+  price: Decimal | null;
+  original_price: Decimal | null;
+  currency: string | null;
 }
 
 /** SPEC 13.6: POST /lists/{id}/handover. */
