@@ -1,13 +1,15 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/themes";
-import { ListView } from "~/components/ListView";
+import { ThemeThumb } from "~/components/ThemeThumb";
 import { siteOrigin } from "~/lib/config.server";
 import { allThemeViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeView } from "~/themes/view";
 
 export function loader({ request }: Route.LoaderArgs) {
-  return { themes: allThemeViews(), sample: sampleList(), origin: siteOrigin(request) };
+  const now = Date.now();
+  const samples = { shopping: sampleList(now, "shopping"), tasks: sampleList(now, "tasks"), research: sampleList(now, "research") };
+  return { themes: allThemeViews(), samples, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -38,54 +40,35 @@ export function Swatch({ theme }: { theme: ThemeView }) {
   );
 }
 
-function Tile({ theme, sample, origin }: { theme: ThemeView; sample: ReturnType<typeof sampleList>; origin: string }) {
+type Sample = ReturnType<typeof sampleList>;
+
+function Tile({ theme, sample, origin }: { theme: ThemeView; sample: Sample; origin: string }) {
   return (
-    <article className="card grid overflow-hidden p-0" aria-labelledby={`th-${theme.slug}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3 p-4 sm:p-5">
-        <div className="min-w-0">
-          <h3 id={`th-${theme.slug}`} className="text-xl font-extrabold">
-            {theme.name}
+    <article className="card relative grid content-start overflow-hidden p-0" aria-labelledby={`th-${theme.slug}`}>
+      <ThemeThumb theme={theme} sample={sample} origin={origin} className="h-64 border-b border-line" />
+      <div className="grid gap-2 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <h3 id={`th-${theme.slug}`} className="text-lg font-extrabold">
+            <Link to={`/themes/${theme.slug}`} className="after:absolute after:inset-0">
+              {theme.name}
+            </Link>
           </h3>
-          <p className="mt-1 max-w-xl text-[0.92rem] text-ink-2">{theme.idea}</p>
-          <p className="mt-2 text-[0.78rem] text-ink-3">
-            Slug <code>{theme.slug}</code>
-            {theme.layout !== "grid" && <> · layout: {theme.layout}</>}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
           <Swatch theme={theme} />
-          <Link to={`/themes/${theme.slug}`} className="btn btn-sm">
-            Full preview<span className="sr-only"> of {theme.name}</span>
-          </Link>
         </div>
-      </div>
-      {/* A visual sample; the full preview page carries the accessible version. */}
-      <div className="relative max-h-[30rem] overflow-hidden border-t border-line" aria-hidden="true" inert>
-        <ListView
-          list={sample.list}
-          items={sample.items}
-          suggestions={[]}
-          comments={sample.comments}
-          commentsCursor={null}
-          prices={sample.prices}
-          isWriter={false}
-          role={null}
-          origin={origin}
-          theme={theme}
-          preview
-          previewItems={theme.layout === "board" ? 3 : 1}
-        />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-card to-transparent" />
+        <p className="text-[0.9rem] text-ink-2">{theme.idea}</p>
+        <p className="text-[0.78rem] text-ink-3">
+          Shown on a {theme.natural} list{theme.scheme === "dark" ? " · always dark" : " · light and dark"}
+        </p>
       </div>
     </article>
   );
 }
 
 export default function Themes({ loaderData }: Route.ComponentProps) {
-  const { themes, sample, origin } = loaderData;
+  const { themes, samples, origin } = loaderData;
   const groups: Array<[string, string, ThemeView[]]> = [
-    ["occasions", "Occasions", themes.filter((t) => t.group !== "workspace")],
-    ["workspace", "Workspace styles", themes.filter((t) => t.group === "workspace")],
+    ["workspace", "Workspace styles", themes.filter((t) => t.group !== "occasion")],
+    ["occasions", "Occasions", themes.filter((t) => t.group === "occasion")],
   ];
   return (
     <div className="wrap grid gap-10 py-10">
@@ -94,7 +77,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
         <h1 className="mt-2 text-4xl font-extrabold sm:text-5xl">Make a list look like its occasion</h1>
         <p className="mt-4 text-[1.05rem] text-ink-2">
           Every list can wear a theme: dress it for the occasion it's for, or in the style of the tools you already work in. Everyone who opens
-          the list sees it, in their own light or dark mode. Below, every theme is applied to the same sample list.
+          the list sees it, in their own light or dark mode. Each theme below is shown on a sample list of the kind it suits best; open one to try it with shopping, tasks or research.
         </p>
         <p className="mt-3 text-[0.92rem] text-ink-3">
           List owners choose a theme in <Link to="/app" className="link">list settings</Link>.
@@ -112,9 +95,9 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
           <h2 id={`${id}-h`} className="text-3xl font-extrabold">
             {label}
           </h2>
-          <div className="grid gap-6">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((t) => (
-              <Tile key={t.slug} theme={t} sample={sample} origin={origin} />
+              <Tile key={t.slug} theme={t} sample={samples[t.natural]} origin={origin} />
             ))}
           </div>
         </section>

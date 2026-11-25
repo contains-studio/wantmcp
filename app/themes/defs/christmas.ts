@@ -23,7 +23,7 @@ export const christmas: Theme = {
   contrast: {
     light: [
       { label: "band text on evergreen", fg: "#fbf3e2", bg: "#0e3b28" },
-      { label: "gold on evergreen band (large)", fg: "#e9bf55", bg: "#0e3b28", need: 3 },
+      { label: "gold eyebrow on evergreen band", fg: "#e9bf55", bg: "#0e3b28" },
     ],
     dark: [{ label: "band text on evergreen", fg: "#fbf3e2", bg: "#06180f" }],
   },

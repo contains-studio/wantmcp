@@ -8,6 +8,7 @@ import { requireUser } from "~/lib/auth.server";
 import { useRootData } from "~/lib/hooks";
 import { assertSameOrigin } from "~/lib/session.server";
 import type { AgentInfo, ListDetail, ListFormat, ListSummary, ListVisibility, Member } from "~/lib/types";
+import { ThemeThumb } from "~/components/ThemeThumb";
 import { ListView } from "~/components/ListView";
 import { allThemeViews, getTheme } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
@@ -473,36 +474,39 @@ function ThemePicker({ themes, sample, current, format }: { themes: ThemeView[];
   const view = themes.find((t) => t.slug === selected) ?? themes[0];
   const saving = fetcher.state !== "idle";
   const saved = fetcher.state === "idle" && fetcher.data?.ok && selected === current;
+  // The Sheet table compares prices: shopping lists only.
+  const usable = themes.filter((t) => format === "shopping" || t.layout !== "sheet");
+  const defaultSlug = usable.find((t) => t.slug === fi.defaultTheme)?.slug ?? fi.defaultTheme;
+  const suits = usable.filter((t) => t.slug === defaultSlug || fi.suits.includes(t.slug));
+  const groups: Array<[string, string, ThemeView[]]> = [
+    ["suits", `Made for ${fi.label.toLowerCase()} lists`, suits],
+    ["workspace", "Other styles", usable.filter((t) => t.group !== "occasion" && !suits.includes(t))],
+    ["occasion", "Occasions", usable.filter((t) => t.group === "occasion" && !suits.includes(t))],
+  ];
   return (
     <fetcher.Form method="post" className="grid gap-4">
       <input type="hidden" name="intent" value="theme" />
-      {(["default", "occasion", "workspace"] as const).map((group) => (
-        <fieldset key={group} className="grid gap-2">
-          <legend className="label mb-1">{group === "default" ? "Default" : group === "occasion" ? "Occasions" : "Workspace styles"}</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {themes
-              .filter((t) => t.group === group)
-              // The Sheet table compares prices: shopping lists only.
-              .filter((t) => format === "shopping" || t.layout !== "sheet")
-              .map((t) => (
-                <label
-                  key={t.slug}
-                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${selected === t.slug ? "border-want bg-want-soft" : "border-line"}`}
-                >
-                  <input type="radio" name="theme" value={t.slug} checked={selected === t.slug} onChange={() => setSelected(t.slug)} className="accent-[var(--want)]" />
-                  <span className="min-w-0 flex-1">
+      {groups.map(([key, label, list]) => (
+        <fieldset key={key} className="grid gap-2">
+          <legend className="label mb-1">{label}</legend>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((t) => (
+              <label
+                key={t.slug}
+                className={`grid cursor-pointer overflow-hidden rounded-xl border-2 ${selected === t.slug ? "border-want" : "border-line"}`}
+              >
+                <ThemeThumb theme={t} sample={sample} origin={origin} className="h-28 border-b border-line" />
+                <span className="flex items-center gap-3 p-3">
+                  <input type="radio" name="theme" value={t.slug} checked={selected === t.slug} onChange={() => setSelected(t.slug)} className="h-5 w-5 shrink-0 accent-[var(--want)]" />
+                  <span className="min-w-0">
                     <span className="block font-semibold">{t.name}</span>
-                    <span className="block truncate text-[0.78rem] text-ink-3">
-                      {t.slug === fi.defaultTheme ? "Default for this format" : fi.suits.includes(t.slug) ? `Suits ${fi.label.toLowerCase()} lists` : t.layout === "grid" ? "Cards" : `Layout: ${t.layout}`}
+                    <span className="block text-[0.8rem] text-ink-3">
+                      {t.slug === defaultSlug ? "Default for this format" : t.scheme === "dark" ? "Always dark" : "Light and dark"}
                     </span>
                   </span>
-                  <span className="inline-flex overflow-hidden rounded-full border border-line" aria-hidden="true">
-                    {[t.swatch.paper, t.swatch.ink, t.swatch.want, t.swatch.darkPaper].map((c, i) => (
-                      <span key={i} className="h-4 w-4" style={{ background: c }} />
-                    ))}
-                  </span>
-                </label>
-              ))}
+                </span>
+              </label>
+            ))}
           </div>
         </fieldset>
       ))}
@@ -511,7 +515,7 @@ function ThemePicker({ themes, sample, current, format }: { themes: ThemeView[];
           Preview: {view.name}
         </p>
         <p className="text-[0.85rem] text-ink-3">{view.idea}</p>
-        <div className="max-h-[26rem] overflow-hidden rounded-xl border border-line" aria-hidden="true" inert>
+        <div className="max-h-[30rem] overflow-hidden rounded-xl border border-line" aria-hidden="true" inert>
           <ListView
             list={sample.list}
             items={sample.items}
@@ -524,7 +528,7 @@ function ThemePicker({ themes, sample, current, format }: { themes: ThemeView[];
             origin={origin}
             theme={view}
             preview
-            previewItems={view.layout === "board" ? 3 : 1}
+            previewItems={view.layout === "board" || view.layout === "heat" || view.layout === "sections" ? 4 : 1}
           />
         </div>
       </div>

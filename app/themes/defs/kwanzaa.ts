@@ -23,7 +23,7 @@ export const kwanzaa: Theme = {
   contrast: {
     light: [
       { label: "band text on black", fg: "#f8f2e5", bg: "#0d0c0b" },
-      { label: "green on black band (large)", fg: "#2fae63", bg: "#0d0c0b", need: 3 },
+      { label: "green eyebrow on black band", fg: "#2fae63", bg: "#0d0c0b" },
     ],
     dark: [{ label: "band text on black", fg: "#f8f2e5", bg: "#000000" }],
   },

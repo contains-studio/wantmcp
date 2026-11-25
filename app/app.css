@@ -631,3 +631,9 @@ button.check-toggle:hover { border-color: var(--want); }
 
   .tag-dot { width: 0.5rem; height: 0.5rem; border-radius: 99px; background: var(--want); display: inline-block; }
 }
+
+/* Theme gallery thumbnails: a whole list page, scaled down. */
+.theme-thumb-inner { width: 1100px; zoom: 0.345; pointer-events: none; }
+@media (min-width: 640px) and (max-width: 1023px) { .theme-thumb-inner { zoom: 0.31; } }
+.theme-thumb-inner .list-fab, .theme-thumb-inner .ix-panel { display: none !important; }
+.ix-panel .deep-target { animation: none; }

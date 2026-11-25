@@ -103,7 +103,7 @@ export function ListView(props: ListViewProps) {
           </p>
           <h1 className="list-title mt-3 max-w-4xl text-[2.4rem] font-extrabold sm:text-6xl">
             <span className="list-title-mark" aria-hidden="true" />
-            {list.title}
+            <span className="list-title-text">{list.title}</span>
           </h1>
           {list.description && <p className="mt-4 max-w-2xl text-[1.05rem] text-ink-2">{list.description}</p>}
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3 text-[0.9rem] text-ink-3">
@@ -281,7 +281,7 @@ function ItemSection({
   const headingId = `${item.id}-h`;
 
   return (
-    <section id={item.id} aria-labelledby={headingId} className={`item-section grid scroll-mt-24 gap-5 ${done ? "is-bought" : ""}`}>
+    <section id={item.id} aria-labelledby={headingId} data-status={status} className={`item-section grid scroll-mt-24 gap-5 ${done ? "is-bought" : ""}`}>
       {inPanel && (
         <a href="#list-index" className="ix-close btn btn-ghost btn-sm justify-self-end">
           Close<span className="sr-only"> {item.text}</span>
@@ -376,7 +376,7 @@ function ItemSection({
             ))}
           </div>
         ) : (
-          <p className="item-indent rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
+          <p className="entries-empty item-indent rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
             {isWriter ? fi.waitingWriter : fi.waiting}
           </p>
         )
@@ -426,7 +426,7 @@ function ItemSection({
           ))}
         </div>
       ) : (
-        <p className="item-indent rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
+        <p className="entries-empty item-indent rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
           {isWriter ? fi.waitingWriter : fi.waiting}
         </p>
       )}
