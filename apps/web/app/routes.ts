@@ -9,6 +9,8 @@ export default [
   route("app/account", "routes/account.tsx"),
   route("app/lists/:id/settings", "routes/settings.tsx"),
   route("invite/:token", "routes/invite.tsx"),
+  route("claim", "routes/claim-resume.tsx"),
+  route("claim/:token", "routes/claim.tsx"),
   route("connect", "routes/connect.tsx"),
   route("themes", "routes/themes.tsx"),
   route("themes/:slug", "routes/theme-preview.tsx"),
@@ -24,5 +26,7 @@ export default [
   route("l/:id/comments", "routes/list-comments.ts"),
   route("sitemap.xml", "routes/sitemap.ts"),
   route("robots.txt", "routes/robots.ts"),
+  route("llms.txt", "routes/llms.ts", { id: "llms-txt" }),
+  route("agents.txt", "routes/llms.ts", { id: "agents-txt" }),
   route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;

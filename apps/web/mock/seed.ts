@@ -316,6 +316,50 @@ export function seedStore(now = Date.now()): Store {
       asked_by: claude, asked_at: at(4 * DAY), answer: { text: "Mine", answered_by: demo, answered_at: at(4 * DAY - HOUR) },
     },
   );
+  // ---- SPEC 13: lists agents started (claim links), an agent's own account, and an invite an agent sent.
+  // Fixed tokens for trying each state by hand; the e2e tests use clm_e2e_* tokens (mock/api.ts) and the real API's are random.
+  s.users.push(
+    { id: "usr_hold_boots", email: "", handle: "hidden-holder-1001", updates_opt_in: false, created_at: at(2 * HOUR), placeholder: true },
+    { id: "usr_hold_move", email: "", handle: "hidden-holder-1002", updates_opt_in: false, created_at: at(23 * HOUR), placeholder: true },
+    { id: "usr_hold_old", email: "", handle: "hidden-holder-1003", updates_opt_in: false, created_at: at(30 * HOUR), placeholder: true },
+    { id: "usr_kit", email: "kit-agent@example.com", handle: "tidy-wren-6402", updates_opt_in: false, created_at: at(3 * DAY) },
+  );
+  const held = (id: string, owner: string, title: string, format: "shopping" | "tasks", ago: number) => {
+    s.lists.push({ id, title, description: "", owner_id: owner, allow_outside_suggestions: false, format, visibility: "private", created_at: at(ago), updated_at: at(ago) });
+    s.members.push({ id: `mem_${id}`, list_id: id, user_id: owner, invited_email: null, role: "owner", status: "active", token: null, created_at: at(ago) });
+  };
+  held("lst_boots", "usr_hold_boots", "Winter boots for Sam", "shopping", 2 * HOUR);
+  held("lst_packing", "usr_hold_move", "Packing for the move", "tasks", 23 * HOUR);
+  held("lst_old", "usr_hold_old", "Camping stove", "shopping", 30 * HOUR);
+  held("lst_team", "usr_kit", "Gifts for the design team", "shopping", 2 * DAY);
+  s.agents.push(
+    { id: "agt_boots", name: "Claude", kind: "key", key: "wk_seedbootskeycccccccccccccccccccccccc", list_ids: ["lst_boots"], owner_id: "usr_hold_boots", created_at: at(2 * HOUR), last_used_at: at(HOUR) },
+    { id: "agt_packing", name: "ChatGPT", kind: "key", key: "wk_seedpackingkeydddddddddddddddddddddd", list_ids: ["lst_packing"], owner_id: "usr_hold_move", created_at: at(23 * HOUR), last_used_at: at(22 * HOUR) },
+    { id: "agt_kit", name: "Kit", kind: "key", key: "wk_seedkitkeyeeeeeeeeeeeeeeeeeeeeeeeeee", list_ids: ["lst_team"], owner_id: "usr_kit", created_at: at(3 * DAY), last_used_at: at(3 * HOUR) },
+  );
+  const boots = agent("agt_boots");
+  const packing = agent("agt_packing");
+  const kit = agent("agt_kit");
+  s.items.push(
+    { id: "itm_b_boots", list_id: "lst_boots", text: "Waterproof winter boots, size 7 kids, that a six-year-old can put on alone", created_by: boots, created_at: at(2 * HOUR), purchase: null },
+    { id: "itm_b_socks", list_id: "lst_boots", text: "Warm socks to go with them", created_by: boots, created_at: at(2 * HOUR), purchase: null },
+    { id: "itm_p_boxes", list_id: "lst_packing", text: "Order boxes and tape", created_by: packing, created_at: at(23 * HOUR), purchase: null, status: "open", claimed_by: null, completion: null },
+    { id: "itm_p_kitchen", list_id: "lst_packing", text: "Pack the kitchen last", created_by: packing, created_at: at(23 * HOUR), purchase: null, status: "open", claimed_by: null, completion: null },
+    { id: "itm_o_stove", list_id: "lst_old", text: "A two-burner camping stove", created_by: user("hidden-holder-1003"), created_at: at(30 * HOUR), purchase: null },
+    { id: "itm_k_mugs", list_id: "lst_team", text: "Something small for eight designers, under $30 each", created_by: kit, created_at: at(2 * DAY), purchase: null },
+  );
+  s.questions.push({
+    id: "qst_boots", item_id: "itm_b_boots", text: "Velcro or laces? Velcro is easier for Sam to do alone.", options: ["Velcro", "Laces"], asked_by: boots, asked_at: at(HOUR), answer: null,
+  });
+  s.claims.push(
+    { token: "clm_seed_unclaimed", list_id: "lst_boots", kind: "unclaimed", agent_name: "Claude", from_user_id: null, expires_at: inFuture(22 * HOUR), used_by: null },
+    { token: "clm_seed_unclaimed_soon", list_id: "lst_packing", kind: "unclaimed", agent_name: "ChatGPT", from_user_id: null, expires_at: inFuture(HOUR - 60_000), used_by: null },
+    { token: "clm_seed_expired", list_id: "lst_old", kind: "unclaimed", agent_name: "Claude", from_user_id: null, expires_at: at(6 * HOUR), used_by: null },
+    { token: "clm_seed_handover", list_id: "lst_team", kind: "handover", agent_name: "Kit", from_user_id: "usr_kit", expires_at: inFuture(6 * DAY), used_by: null },
+  );
+  // An invitation the agent Kit sent from its own account.
+  s.members.push({ id: "mem_kit_inv", list_id: "lst_team", user_id: null, invited_email: "lynx@example.com", role: "member", status: "invited", token: "inv_seed_from_agent", created_at: at(DAY), invited_by: kit });
+
   // A question releases any claim.
   const movers = s.items.find((i) => i.id === "itm_t_movers");
   if (movers) movers.claimed_by = null;

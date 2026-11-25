@@ -54,3 +54,22 @@ export function assertSameOrigin(request: Request) {
     throw new Response("Cross-site request blocked", { status: 403 });
   }
 }
+
+/**
+ * A claim link's token while its person signs in (SPEC 13.4). It stays out of the /login URL (and so out of
+ * request logs and history) and is read only by the /claim pages. One hour is plenty for an emailed code.
+ */
+const CLAIM_COOKIE = "wm_claim";
+
+export function claimCookie(request: Request, token: string): string {
+  return `${CLAIM_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600${secureFlag(request)}`;
+}
+
+export function clearClaimCookie(request: Request): string {
+  return `${CLAIM_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureFlag(request)}`;
+}
+
+export function getClaimToken(request: Request): string | null {
+  const t = readCookie(request, CLAIM_COOKIE);
+  return t && /^[A-Za-z0-9_-]{8,200}$/.test(t) ? t : null;
+}

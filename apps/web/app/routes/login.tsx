@@ -78,11 +78,13 @@ export default function Login() {
   const next = safeNext(params.get("next"));
   const busy = nav.state !== "idle";
   const onCode = result?.step === "code";
+  // From a claim link: the list waits on the other side of sign-in.
+  const claiming = next === "/claim";
 
   return (
     <div className="wrap grid min-h-[70dvh] place-items-center py-12">
       <div className="card w-full max-w-md p-6 sm:p-8">
-        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : "Sign in"}</h1>
+        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : "Sign in"}</h1>
 
         {onCode ? (
           <Form method="post" className="mt-6 grid gap-4" key="code">
@@ -128,7 +130,9 @@ export default function Login() {
           </Form>
         ) : (
           <Form method="post" className="mt-6 grid gap-4" key="email">
-            <p className="text-ink-2">We'll email you a code. New here? This signs you up.</p>
+            <p className="text-ink-2">
+              {claiming ? "Enter your email and we'll send a code. Then the list is yours. New here? This signs you up." : "We'll email you a code. New here? This signs you up."}
+            </p>
             <input type="hidden" name="next" value={next} />
             <label className="field">
               <span className="label">Email</span>

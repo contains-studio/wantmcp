@@ -45,6 +45,14 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 }
 
+/** Who sent it, truthfully: an agent is named as one (SPEC 13.7). Older API builds don't say, so name the list's owner. */
+function sentBy(invite: InvitePreview): string {
+  const by = invite.invited_by;
+  if (by?.kind === "agent") return `${by.name}, an AI agent, invited you`;
+  if (by?.kind === "user") return `${by.handle} invited you`;
+  return `A want list by ${invite.list.owner_handle}`;
+}
+
 export default function Invite({ loaderData, params }: Route.ComponentProps) {
   const { user, invite, alreadyMember } = loaderData;
   const result = useActionData<typeof action>();
@@ -72,7 +80,7 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
       <div className="card w-full max-w-md p-6 text-center sm:p-8">
         <p className="eyebrow">Invitation</p>
         <h1 className="serif mt-2 text-[2rem] leading-tight">Help with “{listTitle}”</h1>
-        <p className="mt-2 text-[0.92rem] text-ink-3">A want list by {invite.list.owner_handle}</p>
+        <p className="mt-2 text-[0.92rem] text-ink-3">{sentBy(invite)}</p>
 
         {alreadyMember ? (
           <div className="mt-6 grid gap-3">

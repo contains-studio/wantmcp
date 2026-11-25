@@ -15,13 +15,15 @@ const ROUTES: Array<[RegExp, string]> = [
   [/^\/app\/account$/, "/app/account"],
   [/^\/app\/lists\/[^/]+\/settings$/, "/app/lists/:id/settings"],
   [/^\/invite\/[^/]+$/, "/invite/:token"],
+  [/^\/claim$/, "/claim"],
+  [/^\/claim\/[^/]+$/, "/claim/:token"],
   [/^\/connect$/, "/connect"],
   [/^\/themes$/, "/themes"],
   [/^\/themes\/[^/]+$/, "/themes/:slug"],
   [/^\/for$/, "/for"],
   [/^\/start$/, "/start"],
   [/^\/for\/[^/]+$/, "/for/:slug"],
-  [/^\/(privacy|terms|report|theme|live|waiting|sitemap\.xml|robots\.txt)$/, "/$1"],
+  [/^\/(privacy|terms|report|theme|live|waiting|sitemap\.xml|robots\.txt|llms\.txt|agents\.txt)$/, "/$1"],
   [/^\/og\/l\/[^/]+$/, "/og/l/:id"],
   [/^\/og\/home\.png$/, "/og/home.png"],
   [/^\/og\/for\/[^/]+$/, "/og/for/:slug"],
@@ -42,7 +44,7 @@ export function routePattern(pathname: string): string {
 export function apiPathPattern(path: string): string {
   return (path.split("?")[0] || "/")
     .split("/")
-    .map((seg, i) => (i === 0 ? seg : /^(v1|me|lists|items|entries|questions|comments|agents|members|invites|auth|feed|reports|prices|events|status|purchase|promote|reject|summary|suggestions|updates|context|whoami|answer|accept|code|verify|logout)$/.test(seg) ? seg : ":id"))
+    .map((seg, i) => (i === 0 ? seg : /^(v1|me|lists|items|entries|questions|comments|agents|members|invites|claims|unclaimed|handover|auth|feed|reports|prices|events|status|purchase|promote|reject|summary|suggestions|updates|context|whoami|answer|accept|code|verify|logout)$/.test(seg) ? seg : ":id"))
     .join("/");
 }
 

@@ -57,6 +57,13 @@ export interface ListSummary {
   visibility: ListVisibility;
   created_at: Timestamp;
   updated_at: Timestamp;
+  /**
+   * SPEC 13.7. For callers who can write the list: people who can write it (owner and active members), agents that
+   * can, and invitations not yet accepted. null for everyone else. Absent from older API builds.
+   */
+  access?: { people: number; agents: number; pending_invites: number } | null;
+  /** SPEC 13.1. Non-null while the list is unclaimed (started by an agent, waiting for its person to keep it). */
+  claim?: { state: "unclaimed"; expires_at: Timestamp } | null;
   /** SPEC 12.2. The list's own note (0..600). Present only when the caller can write the list. */
   note?: string;
   /** Present only for the signed-in caller. */
@@ -264,6 +271,63 @@ export interface ListPrices {
 export interface InvitePreview {
   list: Pick<ListSummary, "id" | "title" | "owner_handle">;
   status: "invited" | "active" | "revoked";
+  /** Who sent the invitation: the person, or their agent (SPEC 13.7 share_list). Requested; absent from older API builds. */
+  invited_by?: ActorRef | null;
+}
+
+/** SPEC 13.1: POST /lists/unclaimed (no credential). */
+export interface UnclaimedListInput {
+  title: string;
+  format?: ListFormat; // default shopping
+  /** The agent's own name; becomes the key's agent tag. Required. */
+  agent_name: string;
+  /** Up to 10 initial items. `due` is an ISO 8601 timestamp. */
+  wants?: Array<{ text: string; details?: string; due?: Timestamp | null }>;
+  theme?: string | null;
+  note?: string;
+  description?: string;
+}
+
+export interface UnclaimedListResult {
+  list: ListSummary;
+  /** An ordinary write key for this one list (shown once). */
+  key: string;
+  /** https://wantmcp.com/claim/<claim_token>, for the person. */
+  claim_url: string;
+  expires_at: Timestamp;
+}
+
+/** SPEC 13.2: GET /claims/{claim_token}. Never includes the key. 404 when unknown, used or expired. */
+export interface ClaimPreview {
+  /** unclaimed: started by an agent with no account (13.1); handover: an owner handing a list to a person (13.6). */
+  kind: "unclaimed" | "handover";
+  /** Handover only: who is handing the list over. */
+  from?: { handle: string };
+  list: { title: string; format: ListFormat; theme: string | null; counts: { items: number; entries: number; open_questions: number } };
+  /** Empty when the owner made a hand-over link on the web. */
+  agent_name: string;
+  expires_at: Timestamp;
+  open_questions: Array<{ id: string; text: string; options: string[]; item: { id: string; text: string } }>;
+}
+
+/** SPEC 13.6: POST /lists/{id}/handover. */
+export interface HandoverResult {
+  claim_url: string;
+  expires_at: Timestamp;
+}
+
+/** SPEC 13.7: POST /lists/{id}/invites. */
+export interface ShareListResult {
+  member: Member;
+  /** False when an invitation to this address was already sent in the last 24 hours (no second email). */
+  sent: boolean;
+}
+
+/** SPEC 13.7: GET /lists/{id}/access (writers only). */
+export interface ListAccess {
+  people: Array<{ handle: string; role: "owner" | "member" }>;
+  agents: Array<{ id: string; name: string; kind: "key" | "oauth" | "account"; owner_handle: string }>;
+  pending_invites: Array<{ id: string; email: string; invited_at: Timestamp; invited_by: ActorRef | null }>;
 }
 
 /** GET /whoami: the caller as others see it. `list_ids` (lists it can write) is present for agents only. */

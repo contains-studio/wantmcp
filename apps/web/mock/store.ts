@@ -9,6 +9,8 @@ export type PriceRow = Omit<PriceObservation, "source" | "source_url" | "checked
 
 export interface UserRow {
   id: string;
+  /** SPEC 13.1: the hidden account holding an unclaimed list. Never shown as a person. */
+  placeholder?: boolean;
   email: string;
   handle: string;
   updates_opt_in: boolean;
@@ -43,6 +45,8 @@ export interface MemberRow {
   status: "invited" | "active";
   token: string | null;
   created_at: Timestamp;
+  /** Who sent the invitation (SPEC 13.7). */
+  invited_by?: ActorRef | null;
 }
 
 export interface AgentRow {
@@ -94,6 +98,18 @@ export interface EntryRow {
   promoted_at: Timestamp | null;
 }
 
+/** SPEC 13: a claim link. Unclaimed lists are held by a hidden placeholder user until someone keeps them. */
+export interface ClaimRow {
+  token: string;
+  list_id: string;
+  kind: "unclaimed" | "handover";
+  agent_name: string;
+  /** Handover: the owner handing the list over. */
+  from_user_id: string | null;
+  expires_at: Timestamp;
+  used_by: string | null;
+}
+
 export interface Store {
   users: UserRow[];
   sessions: Map<string, string>; // token -> user id
@@ -109,6 +125,7 @@ export interface Store {
   comments: Comment[];
   events: WantEvent[];
   reports: Array<{ target_type: string; target_id: string; reason: string; created_at: Timestamp }>;
+  claims: ClaimRow[];
 }
 
 let counter = 0;
@@ -143,6 +160,7 @@ export function emptyStore(): Store {
     comments: [],
     events: [],
     reports: [],
+    claims: [],
   };
 }
 

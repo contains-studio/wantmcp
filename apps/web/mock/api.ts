@@ -10,11 +10,12 @@
  * Sign-in: any email, code 123456.
  */
 import type {
-  ActorRef, AgentInfo, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
+  ActorRef, AgentInfo, ClaimPreview, HandoverResult, UnclaimedListResult, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
   ItemSummary, ListSummaryPage, Member, OpenQuestionsPage, Page, PriceInput, PriceObservation, PriceSource, PurchaseInput, Question, UserSelf, WantEvent,
 } from "../app/lib/types.ts";
+import { HANDOVER_TTL_DAYS, UNCLAIMED_TTL_HOURS } from "../app/lib/claims.ts";
 import { seedStore } from "./seed.ts";
-import { newId, randomToken, type AgentRow, type EntryRow, type ItemRow, type ListRow, type Store, type UserRow } from "./store.ts";
+import { newId, randomToken, type AgentRow, type ClaimRow, type EntryRow, type ItemRow, type ListRow, type Store, type UserRow } from "./store.ts";
 
 export const MOCK_LOGIN_CODE = "123456";
 const WEB = "https://wantmcp.com";
@@ -264,7 +265,21 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
   if (c) out.my_role = roleOf(c, l.id);
   // SPEC 12.2: the note is for writers only.
   if (canWrite(c, l.id)) out.note = l.note ?? "";
+  // SPEC 13.7: who has access, for writers only.
+  out.access = canWrite(c, l.id) ? accessCounts(l.id) : null;
+  // SPEC 13.1
+  const pending = store.claims.find((x) => x.list_id === l.id && x.kind === "unclaimed" && !x.used_by);
+  out.claim = pending ? { state: "unclaimed", expires_at: pending.expires_at } : null;
   return out;
+}
+
+function accessCounts(listId: string) {
+  const active = store.members.filter((m) => m.list_id === listId && m.status === "active" && m.user_id);
+  const people = active.filter((m) => !userById(m.user_id!).placeholder).length;
+  const writers = new Set(active.map((m) => m.user_id));
+  const agents = store.agents.filter((a) => writers.has(a.owner_id) && a.list_ids.includes(listId)).length;
+  const pending_invites = store.members.filter((m) => m.list_id === listId && m.status === "invited").length;
+  return { people, agents, pending_invites };
 }
 
 function pricesFor(entryId: string): PriceObservation[] {
@@ -664,7 +679,7 @@ route("POST", "/lists/{id}/members", ({ caller, params, body }) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("That doesn't look like an email address");
   const existing = store.members.find((m) => m.list_id === params[0] && (m.invited_email === email || (m.user_id && userById(m.user_id).email === email)));
   if (existing) throw new HttpError(409, "conflict", "That person is already invited");
-  const m = { id: newId("mem"), list_id: params[0], user_id: null, invited_email: email, role: "member" as const, status: "invited" as const, token: "inv_" + randomToken(24), created_at: nowIso() };
+  const m = { id: newId("mem"), list_id: params[0], user_id: null, invited_email: email, role: "member" as const, status: "invited" as const, token: "inv_" + randomToken(24), created_at: nowIso(), invited_by: actorRef(caller!) };
   store.members.push(m);
   console.log(`[mock api] invite link for ${email}: /invite/${m.token}`);
   return new Response(JSON.stringify(memberOut(m, true)), { status: 201, headers: { "content-type": "application/json", "x-dev-invite-token": m.token } });
@@ -686,7 +701,7 @@ route("GET", "/invites/{token}", ({ params }) => {
   const m = store.members.find((x) => x.token === params[0]);
   if (!m) throw notFound("This invite has expired or was revoked");
   const l = getList(m.list_id);
-  return { list: { id: l.id, title: l.title, owner_handle: userById(l.owner_id).handle }, status: m.status };
+  return { list: { id: l.id, title: l.title, owner_handle: userById(l.owner_id).handle }, status: m.status, invited_by: m.invited_by ?? null };
 });
 
 route("POST", "/invites/{token}/accept", ({ caller, params }) => {
@@ -703,6 +718,150 @@ route("POST", "/invites/{token}/accept", ({ caller, params }) => {
     m.status = "active";
   }
   return listSummary(getList(m.list_id), c);
+});
+
+// claims (SPEC 13)
+const isoIn = (ms: number) => new Date(Date.now() + ms).toISOString().replace(/\.\d{3}Z$/, "Z");
+
+/**
+ * Mock only: a token shaped clm_e2e_<unclaimed|soon|expired|handover>_<anything> makes its own fresh list the first
+ * time it is seen, so each test (and each retry) gets a claim link nobody has used.
+ */
+function e2eClaim(token: string) {
+  const m = /^clm_e2e_(unclaimed|soon|expired|handover)_[a-z0-9_-]{1,40}$/i.exec(token);
+  if (!m || store.claims.some((x) => x.token === token)) return;
+  const kind = m[1];
+  const t = nowIso();
+  const owner: UserRow = kind === "handover"
+    ? (store.users.find((u) => u.id === "usr_kit") ?? userById("usr_demo"))
+    : { id: newId("usr"), email: "", handle: newHandle(), updates_opt_in: false, created_at: t, placeholder: true };
+  if (owner.placeholder) store.users.push(owner);
+  const agentName = kind === "handover" ? "Kit" : kind === "soon" ? "ChatGPT" : "Claude";
+  const l: ListRow = {
+    id: newId("lst"), title: kind === "soon" ? "Packing for the move" : "Winter boots for Sam", description: "", owner_id: owner.id,
+    allow_outside_suggestions: false, format: kind === "soon" ? "tasks" : "shopping", visibility: "private", created_at: t, updated_at: t,
+  };
+  store.lists.push(l);
+  store.members.push({ id: newId("mem"), list_id: l.id, user_id: owner.id, invited_email: null, role: "owner", status: "active", token: null, created_at: t });
+  const a: AgentRow = { id: newId("agt"), name: agentName, kind: "key", key: "wk_" + randomToken(40), list_ids: [l.id], owner_id: owner.id, created_at: t, last_used_at: null };
+  store.agents.push(a);
+  const by: ActorRef = { kind: "agent", agent_id: a.id, name: a.name, owner_handle: owner.handle };
+  const item: ItemRow = { id: newId("itm"), list_id: l.id, text: "Waterproof winter boots, size 7 kids", created_by: by, created_at: t, purchase: null, status: "open", claimed_by: null, completion: null };
+  store.items.push(item, { ...item, id: newId("itm"), text: "Warm socks to go with them" });
+  if (kind === "unclaimed") {
+    store.questions.push({ id: newId("qst"), item_id: item.id, text: "Velcro or laces? Velcro is easier for Sam to do alone.", options: ["Velcro", "Laces"], asked_by: by, asked_at: t, answer: null });
+  }
+  const LEFT: Record<string, number> = { unclaimed: 22 * 3_600_000, soon: 59 * 60_000, expired: -3_600_000, handover: 6 * 86_400_000 };
+  store.claims.push({
+    token, list_id: l.id, kind: kind === "handover" ? "handover" : "unclaimed", agent_name: agentName,
+    from_user_id: kind === "handover" ? owner.id : null, expires_at: isoIn(LEFT[kind]), used_by: null,
+  });
+}
+
+const liveClaim = (token: string): ClaimRow | null => {
+  e2eClaim(token);
+  const k = store.claims.find((x) => x.token === token);
+  if (!k || !store.lists.some((l) => l.id === k.list_id)) return null;
+  return k;
+};
+const expired = (k: ClaimRow) => Date.parse(k.expires_at) <= Date.now();
+
+route("POST", "/lists/unclaimed", ({ body }) => {
+  const agentName = text("agent_name", body.agent_name, 60, true);
+  const title = text("title", body.title, 140, true);
+  const format = listFormat(body.format ?? "shopping");
+  const wants = Array.isArray(body.wants) ? (body.wants as Array<Record<string, unknown>>) : [];
+  if (wants.length > 10) throw new HttpError(400, "invalid", "At most 10 wants when starting a list", { limit: "unclaimed.wants" });
+  const t = nowIso();
+  const holder: UserRow = { id: newId("usr"), email: "", handle: newHandle(), updates_opt_in: false, created_at: t, placeholder: true };
+  store.users.push(holder);
+  const l: ListRow = {
+    id: newId("lst"), title, description: text("description", body.description, 500), owner_id: holder.id, allow_outside_suggestions: false,
+    theme: themeSlug(body.theme), format, visibility: "private", note: text("note", body.note, 600), created_at: t, updated_at: t,
+  };
+  store.lists.push(l);
+  store.members.push({ id: newId("mem"), list_id: l.id, user_id: holder.id, invited_email: null, role: "owner", status: "active", token: null, created_at: t });
+  const key = "wk_" + randomToken(40);
+  const a: AgentRow = { id: newId("agt"), name: agentName, kind: "key", key, list_ids: [l.id], owner_id: holder.id, created_at: t, last_used_at: null };
+  store.agents.push(a);
+  const by: ActorRef = { kind: "agent", agent_id: a.id, name: a.name, owner_handle: holder.handle };
+  for (const w of wants) {
+    store.items.push({
+      id: newId("itm"), list_id: l.id, text: text("text", w.text, 500, true), created_by: by, created_at: t, purchase: null,
+      details: text("details", w.details, 2000), due_at: timestampOrNull("due", w.due), status: "open", claimed_by: null, completion: null,
+    });
+  }
+  const k: ClaimRow = { token: "clm_" + randomToken(32), list_id: l.id, kind: "unclaimed", agent_name: agentName, from_user_id: null, expires_at: isoIn(UNCLAIMED_TTL_HOURS * 3_600_000), used_by: null };
+  store.claims.push(k);
+  const out: UnclaimedListResult = { list: listSummary(l, null), key, claim_url: `${WEB}/claim/${k.token}`, expires_at: k.expires_at };
+  return created(out);
+});
+
+route("POST", "/lists/{id}/handover", ({ caller, params }) => {
+  const c = requireOwner(caller, params[0]);
+  getList(params[0]);
+  // One live link per list: asking again replaces it.
+  store.claims = store.claims.filter((x) => !(x.list_id === params[0] && x.kind === "handover" && !x.used_by));
+  const k: ClaimRow = { token: "clm_" + randomToken(32), list_id: params[0], kind: "handover", agent_name: "", from_user_id: c.user.id, expires_at: isoIn(HANDOVER_TTL_DAYS * 86_400_000), used_by: null };
+  store.claims.push(k);
+  const out: HandoverResult = { claim_url: `${WEB}/claim/${k.token}`, expires_at: k.expires_at };
+  return created(out);
+});
+
+route("GET", "/claims/{token}", ({ params }) => {
+  const k = liveClaim(params[0]);
+  if (!k || k.used_by || expired(k)) throw notFound("This link has expired or was already used");
+  const l = getList(k.list_id);
+  const items = store.items.filter((i) => i.list_id === l.id);
+  const ids = new Set(items.map((i) => i.id));
+  const open = store.questions.filter((q) => ids.has(q.item_id) && !q.answer);
+  const out: ClaimPreview = {
+    kind: k.kind,
+    ...(k.kind === "handover" && k.from_user_id ? { from: { handle: userById(k.from_user_id).handle } } : {}),
+    list: {
+      title: l.title, format: fmt(l), theme: l.theme ?? null,
+      counts: { items: items.length, entries: store.entries.filter((e) => ids.has(e.item_id) && e.status === "listed").length, open_questions: open.length },
+    },
+    agent_name: k.agent_name,
+    expires_at: k.expires_at,
+    open_questions: open.map((q) => {
+      const i = items.find((x) => x.id === q.item_id)!;
+      return { id: q.id, text: q.text, options: q.options, item: { id: i.id, text: i.text.slice(0, 140) } };
+    }),
+  };
+  return out;
+});
+
+route("POST", "/claims/{token}", ({ caller, params }) => {
+  const c = requireSession(caller);
+  const k = liveClaim(params[0]);
+  if (!k) throw notFound("This link has expired or was already used");
+  const l = getList(k.list_id);
+  if (k.used_by) {
+    // Idempotent for the same person.
+    if (k.used_by !== c.user.id) throw new HttpError(409, "conflict", "Someone else has already kept this list");
+    return listSummary(l, c);
+  }
+  if (expired(k)) throw notFound("This link has expired or was already used");
+  const t = nowIso();
+  const previous = l.owner_id;
+  const ownerRow = store.members.find((m) => m.list_id === l.id && m.role === "owner");
+  // Already a member: that row goes, the person becomes the owner.
+  store.members = store.members.filter((m) => !(m.list_id === l.id && m.user_id === c.user.id && m.role !== "owner"));
+  if (ownerRow) ownerRow.user_id = c.user.id;
+  l.owner_id = c.user.id;
+  if (k.kind === "unclaimed") {
+    // The agent's key now belongs to the person; the placeholder goes.
+    for (const a of store.agents) if (a.owner_id === previous) a.owner_id = c.user.id;
+    store.users = store.users.filter((u) => u.id !== previous);
+    l.visibility = "private";
+  } else if (previous !== c.user.id) {
+    // The previous owner stays on as a member, so their agents keep working.
+    store.members.push({ id: newId("mem"), list_id: l.id, user_id: previous, invited_email: null, role: "member", status: "active", token: null, created_at: t });
+  }
+  k.used_by = c.user.id;
+  l.updated_at = t;
+  return listSummary(l, c);
 });
 
 // keys

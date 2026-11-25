@@ -9,6 +9,7 @@ export function loader({ request }: Route.LoaderArgs) {
     "Disallow: /app",
     "Disallow: /login",
     "Disallow: /invite/",
+    "Disallow: /claim",
     "Disallow: /report",
     "",
     `Sitemap: ${origin}/sitemap.xml`,
