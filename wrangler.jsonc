@@ -13,13 +13,15 @@
 		// Set it to the literal "mock" to use the in-process mock API in ./mock.
 		"API_BASE_URL": "https://api.wantmcp.com/v1",
 		"SITE_ORIGIN": "https://wantmcp.com",
-		"MCP_URL": "https://mcp.wantmcp.com/mcp"
-		// Optional: "SOURCE_URL": "https://github.com/contains-studio/wantmcp-web" shows the footer source link.
+		"MCP_URL": "https://mcp.wantmcp.com/mcp",
+		// Shows the "Source (MIT)" link in the footer. Remove it to hide the link.
+		"SOURCE_URL": "https://github.com/contains-studio/wantmcp-web"
 	},
 	"routes": [
 		{ "pattern": "wantmcp.com", "custom_domain": true },
 		{ "pattern": "www.wantmcp.com", "custom_domain": true }
 	],
+	"preview_urls": true,
 	"observability": {
 		"enabled": true
 	},
