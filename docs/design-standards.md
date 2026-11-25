@@ -9,6 +9,29 @@ In the web app (`apps/web`), the shared controls in `app/components/ui.tsx` and 
 in `app/app.css` apply them, and `pnpm check:a11y` (axe) and `pnpm check:contrast` test them. A new
 client should have the same single source for its controls and the same two checks.
 
+## The look
+
+Restraint. Almost no colour, type and layout do the work, and every element is a plain
+rectangle. Things this product does not do: gradient washes, tinted backgrounds behind labels,
+pill chips, soft cards with shadows, an icon in a coloured square beside every label, extra-bold
+display type, monospace labels everywhere.
+
+- **Palette.** A warm near-white page (`--paper`), one deeper warm grey for alternate sections and
+  the footer (`--sunk`), white for fields and media (`--card`), near-black text (`--ink`), two greys
+  (`--ink-2`, `--ink-3`), a hairline (`--line`) and a field border (`--line-strong`, at least 3:1).
+  Dark mode mirrors it: near-black page, warm off-white text.
+- **One accent.** Crimson `#b5174f` (dark mode `#f2709a`): the brand mark's own pink, deepened so it
+  carries white text at 6.6:1. It is used only for the primary action and the mark, nowhere else.
+  Savings green, warning amber and error red are status colours, not decoration.
+- **Type.** Inter (variable, with its optical-size axis) for display and UI; Newsreader for
+  section headings; JetBrains Mono only for codes, keys and coupons. All open-licence and
+  self-hosted.
+- **Sections.** Pages are bands of generous vertical space (80 to 96px on desktop), alternating
+  `--paper` and `--sunk` where it helps. A content section is two columns on desktop: on the left
+  a label, a serif heading, one or two short lines, a few rows separated by hairlines and
+  full-width buttons; on the right a large real render of the product. On phones the columns
+  stack.
+
 ## Spacing
 
 Spacing comes from a 4px scale: 4, 8, 12, 16, 24, 32, 48, 64 (in the web app, Tailwind `1 2 3 4 6 8 12 16`).
@@ -18,15 +41,15 @@ component to centre text optically.
 
 ## Type
 
-| Role | Size | Notes |
-| --- | --- | --- |
-| Display (home) | 56 to 72px | Bricolage, extra bold, capitals allowed |
-| h1 | 40 to 48px | one per page |
-| h2 | 24 to 30px | |
-| h3 | 18 to 20px | |
-| Body | 16px | line height 1.55 |
-| Small | 14px | meta lines, labels |
-| Caption | 12 to 13px | eyebrows, timestamps; never for sentences people must read |
+| Role | Size | Face | Notes |
+| --- | --- | --- | --- |
+| Display (home headline) | 64 to 84px | Inter, weight 300 | tracking −0.035em, centred, two lines (`.display`) |
+| h1 | 40 to 56px | Inter, weight 400 | list titles; one per page |
+| Section heading | 32 to 38px | Newsreader, weight 400 | `.serif` |
+| h3 | 18 to 20px | Inter, weight 600 | |
+| Body | 16px | Inter | line height 1.55 |
+| Small | 14px | Inter | meta lines |
+| Label | 12px | Inter 500, uppercase, tracking 0.08em, `--ink-3` | `.eyebrow`; sparingly, one per block at most |
 
 Form fields are always 16px (on the web, so phones do not zoom into them; natively, the
 platform's body size). Body text is at most about 70
@@ -47,9 +70,10 @@ characters per line (65ch).
   a visually hidden label). Hints go under the control, errors under the hint.
 - **Select.** The native `<select>` is restyled to match the input: same border, radius, height,
   padding and focus ring, with a drawn chevron. No native border or outline shows through.
-- **Radius and borders.** Fields use `--r-input`, buttons `--r-control`, cards `--r-card`.
-  Field and button borders are 1.5px, card borders 1px (1.5px in outline themes). Pills
-  (fully round) are for buttons, chips and badges; text areas never become pills.
+- **Radius and borders.** Small radii: 3px for badges, 4px for buttons and fields
+  (`--r-control`, `--r-input`), 6px for panels and media (`--r-card`). All borders are 1px:
+  `--line` for dividers and panels, `--line-strong` for fields. No shadows. The only pill on the
+  site is the small "Start a list" button in the header.
 - **Focus.** One focus ring everywhere: a 3px outline in the focus colour, 2px outside the
   element, shown on keyboard focus (`:focus-visible`; browsers also show it on text fields
   whenever they are focused).
@@ -58,8 +82,9 @@ characters per line (65ch).
 
 ## Buttons
 
-One primary action per view (`variant="primary"`, the brand colour). Everything else is
-secondary (solid ink), plain (outline) or danger (outline in red). A destructive action is never
+Three kinds, all rectangles: **primary** (solid accent, one per view), **secondary** (solid
+near-black) and **plain** (the page colour with a 1px near-black border); plus **danger** (outline
+in red). In narrow columns buttons are full width and stack. A destructive action is never
 the primary one and asks for confirmation. Button text says what happens ("Add task", "Make
 private"), not "OK" or "Submit".
 
@@ -68,14 +93,15 @@ private"), not "OK" or "Submit".
 | Token | Role |
 | --- | --- |
 | `--paper` | page background |
-| `--card`, `--sunk` | raised and recessed surfaces |
+| `--card` | fields and media frames |
+| `--sunk` | alternate sections, the footer, selected rows |
 | `--ink`, `--ink-2`, `--ink-3` | text: primary, secondary, tertiary (all at least 4.5:1 on paper and card) |
 | `--line`, `--line-strong` | dividers; field borders (`--line-strong` at least 3:1 where it is the only edge) |
-| `--want` / `--want-ink` | brand and primary action; text on it |
+| `--want` / `--want-ink` | the primary action and the mark only; text on it |
 | `--deal` | savings, success, "done" |
 | `--warn` | deals ending, unverified content |
 | `--danger` | errors and destructive actions |
-| `--focus` | the focus ring |
+| `--focus` | the focus ring: near-black in light mode, off-white in dark |
 
 Colour is never the only signal: status also has a word or an icon.
 
@@ -98,7 +124,9 @@ off. Live updates announce themselves in a polite live region, not with animatio
 
 ## Themes
 
-A theme may change colours, fonts, radius, card style, page layout and decoration. It may not
+The default list look is the plain style above: hairline rows, no cards. Templates (Board,
+Sections, Today, Heat, Sheet, Doc, Tracker) and occasions are dressed versions of it. A theme may
+change colours, fonts, radius, card style, page layout and decoration. It may not
 change control heights, spacing rhythm, label placement, the focus ring or contrast, and it
 keeps the heading order and the item and entry anchors (`#itm_`, `#ent_` on the web). The contrast
 check tests every theme's text, controls and focus colours in light and dark, including text over

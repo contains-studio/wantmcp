@@ -60,7 +60,7 @@ function Choice({ to, current, view, sample, origin, label, note }: { to: string
         preventScrollReset
         replace
         aria-current={current ? "true" : undefined}
-        className={`grid overflow-hidden rounded-xl border-2 bg-card ${current ? "border-want" : "border-line hover:border-line-strong"}`}
+        className={`grid overflow-hidden rounded-md border-2 bg-card ${current ? "border-want" : "border-line hover:border-line-strong"}`}
       >
         <ThemeThumb theme={view} sample={sample} origin={origin} className="h-28 border-b border-line" />
         <span className="grid gap-0.5 p-2.5">
@@ -80,12 +80,12 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
     <div className="wrap grid gap-10 py-10">
       <header className="max-w-3xl">
         <p className="eyebrow">Themes</p>
-        <h1 className="mt-2 text-4xl font-extrabold sm:text-5xl">Lay it out. Dress it up.</h1>
+        <h1 className="mt-2 text-4xl font-semibold sm:text-5xl">Lay it out. Dress it up.</h1>
         <p className="mt-3 text-[1.05rem] text-ink-2">Pick a template, then an occasion. Any pair works.</p>
       </header>
 
       <section aria-labelledby="tpl-h" className="grid gap-3">
-        <h2 id="tpl-h" className="text-2xl font-extrabold">
+        <h2 id="tpl-h" className="text-2xl font-semibold">
           Template
         </h2>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -105,7 +105,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
       </section>
 
       <section aria-labelledby="occ-h" className="grid gap-3">
-        <h2 id="occ-h" className="text-2xl font-extrabold">
+        <h2 id="occ-h" className="text-2xl font-semibold">
           Occasion
         </h2>
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -115,7 +115,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
               preventScrollReset
               replace
               aria-current={occasion === null ? "true" : undefined}
-              className={`grid h-full min-h-[9.5rem] place-items-center rounded-xl border-2 bg-card p-3 font-semibold ${occasion === null ? "border-want" : "border-line hover:border-line-strong"}`}
+              className={`grid h-full min-h-[9.5rem] place-items-center rounded-md border-2 bg-card p-3 font-semibold ${occasion === null ? "border-want" : "border-line hover:border-line-strong"}`}
             >
               None
             </Link>
@@ -137,7 +137,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
 
       <section aria-labelledby="preview-h" className="grid gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="preview-h" className="text-2xl font-extrabold">
+          <h2 id="preview-h" className="text-2xl font-semibold">
             {chosen.name}
           </h2>
           <div className="flex items-center gap-3">
@@ -148,7 +148,7 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
         <p className="text-[0.92rem] text-ink-2">{chosen.idea}</p>
-        <div className="overflow-hidden rounded-2xl border border-line" aria-hidden="true" inert>
+        <div className="overflow-hidden rounded-md border border-line" aria-hidden="true" inert>
           <div className="max-h-[34rem] overflow-hidden">
             <ListView
               list={sample.list}

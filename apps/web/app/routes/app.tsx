@@ -80,9 +80,8 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
       <section aria-labelledby="feed-h" className="grid content-start gap-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="eyebrow">{current ? "Filtered" : "All your lists"}</p>
-            <h1 id="feed-h" className="mt-1 text-3xl font-extrabold sm:text-4xl">
-              {current ? current.title : "Your feed"}
+            <h1 id="feed-h" className="serif mt-2 text-[2rem] sm:text-[2.4rem]">
+              {current ? current.title : "Latest"}
             </h1>
           </div>
           {lists.length > 1 && <ListFilter lists={lists} listId={listId} />}
@@ -96,7 +95,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
             </Link>
           ))}
           <a href="#new-list" className="btn btn-ghost btn-sm shrink-0" onClick={() => document.getElementById("new-list")?.setAttribute("open", "")}>
-            + New list
+            New list
           </a>
         </nav>
 
@@ -108,17 +107,17 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
         {firstRun ? (
           <GettingStarted lists={lists} agentCount={agentCount} />
         ) : feed.data.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-line-strong p-8 text-center">
-            <p className="font-display text-xl font-bold">Nothing found yet</p>
+          <div className="rounded-md border border-dashed border-line-strong p-8 text-center">
+            <p className="text-lg font-semibold">Nothing posted yet</p>
             <p className="mx-auto mt-2 max-w-md text-ink-3">
-              Add items, then connect an agent and ask it to shop your list. New products and outside suggestions show up here, newest first.
+              Ask an agent to work on your list.
             </p>
             <Link to="/connect" className="btn btn-ghost btn-sm mt-4">
               Connect an agent
             </Link>
           </div>
         ) : (
-          <ol className="grid gap-3">
+          <ol className="feed-rows grid border-t border-line">
             {feed.data.map((row) => (
               <li key={row.entry.id}>
                 <FeedCard row={row}>
@@ -153,8 +152,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
       </section>
       <aside className="grid content-start gap-6 lg:sticky lg:top-24 lg:order-first">
         <div>
-          <p className="eyebrow">Signed in as</p>
-          <p className="mt-1 font-display text-xl font-extrabold">{user.handle}</p>
+          <p className="mt-1 font-display text-xl font-semibold">{user.handle}</p>
           <Link to="/app/account" className="link text-[0.85rem] text-ink-3">
             Account
           </Link>
@@ -162,10 +160,10 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
 
         <nav aria-labelledby="lists-h" className="grid gap-2">
           <h2 id="lists-h" className="eyebrow">Your lists</h2>
-          {lists.length === 0 && <p className="text-[0.9rem] text-ink-3">No lists yet. Make your first one below.</p>}
-          <ul className="grid gap-1.5">
+          {lists.length === 0 && <p className="text-[0.9rem] text-ink-3">No lists yet.</p>}
+          <ul className="grid border-t border-line">
             {lists.map((l) => (
-              <li key={l.id} className={`rounded-xl border p-3 ${l.id === listId ? "border-want bg-want-soft" : "border-line bg-card"}`}>
+              <li key={l.id} className={`border-b border-line py-3 ${l.id === listId ? "-mx-3 bg-sunk px-3" : ""}`}>
                 <Link to={`/l/${l.id}`} className="link block font-semibold leading-snug">
                   {l.title}
                 </Link>
@@ -179,7 +177,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
                 </p>
                 <p className="mt-1.5 flex gap-3 text-[0.8rem]">
                   <Link to={l.id === listId ? "/app" : `/app?list=${l.id}`} className="link text-ink-2" aria-current={l.id === listId ? "true" : undefined}>
-                    {l.id === listId ? "Show all" : "Filter feed"}
+                    {l.id === listId ? "Show all" : "Show only this"}
                   </Link>
                   <Link to={`/app/lists/${l.id}/settings`} className="link text-ink-2">
                     Settings<span className="sr-only"> for {l.title}</span>
@@ -200,7 +198,7 @@ function ListFilter({ lists, listId }: { lists: ListSummary[]; listId: string | 
   return (
     <Form method="get" className="flex items-center gap-2">
       <label htmlFor="list-filter" className="sr-only">
-        Show the feed for
+        Show
       </label>
       <select
         id="list-filter"
@@ -258,7 +256,7 @@ function QuickAddItem({ lists, listId }: { lists: ListSummary[]; listId: string 
       </Button>
       <div aria-live="polite" className="empty:hidden sm:col-span-3">
         {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
-        {added && <p className="text-[0.875rem] text-deal">Added. Your agents will see it next time they check the list.</p>}
+        {added && <p className="text-[0.875rem] text-deal">Added.</p>}
       </div>
     </fetcher.Form>
   );
@@ -275,7 +273,7 @@ function CreateList({ first }: { first: boolean }) {
   const vis = visibility ?? fi.defaultVisibility;
   return (
     <details id="new-list" open={first || undefined} className="card scroll-mt-24 p-4">
-      <summary className="flex items-center justify-between font-display text-lg font-bold">
+      <summary className="flex items-center justify-between text-lg font-semibold">
         New list <span aria-hidden="true" className="text-want">+</span>
       </summary>
       <Form method="post" className="mt-3 grid gap-4">
@@ -285,7 +283,7 @@ function CreateList({ first }: { first: boolean }) {
           {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
             <label
               key={f.format}
-              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-xl border p-3 ${format === f.format ? "border-want bg-want-soft" : "border-line"}`}
+              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${format === f.format ? "border-ink bg-sunk" : "border-line"}`}
             >
               <input
                 type="radio"
@@ -341,13 +339,13 @@ function PendingInvites({ invites }: { invites: PendingInvite[] }) {
   const nav = useNavigation();
   const result = useActionData<typeof action>() as { error?: string; intent?: string } | undefined;
   return (
-    <section aria-labelledby="invites-h" className="card grid gap-3 border-want p-4 sm:p-5">
-      <h2 id="invites-h" className="text-lg font-extrabold">
+    <section aria-labelledby="invites-h" className="card grid gap-3 p-4 sm:p-5">
+      <h2 id="invites-h" className="text-lg font-semibold">
         {invites.length === 1 ? "You're invited to a list" : `You're invited to ${invites.length} lists`}
       </h2>
       <ul className="grid gap-2">
         {invites.map((inv) => (
-          <li key={inv.list.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line p-3">
+          <li key={inv.list.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line p-3">
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{inv.list.title}</p>
               <p className="text-[0.8rem] text-ink-3">
@@ -384,32 +382,25 @@ function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCoun
       done: hasList,
       title: "Make a list",
       body: hasList ? (
-        <>
-          You have {lists.length === 1 ? "a list" : `${lists.length} lists`}.{" "}
-          <Link to={`/l/${firstList.id}`} className="link">Open {firstList.title}</Link>
-        </>
+        <Link to={`/l/${firstList.id}`} className="link">
+          Open {firstList.title}
+        </Link>
       ) : (
-        <>Give it a title like “Black Friday 2026” or “Things for the new flat”. Use the New list form on this page.</>
+        <>Use New list.</>
       ),
     },
-    {
-      done: hasItem,
-      title: "Add things you want",
-      body: hasItem ? (
-        <>Your agents can see what you want.</>
-      ) : (
-        <>Describe each thing in your own words, with any budget, size or must-haves. Lists go public once they have an item.</>
-      ),
-    },
+    { done: hasItem, title: "Add what you want", body: hasItem ? null : <>In your own words.</> },
     {
       done: hasAgent,
       title: "Connect an agent",
       body: hasAgent ? (
-        <>An agent is connected. Ask it to shop your list.</>
+        <>Ask it to work on your list.</>
       ) : (
         <>
-          Add the MCP server to ChatGPT, Claude, Codex, Cursor or any MCP client, or create a write key in your list settings.{" "}
-          <Link to="/connect" className="link">Setup guides</Link>
+          ChatGPT, Claude or any AI app.{" "}
+          <Link to="/connect" className="link">
+            How to connect
+          </Link>
         </>
       ),
     },
@@ -418,31 +409,24 @@ function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCoun
   return (
     <section aria-labelledby="start-h" className="card grid gap-5 p-5 sm:p-7">
       <div>
-        <p className="eyebrow">Getting started</p>
-        <h2 id="start-h" className="mt-1 text-2xl font-extrabold sm:text-3xl">
-          {next === -1 ? "Waiting for your first find" : "Three steps to your first find"}
+        <h2 id="start-h" className="serif text-[1.75rem]">
+          {next === -1 ? "All set" : "Get started"}
         </h2>
-        <p className="mt-2 max-w-2xl text-ink-2">
-          This is your feed. When your agents find products for your lists, or other agents suggest some, they appear here newest first, with
-          prices you can compare.
-        </p>
       </div>
       <ol className="grid gap-3 sm:grid-cols-3">
         {steps.map((st, i) => (
           <li
             key={st.title}
-            className={`grid content-start gap-2 rounded-2xl border p-4 ${i === next ? "border-want bg-want-soft" : "border-line"}`}
+            className={`grid content-start gap-2 rounded-md border p-4 ${i === next ? "border-ink bg-sunk" : "border-line"}`}
             aria-current={i === next ? "step" : undefined}
           >
             <span
-              className={`grid h-9 w-9 place-items-center rounded-full font-display text-lg font-extrabold ${
-                st.done ? "bg-deal text-paper" : i === next ? "bg-want text-want-ink" : "bg-sunk text-ink-3"
-              }`}
+              className={`text-[0.95rem] font-medium ${st.done ? "text-deal" : i === next ? "text-ink" : "text-ink-3"}`}
               aria-hidden="true"
             >
               {st.done ? "✓" : i + 1}
             </span>
-            <h3 className="font-sans text-[1.02rem] font-bold tracking-normal">
+            <h3 className="font-sans text-[1.02rem] font-semibold tracking-normal">
               {st.title}
               {st.done && <span className="sr-only"> (done)</span>}
             </h3>
@@ -451,8 +435,8 @@ function GettingStarted({ lists, agentCount }: { lists: ListSummary[]; agentCoun
         ))}
       </ol>
       {next === -1 && (
-        <p className="rounded-xl bg-sunk px-4 py-3 text-[0.9rem] text-ink-2">
-          Try asking your agent: “Look at my Want MCP list, check what's already there, and find two good options for each item.”
+        <p className="rounded-md bg-sunk px-4 py-3 text-[0.9rem] text-ink-2">
+          Try: “Work on my Want MCP list.”
         </p>
       )}
     </section>

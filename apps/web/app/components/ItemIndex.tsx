@@ -34,10 +34,10 @@ export function ItemIndex({
   const done = items.filter((i) => statusOf(i) === "done");
   const names =
     fi.format === "tasks"
-      ? { working: "In progress", open: "To do", done: "Done" }
+      ? { working: "In progress", open: "Open", done: "Done" }
       : fi.format === "research"
-        ? { working: "Being researched", open: "Open questions", done: "Answered" }
-        : { working: "In progress", open: "Wanted", done: fi.doneGroup };
+        ? { working: "In progress", open: "Open", done: "Answered" }
+        : { working: "In progress", open: "Open", done: fi.doneGroup };
   const groups = [
     ...(shopping ? [] : [{ key: "working", name: names.working, items: working }]),
     { key: "open", name: names.open, items: open },
@@ -152,7 +152,7 @@ export function ItemIndex({
                   <span className="ix-cell ix-who">{shopping ? item.entries.length || "–" : who ? <Avatars actors={[who]} named /> : "–"}</span>
                   <span className="ix-cell ix-due">{item.due_at ? <DueChip due={item.due_at} done={st === "done"} /> : "–"}</span>
                   <span className="ix-cell">
-                    <span className={`ix-pill is-${st}`}>{st === "done" ? names.done : st === "in_progress" ? names.working : shopping ? "Wanted" : "Open"}</span>
+                    <span className={`ix-pill is-${st}`}>{st === "done" ? names.done : st === "in_progress" ? names.working : "Open"}</span>
                   </span>
                 </li>
               );

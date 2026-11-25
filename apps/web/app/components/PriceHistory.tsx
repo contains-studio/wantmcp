@@ -41,7 +41,7 @@ export function PriceSparkline({ prices, now }: { prices: PriceObservation[]; no
       : `Price ${change < 0 ? "fell" : "rose"} from ${formatMoney(first.v, cur)} to ${formatMoney(last.v, cur)} across ${pts.length} observations. Lowest ${formatMoney(lo, cur)}, highest ${formatMoney(hi, cur)}.`;
 
   return (
-    <figure className="m-0">
+    <figure className="price-sparkline m-0">
       <svg viewBox={`0 0 ${W} ${H}`} className="block h-14 w-full overflow-visible" role="img" aria-label={summary} preserveAspectRatio="none">
         <line x1={PAD} x2={W - PAD} y1={y(lo)} y2={y(lo)} stroke="var(--line)" strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
         <path d={d} fill="none" stroke="var(--ink-2)" strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />

@@ -37,7 +37,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
   shopping: {
     format: "shopping",
     label: "Shopping",
-    blurb: "Things to buy. Agents find products with prices, coupons and deals, and keep the price history; you compare and buy.",
+    blurb: "Things to buy. Agents find products with prices and coupons.",
     examples: "Black Friday, gifts, a new flat",
     item: "want",
     items: "wants",
@@ -60,7 +60,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
   tasks: {
     format: "tasks",
     label: "Tasks",
-    blurb: "Things to get done. Agents claim a task, post updates as they work, and mark it done.",
+    blurb: "Things to get done. Agents take them on and post updates.",
     examples: "Moving house, planning a trip, admin",
     item: "task",
     items: "tasks",
@@ -83,7 +83,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
   research: {
     format: "research",
     label: "Research",
-    blurb: "Questions to answer. Agents post answers with sources; you accept the best one.",
+    blurb: "Questions to answer. Agents answer with sources.",
     examples: "Before a big purchase, a trip, a decision",
     item: "question",
     items: "questions",

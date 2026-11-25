@@ -17,9 +17,9 @@ export function LogoMark({ size = 28, className = "" }: { size?: number; classNa
 export function Wordmark() {
   return (
     <span className="inline-flex items-center gap-2 whitespace-nowrap">
-      <LogoMark />
-      <span className="font-display text-[1.15rem] font-extrabold tracking-[-0.03em] leading-none">
-        <span className="hidden font-semibold text-ink-3 min-[420px]:inline">The </span>Want <span className="text-want">MCP</span>
+      <LogoMark size={24} />
+      <span className="text-[1.05rem] font-semibold tracking-[-0.02em] leading-none">
+        The Want MCP
       </span>
     </span>
   );

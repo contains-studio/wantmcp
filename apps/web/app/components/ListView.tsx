@@ -99,18 +99,18 @@ export function ListView(props: ListViewProps) {
         <div className="wrap py-10 sm:py-14">
           <p className="eyebrow flex flex-wrap items-center gap-2">
             <span>
-              {fi.label} list <span aria-hidden="true">·</span> by <span className="normal-case tracking-normal">{list.owner_handle}</span>
+              {fi.label} <span aria-hidden="true">·</span> <span className="normal-case tracking-normal">{list.owner_handle}</span>
             </span>
             {isPrivate && <PrivateBadge />}
           </p>
-          <h1 className="list-title mt-3 max-w-4xl text-[2.4rem] font-extrabold sm:text-6xl">
+          <h1 className="list-title mt-3 max-w-4xl text-[2.4rem] font-semibold sm:text-6xl">
             <span className="list-title-mark" aria-hidden="true" />
             <span className="list-title-text">{list.title}</span>
           </h1>
           {list.description && <p className="mt-4 max-w-2xl text-[1.05rem] text-ink-2">{list.description}</p>}
           <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3 text-[0.9rem] text-ink-3">
             <span>
-              <strong className="text-ink">{wanted.length}</strong> {shopping ? "wanted" : "open"}
+              <strong className="text-ink">{wanted.length}</strong> open
             </span>
             {bought.length > 0 && (
               <span>
@@ -118,7 +118,7 @@ export function ListView(props: ListViewProps) {
               </span>
             )}
             <span>
-              <strong className="text-ink">{productCount}</strong> {productCount === 1 ? fi.entry : fi.entries} {shopping ? "found" : "posted"}
+              <strong className="text-ink">{productCount}</strong> {productCount === 1 ? fi.entry : fi.entries}
             </span>
             <span>
               Updated <Time ts={list.updated_at} />
@@ -126,15 +126,14 @@ export function ListView(props: ListViewProps) {
             {!preview && (
               <span className="flex items-center gap-3">
                 <CopyButton text={listUrl} label="Copy link" />
-                {!isPrivate && <ReportLink type="list" id={list.id} label="Report list" />}
+                {!isPrivate && <ReportLink type="list" id={list.id} label="Report" />}
               </span>
             )}
           </div>
           {isWriter && (
             <div className="mt-6 flex flex-wrap gap-2">
-              <span className="chip chip-live">You can write to this list ({role})</span>
               <Link to={`/app/lists/${list.id}/settings`} className="btn btn-ghost btn-sm">
-                List settings & agents
+                Settings
               </Link>
             </div>
           )}
@@ -144,8 +143,7 @@ export function ListView(props: ListViewProps) {
       {!preview && <LiveUpdates query={`list=${encodeURIComponent(list.id)}`} />}
       <div className="wrap grid grid-cols-1 gap-12 py-10">
         {more.hasMore && (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-sunk px-4 py-3 text-[0.9rem]" role="status">
-            <span className="text-ink-2">This list has more comments than we loaded at first.</span>
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-line bg-sunk px-4 py-3 text-[0.9rem]" role="status">
             <button type="button" className="btn btn-ghost btn-xs" onClick={more.loadMore} disabled={more.loading}>
               {more.loading ? "Loading…" : "Show more comments"}
             </button>
@@ -153,7 +151,7 @@ export function ListView(props: ListViewProps) {
         )}
         {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
         {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} />}
-        {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">Nothing here yet.</p>}
+        {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">No {fi.items} yet.</p>}
 
         {indexKind && (
           <ItemIndex
@@ -188,7 +186,7 @@ export function ListView(props: ListViewProps) {
         {bought.length > 0 && (
           <section aria-labelledby="bought-h" className="bought-group grid content-start gap-10">
             <div className="bought-divider flex items-center gap-4">
-              <h2 id="bought-h" className="text-2xl font-extrabold">{fi.doneGroup}</h2>
+              <h2 id="bought-h" className="text-2xl font-semibold">{fi.doneGroup}</h2>
               <div className="divider-dots flex-1" />
             </div>
             {bought.map((item) => (
@@ -219,9 +217,9 @@ export function ListView(props: ListViewProps) {
         {!isWriter && !preview && (
           <aside className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
             <div>
-              <h2 className="text-xl font-extrabold">Get your agents working on what you want</h2>
+              <h2 className="serif text-[1.6rem]">Make your own list</h2>
               <p className="mt-1 text-ink-2">
-                Make a list of things to buy, get done or find out, and connect ChatGPT, Claude or any MCP client to work on it.
+                Things to buy, do or find out. Your AI agents work on it.
               </p>
             </div>
             <Link to={user ? "/app" : "/login"} className="btn btn-want">
@@ -295,7 +293,7 @@ function ItemSection({
             <ChecklistBox itemId={item.id} text={item.text} bought={done} canWrite={isWriter} shopping={shopping} doneWord={fi.done} />
           ) : (
             n !== undefined && (
-              <span aria-hidden="true" className="item-number mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink font-display text-sm font-extrabold text-paper">
+              <span aria-hidden="true" className="item-number mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-ink font-display text-sm font-semibold text-paper">
                 {n}
               </span>
             )
@@ -317,13 +315,13 @@ function ItemSection({
           <span className="inline-flex items-center gap-1.5">
             Added by <ActorTag actor={item.created_by} compact /> <Time ts={item.created_at} />
           </span>
-          <span>
-            {entries.length === 0
-              ? `No ${fi.entries} yet`
-              : shopping
-                ? `${plural(entries.length, "option")}${cheapest && entries.length > 1 ? ` from ${formatMoney(cheapest.price, cheapest.currency)}` : ""}`
+          {entries.length > 0 && (
+            <span>
+              {shopping
+                ? `${plural(entries.length, "product")}${cheapest && entries.length > 1 ? ` from ${formatMoney(cheapest.price, cheapest.currency)}` : ""}`
                 : plural(entries.length, fi.entry)}
-          </span>
+            </span>
+          )}
           <DueChip due={item.due_at} done={done} />
           <ReportLink type="item" id={item.id} />
           {canEditItem && !editing && (
@@ -334,14 +332,14 @@ function ItemSection({
               <RemoveButton
                 intent="delete-item"
                 fields={{ item_id: item.id }}
-                label={`Remove ${fi.item}`}
-                confirmText={`Remove “${item.text.slice(0, 80)}” and all its ${fi.entries} and comments?`}
+                label="Remove"
+                confirmText={`Remove “${item.text.slice(0, 80)}” and everything on it?`}
               />
             </>
           )}
         </div>
         {p && (
-          <div className="item-indent mt-2 flex flex-wrap items-center gap-3 rounded-xl border border-deal/40 bg-deal-soft px-4 py-3 text-[0.9rem] sm:ml-11">
+          <div className="item-indent mt-2 flex flex-wrap items-center gap-3 rounded-md border border-deal/40 bg-deal-soft px-4 py-3 text-[0.9rem] sm:ml-11">
             <span className="stamp">Bought</span>
             <span className="text-ink">
               {boughtPrice ? <strong>{formatMoney(boughtPrice.price, boughtPrice.currency)}</strong> : "Bought"}
@@ -378,7 +376,7 @@ function ItemSection({
             ))}
           </div>
         ) : (
-          <p className="entries-empty item-indent rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
+          <p className="entries-empty item-indent rounded-md border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
             {isWriter ? fi.waitingWriter : fi.waiting}
           </p>
         )
@@ -428,14 +426,14 @@ function ItemSection({
           ))}
         </div>
       ) : (
-        <p className="entries-empty item-indent rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
+        <p className="entries-empty item-indent rounded-md border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
           {isWriter ? fi.waitingWriter : fi.waiting}
         </p>
       )}
 
       {(itemComments.length > 0 || isWriter) && (
         <div className="item-indent grid gap-3 sm:pl-11">
-          <h3 className="eyebrow">Discussion</h3>
+          <h3 className="eyebrow">Comments</h3>
           <CommentList comments={itemComments} canDelete={canDeleteComment} />
           {isWriter && <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />}
         </div>
@@ -469,7 +467,7 @@ function AddItem({ listId, empty, fi, isPrivate }: { listId: string; empty: bool
   const busy = fetcher.state !== "idle";
   return (
     <section id="add-item" aria-labelledby="add-item-h" className={`add-item card scroll-mt-24 p-5 ${empty ? "border-want" : ""}`}>
-      <h2 id="add-item-h" className="text-xl font-extrabold">
+      <h2 id="add-item-h" className="text-xl font-semibold">
         {empty ? fi.addItemFirst : fi.addItemTitle}
       </h2>
       <p className="mt-1 text-[0.9rem] text-ink-3">
@@ -533,7 +531,7 @@ function Suggestions({ suggestions }: { suggestions: Array<{ entry: Entry; item:
     <section aria-labelledby="sugg-h" className="untrusted grid gap-4 p-4 sm:p-6">
       <div>
         <p className="eyebrow text-warn">Only you and other writers can see this</p>
-        <h2 id="sugg-h" className="mt-1 text-2xl font-extrabold">
+        <h2 id="sugg-h" className="mt-1 text-2xl font-semibold">
           {plural(suggestions.length, "suggestion")} from outside agents
         </h2>
         <p className="mt-1 max-w-2xl text-[0.9rem] text-ink-2">
@@ -712,7 +710,7 @@ export function ChecklistBox({ itemId, text, bought, canWrite, shopping, doneWor
 /** Lock marker for private lists. */
 export function PrivateBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-line-strong bg-card px-2 py-0.5 font-sans text-[0.72rem] font-bold normal-case tracking-normal text-ink">
+    <span className="inline-flex items-center gap-1 rounded-[3px] border border-line-strong bg-card px-2 py-0.5 font-sans text-[0.72rem] font-bold normal-case tracking-normal text-ink">
       <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
         <rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor" />
         <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.6" />

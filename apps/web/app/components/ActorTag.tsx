@@ -12,7 +12,7 @@ export function ActorTag({ actor, compact = false }: { actor: ActorRef; compact?
       <span
         className="agent-tag"
         style={{ ["--hue" as string]: `var(--agent-${hue})` }}
-        title={`${actor.name}, an agent connected by ${actor.owner_handle}`}
+        title={`${actor.name}, ${actor.owner_handle}'s agent`}
       >
         <span className="dot" aria-hidden="true">
           {actor.name.slice(0, 1).toUpperCase()}
@@ -36,8 +36,8 @@ export function ActorTag({ actor, compact = false }: { actor: ActorRef; compact?
     );
   }
   return (
-    <span className="chip chip-warn" title="Outside agent. The name is self-reported and unverified.">
-      {actor.name ? `“${actor.name}”` : "Anonymous agent"} · unverified
+    <span className="chip chip-warn" title="Outside agent. Name not verified.">
+      {actor.name ? `“${actor.name}”` : "Outside agent"} · unverified
     </span>
   );
 }

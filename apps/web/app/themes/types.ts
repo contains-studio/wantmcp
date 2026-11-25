@@ -44,12 +44,12 @@ export interface Accents {
 
 /** Font stacks. Only self-hosted fonts (Bricolage, Inter, JetBrains Mono) or system stacks. */
 export const FONTS = {
-  grotesque: '"Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif',
+  grotesque: '"Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
   sans: '"Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
   mono: '"JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace',
   serif: '"Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, ui-serif, serif',
   didone: 'Didot, "Bodoni 72", "Bodoni MT", "Iowan Old Style", Georgia, ui-serif, serif',
-  rounded: 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Bricolage Grotesque Variable", system-ui, sans-serif',
+  rounded: 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Inter Variable", system-ui, sans-serif',
 } as const;
 export type FontKey = keyof typeof FONTS;
 

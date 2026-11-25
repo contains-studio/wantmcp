@@ -1,19 +1,22 @@
 import type { Theme } from "../types.ts";
 
-/** The site's own identity: warm paper and ink, one hot "want" pink. */
+/** The site's own look: warm near-white, near-black type, hairlines, one crimson accent. */
 export const defaultTheme: Theme = {
   slug: "default",
   name: "The Want MCP",
   group: "default",
-  idea: "Warm paper and ink with one hot pink, the site's own identity.",
+  idea: "The plain look: warm near-white, near-black type, hairline rows and one crimson accent.",
   light: {
-    paper: "#f7f2ea", card: "#fffdf9", sunk: "#efe8dc", ink: "#1b1512", ink2: "#4a403a", ink3: "#6f645c",
-    line: "#e3d9ca", lineStrong: "#c9bba7", want: "#d1236f", wantInk: "#ffffff", wantSoft: "#fbe3ee",
-    deal: "#0f7a47", dealSoft: "#ddf3e7", warn: "#9a5a00", warnSoft: "#fdf0d5", danger: "#b42318",
+    paper: "#faf9f6", card: "#ffffff", sunk: "#f2f0eb", ink: "#1d1b18", ink2: "#4b4842", ink3: "#6b665e",
+    line: "#e6e2da", lineStrong: "#8c877d", want: "#b5174f", wantInk: "#ffffff", wantSoft: "#f6e6ec",
+    deal: "#0f7a47", dealSoft: "#e3f1e8", warn: "#8a5300", warnSoft: "#f8eedb", danger: "#b42318",
   },
   dark: {
-    paper: "#15110f", card: "#1f1a17", sunk: "#110e0c", ink: "#f6efe6", ink2: "#d3c7ba", ink3: "#a99c8f",
-    line: "#342c27", lineStrong: "#4d423b", want: "#ff5c9d", wantInk: "#1b0510", wantSoft: "#3a1527",
-    deal: "#4ade80", dealSoft: "#12301f", warn: "#f5b13d", warnSoft: "#36270d", danger: "#ff8a80",
+    paper: "#131211", card: "#191816", sunk: "#1d1c19", ink: "#f2f0eb", ink2: "#c8c4bb", ink3: "#9c978d",
+    line: "#2d2b27", lineStrong: "#77726a", want: "#f2709a", wantInk: "#1a0008", wantSoft: "#3a1a26",
+    deal: "#5fd395", dealSoft: "#15291e", warn: "#f0b45a", warnSoft: "#2e2412", danger: "#ff8a80",
   },
+  fonts: { display: "sans" },
+  radius: { card: "6px", control: "4px", input: "4px", image: "4px" },
+  card: "flat",
 };

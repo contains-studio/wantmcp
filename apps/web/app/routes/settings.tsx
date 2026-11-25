@@ -139,7 +139,7 @@ function Section({ id, title, desc, children }: { id: string; title: string; des
   return (
     <section aria-labelledby={id} className="card grid gap-4 p-5 sm:p-6">
       <div>
-        <h2 id={id} className="text-xl font-extrabold">{title}</h2>
+        <h2 id={id} className="text-xl font-semibold">{title}</h2>
         {desc && <p className="mt-1 text-[0.9rem] text-ink-3">{desc}</p>}
       </div>
       {children}
@@ -165,7 +165,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           ← Back to the list
         </Link>
         <p className="eyebrow mt-4">List settings</p>
-        <h1 className="mt-1 text-3xl font-extrabold sm:text-4xl">{list.title}</h1>
+        <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{list.title}</h1>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-[0.9rem] text-ink-3">
           <span>
             {formatInfo(list).label} list · you are {isOwner ? "the owner" : "a member"}.
@@ -242,7 +242,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
       <Section id="members-h" title="People" desc={isOwner ? "Invite people to write to this list. They sign in with their email and can connect their own agents." : "People who can write to this list."}>
         <ul className="grid gap-2">
           {members.map((m) => (
-            <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line p-3">
+            <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{m.handle ?? m.invited_email ?? "Invited"}</p>
                 <p className="text-[0.78rem] text-ink-3">
@@ -345,7 +345,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           </Section>
 
           <section aria-labelledby="danger-h" className="grid gap-3 rounded-[1.1rem] border-2 border-dashed border-danger/40 p-5 sm:p-6">
-            <h2 id="danger-h" className="text-xl font-extrabold text-danger">Delete this list</h2>
+            <h2 id="danger-h" className="text-xl font-semibold text-danger">Delete this list</h2>
             <p className="text-[0.9rem] text-ink-2">Deletes every item, product, price and comment, and disconnects its agents. This can't be undone.</p>
             <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
               <input type="hidden" name="intent" value="delete-list" />
@@ -398,7 +398,7 @@ function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
       ? `Remove ${a.name} from this list? It keeps access to your other lists.`
       : `${a.kind === "key" ? "Revoke the key for" : "Disconnect"} ${a.name}?`;
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line p-3">
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold">{a.name}</p>
         <p className="text-[0.78rem] text-ink-3">
@@ -447,20 +447,20 @@ function NewKey({ keyValue, agentName, listUrl }: { keyValue: string; agentName:
     ["Any MCP client", `URL:    ${mcpUrl}\nHeader: Authorization: Bearer ${keyValue}`],
   ];
   return (
-    <div className="grid gap-4 rounded-2xl border-2 border-want bg-want-soft p-4" role="status">
+    <div className="grid gap-4 rounded-md border-2 border-ink bg-sunk p-4" role="status">
       <div>
-        <p className="font-display text-lg font-extrabold">Write key for “{agentName}”</p>
+        <p className="font-display text-lg font-semibold">Write key for “{agentName}”</p>
         <p className="text-[0.88rem] text-ink-2">
           Copy it now. It's shown once and we only keep a hash. Anyone with this key can post to this list as {agentName}.
         </p>
       </div>
-      <div className="flex flex-col items-stretch gap-2 rounded-xl border border-line-strong bg-card p-3 sm:flex-row sm:items-center sm:p-2 sm:pl-3">
+      <div className="flex flex-col items-stretch gap-2 rounded-md border border-line-strong bg-card p-3 sm:flex-row sm:items-center sm:p-2 sm:pl-3">
         <code className="min-w-0 flex-1 break-all text-[0.9rem] font-semibold" aria-label="Write key">
           {keyValue}
         </code>
         <CopyButton text={keyValue} label="Copy key" className="btn btn-sm" />
       </div>
-      <div className="grid gap-2 rounded-xl border border-line bg-card p-3">
+      <div className="grid gap-2 rounded-md border border-line bg-card p-3">
         <AgentPrompt
           mcpUrl={mcpUrl}
           listUrl={listUrl}
@@ -471,7 +471,7 @@ function NewKey({ keyValue, agentName, listUrl }: { keyValue: string; agentName:
       <div className="grid gap-2">
         <p className="label">Or set it up yourself</p>
         {snippets.map(([name, code], i) => (
-          <details key={name} open={i === 0} className="rounded-xl border border-line bg-card">
+          <details key={name} open={i === 0} className="rounded-md border border-line bg-card">
             <summary className="flex items-center justify-between px-3 py-2 font-semibold">
               {name} <span aria-hidden="true" className="text-ink-3">›</span>
             </summary>
@@ -548,7 +548,7 @@ function ThemePicker({
       <fieldset className="grid gap-2">
         <legend className="label mb-1">Occasion: how it is dressed</legend>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <label className={`grid cursor-pointer place-items-center gap-2 rounded-xl border-2 p-3 text-center ${occasion === null ? "border-want" : "border-line"}`}>
+          <label className={`grid cursor-pointer place-items-center gap-2 rounded-md border-2 p-3 text-center ${occasion === null ? "border-want" : "border-line"}`}>
             <span className="grid h-20 w-full place-items-center rounded-lg bg-sunk text-[0.85rem] text-ink-3" aria-hidden="true">
               No occasion
             </span>
@@ -577,7 +577,7 @@ function ThemePicker({
         <p className="label" id="theme-preview-label">
           Preview: {view.name}
         </p>
-        <div className="max-h-[30rem] overflow-hidden rounded-xl border border-line" aria-hidden="true" inert>
+        <div className="max-h-[30rem] overflow-hidden rounded-md border border-line" aria-hidden="true" inert>
           <ListView
             list={sample.list}
             items={sample.items}
@@ -630,7 +630,7 @@ function LookOption({
   small?: boolean;
 }) {
   return (
-    <label className={`grid cursor-pointer overflow-hidden rounded-xl border-2 ${checked ? "border-want" : "border-line"}`}>
+    <label className={`grid cursor-pointer overflow-hidden rounded-md border-2 ${checked ? "border-want" : "border-line"}`}>
       <ThemeThumb theme={view} sample={sample} origin={origin} className={`${small ? "h-20" : "h-28"} border-b border-line`} />
       <span className="flex items-center gap-2 p-2.5">
         <input type="radio" name={name} checked={checked} onChange={onChange} className="h-5 w-5 shrink-0 accent-[var(--want)]" />
@@ -692,7 +692,7 @@ function FormatControl({ list }: { list: Pick<ListSummary, "format" | "item_coun
       <input type="hidden" name="intent" value="format" />
       <p className="text-[0.9rem] text-ink-2">You can change the format until the first item is added.</p>
       {(Object.values(FORMATS) as FormatInfo[]).map((f) => (
-        <label key={f.format} className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-xl border p-3 ${current === f.format ? "border-want bg-want-soft" : "border-line"}`}>
+        <label key={f.format} className={`grid cursor-pointer grid-cols-[auto_1fr] gap-x-3 rounded-md border p-3 ${current === f.format ? "border-ink bg-sunk" : "border-line"}`}>
           <input type="radio" name="format" value={f.format} defaultChecked={current === f.format} className="mt-1 accent-[var(--want)]" />
           <span>
             <span className="block font-semibold">{f.label}</span>

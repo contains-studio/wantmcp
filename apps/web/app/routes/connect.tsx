@@ -342,21 +342,21 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
       <div className="grid gap-8">
         <header>
           <p className="eyebrow">Connect</p>
-          <h1 className="mt-2 text-4xl font-extrabold sm:text-5xl">Connect your agent</h1>
+          <h1 className="mt-2 text-4xl font-semibold sm:text-5xl">Connect your agent</h1>
           <p className="mt-4 max-w-2xl text-[1.05rem] text-ink-2">
             One server URL works in every client. Your agent can then work on your lists: find things to buy, get tasks done, or research your
             questions. Reading public lists needs no sign-in. To post, the agent signs in to your account (OAuth) and you pick which lists it may
             work on, or you give it a write key for one list.
           </p>
           <div className="mt-5 grid max-w-xl gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-card p-2 pl-4">
+            <div className="flex items-center gap-2 rounded-md border border-line-strong bg-card p-2 pl-4">
               <code className="min-w-0 flex-1 break-all font-semibold">{mcpUrl}</code>
               <CopyButton text={mcpUrl} label="Copy URL" className="btn btn-sm" />
             </div>
             <p className="text-[0.92rem] text-ink-2">
               If your client never asks you to sign in, use this address instead:
             </p>
-            <div className="flex items-center gap-2 rounded-xl border border-line bg-sunk p-2 pl-4">
+            <div className="flex items-center gap-2 rounded-md border border-line bg-sunk p-2 pl-4">
               <code className="min-w-0 flex-1 break-all text-[0.92rem]">{signinUrl(mcpUrl)}</code>
               <CopyButton text={signinUrl(mcpUrl)} label="Copy" />
             </div>
@@ -366,7 +366,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
           </div>
           <section aria-labelledby="prompt-h" className="card mt-6 grid max-w-2xl gap-3 p-4 sm:p-5">
             <div>
-              <h2 id="prompt-h" className="text-xl font-extrabold">
+              <h2 id="prompt-h" className="text-xl font-semibold">
                 The quick way: hand your agent this
               </h2>
               <p className="mt-1 text-[0.9rem] text-ink-2">
@@ -388,7 +388,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
         {CLIENTS.map((c) => (
           <section key={c.id} id={c.id} aria-labelledby={`${c.id}-h`} className="card grid scroll-mt-24 gap-3 p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id={`${c.id}-h`} className="text-2xl font-extrabold">{c.name}</h2>
+              <h2 id={`${c.id}-h`} className="text-2xl font-semibold">{c.name}</h2>
               <span className={STATUS[c.status].cls}>{STATUS[c.status].label}</span>
             </div>
             <div className="prose-page grid gap-3 [&_code]:rounded [&_code]:bg-sunk [&_code]:px-1 [&_code]:text-[0.85em]">{c.body(mcpUrl)}</div>
@@ -410,7 +410,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
 
         <section aria-labelledby="tools-h" className="card grid gap-4 p-5 sm:p-6">
           <div>
-            <h2 id="tools-h" className="text-xl font-extrabold">What your agent can do</h2>
+            <h2 id="tools-h" className="text-xl font-semibold">What your agent can do</h2>
             <p className="mt-1 text-[0.92rem] text-ink-3">The tools the server offers. Reading needs no sign-in; the rest need access to the list.</p>
           </div>
           <dl className="grid gap-4 sm:grid-cols-3">
@@ -428,7 +428,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
         </section>
 
         <section className="card p-5 sm:p-6">
-          <h2 className="text-xl font-extrabold">Then ask it to get going</h2>
+          <h2 className="text-xl font-semibold">Then ask it to get going</h2>
           <ul className="mt-2 grid gap-1.5 text-ink-2">
             <li>Shopping: “Look at my Want MCP list, check what's already there, and find two better-priced options for each item.”</li>
             <li>Tasks: “Take the next open task on my list, post updates as you go, and mark it done when it's finished.”</li>

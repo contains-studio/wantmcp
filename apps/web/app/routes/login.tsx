@@ -22,8 +22,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 /** The API's own message is user-facing; for email delivery problems it says what went wrong. */
 function loginError(err: ApiError): string {
-  if (err.code === "email_unavailable") return err.message || "We couldn't send the sign-in email just now. Please try again in a few minutes.";
-  if (err.code === "network") return "We couldn't reach the sign-in service. Please try again in a moment.";
+  if (err.code === "email_unavailable") return err.message || "Couldn't send the email. Try again in a few minutes.";
+  if (err.code === "network") return "Can't reach the server. Try again in a moment.";
   return err.message;
 }
 
@@ -38,7 +38,7 @@ export async function action({ request }: Route.ActionArgs) {
 
   if (form.get("intent") === "verify") {
     const code = String(form.get("code") ?? "").replace(/\s+/g, "");
-    if (!/^\d{6}$/.test(code)) return data<ActionResult>({ step: "code", email, optIn, error: "Enter the 6-digit code from the email." }, 400);
+    if (!/^\d{6}$/.test(code)) return data<ActionResult>({ step: "code", email, optIn, error: "Enter the 6-digit code." }, 400);
     try {
       const res = await api<{ token: string; user: UserSelf }>(request, "/auth/verify", {
         method: "POST",
@@ -52,7 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, error: "Enter a valid email address." }, 400);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, error: "Enter a valid email." }, 400);
   let devCode: string | undefined;
   try {
     await api(request, "/auth/code", {
@@ -82,13 +82,12 @@ export default function Login() {
   return (
     <div className="wrap grid min-h-[70dvh] place-items-center py-12">
       <div className="card w-full max-w-md p-6 sm:p-8">
-        <p className="eyebrow">{onCode ? "Step 2 of 2" : "Sign in or sign up"}</p>
-        <h1 className="mt-2 text-3xl font-extrabold">{onCode ? "Check your email" : "Your want lists"}</h1>
+        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : "Sign in"}</h1>
 
         {onCode ? (
           <Form method="post" className="mt-6 grid gap-4" key="code">
             <p className="text-ink-2">
-              We sent a 6-digit code to <strong className="break-all text-ink">{result.email}</strong>. It works for 10 minutes.
+              We sent a code to <strong className="break-all text-ink">{result.email}</strong>. It expires in 10 minutes.
             </p>
             {result.devCode && (
               <p className="chip chip-warn w-fit">
@@ -129,10 +128,10 @@ export default function Login() {
           </Form>
         ) : (
           <Form method="post" className="mt-6 grid gap-4" key="email">
-            <p className="text-ink-2">No password. We'll email you a code. A new address creates an account.</p>
+            <p className="text-ink-2">We'll email you a code. New here? This signs you up.</p>
             <input type="hidden" name="next" value={next} />
             <label className="field">
-              <span className="label">Email address</span>
+              <span className="label">Email</span>
               <input
                 name="email"
                 type="email"
@@ -147,7 +146,7 @@ export default function Login() {
             </label>
             <label className="check">
               <input type="checkbox" name="updates_opt_in" />
-              <span>Tell me about new features. Occasional emails, unsubscribe any time.</span>
+              <span>Email me about new features</span>
             </label>
             {result?.error && (
               <p id="email-error" className="form-error" role="alert">

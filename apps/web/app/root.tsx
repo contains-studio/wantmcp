@@ -67,7 +67,7 @@ function ThemeToggle() {
   const pending = fetcher.formData?.get("theme") as string | undefined;
   const current = pending ?? theme;
   const next = current === "system" ? "dark" : current === "dark" ? "light" : "system";
-  const label = current === "system" ? "Theme: match system" : current === "dark" ? "Theme: dark" : "Theme: light";
+  const label = current === "system" ? "Appearance: system" : current === "dark" ? "Appearance: dark" : "Appearance: light";
 
   if (typeof document !== "undefined" && pending) {
     if (pending === "system") document.documentElement.removeAttribute("data-theme");
@@ -78,8 +78,8 @@ function ThemeToggle() {
     <fetcher.Form method="post" action="/theme">
       <input type="hidden" name="theme" value={next} />
       <button
-        className="grid h-10 w-10 place-items-center rounded-full border border-line text-ink-2 hover:border-ink hover:text-ink"
-        aria-label={`${label}. Switch to ${next === "system" ? "match system" : next}.`}
+        className="grid h-10 w-10 place-items-center rounded border border-transparent text-ink-2 hover:border-line hover:text-ink"
+        aria-label={`${label}. Switch to ${next}.`}
         title={label}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
@@ -106,9 +106,9 @@ function Header() {
   const { user } = useRootData();
   const nav = useNavigation();
   const navCls = ({ isActive }: { isActive: boolean }) =>
-    `whitespace-nowrap rounded-full px-2.5 py-2 text-[0.9rem] font-semibold sm:px-3 ${isActive ? "bg-sunk text-ink" : "text-ink-2 hover:text-ink"}`;
+    `whitespace-nowrap px-2 py-2.5 text-[0.92rem] font-medium sm:px-3 ${isActive ? "text-ink underline decoration-1 underline-offset-[6px]" : "text-ink-2 hover:text-ink"}`;
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-md supports-[backdrop-filter]:bg-paper/75">
+    <header className="sticky top-0 z-30 border-b border-line bg-paper">
       <div
         aria-hidden="true"
         className={`absolute inset-x-0 top-0 h-0.5 origin-left bg-want transition-transform duration-500 ${nav.state === "idle" ? "scale-x-0" : "scale-x-75"}`}
@@ -132,6 +132,12 @@ function Header() {
           )}
         </nav>
         <ThemeToggle />
+        {!user && (
+          // The one small pill on the site.
+          <Link to="/login" className="ml-1 hidden rounded-full bg-want px-4 py-2 text-[0.88rem] font-semibold text-want-ink sm:inline-flex">
+            Start a list
+          </Link>
+        )}
       </div>
     </header>
   );
@@ -140,16 +146,13 @@ function Header() {
 function Footer() {
   const { sourceUrl } = useRootData();
   return (
-    <footer className="mt-24 border-t border-line">
-      <div className="wrap grid gap-6 py-10 text-[0.88rem] text-ink-3 sm:grid-cols-[1fr_auto]">
-        <div className="grid gap-2">
+    <footer className="mt-24 border-t border-line bg-sunk">
+      <div className="wrap grid gap-6 py-12 text-[0.88rem] text-ink-3 sm:grid-cols-[1fr_auto]">
+        <div className="grid gap-3">
           <Wordmark />
-          <p className="max-w-md">
-            An MCP server for getting what you want. Free, no affiliate links. Lists, products, answers and comments are posted by users and their
-            agents, so check anything important at the source before you rely on it.
-          </p>
+          <p className="max-w-md">Free, no affiliate links. Posted by people and their agents: check the source before you rely on it.</p>
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap content-start gap-x-5 gap-y-2">
+        <nav aria-label="Footer" className="flex flex-wrap content-start gap-x-6 gap-y-2">
           <Link to="/connect" className="link">Connect an agent</Link>
           <Link to="/privacy" className="link">Privacy</Link>
           <Link to="/terms" className="link">Terms</Link>

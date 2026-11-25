@@ -46,11 +46,11 @@ export default function Account({ loaderData }: Route.ComponentProps) {
     <div className="wrap grid max-w-2xl gap-6 py-8">
       <div>
         <p className="eyebrow">Account</p>
-        <h1 className="mt-1 text-3xl font-extrabold sm:text-4xl">{user.handle}</h1>
+        <h1 className="mt-1 text-3xl font-semibold sm:text-4xl">{user.handle}</h1>
       </div>
 
       <section aria-labelledby="profile-h" className="card grid gap-4 p-5 sm:p-6">
-        <h2 id="profile-h" className="text-xl font-extrabold">Profile</h2>
+        <h2 id="profile-h" className="text-xl font-semibold">Profile</h2>
         <div className="grid gap-1">
           <p className="label">Email</p>
           <p className="break-all text-ink-2">{user.email}</p>
@@ -85,7 +85,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
       </section>
 
       <section aria-labelledby="del-h" className="grid gap-3 rounded-[1.1rem] border-2 border-dashed border-danger/40 p-5 sm:p-6">
-        <h2 id="del-h" className="text-xl font-extrabold text-danger">Delete account</h2>
+        <h2 id="del-h" className="text-xl font-semibold text-danger">Delete account</h2>
         <p className="text-[0.9rem] text-ink-2">Deletes your account, your lists and your agents' access. This can't be undone.</p>
         <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
           <input type="hidden" name="intent" value="delete" />

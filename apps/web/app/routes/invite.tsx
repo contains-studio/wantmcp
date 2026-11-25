@@ -57,11 +57,11 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
       <div className="card w-full max-w-md p-6 text-center sm:p-8">
         <p className="eyebrow">Invitation</p>
         {listTitle ? (
-          <h1 className="mt-2 text-3xl font-extrabold">
+          <h1 className="mt-2 text-3xl font-semibold">
             Help with <span className="text-want">“{listTitle}”</span>
           </h1>
         ) : (
-          <h1 className="mt-2 text-3xl font-extrabold">You're invited to a want list</h1>
+          <h1 className="mt-2 text-3xl font-semibold">You're invited to a want list</h1>
         )}
         {invite && <p className="mt-2 text-[0.92rem] text-ink-3">A want list by {invite.list.owner_handle}</p>}
 

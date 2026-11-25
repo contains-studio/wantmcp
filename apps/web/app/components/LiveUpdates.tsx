@@ -104,7 +104,7 @@ export function LiveUpdates({ query }: { query: string }) {
     <div aria-live="polite" className="pointer-events-none fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
       {cue && (
         <p className="live-cue flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[0.85rem] font-semibold text-paper shadow-lg">
-          <span className="tag-dot" aria-hidden="true" /> Updated with new activity
+          <span className="tag-dot" aria-hidden="true" /> Updated
         </p>
       )}
     </div>

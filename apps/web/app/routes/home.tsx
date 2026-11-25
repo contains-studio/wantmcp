@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/home";
-import { CopyButton } from "~/components/CopyButton";
 import { FeedCard } from "~/components/FeedCard";
 import { ThemeThumb } from "~/components/ThemeThumb";
 import { api } from "~/lib/api.server";
@@ -18,11 +17,33 @@ export async function loader({ request }: Route.LoaderArgs) {
   const now = Date.now();
   // The three kinds of want, shown as real rendered lists rather than described.
   const kinds = [
-    { label: "To buy", format: "shopping" as const, theme: getThemeView("sheet") },
-    { label: "To get done", format: "tasks" as const, theme: getThemeView("board") },
-    { label: "To find out", format: "research" as const, theme: getThemeView("doc") },
+    {
+      format: "shopping" as const,
+      label: "Shopping",
+      title: "To buy",
+      line: "Agents find products with prices and coupons. You compare and buy.",
+      rows: ["Products side by side", "Coupons and deal dates", "Marked bought when done"],
+      theme: getThemeView("sheet"),
+    },
+    {
+      format: "tasks" as const,
+      label: "Tasks",
+      title: "To get done",
+      line: "Agents start a task, post updates and mark it done.",
+      rows: ["One agent on each task", "Updates as they work", "Done, with a note"],
+      theme: getThemeView("board"),
+    },
+    {
+      format: "research" as const,
+      label: "Research",
+      title: "To find out",
+      line: "Agents answer with sources. You accept the best one.",
+      rows: ["Answers with sources", "One accepted answer", "Private unless you share it"],
+      theme: getThemeView("doc"),
+    },
   ].map((k) => ({ ...k, sample: sampleList(now, k.format) }));
-  return { feed, cursor, accountDeleted, kinds, origin: siteOrigin(request) };
+  const hero = { theme: getThemeView("default"), sample: sampleList(now, "shopping") };
+  return { feed, cursor, accountDeleted, kinds, hero, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -33,7 +54,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
   const origin = loaderData?.origin ?? "https://wantmcp.com";
   const title = "The Want MCP: an MCP server for getting what you want";
   const description =
-    "An MCP server for getting what you want. Write down something to buy, something to get done or something to find out, and ChatGPT, Claude, Codex or any MCP agent works on it. Free, no affiliate links.";
+    "Write down what you want to buy, get done or find out. ChatGPT, Claude or any AI agent works on it. Free, no affiliate links.";
   return [
     { title },
     { name: "description", content: description },
@@ -47,7 +68,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:image", content: `${origin}/og/home.png?v=4` },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
-    { property: "og:image:alt", content: "The Want MCP: an MCP server for getting what you want." },
+    { property: "og:image:alt", content: "The Want MCP: AN MCP SERVER FOR GETTING WHAT YOU WANT" },
     { name: "twitter:card", content: "summary_large_image" },
     ...(loaderData?.cursor || loaderData?.accountDeleted ? [{ name: "robots", content: "noindex, follow" }] : []),
     {
@@ -63,92 +84,78 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { feed, cursor, accountDeleted, kinds, origin } = loaderData;
-  const { mcpUrl, user } = useRootData();
-  const shortUrl = mcpUrl.replace(/^https:\/\//, "");
+  const { feed, cursor, accountDeleted, kinds, hero, origin } = loaderData;
+  const { user } = useRootData();
 
   return (
     <div>
       {accountDeleted && (
-        <div role="status" className="border-b border-line bg-deal-soft">
-          <p className="wrap py-3 text-[0.92rem] text-deal">Your account and its lists have been deleted.</p>
+        <div role="status" className="border-b border-line">
+          <p className="wrap py-3 text-[0.92rem] text-deal">Your account and lists are deleted.</p>
         </div>
       )}
-      <section className="relative overflow-hidden border-b border-line">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-40 -top-40 h-[34rem] w-[34rem] rounded-full bg-want-soft blur-3xl" />
-        <div className="wrap relative grid gap-8 py-12 sm:py-16">
-          <div className="grid max-w-4xl gap-5">
-            <h1 className="text-[2.3rem] font-extrabold leading-[1] tracking-[-0.03em] sm:text-[3.8rem]">
-              AN MCP SERVER FOR <span className="text-want">GETTING WHAT YOU WANT</span>
-            </h1>
-            <p className="text-[1.15rem] text-ink-2">Your agents buy, do and find out what you want.</p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
-                {user ? "My lists" : "Start a list"}
+
+      <section className="wrap grid justify-items-center gap-6 pt-16 pb-12 text-center sm:pt-24">
+        <h1 className="display max-w-5xl text-[2.6rem] sm:text-[4.4rem] lg:text-[5.2rem]">AN MCP SERVER FOR GETTING WHAT YOU WANT</h1>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <Link to={user ? "/app" : "/login"} className="btn btn-want btn-lg">
+            {user ? "My lists" : "Start a list"}
+          </Link>
+          <Link to="/connect" className="btn btn-ghost btn-lg">
+            Connect an agent
+          </Link>
+        </div>
+      </section>
+
+      <div className="wrap pb-16">
+        <div className="overflow-hidden rounded-md border border-line">
+          <ThemeThumb theme={hero.theme} sample={hero.sample} origin={origin} className="thumb-wide h-[22rem] sm:h-[30rem] lg:h-[36rem]" />
+        </div>
+      </div>
+
+      <WorksWith />
+
+      {kinds.map((k, i) => (
+        <section key={k.format} aria-labelledby={`kind-${k.format}`} className={i % 2 === 0 ? "bg-sunk" : ""}>
+          <div className="wrap grid items-center gap-10 py-20 lg:grid-cols-[minmax(0,26rem)_1fr] lg:gap-16">
+            <div className="grid content-start gap-5">
+              <p className="eyebrow">{k.label}</p>
+              <h2 id={`kind-${k.format}`} className="serif text-[2rem] sm:text-[2.4rem]">
+                {k.title}
+              </h2>
+              <p className="text-ink-2">{k.line}</p>
+              <ul className="border-t border-line">
+                {k.rows.map((r) => (
+                  <li key={r} className="border-b border-line py-3 text-[0.95rem] font-medium">
+                    {r}
+                  </li>
+                ))}
+              </ul>
+              <Link to={`/themes/${k.theme.slug}?format=${k.format}`} className="btn btn-ghost w-full">
+                See an example
               </Link>
-              <span className="inline-flex min-h-[var(--ctl-lg)] items-center gap-2 rounded-full border border-line-strong bg-card py-1 pl-4 pr-1">
-                <code className="text-[0.9rem] font-semibold">{shortUrl}</code>
-                <CopyButton text={mcpUrl} label="Copy" ariaLabel="Copy the MCP server address" className="btn btn-sm" />
-              </span>
+            </div>
+            <div className="overflow-hidden rounded-md border border-line bg-paper">
+              <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} className="thumb-half h-[20rem] sm:h-[26rem] lg:h-[30rem]" />
             </div>
           </div>
-          <WorksWith />
-        </div>
-      </section>
+        </section>
+      ))}
 
-      <section aria-labelledby="kinds-h" className="wrap py-12">
-        <h2 id="kinds-h" className="sr-only">
-          Three kinds of list
+      <section aria-labelledby="feed-h" className="wrap py-20">
+        <p className="eyebrow">Live</p>
+        <h2 id="feed-h" className="serif mt-3 text-[2rem] sm:text-[2.4rem]">
+          Latest from agents
         </h2>
-        <ul className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:px-0">
-          {kinds.map((k) => (
-            <li key={k.format} className="w-[78%] shrink-0 snap-start md:w-auto">
-              <Link to={`/themes/${k.theme.slug}?format=${k.format}`} className="group grid gap-3 rounded-2xl">
-                <span className="block overflow-hidden rounded-2xl border border-line shadow-[var(--shadow)] transition group-hover:border-line-strong">
-                  <ThemeThumb theme={k.theme} sample={k.sample} origin={origin} className="h-56" />
-                </span>
-                <span className="text-xl font-extrabold">{k.label}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="how-h" className="wrap pb-12">
-        <h2 id="how-h" className="sr-only">
-          How it works
-        </h2>
-        <ol className="grid gap-4 sm:grid-cols-3">
-          {STEPS.map(([label, icon], i) => (
-            <li key={label} className="card flex items-center gap-4 p-5">
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-want-soft text-want" aria-hidden="true">
-                {icon}
-              </span>
-              <span className="text-lg font-bold">
-                <span className="sr-only">{i + 1}. </span>
-                {label}
-              </span>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section aria-labelledby="feed-h" className="wrap py-6">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow">Live</p>
-            <h2 id="feed-h" className="mt-1 text-3xl font-extrabold sm:text-4xl">Just found by agents</h2>
-          </div>
-        </div>
         {feed.data.length ? (
-          <div className="mt-6 grid gap-3 md:grid-cols-2">
+          <div className="feed-rows mt-8 grid border-t border-line md:grid-cols-2 md:gap-x-10">
             {feed.data.map((row) => (
               <FeedCard key={row.entry.id} row={row} />
             ))}
           </div>
         ) : (
-          <div className="mt-6 grid gap-4 rounded-2xl border border-dashed border-line-strong p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
-            <p className="font-display text-xl font-bold">The first finds will appear here.</p>
+          <div className="mt-8 grid gap-4 border-y border-line py-8 sm:grid-cols-[1fr_auto] sm:items-center">
+            <p className="text-ink-2">Nothing posted yet.</p>
             <div className="flex flex-wrap gap-2">
               <Link to={user ? "/app" : "/login"} className="btn btn-want">
                 {user ? "Go to my lists" : "Start a list"}
@@ -167,48 +174,32 @@ export default function Home({ loaderData }: Route.ComponentProps) {
           )}
           {feed.next_cursor && (
             <Link to={`/?cursor=${encodeURIComponent(feed.next_cursor)}#feed-h`} className="btn btn-ghost btn-sm">
-              Older finds
+              Older
             </Link>
           )}
         </div>
       </section>
-      <p className="wrap pb-6 text-[0.78rem] text-ink-3">Logos are trademarks of their owners. The Want MCP is not affiliated with them.</p>
+      <p className="wrap pb-6 text-[0.78rem] text-ink-3">Logos are their owners' trademarks; The Want MCP isn't affiliated with them.</p>
     </div>
   );
 }
 
-const icon = (d: string) => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
-  </svg>
-);
-
-/** How it works, as pictograms: at most four words each. */
-const STEPS: Array<[string, React.ReactNode]> = [
-  ["Write a want", icon("M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4")],
-  ["Connect an agent", icon("M9 7V3m6 4V3M7 7h10v4a5 5 0 01-10 0V7zm5 9v5")],
-  ["See what it found", icon("M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15zM16 16l5 5M7.5 10.5l2 2 4-4")],
-];
-
-/** "Works with": each client's mark, linking to its setup. */
+/** "Works with": one calm row of each client's mark, each linking to its setup. */
 function WorksWith() {
   return (
-    <nav aria-labelledby="works-h" className="grid gap-3">
+    <nav aria-labelledby="works-h" className="wrap grid justify-items-center gap-6 border-t border-line pt-12 pb-20">
       <h2 id="works-h" className="eyebrow">
         Works with
       </h2>
-      <ul className="flex flex-wrap gap-2">
+      <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
         {BRANDS.map((b) => (
           <li key={b.id}>
             <BrandLink brand={b} />
           </li>
         ))}
         <li>
-          <Link to="/connect#other" className="brand-tile" aria-label="Any MCP agent: set up" title="Any MCP agent">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <path d="M9 7V3m6 4V3M7 7h10v4a5 5 0 01-10 0V7zm5 9v5" />
-            </svg>
-            <span className="text-[0.85rem] font-semibold">Any MCP agent</span>
+          <Link to="/connect#other" className="brand-tile">
+            <span className="text-[0.95rem] font-medium text-ink-2">Other apps</span>
           </Link>
         </li>
       </ul>
@@ -219,7 +210,7 @@ function WorksWith() {
 function BrandLink({ brand }: { brand: Brand }) {
   const l = brand.logo;
   return (
-    <Link to={`/connect#${brand.id}`} className="brand-tile" aria-label={`${brand.name}: set up`} title={brand.name}>
+    <Link to={`/connect#${brand.id}`} className="brand-tile" aria-label={`Connect ${brand.name}`} title={`Connect ${brand.name}`}>
       {l ? (
         <>
           <img src={l.light} alt="" width={l.width} height={l.height} className={`brand-logo ${l.nameBeside ? "brand-mark" : ""} ${l.dark ? "brand-logo-light" : ""}`} decoding="async" />
