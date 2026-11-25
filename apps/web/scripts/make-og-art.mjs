@@ -12,7 +12,7 @@ const ART = [
   { file: "gemini-sparkle", out: "gemini-sparkle" },
   { file: "openclaw-on-light", out: "openclaw-mark", part: "svg > g" },
   // Large (a detailed drawing) and a white card on white: both are simpler for the renderer as images.
-  { file: "hermes-agent-icon-dark", out: "hermes-agent" },
+  { file: "hermes-agent-icon", out: "hermes-agent" },
   { file: "instinct-icon", out: "instinct" },
 ];
 const SIZE = 192; // drawn at up to 80px on a 1200px card; 192 keeps it crisp at 2x and above
