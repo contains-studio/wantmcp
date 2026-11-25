@@ -240,10 +240,13 @@ function WorksWith() {
 function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: ThemeView[]; occasions: ThemeView[] }; origin: string }) {
   const tile = (v: ThemeView) => (
     <li key={v.slug}>
-      <Link to={`/themes/${v.slug}`} className="look-tile grid overflow-hidden rounded-[14px] bg-card shadow-[var(--shadow)]">
+      {/* The miniature holds links of its own, so it sits beside the link, never inside it: the link stretches over the tile. */}
+      <div className="look-tile relative grid overflow-hidden rounded-[14px] bg-card shadow-[var(--shadow)]">
         <ThemeThumb theme={v} sample={looks.sample} origin={origin} className="h-36 sm:h-40" />
-        <span className="px-3 py-2 text-[0.9rem] font-medium">{v.name}</span>
-      </Link>
+        <Link to={`/themes/${v.slug}`} className="stretched-link px-3 py-2 text-[0.9rem] font-medium">
+          {v.name}
+        </Link>
+      </div>
     </li>
   );
   return (

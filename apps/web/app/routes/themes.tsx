@@ -55,19 +55,14 @@ export function Swatch({ theme }: { theme: ThemeView }) {
 function Choice({ to, current, view, sample, origin, label, note }: { to: string; current: boolean; view: ThemeView; sample: ThemeSample; origin: string; label: string; note?: string }) {
   return (
     <li>
-      <Link
-        to={to}
-        preventScrollReset
-        replace
-        aria-current={current ? "true" : undefined}
-        className={`grid overflow-hidden rounded-md border-2 bg-card ${current ? "border-ink-3" : "border-line hover:border-line-strong"}`}
-      >
+      {/* The miniature holds links of its own, so it sits beside the link, never inside it: the link stretches over the tile. */}
+      <div className={`relative grid overflow-hidden rounded-md border-2 bg-card ${current ? "border-ink-3" : "border-line hover:border-line-strong"}`}>
         <ThemeThumb theme={view} sample={sample} origin={origin} className="h-28 border-b border-line" />
-        <span className="grid gap-0.5 p-2.5">
+        <Link to={to} preventScrollReset replace aria-current={current ? "true" : undefined} className="stretched-link grid gap-0.5 p-2.5">
           <span className="font-semibold leading-tight">{label}</span>
           {note && <span className="text-[0.75rem] text-ink-3">{note}</span>}
-        </span>
-      </Link>
+        </Link>
+      </div>
     </li>
   );
 }

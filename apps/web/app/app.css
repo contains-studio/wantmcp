@@ -763,6 +763,12 @@ button.check-toggle:hover { border-color: var(--ink); }
   }
 }
 
+/* A link that covers its whole tile without wrapping the tile's other content (which may hold links of its own). */
+.stretched-link { text-decoration: none; color: inherit; }
+.stretched-link::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.stretched-link:focus-visible { outline: none; }
+.stretched-link:focus-visible::after { outline: 3px solid var(--focus); outline-offset: -3px; }
+
 /* Theme gallery thumbnails: a whole list page, scaled down. */
 .theme-thumb-inner { width: 1100px; zoom: 0.345; pointer-events: none; }
 @media (min-width: 640px) and (max-width: 1023px) { .theme-thumb-inner { zoom: 0.31; } }
