@@ -54,7 +54,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     detailsPlaceholder: "Sizes, colors, must-haves, where to ship…",
     detailsPrompt: "Budget, size, color, where to ship",
     addEntryLabel: "Add a product",
-    waiting: "Waiting for an agent to find something.",
+    waiting: "Nothing found yet.",
     waitingWriter: "Waiting for an agent to find something. Ask one of your connected agents to shop for this.",
     defaultTheme: "sheet",
     defaultVisibility: "public",

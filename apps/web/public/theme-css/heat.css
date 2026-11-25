@@ -24,7 +24,8 @@
 .themed.tpl-heat .add-item { background: var(--card); }
 
 /* Occasions: the art at the right of the header, the strip under it. */
-.themed.tpl-heat.has-occ .list-hero { background: var(--occ-art) no-repeat right max(0rem, calc(50% - 30rem)) center / auto 85%, var(--paper); }
-.themed.tpl-heat.has-occ .list-hero > .wrap > * { max-width: min(36rem, 65%); }
+.themed.tpl-heat.has-occ .list-hero > .wrap::before {
+  content: ""; display: block; height: 3rem; margin-bottom: 0.5rem; pointer-events: none;
+  background: var(--occ-art) no-repeat right center / auto 100%;
+}
 .themed.tpl-heat.has-occ .ix-bars::before { content: ""; display: block; height: var(--occ-strip-h); background: var(--occ-strip); }
-@media (max-width: 639px) { .themed.tpl-heat.has-occ .list-hero { background-size: auto 5rem, auto; background-position: right 0.5rem top 0.5rem, 0 0; } .themed.tpl-heat.has-occ .list-hero > .wrap { padding-top: 5.5rem; } .themed.tpl-heat.has-occ .list-hero > .wrap > * { max-width: none; } }

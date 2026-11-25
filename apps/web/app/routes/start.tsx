@@ -34,8 +34,8 @@ export async function action({ request }: Route.ActionArgs) {
   if (!occasion) throw redirect("/");
   if (!getSessionToken(request)) throw redirect(`/login?next=${encodeURIComponent(`/start?occasion=${occasion}`)}`);
   try {
-    // Shopping lists follow the format's own default visibility (the API's): nothing is forced here.
-    const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: SEASON.listTitle[occasion], format: "shopping" } });
+    // A gift list is private: it must never appear publicly (or on the home page) by default.
+    const list = await api<ListSummary>(request, "/lists", { method: "POST", body: { title: SEASON.listTitle[occasion], format: "shopping", visibility: "private" } });
     await api(request, `/lists/${list.id}`, { method: "PATCH", body: { theme: resolveLook(`sheet--${occasion}`, "shopping").slug } }).catch(() => null);
     return redirect(`/l/${list.id}`);
   } catch {
@@ -47,7 +47,7 @@ export default function Start({ loaderData, actionData }: Route.ComponentProps) 
   return (
     <div className="wrap grid max-w-xl justify-items-start gap-4 py-16">
       <h1 className="display text-[2rem] sm:text-[2.4rem]">{loaderData.title}</h1>
-      <p className="text-ink-2">A shopping list in the {loaderData.look} look. You can rename it and change the look later.</p>
+      <p className="text-ink-2">A private shopping list in the {loaderData.look} look: only you and people you invite can see it. You can rename it and change the look later.</p>
       <Form method="post">
         <input type="hidden" name="occasion" value={loaderData.occasion} />
         <button className="btn btn-want">Start the list</button>

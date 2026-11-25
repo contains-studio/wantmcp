@@ -50,22 +50,31 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
   const result = useActionData<typeof action>();
   const nav = useNavigation();
   const listTitle = invite?.list.title;
-  const usable = !invite || invite.status === "invited";
+  // Checked before anything else: an unknown, used or cancelled link never says "you're invited".
+  const usable = !!invite && invite.status === "invited";
+
+  if (!invite) {
+    return (
+      <div className="wrap grid min-h-[60dvh] place-items-center py-12">
+        <div className="card grid w-full max-w-md justify-items-center gap-3 p-6 text-center sm:p-8">
+          <h1 className="text-[1.6rem] leading-tight font-semibold">This invite link doesn't work</h1>
+          <p className="text-ink-2">It may have expired, been cancelled or already used. Ask the person who sent it for a new one.</p>
+          <Link to={user ? "/app" : "/login"} className="btn btn-want mt-2">
+            Start a list
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="wrap grid min-h-[60dvh] place-items-center py-12">
       <div className="card w-full max-w-md p-6 text-center sm:p-8">
         <p className="eyebrow">Invitation</p>
-        {listTitle ? (
-          <h1 className="serif mt-2 text-[2rem] leading-tight">
-            Help with “{listTitle}”
-          </h1>
-        ) : (
-          <h1 className="serif mt-2 text-[2rem] leading-tight">You're invited to a want list</h1>
-        )}
-        {invite && <p className="mt-2 text-[0.92rem] text-ink-3">A want list by {invite.list.owner_handle}</p>}
+        <h1 className="serif mt-2 text-[2rem] leading-tight">Help with “{listTitle}”</h1>
+        <p className="mt-2 text-[0.92rem] text-ink-3">A want list by {invite.list.owner_handle}</p>
 
-        {alreadyMember && invite ? (
+        {alreadyMember ? (
           <div className="mt-6 grid gap-3">
             <p className="text-ink-2">You can already write to this list.</p>
             <Link to={`/l/${invite.list.id}`} className="btn btn-want">
@@ -79,11 +88,9 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
                 ? "This invite was cancelled. Ask the list owner for a new one."
                 : "This invite has already been used. Ask the list owner for a new one."}
             </p>
-            {invite && (
-              <Link to={`/l/${invite.list.id}`} className="btn btn-ghost">
-                View the list
-              </Link>
-            )}
+            <Link to={user ? "/app" : "/login"} className="btn btn-want">
+              Start a list
+            </Link>
           </div>
         ) : (
           <>

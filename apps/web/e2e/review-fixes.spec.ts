@@ -1,0 +1,133 @@
+import { expect, test, type Page } from "@playwright/test";
+import { createList, DEMO, freshEmail, signIn } from "./helpers";
+
+const OFFERED = ["black-friday", "cyber-monday", "chanukah", "christmas", "kwanzaa", "new-year", "birthday"];
+
+/** Sets a list's look the way list settings does. */
+async function setLook(page: Page, id: string, look: string) {
+  await page.goto(`/app/lists/${id}/settings`);
+  const res = await page.request.post(`/app/lists/${id}/settings`, { form: { intent: "theme", theme: look }, headers: { origin: new URL(page.url()).origin } });
+  expect(res.ok()).toBe(true);
+}
+
+test("a done task's box is visibly ticked in every layout, light and dark", async ({ page }) => {
+  for (const scheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const look of ["today", "sections", "today--christmas", "today--chanukah", "sections--kwanzaa"]) {
+      await page.goto(`/themes/${look}?format=tasks`);
+      const box = page.locator('.check-toggle.is-checked, .check-toggle[aria-checked="true"]').first();
+      await expect(box, `${look} ${scheme}`).toBeAttached();
+      const { bg, fg, card } = await box.evaluate((el) => {
+        const s = getComputedStyle(el);
+        const probe = document.createElement("span");
+        probe.style.color = getComputedStyle(el.closest(".themed")!).getPropertyValue("--card");
+        document.body.append(probe);
+        const card = getComputedStyle(probe).color;
+        probe.remove();
+        return { bg: s.backgroundColor, fg: s.color, card };
+      });
+      expect(bg, `${look} ${scheme}: filled`).not.toBe(card);
+      expect(fg, `${look} ${scheme}: tick visible`).not.toBe(bg);
+    }
+  }
+});
+
+test("occasion art never covers the title or the header controls", async ({ page }) => {
+  await signIn(page, DEMO);
+  const before: Record<string, string> = {};
+  for (const id of ["lst_tasks", "lst_research", "lst_desk2026"]) {
+    await page.goto(`/app/lists/${id}/settings`);
+    before[id] = (await page.locator('input[name="theme"]').first().getAttribute("value")) ?? "default";
+  }
+  try {
+    for (const [id, tpl] of [
+      ["lst_tasks", "today"],
+      ["lst_research", "doc"],
+      ["lst_desk2026", "sheet"],
+      ["lst_tasks", "tracker"],
+      ["lst_tasks", "heat"],
+      ["lst_tasks", "board"],
+    ] as const) {
+      for (const occ of OFFERED) {
+        await setLook(page, id, `${tpl}--${occ}`);
+        for (const width of [390, 1280]) {
+          await page.setViewportSize({ width, height: 900 });
+          await page.goto(`/l/${id}`);
+          const problems = await page.evaluate(() => {
+            const out: string[] = [];
+            // The art is drawn in its own band: never positioned over the header's content.
+            for (const el of document.querySelectorAll(".list-hero, .list-hero > .wrap")) {
+              for (const ps of ["::before", "::after"]) {
+                const st = getComputedStyle(el, ps);
+                if (st.content !== "none" && st.position === "absolute") out.push(`${el.className.toString().slice(0, 30)}${ps} is absolute`);
+              }
+            }
+            const hero = document.querySelector(".list-hero") as HTMLElement;
+            const heroStyle = getComputedStyle(hero);
+            if (heroStyle.backgroundImage.includes("url(")) out.push("art painted behind the header");
+            for (const el of document.querySelectorAll<HTMLElement>(".list-actions a, .list-actions button, .list-title-text")) {
+              el.scrollIntoView({ block: "center" });
+              const r = el.getBoundingClientRect();
+              const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+              if (!hit || !(el === hit || el.contains(hit))) out.push(`${el.className || el.tagName} covered`);
+            }
+            return out;
+          });
+          expect(problems, `${tpl}--${occ} at ${width}`).toEqual([]);
+        }
+      }
+    }
+  } finally {
+    // Other tests share the mock's lists: put their looks back.
+    for (const [id, look] of Object.entries(before)) await setLook(page, id, look);
+  }
+});
+
+test("a bad invite link says so before anyone signs in", async ({ page }) => {
+  await page.goto("/invite/inv_not_a_real_token");
+  await expect(page.getByRole("heading", { name: "This invite link doesn't work" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Sign in to accept/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Start a list" }).last()).toBeVisible();
+});
+
+test("price history plots when prices were checked, and says how much they changed", async ({ page }) => {
+  await page.goto("/l/lst_desk2026");
+  await page.getByText("Details, price history and comments for these products").first().click();
+  const caption = page.locator(".price-sparkline figcaption").first();
+  await expect(caption).toBeVisible();
+  await expect(caption).not.toContainText("$0");
+  await expect(caption).toContainText(/ on /);
+});
+
+test("a list nobody has worked on says so once, and empty wants stay compact", async ({ page }) => {
+  await signIn(page, freshEmail("quiet"));
+  const id = await createList(page, { format: "Shopping", title: "Quiet list" });
+  for (const w of ["A desk lamp", "A footrest", "A monitor arm"]) {
+    await page.locator("#new-item").fill(w);
+    await page.getByRole("button", { name: "Add want" }).click();
+    await expect(page.locator(".item-section", { hasText: w })).toBeVisible();
+    const skip = page.getByRole("button", { name: "Skip" });
+    if (await skip.isVisible()) await skip.click();
+  }
+  await page.goto(`/l/${id}`);
+  await expect(page.locator(".list-nothing-yet")).toHaveCount(1);
+  await expect(page.locator(".entries-empty")).toHaveCount(0);
+  // No comment box per want until there are comments: it's in each want's menu.
+  await expect(page.locator(".item-comments")).toHaveCount(0);
+});
+
+test("people see 'you', not their own handle", async ({ page }) => {
+  await signIn(page, DEMO);
+  await page.goto("/l/lst_desk2026");
+  // The keyboard was bought by the demo owner.
+  await expect(page.locator(".item-section", { hasText: "Quiet mechanical keyboard" }).getByText(/by you/)).toBeVisible();
+  await expect(page.getByText("quiet-otter-4821", { exact: false }).filter({ hasNotText: "/" })).toHaveCount(0);
+});
+
+test("a gift list from the home page is private", async ({ page }) => {
+  await signIn(page, freshEmail("giftprivate"));
+  await page.goto("/");
+  await page.locator("section[aria-labelledby=season-h]").getByRole("button", { name: "Start a Christmas gift list" }).click();
+  await expect(page).toHaveURL(/\/l\/[^/]+$/);
+  await expect(page.locator(".list-meta")).toContainText("Private");
+});

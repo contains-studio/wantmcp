@@ -7,7 +7,7 @@ import { HeadingBase, headingTag } from "./preview";
 import { useFetcher } from "react-router";
 import { formatDate } from "~/lib/format";
 import type { FormatInfo } from "~/lib/formats";
-import { useNow } from "~/lib/hooks";
+import { useNow, useRootData } from "~/lib/hooks";
 import type { ActorRef, Comment, Entry, ItemStatus, Question } from "~/lib/types";
 import { ActorTag } from "./ActorTag";
 import { CommentForm, CommentList } from "./Comments";
@@ -19,6 +19,12 @@ import type { IntentResult } from "./WriteTools";
 
 export const actorLabel = (a: ActorRef | null | undefined) =>
   !a ? "someone" : a.kind === "user" ? a.handle : a.kind === "agent" ? a.name : a.name ?? "an outside agent";
+
+/** Like actorLabel, but "you" for the person looking (never their own generated handle). */
+export function useActorLabel() {
+  const me = useRootData().user?.handle ?? null;
+  return (a: ActorRef | null | undefined) => (a?.kind === "user" && me !== null && a.handle === me ? "you" : actorLabel(a));
+}
 
 /** "Due Fri 28 Nov", flagged when overdue and not done. */
 export function DueChip({ due, done }: { due: string | null | undefined; done: boolean }) {
@@ -79,6 +85,7 @@ export function ItemStatusBar({
   canWrite: boolean;
 }) {
   const now = useNow();
+  const actorLabel = useActorLabel();
   const research = fi.format === "research";
   const shopping = fi.format === "shopping";
   const age = claimAge(claimedAt, now);
@@ -450,8 +457,9 @@ function QuestionForm({ question, compact = false }: { question: Question; compa
   return (
     <div role="group" aria-labelledby={`${uid}-h`} className="grid gap-3 rounded-[14px] bg-sunk p-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h3 id={`${uid}-h`} className={compact ? "sr-only" : "eyebrow text-ink"}>
-          Waiting on you
+        {/* The item's status already says "Waiting on you"; this names the box for screen readers only. */}
+        <h3 id={`${uid}-h`} className="sr-only">
+          Question for you
         </h3>
         <ActorTag actor={question.asked_by} compact />
         <span className="text-[0.8rem] text-ink-3">

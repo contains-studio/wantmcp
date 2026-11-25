@@ -3,13 +3,13 @@ import type { ActorRef, Decimal, PriceObservation, Timestamp } from "./types";
 const SYMBOLS: Record<string, string> = { GBP: "£", USD: "$", EUR: "€", JPY: "¥", AUD: "A$", CAD: "C$", NZD: "NZ$", INR: "₹" };
 
 /** "£429" or "£429.50"; whole amounts drop the pence. */
-export function formatMoney(amount: Decimal | number | null | undefined, currency: string | null | undefined): string {
+export function formatMoney(amount: Decimal | number | null | undefined, currency: string | null | undefined, opts: { cents?: boolean } = {}): string {
   if (amount == null || amount === "") return "";
   const n = typeof amount === "number" ? amount : Number(amount);
   if (!Number.isFinite(n)) return String(amount);
   const cur = (currency || "").toUpperCase();
-  const whole = Math.round(n * 100) % 100 === 0;
-  const num = n.toLocaleString("en-GB", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
+  const whole = !opts.cents && Math.round(n * 100) % 100 === 0;
+  const num = n.toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
   const sym = SYMBOLS[cur];
   return sym ? `${sym}${num}` : `${num} ${cur}`.trim();
 }

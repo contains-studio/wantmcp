@@ -427,7 +427,10 @@
   border: 2.5px solid var(--ink); border-radius: 0.6rem; background: var(--card); color: var(--want-ink);
   font-weight: 900; font-size: 1.25rem; line-height: 1;
 }
-.check-toggle[aria-checked="true"], .check-toggle.is-checked { background: var(--deal); border-color: var(--deal); color: var(--card); }
+/* Done: the savings/done green with the card colour for the tick, in every layout (a layout's own
+   box style must never hide it). */
+.check-toggle[aria-checked="true"], .check-toggle.is-checked,
+.themed .check-toggle[aria-checked="true"], .themed .check-toggle.is-checked { background: var(--deal); border-color: var(--deal); color: var(--card); }
 button.check-toggle { cursor: pointer; }
 button.check-toggle:hover { border-color: var(--ink); }
 

@@ -31,5 +31,9 @@
 /* Occasions: the title mark becomes the occasion's glyph, the art sits small at the right of the
    header, and the strip runs along the top of the issue list. */
 .themed.tpl-tracker.has-occ .list-title-mark { width: 1.35rem; height: 1.35rem; border-radius: 0; box-shadow: none; -webkit-mask: var(--occ-mark) center / contain no-repeat; mask: var(--occ-mark) center / contain no-repeat; }
-.themed.tpl-tracker.has-occ .list-hero { background: var(--occ-art) no-repeat right max(1rem, calc(50% - 37rem)) center / auto 80%, var(--paper); }
+.themed.tpl-tracker.has-occ .list-hero > .wrap::before {
+  content: ""; display: block; height: 3rem; margin-bottom: 0.5rem; pointer-events: none;
+  background: var(--occ-art) no-repeat right center / auto 100%;
+  order: -2;
+}
 .themed.tpl-tracker.has-occ .items-region::before { content: ""; display: block; height: min(var(--occ-strip-h), 8px); background: var(--occ-strip); }

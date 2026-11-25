@@ -38,10 +38,10 @@ test("answer the questions waiting on you", async ({ page }) => {
   await expect(waiting.locator("li")).toHaveCount(before - 1);
   // A written answer, on the list page.
   await page.goto("/l/lst_tasks");
-  const q = page.getByRole("group", { name: "Waiting on you" });
+  const q = page.getByRole("group", { name: "Question for you" });
   await q.getByLabel("Your answer").fill("Yes, book the $1,180 one.");
   await q.getByRole("button", { name: "Answer" }).click();
-  await expect(page.getByRole("group", { name: "Waiting on you" })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Question for you" })).toHaveCount(0);
 });
 
 test("release a stale claim, and take over another, from the status menu", async ({ page }) => {
@@ -61,7 +61,7 @@ test("release a stale claim, and take over another, from the status menu", async
   await expect(grantStatus).toContainText("In progress · Codex, 2 days");
   await grantStatus.click();
   await page.locator(":popover-open").getByRole("button", { name: "Take over" }).click();
-  await expect(grantStatus).toContainText("In progress · quiet-otter-4821");
+  await expect(grantStatus).toContainText("In progress · you");
 });
 
 test("an item's ⋯ menu removes it only after asking again", async ({ page }) => {

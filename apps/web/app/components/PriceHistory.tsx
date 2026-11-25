@@ -1,17 +1,21 @@
-import { actorName, formatDateTime, formatMoney } from "~/lib/format";
+import { actorName, formatDate, formatDateTime, formatMoney } from "~/lib/format";
+import { checkedAt } from "~/lib/prices";
 import type { PriceObservation } from "~/lib/types";
 import { Time } from "./Time";
 
 /**
  * A step chart of an entry's price over time (prices hold until the next observation),
- * with a table of every observation behind a disclosure.
+ * with a table of every observation behind a disclosure. Time is when each price was checked,
+ * not when it was posted (an agent may post an older check later).
  */
 export function PriceSparkline({ prices, now }: { prices: PriceObservation[]; now: number }) {
   const pts = prices
-    .map((p) => ({ t: Date.parse(p.posted_at), v: Number(p.price), p }))
+    .map((p) => ({ t: Date.parse(checkedAt(p)), v: Number(p.price), p }))
     .filter((d) => Number.isFinite(d.t) && Number.isFinite(d.v))
     .sort((a, b) => a.t - b.t);
   if (pts.length < 2) return null;
+  // Every check within the same hour: nothing to draw over time.
+  if (pts[pts.length - 1].t - pts[0].t < 3600_000) return null;
 
   const W = 240;
   const H = 56;
@@ -51,7 +55,7 @@ export function PriceSparkline({ prices, now }: { prices: PriceObservation[]; no
         {pts.map((pt, i) => (
           <span
             key={pt.p.id}
-            title={`${formatMoney(pt.v, cur)} · ${formatDateTime(pt.p.posted_at)} · ${actorName(pt.p.posted_by)}`}
+            title={`${formatMoney(pt.v, cur)} · ${formatDateTime(checkedAt(pt.p))} · ${actorName(pt.p.posted_by)}`}
             className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
             style={{
               left: `${(x(pt.t) / W) * 100}%`,
@@ -64,19 +68,25 @@ export function PriceSparkline({ prices, now }: { prices: PriceObservation[]; no
           />
         ))}
       </div>
-      <figcaption className="mt-1 flex justify-between text-[0.72rem] text-ink-3 tabular-nums">
-        <span>{formatMoney(first.v, cur)}</span>
+      <figcaption className="mt-1 flex justify-between gap-2 text-[0.72rem] text-ink-3 tabular-nums">
         <span>
-          {change < 0 ? "▼" : change > 0 ? "▲" : "•"} {formatMoney(Math.abs(change), cur)}
-          <span className="sr-only">{change < 0 ? " lower" : change > 0 ? " higher" : ""}</span>
+          {formatMoney(first.v, cur)} on {formatDate(checkedAt(first.p))}
         </span>
+        {/* The change from the first check to now; nothing when the price hasn't moved. */}
+        {change !== 0 && (
+          <span className={change < 0 ? "text-deal" : ""}>
+            {change < 0 ? "−" : "+"}
+            {formatMoney(Math.abs(change), cur, { cents: true })} ({change < 0 ? "−" : "+"}
+            {Math.round((Math.abs(change) / first.v) * 100)}%)
+          </span>
+        )}
       </figcaption>
     </figure>
   );
 }
 
 export function PriceTable({ prices }: { prices: PriceObservation[] }) {
-  const rows = [...prices].sort((a, b) => b.posted_at.localeCompare(a.posted_at));
+  const rows = [...prices].sort((a, b) => checkedAt(b).localeCompare(checkedAt(a)));
   return (
     <table className="w-full text-left text-[0.8rem]">
       <caption className="sr-only">Price history, newest first</caption>
@@ -98,7 +108,7 @@ export function PriceTable({ prices }: { prices: PriceObservation[] }) {
               {p.note && <div className="font-normal text-ink-3">{p.note}</div>}
             </td>
             <td className="py-1.5 pr-2 text-ink-2">
-              <Time ts={p.posted_at} />
+              <Time ts={checkedAt(p)} />
             </td>
             <td className="py-1.5 text-ink-2">{actorName(p.posted_by)}</td>
           </tr>

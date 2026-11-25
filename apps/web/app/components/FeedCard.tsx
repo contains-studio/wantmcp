@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useRootData } from "~/lib/hooks";
 import { formatMoney } from "~/lib/format";
 import type { FeedEntry } from "~/lib/types";
 import { ActorTag } from "./ActorTag";
@@ -10,6 +11,7 @@ import { Time } from "./Time";
 export function FeedCard({ row, children }: { row: FeedEntry; children?: React.ReactNode }) {
   const { entry: e, item, list } = row;
   const href = `/l/${list.id}#${e.id}`;
+  const me = useRootData().user?.handle ?? null;
   if (e.status === "suggested") return <SuggestedFeedCard row={row}>{children}</SuggestedFeedCard>;
   if (e.kind && e.kind !== "product") return <TextFeedCard row={row}>{children}</TextFeedCard>;
   return (
@@ -42,7 +44,7 @@ export function FeedCard({ row, children }: { row: FeedEntry; children?: React.R
           <Link to={`/l/${list.id}`} className="link font-semibold text-ink-2">
             {list.title}
           </Link>{" "}
-          by {list.owner_handle}
+          by {me === list.owner_handle ? "you" : list.owner_handle}
           {item.purchase && <span className="chip chip-live ml-2">Bought</span>}
         </p>
         {children}

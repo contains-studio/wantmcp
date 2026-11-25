@@ -14,7 +14,7 @@ import { Time } from "~/components/Time";
 import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, MarkBoughtForm } from "~/components/WriteTools";
 import { formatMoney, plural } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
-import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm } from "~/components/ItemWork";
+import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm, useActorLabel } from "~/components/ItemWork";
 import { BUILD_ID } from "~/lib/build";
 import { itemCurrency, listCurrency } from "~/lib/currency";
 import { lowestEntryId } from "~/lib/prices";
@@ -80,6 +80,8 @@ export function ListView(props: ListViewProps) {
   const bought = previewItems ? [] : items.filter(isDone);
   const listCurrencyHint = listCurrency(items);
   const productCount = items.reduce((n, i) => n + i.entries.length, 0);
+  // Nothing posted on any want yet: one line for the list instead of one per want.
+  const nothingYet = items.length > 0 && productCount === 0;
   // The Sheet table compares prices, so it only applies to shopping lists.
   const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
   // Sections, Heat and (for tasks and research) Board show a compact index; each item opens in a panel.
@@ -161,7 +163,20 @@ export function ListView(props: ListViewProps) {
             </button>
           </div>
         )}
-        {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
+        {nothingYet && !preview && (
+          <p className="list-nothing-yet text-[0.95rem] text-ink-2">
+            {isWriter ? (
+              <>
+                No agent has worked on this list yet.{" "}
+                <Link to={`/connect?list=${list.id}`} className="link font-medium text-ink">
+                  Connect one
+                </Link>
+              </>
+            ) : (
+              <>Nothing found yet.</>
+            )}
+          </p>
+        )}
         {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={listCurrencyHint} />}
         {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">No {fi.items} yet.</p>}
 
@@ -194,6 +209,7 @@ export function ListView(props: ListViewProps) {
             inPanel={!!indexKind}
             ownerHandle={list.owner_handle}
             listCurrency={listCurrencyHint}
+            quietEmpty={nothingYet}
           />
         ))}
 
@@ -224,6 +240,9 @@ export function ListView(props: ListViewProps) {
           </section>
         )}
         </div>
+
+        {/* Outside suggestions come after the person's own list, never before it. */}
+        {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
 
         {!isWriter && !preview && (
           <aside className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -260,7 +279,10 @@ function ItemSection({
   inPanel = false,
   ownerHandle,
   listCurrency,
+  quietEmpty = false,
 }: {
+  /** Nothing on the whole list yet: the list says so once, so each empty want stays silent. */
+  quietEmpty?: boolean;
   ownerHandle: string;
   listCurrency?: string;
   inPanel?: boolean;
@@ -278,6 +300,7 @@ function ItemSection({
   eager?: boolean;
 }) {
   const canEditItem = canManage(item.created_by, user, role);
+  const who = useActorLabel();
   const base = useContext(HeadingBase);
   const H2 = headingTag(base, 1);
   const H3 = headingTag(base, 2);
@@ -340,6 +363,11 @@ function ItemSection({
                   </MenuSub>
                 </div>
               )}
+              {isWriter && itemComments.length === 0 && (
+                <MenuSub label="Comment">
+                  <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />
+                </MenuSub>
+              )}
               {canEditItem && (
                 <MenuSub label={`Edit ${fi.item}`}>
                   <EditItem item={item} onDone={() => closeMenuOf(document.getElementById(headingId)?.closest("section")?.querySelector(":popover-open"))} label={`Edit ${fi.item}`} />
@@ -363,11 +391,10 @@ function ItemSection({
         </div>
         {p && (
           <div className="item-indent mt-2 flex flex-wrap items-center gap-3 rounded-md border border-deal/40 bg-deal-soft px-4 py-3 text-[0.9rem] sm:ml-11">
-            <span className="stamp">Bought</span>
             <span className="text-ink">
-              {boughtPrice ? <strong>{formatMoney(boughtPrice.price, boughtPrice.currency)}</strong> : "Bought"}
+              Bought{boughtPrice ? <> for <strong>{formatMoney(boughtPrice.price, boughtPrice.currency)}</strong></> : null}
               {boughtRetailer ? ` at ${boughtRetailer}` : ""} by{" "}
-              {p.purchased_by.kind === "user" ? p.purchased_by.handle : p.purchased_by.kind === "agent" ? p.purchased_by.name : "someone"},{" "}
+              {who(p.purchased_by)},{" "}
               <Time ts={p.purchased_at} />
             </span>
             {isWriter && <UndoPurchase itemId={item.id} />}
@@ -409,9 +436,7 @@ function ItemSection({
             ))}
           </div>
         ) : (
-          <p className="entries-empty item-indent rounded-md border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
-            {isWriter ? fi.waitingWriter : fi.waiting}
-          </p>
+          <EmptyEntries status={status} fi={fi} quiet={quietEmpty} />
         )
       ) : entries.length > 0 && layout === "sheet" ? (
         <div className="item-indent grid gap-3 sm:pl-11">
@@ -459,9 +484,7 @@ function ItemSection({
           ))}
         </div>
       ) : (
-        <p className="entries-empty item-indent rounded-md border border-dashed border-line-strong px-4 py-6 text-center text-ink-3 sm:ml-11">
-          {isWriter ? fi.waitingWriter : fi.waiting}
-        </p>
+        <EmptyEntries status={status} fi={fi} quiet={quietEmpty} />
       )}
 
       {isWriter && (
@@ -470,15 +493,21 @@ function ItemSection({
         </div>
       )}
 
-      {(itemComments.length > 0 || isWriter) && (
+      {itemComments.length > 0 && (
         <div className="item-comments item-indent grid gap-3 sm:pl-11">
-          {itemComments.length > 0 && <H3 className="eyebrow">Comments</H3>}
+          <H3 className="eyebrow">Comments</H3>
           <CommentList comments={itemComments} canDelete={canDeleteComment} />
           {isWriter && <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />}
         </div>
       )}
     </section>
   );
+}
+
+/** A want with nothing on it yet: a short note for open wants only; the status chip speaks for the rest. */
+function EmptyEntries({ status, fi, quiet }: { status: string; fi: FormatInfo; quiet: boolean }) {
+  if (quiet || status !== "open") return null;
+  return <p className="entries-empty item-indent text-[0.88rem] text-ink-3 sm:pl-11">{fi.waiting}</p>;
 }
 
 function UndoPurchase({ itemId }: { itemId: string }) {
@@ -578,14 +607,10 @@ function Suggestions({ suggestions }: { suggestions: Array<{ entry: Entry; item:
   return (
     <section aria-labelledby="sugg-h" className="untrusted grid gap-4 p-4 sm:p-6">
       <div>
-        <p className="eyebrow text-warn">Only you and other writers can see this</p>
-        <h2 id="sugg-h" className="mt-1 text-2xl font-semibold">
+        <h2 id="sugg-h" className="text-[1.15rem] font-semibold">
           {plural(suggestions.length, "suggestion")} from outside agents
         </h2>
-        <p className="mt-1 max-w-2xl text-[0.9rem] text-ink-2">
-          Agents you haven't connected suggested these. Treat them as untrusted: links are shown as text and not clickable, and images aren't
-          loaded. Promote one to show it on the public list, or reject it.
-        </p>
+        <p className="mt-1 max-w-2xl text-[0.88rem] text-ink-2">Only writers see these. Links stay as text until you promote one.</p>
       </div>
       <ul className="grid gap-3 lg:grid-cols-2">
         {suggestions.map(({ entry: e, item }) => (
