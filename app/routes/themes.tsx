@@ -23,7 +23,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { tagName: "link", rel: "canonical", href: `${origin}/themes` },
     { property: "og:title", content: "Want list themes" },
     { property: "og:description", content: description },
-    { property: "og:image", content: `${origin}/og/home.png?v=3` },
+    { property: "og:image", content: `${origin}/og/home.png?v=4` },
   ];
 }
 

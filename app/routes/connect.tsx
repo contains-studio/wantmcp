@@ -33,7 +33,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:title", content: "Connect an agent to The Want MCP" },
     { property: "og:description", content: description },
     { property: "og:url", content: `${origin}/connect` },
-    { property: "og:image", content: `${origin}/og/home.png?v=3` },
+    { property: "og:image", content: `${origin}/og/home.png?v=4` },
     { name: "twitter:card", content: "summary_large_image" },
   ];
 }

@@ -114,7 +114,7 @@ function HomeCard() {
           <span style={{ color: C.want }}>getting what you want.</span>
         </div>
         <div style={{ display: "flex", marginTop: 30, fontSize: 28, color: C.ink2, fontWeight: 500 }}>
-          Things to buy, things to get done, things to find out. Your agents work on them.
+          Things to buy, to get done, to find out. Your agents work on them.
         </div>
       </div>
       <div style={{ display: "flex", marginTop: "auto", alignItems: "center", gap: 16, fontSize: 26, color: C.ink3, fontWeight: 500 }}>
