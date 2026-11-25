@@ -29,7 +29,10 @@ test("a 404 reached by client-side navigation reports nothing to /telemetry/erro
   page.on("request", (r) => {
     if (new URL(r.url()).pathname === "/telemetry/error") reports.push(r.url());
   });
-  await page.goto("/privacy");
+  // Start on a public list so the /l/:id route is already known to the browser: starting elsewhere makes the
+  // router look the route up first, and a dev server answers that lookup with a document reload.
+  await page.goto("/l/lst_desk2026");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.evaluate(() => ((window as unknown as { __marker?: string }).__marker = "same-document"));
   // A client-side navigation (React Router follows popstate) onto a list that doesn't exist.
   await page.evaluate(() => {
