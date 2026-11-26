@@ -36,6 +36,15 @@ for (const [format, word] of [
       await expect(page.locator(".bought-group", { hasText: t })).toBeAttached();
     }
     await expect(page.locator(".done-more > summary")).toHaveText(`Show 1 more ${word}`);
+    // A tick unticks: the done row's own box, beside its summary (never inside it), back to open.
+    const done = page.locator(".done-row-wrap").first().getByRole("checkbox");
+    await expect(done).toHaveAttribute("aria-checked", "true");
+    const name = (await done.getAttribute("aria-label"))!;
+    expect(name).toMatch(new RegExp(` not ${word}$`));
+    expect(await done.evaluate((el) => !!el.closest("summary"))).toBe(false);
+    await done.click();
+    await expect(page.getByRole("checkbox", { name: name.replace(` not ${word}`, ` ${word}`) })).toHaveAttribute("aria-checked", "false");
+    await expect(page.getByRole("status").filter({ hasText: "Undo" })).toHaveCount(0);
   });
 }
 

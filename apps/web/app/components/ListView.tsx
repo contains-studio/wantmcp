@@ -345,7 +345,11 @@ export function ListView(props: ListViewProps) {
               />
               );
               // Index layouts already show a done item as one compact row; elsewhere it collapses to one line, the rest behind it.
-              return indexKind ? section : <DoneRow key={item.id} item={item} fi={fi}>{section}</DoneRow>;
+              return indexKind ? section : (
+                <DoneRow key={item.id} item={item} fi={fi} tick={theme.checklist && isWriter}>
+                  {section}
+                </DoneRow>
+              );
             })}
             {/* After a few, the rest of the Done group folds (owner, 26 Nov 2026). */}
             {!indexKind && bought.length > DONE_SHOWN && (
@@ -355,7 +359,7 @@ export function ListView(props: ListViewProps) {
                 </summary>
                 <div className="mt-4 grid gap-10">
                   {bought.slice(DONE_SHOWN).map((item) => (
-                    <DoneRow key={item.id} item={item} fi={fi}>
+                    <DoneRow key={item.id} item={item} fi={fi} tick={theme.checklist && isWriter}>
                       <ItemSection
                         fi={fi}
                         layout={layout}
@@ -1159,7 +1163,7 @@ export function ChecklistBox({
     );
   }
   return (
-    <fetcher.Form method="post" className="relative" onSubmit={() => !checked && setJustChecked?.({ itemId, text, shopping })}>
+    <fetcher.Form method="post" className="relative" onSubmit={() => setJustChecked?.(checked ? null : { itemId, text, shopping })}>
       {shopping ? (
         <input type="hidden" name="intent" value={checked ? "unpurchase" : "purchase"} />
       ) : (
@@ -1219,7 +1223,7 @@ function KeptNote({ listId, kept, isPrivate }: { listId: string; kept: { kind: "
 const InDoneRow = createContext(false);
 
 /** A finished want as one line ("Bought · $649.99 at Harbor Electronics · you, Tuesday"); the whole item opens under it. */
-function DoneRow({ item, fi, children }: { item: ItemWithEntries; fi: FormatInfo; children: React.ReactNode }) {
+function DoneRow({ item, fi, children, tick = false }: { item: ItemWithEntries; fi: FormatInfo; children: React.ReactNode; tick?: boolean }) {
   const who = useActorLabel();
   const now = useNow();
   const p = item.purchase;
@@ -1242,12 +1246,14 @@ function DoneRow({ item, fi, children }: { item: ItemWithEntries; fi: FormatInfo
     p?.price ? `${formatMoney(p.price, p.currency ?? "USD", { cents: true })}${p.retailer ? ` at ${p.retailer}` : ""}` : p?.retailer ? `at ${p.retailer}` : null,
     by || when ? [by ? who(by) : null, when].filter(Boolean).join(", ") : null,
   ].filter(Boolean);
-  return (
-    <details className="done-row group">
+  const row = (
+    <details className={`done-row group ${tick ? "min-w-0 flex-1" : ""}`}>
       <summary className="flex cursor-pointer items-start gap-3 rounded-md px-1 py-2">
-        <span aria-hidden="true" className="mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full bg-deal text-[0.8rem] font-bold text-card">
-          ✓
-        </span>
+        {!tick && (
+          <span aria-hidden="true" className="mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full bg-deal text-[0.8rem] font-bold text-card">
+            ✓
+          </span>
+        )}
         <span className="min-w-0 flex-1">
           {/* The whole title, wrapping (H6: "still cut"). */}
           <span className="block break-words text-ink-2 line-through decoration-ink-3/60">{item.text}</span>
@@ -1261,6 +1267,17 @@ function DoneRow({ item, fi, children }: { item: ItemWithEntries; fi: FormatInfo
         <InDoneRow.Provider value={true}>{children}</InDoneRow.Provider>
       </div>
     </details>
+  );
+  if (!tick) return row;
+  // A checklist's tick unticks (owner via review, 26 Nov 2026). It sits beside the summary, as on the open rows, never
+  // inside it (a control inside a control).
+  return (
+    <div className="done-row-wrap flex items-start gap-3">
+      <span className="done-row-tick mt-2 ml-3">
+        <ChecklistBox itemId={item.id} text={item.text} bought canWrite shopping={fi.format === "shopping"} doneWord={fi.done} />
+      </span>
+      {row}
+    </div>
   );
 }
 
