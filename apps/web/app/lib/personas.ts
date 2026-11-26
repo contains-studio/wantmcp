@@ -8,8 +8,8 @@
  * - Only claim what the product does: agents add products, prices, updates and sourced answers
  *   when someone asks them (or a schedule the person set up runs them). Nothing re-checks prices on
  *   its own, sends alerts, buys, books or pays. Visitors can read public lists; they cannot claim
- *   gifts or comment. Shopping lists are public unless made private; task and research lists start
- *   private.
+ *   gifts or comment. Every new list starts private (shopping too, since 25 Nov 2026); its owner can
+ *   make it public.
  * - US terms, USD prices, invented stores and products, example.com/example.org links.
  */
 import type { SampleListSpec } from "./samples";
