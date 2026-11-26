@@ -65,5 +65,7 @@ test("Activity: every kind of event in plain sentences, your own included, burst
   // The filter by list still works.
   await page.getByRole("navigation", { name: "Show activity for" }).getByRole("link", { name: "Moving day: things to sort" }).click();
   await expect(page).toHaveURL(/list=lst_tasks/);
-  for (const t of await rows.allTextContents()) expect(t).not.toContain("Home office refresh");
+  // Waits for the filtered list to render (the URL changes first).
+  await expect(page.locator("ol.card")).not.toContainText("Home office refresh");
+  await expect(page.locator("ol.card")).toContainText("Moving day");
 });
