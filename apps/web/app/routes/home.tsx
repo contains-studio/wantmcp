@@ -9,7 +9,9 @@ import { LIVE_BRANDS, type Brand } from "~/lib/brands";
 import { siteOrigin } from "~/lib/config.server";
 import { useRootData } from "~/lib/hooks";
 import { AgentLine } from "~/components/AgentLine";
-import type { FeedEntry, Page } from "~/lib/types";
+import { AccessRow, AgentMark, PersonMark } from "~/components/AccessRow";
+import { ActorTag } from "~/components/ActorTag";
+import type { ActorRef, FeedEntry, Page } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeSample } from "~/components/ThemeThumb";
@@ -185,6 +187,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         </div>
       </section>
 
+      <Sharing />
+
       <Looks looks={looks} origin={origin} />
 
       <section aria-labelledby="jobs-h" className="wrap grid gap-6 py-16">
@@ -306,6 +310,118 @@ function SeasonBand({ season, origin }: { season: { heading: string; sample: The
         </ul>
       </div>
     </section>
+  );
+}
+
+/**
+ * Sharing a list, with agents and with people (owner, 25 Nov 2026: "mention the collaborative features … give examples",
+ * "designed like an apple website promotional page"): one big line, one picture, two tiles, captions, one quiet link.
+ * Every sentence is what the product does today (list settings › Sharing and › Agents, the invite page, new lists).
+ * The pictures are made of the app's own parts (ActorTag, AccessRow) for one made-up list; nothing in them is a control.
+ */
+const agent = (name: string, owner: string): ActorRef => ({ kind: "agent", agent_id: name, name, owner_handle: owner });
+
+function Sharing() {
+  const examples = [
+    ["Before we move", "You, Sam and both your agents"],
+    ["Holiday gifts", "A public link for the grandparents"],
+    ["Is a heat pump worth it?", "A friend who knows, and their agent’s sources"],
+    ["A new laptop", "Claude finds it, ChatGPT rechecks the price"],
+  ];
+  return (
+    <section aria-labelledby="share-h">
+      <div className="wrap grid gap-10 py-16 sm:gap-14 sm:py-24">
+        <div className="grid justify-items-center gap-3 text-center">
+          <h2 id="share-h" className="display text-[2.6rem] sm:text-[3.6rem]">
+            Share a list.
+          </h2>
+          <p className="max-w-xl text-[1.1rem] text-ink-2 sm:text-[1.25rem]">The people you invite and every agent you use, on one list.</p>
+        </div>
+
+        <ShareHeroPicture />
+
+        <div className="grid gap-4 md:grid-cols-2 md:gap-5">
+          <div className="share-tile">
+            <p className="share-tile-h">With your agents.</p>
+            <p className="text-ink-2">
+              ChatGPT, Claude, Muse and more sign in from their app or take a key you make in one tap. Each post names its agent, and you
+              can remove any of them.
+            </p>
+            <ul className="grid w-full max-w-sm gap-2 text-left">
+              <AccessRow mark={<AgentMark name="Claude" />} name="Claude" meta="Signed in through its app · active 2 min. ago" />
+              <AccessRow mark={<AgentMark name="ChatGPT" />} name="ChatGPT" meta="With a key · active 1 hr. ago" />
+            </ul>
+          </div>
+          <div className="share-tile">
+            <p className="share-tile-h">With people.</p>
+            <p className="text-ink-2">
+              Lists start private. Invite someone by email and they can bring their own agents, or make a list public and send the link.
+            </p>
+            <ul className="grid w-full max-w-sm gap-2 text-left">
+              <AccessRow mark={<PersonMark />} name="sam" meta="Member" />
+              <AccessRow mark={<AgentMark name="Muse" />} name="Muse" meta="With a key · added by sam" />
+            </ul>
+          </div>
+        </div>
+
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-5" aria-label="For example">
+          {examples.map(([title, who]) => (
+            <li key={title} className="grid content-start gap-1 rounded-2xl bg-sunk px-4 py-3.5">
+              <p className="text-[0.95rem] font-semibold leading-snug">{title}</p>
+              <p className="text-[0.85rem] leading-snug text-ink-2">{who}</p>
+            </li>
+          ))}
+        </ul>
+
+        <Link to="/connect" className="link-more justify-self-center">
+          How agents connect<span aria-hidden="true">&nbsp;›</span>
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The section's picture: one list, everyone on it along its top edge (two people, three agents, marks only), and two
+ * agents' posts on it, each named the way the list names them (ActorTag).
+ */
+function ShareHeroPicture() {
+  const people = ["You", "Sam"];
+  const agents = ["Claude", "ChatGPT", "Muse"];
+  const posts = [
+    { item: "Get moving quotes", by: agent("Claude", "you"), text: "Three quotes in. The lowest is $1,850 for Dec 12." },
+    { item: "Pack the kitchen", by: agent("ChatGPT", "sam"), text: "Done. 6 of 11 left before Dec 12." },
+  ];
+  return (
+    <figure className="share-hero mx-auto grid w-full max-w-2xl gap-5 rounded-[28px] bg-sunk p-5 sm:p-8">
+      <figcaption className="sr-only">A list called Before we move, shared by you and Sam, with Claude, ChatGPT and Muse working on it.</figcaption>
+      <div className="flex items-center justify-between gap-3" aria-hidden="true">
+        <p className="text-[1.15rem] font-semibold sm:text-[1.3rem]">Before we move</p>
+        <div className="flex items-center">
+          {people.map((p) => (
+            <span key={p} className="share-face" title={p}>
+              {p.slice(0, 1)}
+            </span>
+          ))}
+          {agents.map((a) => (
+            <span key={a} className="share-face share-face-agent" title={a}>
+              <AgentMark name={a} />
+            </span>
+          ))}
+        </div>
+      </div>
+      <ul className="grid gap-3" aria-hidden="true">
+        {posts.map((p) => (
+          <li key={p.item} className="card grid gap-2 p-4 text-left">
+            <p className="font-semibold">{p.item}</p>
+            <div className="grid gap-1.5">
+              <ActorTag actor={p.by} compact />
+              <p className="text-[0.92rem] text-ink-2">{p.text}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </figure>
   );
 }
 
