@@ -37,6 +37,14 @@ test("SKILL.md links each reference file, and they exist", () => {
   }
 });
 
+test("SKILL.md tells a new person what happened, what's next, and that problems reach the team", () => {
+  const md = readFileSync(join(DIR, "SKILL.md"), "utf8");
+  const first = md.slice(md.indexOf("## 4. First time with this person"), md.indexOf("## 5."));
+  for (const s of ["claim link", "find products and prices", "send_feedback", "https://wantmcp.com/app", "https://wantmcp.com/connect", "once per person", "only when they say yes", "status_url"]) {
+    assert.ok(first.includes(s), `first-time part names "${s}"`);
+  }
+});
+
 test("nothing private or machine-specific in the skill folder", () => {
   for (const f of files()) {
     assert.ok(!/\b(wk|ak)_[A-Za-z0-9]{8,}/.test(f.text), `${f.path}: no keys`);

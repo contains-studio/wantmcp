@@ -4,7 +4,7 @@
  *
  *   node scripts/build-skill.mjs            # write the reference files from the live server
  *   node scripts/build-skill.mjs --check    # fail if the checked-in files differ from the live guides, or if SKILL.md
- *                                           # names a tool the server doesn't have (CI runs this; it skips, exit 0, when
+ *                                           # names something that is neither a tool nor a tool's field on the server (CI runs this; it skips, exit 0, when
  *                                           # the server can't be reached, like check:contract)
  *   MCP_URL=http://localhost:8787/mcp node scripts/build-skill.mjs --check
  */
@@ -62,19 +62,21 @@ for (const name of GUIDES) {
 }
 
 if (CHECK) {
-  // Every `tool_name` SKILL.md names in backticks that looks like a tool must be one the server lists.
+  // Every `name` SKILL.md puts in backticks must be a tool, or a field of a tool's arguments or result, on the server.
   const { tools } = await rpc("tools/list", {});
   const names = new Set(tools.map((t) => t.name));
+  // Fields of the tools' arguments and results (price_source, status_url…) count too.
+  const fields = new Set(tools.flatMap((t) => [t.inputSchema, t.outputSchema].flatMap((sch) => Object.keys(sch?.properties ?? {}))));
   const skill = await readFile(`${DIR}SKILL.md`, "utf8");
   const named = new Set([...skill.matchAll(/`([a-z]+(?:_[a-z]+)*)`/g)].map((m) => m[1]));
   const NOT_TOOLS = new Set(["price_source", "how_to_work", "text_by", "retailer_page", "aggregator", "search", "user", "wantmcp"]);
   for (const n of named) {
     if (NOT_TOOLS.has(n)) continue;
-    if (names.has(n)) continue;
+    if (names.has(n) || fields.has(n)) continue;
     failures++;
-    console.log(`FAIL SKILL.md names \`${n}\`, which the server's tools/list doesn't have`);
+    console.log(`FAIL SKILL.md names \`${n}\`, which is neither a tool nor a tool's field on the server`);
   }
-  if (!failures) console.log(`ok   every tool SKILL.md names is on the server (${[...named].filter((n) => !NOT_TOOLS.has(n)).length} checked)`);
+  if (!failures) console.log(`ok   every tool and field SKILL.md names is on the server (${[...named].filter((n) => !NOT_TOOLS.has(n)).length} checked)`);
 }
 
 process.exit(failures ? 1 : 0);

@@ -69,6 +69,10 @@ Never type a person's email address into sign_up, and never ask a person for a s
 
 A person's own skills (their standing instructions) are listed by whoami and skills/list; read each with read_skill before you start, and follow them on matters of preference.
 
+## When something doesn't work
+
+Tell your person they can just say so, and you will send it to the team that builds The Want MCP with send_feedback. It returns a status link they can open to see what happens to it. Ask before including anything from their lists or your conversation.
+
 ## Keys
 
 Send a key as Authorization: Bearer, or as the key argument on any tool if your app can't set headers. Never show a key to anyone, the person included, and never put one in a link.

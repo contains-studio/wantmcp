@@ -33,6 +33,9 @@ test("/llms.txt tells an agent to install the skill and say so", async ({ reques
   expect(body).toContain(INSTALL);
   expect(body).toContain("/skill.md as list-want-mcp/SKILL.md");
   expect(body).toContain("Tell your person you did.");
+  // The same line the skill's first-time step gives the person: problems go to the team, with a status link.
+  expect(body).toContain("Tell your person they can just say so, and you will send it to the team that builds The Want MCP with send_feedback.");
+  expect(body).toContain("It returns a status link they can open to see what happens to it.");
 });
 
 test("/connect: each app's way to remember next time, after its steps", async ({ page }) => {
