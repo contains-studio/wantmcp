@@ -573,6 +573,12 @@ button.check-toggle:hover { border-color: var(--ink); }
   }
   @media (max-width: 639px) {
     .menu-panel, .menu-panel.menu-wide, .menu-panel:has(.menu-sub[open]) { inset: auto 0.75rem 0.75rem; width: auto; max-width: none; margin: 0; position-area: none; }
+    /* A sheet, not a menu floating over the next card: the page dims behind it, and it says what it is for. */
+    .menu-panel::backdrop { background: rgb(0 0 0 / 0.32); }
+  }
+  .menu-sheet-title { display: none; }
+  @media (max-width: 639px) {
+    .menu-sheet-title { display: block; padding: 0.55rem 0.75rem 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid var(--line); margin-bottom: 0.25rem; }
   }
   .menu-item {
     display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: var(--ctl-sm); padding: 0 0.75rem;
@@ -986,3 +992,7 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 /* Feedback: the boxes grow with the text (no inner scrolling), like the skills editor. */
 .feedback-text { field-sizing: content; min-height: 7.5rem; max-height: none; overflow: hidden; resize: none; }
 .feedback-text.feedback-short { min-height: 4.5rem; }
+
+/* Share › Share with an agent: the agent's mark in its chip. */
+.agent-chip-mark { display: inline-grid; width: 1rem; height: 1rem; flex: none; }
+.agent-chip-mark img { width: 1rem; height: 1rem; object-fit: contain; grid-area: 1 / 1; }

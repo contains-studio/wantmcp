@@ -1175,6 +1175,10 @@ route("POST", "/lists/{id}/keys", ({ caller, params, body }) => {
   getList(params[0]);
   if (!roleOf(c, params[0])) throw forbidden();
   const name = text("agent_name", body.agent_name, 60, true);
+  // As the API: at most 50 live agents per person. Mock only: the name "mock: limit" answers as if that were reached.
+  if (name === "mock: limit" || store.agents.filter((x) => x.owner_id === c.user.id).length >= 50) {
+    throw new HttpError(429, "rate_limited", "You have too many active agents; revoke some first");
+  }
   const key = "wk_" + randomToken(40);
   const a: AgentRow = { id: newId("agt"), name, kind: "key", key, list_ids: [params[0]], owner_id: c.user.id, created_at: nowIso(), last_used_at: null };
   store.agents.push(a);

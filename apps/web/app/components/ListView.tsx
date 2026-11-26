@@ -2,6 +2,7 @@ import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } 
 import { SEASON, seasonActive } from "~/lib/season";
 import { MetaLine, type MetaItem } from "~/components/MetaLine";
 import { GiveToAgent } from "~/components/GiveToAgent";
+import { ShareWithAgent } from "~/components/ShareWithAgent";
 import { HeadingBase, headingTag } from "~/components/preview";
 import { Form, Link, useFetcher, useLocation } from "react-router";
 import { ActorTag } from "~/components/ActorTag";
@@ -73,6 +74,11 @@ export function ListView(props: ListViewProps) {
   const H1 = headingTag(base, 0);
   const H2 = headingTag(base, 1);
   const listUrl = `${origin}/l/${list.id}`;
+  // The list's own agents with keys, so "Share with an agent" can say when one already has a key.
+  const agentNames = (props.accessList?.agents ?? []).filter((a) => a.kind === "key").map((a) => a.name);
+  // /l/<id>?share=agent (from a list card's ⋯ on /app): the same step, open on the page.
+  const shareParam = new URLSearchParams(useLocation().search).get("share");
+  const shareAgentOpen = isWriter && !preview && shareParam === "agent";
   const more = useMoreComments(list.id, commentsCursor);
   const comments = useMemo(() => {
     const seen = new Set(firstComments.map((c) => c.id));
@@ -146,7 +152,7 @@ export function ListView(props: ListViewProps) {
             {!preview && (
               <div role="toolbar" aria-label="List" className="list-actions">
                 {/* Public: the link carries ?ref=share so sign-ups from shared lists can be counted. Private: the plain link, and who can open it. */}
-                {isPrivate && isWriter ? (
+                {isWriter ? (
                   // A private list's link opens for no one else: Share says so and offers the two ways to change that.
                   <Menu
                     label="Share"
@@ -160,8 +166,8 @@ export function ListView(props: ListViewProps) {
                     wide
                   >
                     <div className="grid gap-2 p-3 text-[0.9rem]">
-                      <p className="text-ink-2">Only you and people you invite can open this list.</p>
-                      {role === "owner" && (
+                      {isPrivate && <p className="text-ink-2">Only you and people you invite can open this list.</p>}
+                      {isPrivate && role === "owner" && (
                         <Form method="post" action={`/app/lists/${list.id}/settings`} onSubmit={(e) => !confirm("Make this list public? Anyone with the link will be able to read it, and search engines can find it.") && e.preventDefault()}>
                           <input type="hidden" name="intent" value="visibility" />
                           <input type="hidden" name="visibility" value="public" />
@@ -169,10 +175,17 @@ export function ListView(props: ListViewProps) {
                           <button className="menu-item w-full">Make it public…</button>
                         </Form>
                       )}
-                      <Link to={`/app/lists/${list.id}/settings#sharing-h`} className="menu-item">
-                        Invite people
-                      </Link>
-                      <CopyButton text={listUrl} label="Copy link" doneText="Link copied" className="menu-item" />
+                      {/* A write key for one agent, and the prompt that sets it up: only this step's button creates one. */}
+                      <MenuSub label="Share with an agent">
+                        <ShareWithAgent listId={list.id} listUrl={listUrl} existing={agentNames} />
+                      </MenuSub>
+                      {/* Inviting is the owner's (the API refuses members). */}
+                      {role === "owner" && (
+                        <Link to={`/app/lists/${list.id}/settings#sharing-h`} className="menu-item">
+                          Share with a person
+                        </Link>
+                      )}
+                      <CopyButton text={isPrivate ? listUrl : `${listUrl}?ref=share`} label="Copy link" doneText="Link copied" className="menu-item" />
                     </div>
                   </Menu>
                 ) : (
@@ -231,6 +244,7 @@ export function ListView(props: ListViewProps) {
           </div>
         )}
         {props.kept && !preview && <KeptNote listId={list.id} kept={props.kept} isPrivate={isPrivate} />}
+        {shareAgentOpen && <ShareAgentPanel listId={list.id} listUrl={listUrl} existing={agentNames} />}
         {/* With items waiting for the person to accept, those come first and this card follows the list. */}
         {props.handoff && !preview && heldCount === 0 && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
         {nothingYet && !preview && !props.handoff && (!isWriter || (!agentActive && agentsCanWrite === 0) || idleAgent) && (
@@ -698,6 +712,33 @@ function OutsiderDetails({ details, title }: { details: string | undefined; titl
         Show all
       </button>
     </div>
+  );
+}
+
+/** Share with an agent, opened on the page (from a list card's menu on /app): the same step as in the Share menu. */
+function ShareAgentPanel({ listId, listUrl, existing }: { listId: string; listUrl: string; existing: string[] }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    heading.current?.focus();
+    heading.current?.scrollIntoView({ block: "nearest" });
+  }, []);
+  return (
+    <section aria-labelledby="share-agent-h" className="card grid max-w-xl gap-2 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="share-agent-h" ref={heading} tabIndex={-1} className="text-[1.15rem] font-semibold outline-none">
+          Share with an agent
+        </h2>
+        <Link to={`/l/${listId}`} replace preventScrollReset className="btn btn-ghost btn-xs">
+          Done
+        </Link>
+      </div>
+      <ShareWithAgent listId={listId} listUrl={listUrl} existing={existing} />
+      <noscript>
+        <p className="text-[0.9rem] text-ink-2">
+          This step needs JavaScript. You can make a key for an agent in <a href={`/app/lists/${listId}/settings#keys-h`} className="link">Settings › Agents</a>.
+        </p>
+      </noscript>
+    </section>
   );
 }
 

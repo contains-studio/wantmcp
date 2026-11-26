@@ -60,8 +60,11 @@ export function Menu({
   children,
   wide = false,
   iconTrigger = false,
+  sheetTitle,
 }: {
   label: string;
+  /** On a phone the menu is a sheet at the bottom of the screen: this names what it is for (a list's title). */
+  sheetTitle?: string;
   /** The trigger shows only an icon: `label` becomes its accessible name and tooltip. */
   iconTrigger?: boolean;
   trigger?: ReactNode;
@@ -89,6 +92,11 @@ export function Menu({
       </button>
       {(
         <div id={id} popover="auto" role="group" aria-label={label} className={`menu-panel ${wide ? "menu-wide" : ""}`} style={{ positionAnchor: anchor } as React.CSSProperties}>
+          {sheetTitle && (
+            <p className="menu-sheet-title" aria-hidden="true">
+              {sheetTitle}
+            </p>
+          )}
           {children}
         </div>
       )}

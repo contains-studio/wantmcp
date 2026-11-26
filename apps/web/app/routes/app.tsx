@@ -362,11 +362,21 @@ function ListCardRow({ card: c }: { card: ListCard }) {
         </div>
         <div className="relative z-[2] flex flex-none items-center gap-1">
           <AddToList card={c} />
-          <Menu label={`More for ${c.title}`}>
+          <Menu label={`More for ${c.title}`} sheetTitle={c.title}>
+            {/* The same two ways to share as the list's own Share menu. The agent step opens on the list page (it shows
+                the list's agents and updates its access line); only the owner can invite people. */}
+            <Link to={`/l/${c.id}?share=agent`} className="menu-item">
+              Share with an agent<span className="sr-only">: {c.title}</span>
+            </Link>
+            {c.role === "owner" && (
+              <Link to={`/app/lists/${c.id}/settings#sharing-h`} className="menu-item">
+                Share with a person<span className="sr-only">: {c.title}</span>
+              </Link>
+            )}
+            <CopyButton text={c.url} label="Copy link" ariaLabel={`Copy link to ${c.title}`} className="menu-item" />
             <Link to={`/app/lists/${c.id}/settings`} className="menu-item">
               Settings<span className="sr-only"> for {c.title}</span>
             </Link>
-            <CopyButton text={c.url} label="Share: copy link" ariaLabel={`Copy link to ${c.title}`} className="menu-item" />
             {c.role === "owner" && (
               <MenuRemove
                 intent="delete-list"

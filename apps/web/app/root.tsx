@@ -58,7 +58,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-        {/* Before the stylesheets: reload once if one of ours is missing (a deploy's in-between moment). */}
+        {/* Before the stylesheets (an inline script after a pending stylesheet would run only once it had failed): reload
+            once if one of ours is missing (a deploy's in-between moment). Rendered on both sides so <head> hydrates in
+            order; the nonce exists on the server only, where the script runs. */}
         <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: STYLESHEET_GUARD }} />
         <Meta />
         <Links />

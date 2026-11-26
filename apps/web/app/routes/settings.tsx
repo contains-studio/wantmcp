@@ -4,7 +4,7 @@ import type { Route } from "./+types/settings";
 import { AgentPrompt } from "~/components/AgentPrompt";
 import { CopyButton } from "~/components/CopyButton";
 import { Time } from "~/components/Time";
-import { api, apiOptional, formError, toRouteError } from "~/lib/api.server";
+import { api, ApiError, apiOptional, formError, toRouteError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin, flashCookie } from "~/lib/session.server";
@@ -190,6 +190,8 @@ export async function action({ request, params }: Route.ActionArgs) {
         return data({ error: "Unknown action" } satisfies ActionData, 400);
     }
   } catch (err) {
+    // The key limit is the server's own sentence ("You have too many active agents; revoke some first").
+    if (err instanceof ApiError && err.code === "rate_limited" && intent === "create-key") return data({ error: err.message, intent } satisfies ActionData, 429);
     return data({ ...formError(err), intent } satisfies ActionData, 400);
   }
 }
