@@ -13,6 +13,7 @@ import { signinUrl, useRootData } from "~/lib/hooks";
 import { BRANDS, type Brand } from "~/lib/brands";
 import { BrandLogo } from "~/components/BrandLogo";
 import { AgentLine } from "~/components/AgentLine";
+import { SKILL_CLAUDE_CODE_DIR, SKILL_INSTALL, SKILL_MEMORY_LINE, SKILL_NAME } from "~/lib/skill";
 
 export async function loader({ request }: Route.LoaderArgs) {
   // Signed in: offer the person's own lists in the agent prompt (so the page is private then).
@@ -81,6 +82,8 @@ type Client = {
   sources: Array<[string, string]>;
   steps: (ctx: Ctx) => React.ReactNode;
   more?: (ctx: Ctx) => React.ReactNode;
+  /** "So it remembers next time": our skill's install command (coding agents), its ZIP (Claude apps), or a line for the app's memory (chat apps). */
+  remember?: "command" | "zip" | "memory";
 };
 
 /** The server URL with its own Copy, inside a step. */
@@ -212,7 +215,7 @@ function Steps({ children }: { children: React.ReactNode }) {
 
 const b64 = (s: string) => (typeof btoa === "function" ? btoa(s) : Buffer.from(s).toString("base64"));
 
-type Ctx = { mcp: string; signedIn: boolean; lists: MyList[]; selected: string | null };
+type Ctx = { mcp: string; origin: string; signedIn: boolean; lists: MyList[]; selected: string | null };
 type MyList = { id: string; title: string; url: string; shared: boolean; format?: string };
 
 const CLIENT_LIST: Client[] = [
@@ -220,6 +223,7 @@ const CLIENT_LIST: Client[] = [
     id: "grok-bot",
     name: "Grok Bot",
     status: "partial",
+    remember: "memory",
     sources: [
       ["xAI: Grok Bot computer and apps", "https://docs.x.ai/grok-bot/computer-and-apps"],
       ["xAI: Grok Bot overview", "https://docs.x.ai/grok-bot/overview"],
@@ -252,6 +256,7 @@ const CLIENT_LIST: Client[] = [
     id: "muse",
     name: "Muse",
     status: "unchecked",
+    remember: "memory",
     sources: [["Meta: How Muse works with Connectors", "https://www.meta.com/help/superintelligence/1687253048996149/"]],
     steps: (c) => (
       <>
@@ -265,6 +270,7 @@ const CLIENT_LIST: Client[] = [
     id: "chatgpt",
     name: "ChatGPT",
     status: "confirmed",
+    remember: "memory",
     sources: [
       ["OpenAI: custom MCP servers", "https://developers.openai.com/api/docs/guides/custom-mcp-server"],
       ["OpenAI Help Center", "https://help.openai.com/en/articles/12584461"],
@@ -298,6 +304,7 @@ const CLIENT_LIST: Client[] = [
     id: "claude",
     name: "Claude",
     status: "confirmed",
+    remember: "zip",
     sources: [["Claude Help Center: custom connectors", "https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp"]],
     steps: (c) => (
       <Steps>
@@ -352,6 +359,7 @@ const CLIENT_LIST: Client[] = [
     id: "claude-code",
     name: "Claude Code",
     status: "confirmed",
+    remember: "command",
     sources: [["Claude Code docs: MCP", "https://code.claude.com/docs/en/mcp"]],
     steps: (c) => (
       <>
@@ -365,6 +373,10 @@ const CLIENT_LIST: Client[] = [
         <Code>{`claude mcp add --transport http --scope user wantmcp ${c.mcp}`}</Code>
         <p>With a key from list settings instead (no sign-in):</p>
         <Code>{`claude mcp add --transport http wantmcp ${c.mcp} \\\n  --header "Authorization: Bearer wk_your_key"`}</Code>
+        <p>
+          Our skill without npx, saved to <code>{SKILL_CLAUDE_CODE_DIR}/</code>:
+        </p>
+        <Code>{`mkdir -p ~/.claude/skills && curl -fsSL ${c.origin}/skills/${SKILL_NAME}.zip -o /tmp/${SKILL_NAME}.zip \\\n  && unzip -o /tmp/${SKILL_NAME}.zip -d ~/.claude/skills`}</Code>
       </>
     ),
   },
@@ -372,6 +384,7 @@ const CLIENT_LIST: Client[] = [
     id: "codex",
     name: "Codex",
     status: "confirmed",
+    remember: "command",
     sources: [
       ["OpenAI: Codex MCP", "https://learn.chatgpt.com/docs/extend/mcp"],
       ["OpenAI: Codex config reference", "https://learn.chatgpt.com/docs/config-file/config-reference"],
@@ -405,6 +418,7 @@ const CLIENT_LIST: Client[] = [
     id: "grok",
     name: "Grok",
     status: "partial",
+    remember: "memory",
     sources: [
       ["xAI: Grok connectors", "https://docs.x.ai/grok/connectors"],
       ["xAI: Grok Build MCP servers", "https://docs.x.ai/build/features/mcp-servers"],
@@ -435,6 +449,7 @@ const CLIENT_LIST: Client[] = [
     id: "openclaw",
     name: "OpenClaw",
     status: "partial",
+    remember: "command",
     sources: [
       ["OpenClaw docs: MCP", "https://docs.openclaw.ai/tools/mcp"],
       ["OpenClaw docs: transports", "https://docs.openclaw.ai/cli/mcp/transports"],
@@ -459,6 +474,7 @@ const CLIENT_LIST: Client[] = [
     id: "cursor",
     name: "Cursor",
     status: "confirmed",
+    remember: "command",
     sources: [
       ["Cursor docs: MCP", "https://cursor.com/docs/context/mcp"],
       ["Cursor docs: install links", "https://cursor.com/docs/context/mcp/install-links"],
@@ -488,6 +504,7 @@ const CLIENT_LIST: Client[] = [
     id: "gemini",
     name: "Gemini",
     status: "partial",
+    remember: "command",
     sources: [["Google: MCP servers with Gemini CLI", "https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md"]],
     steps: (c) => (
       <Steps>
@@ -507,6 +524,7 @@ const CLIENT_LIST: Client[] = [
     name: "Hermes",
     // "Not yet checked": these steps are from Hermes Agent's docs and nobody here has run them.
     status: "unchecked",
+    remember: "command",
     sources: [["Hermes Agent docs: MCP", "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp"]],
     steps: (c) => (
       <>
@@ -528,6 +546,7 @@ const CLIENT_LIST: Client[] = [
     id: "hark",
     name: "Hark",
     status: "unchecked",
+    remember: "memory",
     sources: [["Hark", "https://hark.com/"]],
     steps: (c) => (
       <>
@@ -541,6 +560,7 @@ const CLIENT_LIST: Client[] = [
     id: "instinct",
     name: "Instinct",
     status: "unchecked",
+    remember: "memory",
     sources: [["Instinct", "https://instinct.com/"]],
     steps: (c) => (
       <>
@@ -562,6 +582,7 @@ const CLIENT_LIST: Client[] = [
     id: "other",
     name: "Other apps",
     status: "generic",
+    remember: "command",
     sources: [],
     steps: (c) => (
       <Steps>
@@ -584,6 +605,46 @@ const CLIENT_LIST: Client[] = [
     ),
   },
 ];
+
+/**
+ * After the steps, quietly: install our skill (skills/list-want-mcp), so the agent knows in a new session to use The Want
+ * MCP when the person talks about what they want. Coding agents take the installer's command; the Claude apps take the
+ * ZIP; chat apps with no skills get a line for their memory instead.
+ */
+function RemembersNextTime({ kind, app }: { kind: "command" | "zip" | "memory"; app: string }) {
+  const lead = <span className="font-semibold text-ink">So it remembers next time:</span>;
+  return (
+    <div className="grid gap-1.5 text-[0.92rem] text-ink-2">
+      {kind === "command" && (
+        <>
+          <p>{lead} install our skill, so {app} knows to use your lists in a new session.</p>
+          <span className="flex items-stretch gap-2">
+            <code className="input flex min-w-0 flex-1 items-center break-words font-mono text-[0.8rem]">{SKILL_INSTALL}</code>
+            <CopyButton text={SKILL_INSTALL} label="Copy" ariaLabel="Copy the skill install command" className="btn btn-ghost btn-sm" />
+          </span>
+        </>
+      )}
+      {kind === "zip" && (
+        <p>
+          {lead}{" "}
+          <a href={`/skills/${SKILL_NAME}.zip`} download className="link">
+            download our skill
+          </a>
+          , then in Claude open <strong>Customize › Skills › + › Upload a skill</strong>. Skills need code execution on (Settings › Capabilities).
+        </p>
+      )}
+      {kind === "memory" && (
+        <>
+          <p>{lead} add this line to {app}'s memory or custom instructions.</p>
+          <p className="flex flex-wrap items-center gap-2">
+            <span className="text-ink">“{SKILL_MEMORY_LINE}”</span>
+            <CopyButton text={SKILL_MEMORY_LINE} label="Copy" ariaLabel="Copy the line for memory" className="btn btn-ghost btn-xs" />
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
 
 /** The order the owner uses: ChatGPT, Codex, Claude, Grok Bot, Muse, OpenClaw, then the rest. */
 const ORDER = ["chatgpt", "codex", "claude", "claude-code", "grok-bot", "muse", "openclaw", "cursor", "grok", "gemini", "hermes", "hark", "instinct", "msgblast", "other"];
@@ -636,7 +697,7 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
 
       <AppPicker
         app={app}
-        ctx={{ mcp: mcpUrl, signedIn: loaderData.signedIn, lists: loaderData.lists, selected: loaderData.selected }}
+        ctx={{ mcp: mcpUrl, origin: loaderData.origin, signedIn: loaderData.signedIn, lists: loaderData.lists, selected: loaderData.selected }}
         listParam={loaderData.selected}
       />
 
@@ -790,6 +851,7 @@ function AppPicker({ app, ctx, listParam }: { app: string; ctx: Ctx; listParam: 
               <CopyButton text={thenSay} label="Copy" ariaLabel="Copy what to say" className="btn btn-ghost btn-xs" />
             </p>
           )}
+          {c.remember && <RemembersNextTime kind={c.remember} app={c.id === "other" ? "your agent" : c.name} />}
           {(c.more || c.sources.length > 0) && (
             <details className="group">
               <SummaryArrow>Details and troubleshooting</SummaryArrow>
