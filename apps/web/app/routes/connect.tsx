@@ -467,7 +467,8 @@ const CLIENT_LIST: Client[] = [
   {
     id: "hermes",
     name: "Hermes",
-    status: "partial",
+    // "generic": no "checked" chip. These steps are from Hermes Agent's docs and nobody here has run them.
+    status: "generic",
     sources: [["Hermes Agent docs: MCP", "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp"]],
     steps: (c) => (
       <>
@@ -481,7 +482,7 @@ const CLIENT_LIST: Client[] = [
       <>
         <p>Or with a key from your list's settings, kept in <code>~/.hermes/.env</code> as WANTMCP_TOKEN:</p>
         <Code>{`mcp_servers:\n  wantmcp:\n    url: "${c.mcp}"\n    headers:\n      Authorization: "Bearer \${WANTMCP_TOKEN}"`}</Code>
-        <p>From Hermes Agent's own docs. We haven't run it in Hermes yet.</p>
+        <p>These steps are from Hermes Agent's own docs. We haven't tested this in Hermes yet.</p>
       </>
     ),
   },

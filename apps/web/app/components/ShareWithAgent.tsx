@@ -16,6 +16,13 @@ type KeyResult = { ok?: boolean; error?: string; intent?: string; key?: string; 
  * sets that agent up on its own. Nothing is created until that press. The key lives only in this step's memory: never
  * in the URL or storage, and it is gone when the menu closes.
  */
+/** The prompt's opening, through the line that carries the key: what was shared, where, and with which key. */
+function promptFacts(prompt: string): string {
+  const lines = prompt.split("\n");
+  const keyLine = lines.findIndex((l) => l.includes("Bearer wk_"));
+  return lines.slice(0, keyLine >= 0 ? keyLine + 1 : 5).join("\n").trim() + "\n…";
+}
+
 export function ShareWithAgent({ listId, listUrl, existing }: { listId: string; listUrl: string; existing: string[] }) {
   const [round, setRound] = useState(0);
   const box = useRef<HTMLDivElement>(null);
@@ -87,16 +94,27 @@ function Step({ round, listId, listUrl, existing }: { round: number; listId: str
     fetcher.submit({ intent: "create-key", agent_name: agentName }, { method: "post", action: `/app/lists/${listId}/settings` });
   };
 
+  // The done state is taller than the picker (it shows the list, server and key lines): bring its top into view so
+  // "Copied", the prompt and the one-time note are on one phone screen.
+  const doneRef = useRef<HTMLDivElement>(null);
+  const done = Boolean(prompt && result?.agent);
+  useEffect(() => {
+    if (done) doneRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+  }, [done]);
+
   if (prompt && result?.agent) {
     const who = result.agent.name;
     return (
-      <div className="grid gap-3 p-1">
+      <div ref={doneRef} className="grid scroll-mt-20 gap-3 p-1">
         <p role="status" className="font-medium text-ink">
           {copied ? `Copied. Paste it to ${who}.` : `Copy this, then paste it to ${who}.`}
         </p>
         <div className="prompt-box grid gap-2">
-          <span className="codeblock prompt-peek-text text-[0.78rem]" aria-hidden="true">
-            {prompt.split("\n").slice(0, 3).join("\n")}
+          {/* Owner, 25 Nov 2026, on seeing only the first line: "doesnt mention the list or the token". The folded
+              view shows the lines that say what was shared: the list, the server and the key. The rest (the
+              numbered steps for the agent) stays one tap away. */}
+          <span className="codeblock prompt-facts text-[0.78rem]" aria-hidden="true">
+            {promptFacts(prompt)}
           </span>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <CopyButton text={prompt} label={copied ? "Copy again" : "Copy prompt"} doneText="Copied" className={`btn btn-sm w-fit ${copied ? "" : "btn-want"}`} />

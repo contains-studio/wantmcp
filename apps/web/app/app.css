@@ -780,6 +780,9 @@ button.check-toggle:hover { border-color: var(--ink); }
   .prompt-peek[open] { flex-basis: 100%; order: -1; }
   .prompt-peek[open] > summary { display: none; }
   .prompt-box:has(.prompt-peek[open]) > .prompt-peek-text { display: none; }
+  /* The share step's folded prompt: every line that names the list, the server and the key, unclipped and wrapped. */
+  .prompt-facts { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .prompt-box:has(.prompt-peek[open]) > .prompt-facts { display: none; }
   .prompt-peek-text { display: block; white-space: pre-wrap; max-height: 6.6em; overflow: hidden; mask-image: linear-gradient(to bottom, #000 60%, transparent); }
   details > summary::-webkit-details-marker { display: none; }
 
