@@ -96,6 +96,8 @@ export function seedStore(now = Date.now()): Store {
   s.members.push(
     { id: "mem_own1", list_id: "lst_desk2026", user_id: "usr_demo", invited_email: null, role: "owner", status: "active", token: null, created_at: at(12 * DAY) },
     { id: "mem_her1", list_id: "lst_desk2026", user_id: "usr_heron", invited_email: "heron@example.com", role: "member", status: "active", token: null, created_at: at(10 * DAY) },
+    // SPEC 21.5: an invitation the owner's agent sent (it goes out at once).
+    { id: "mem_inv_agent", list_id: "lst_desk2026", user_id: null, invited_email: "maya@example.com", role: "member", status: "invited", token: "inv_demo_maya", created_at: at(2 * 3600_000), invited_by: { kind: "agent", agent_id: "agt_claude", name: "Claude", owner_handle: "quiet-otter-4821" } },
     { id: "mem_inv1", list_id: "lst_desk2026", user_id: null, invited_email: "sam@example.com", role: "member", status: "invited", token: "inv_demo_sam", created_at: at(1 * DAY) },
     { id: "mem_own2", list_id: "lst_espresso", user_id: "usr_heron", invited_email: null, role: "owner", status: "active", token: null, created_at: at(9 * DAY) },
     { id: "mem_inv2", list_id: "lst_espresso", user_id: null, invited_email: "demo@example.com", role: "member", status: "invited", token: "inv_demo_espresso", created_at: at(6 * HOUR) },

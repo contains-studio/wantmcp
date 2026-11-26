@@ -8,7 +8,7 @@ import { api, ApiError, apiOptional, formError, toRouteError } from "~/lib/api.s
 import { requireUser } from "~/lib/auth.server";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin, flashCookie } from "~/lib/session.server";
-import type { AgentInfo, HandoverResult, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
+import type { ActorRef, AgentInfo, HandoverResult, ListAccess, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { LookFrame } from "~/components/LookFrame";
 import { AccessRow, AgentMark, PersonMark, RemoveInTwoSteps } from "~/components/AccessRow";
 import { AgentPromptDone, ShareWithAgent } from "~/components/ShareWithAgent";
@@ -34,7 +34,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     toRouteError(err);
   }
   if (!list.my_role) throw new Response("Not found", { status: 404 });
-  const [members, agents] = await Promise.all([
+  const [members, agents, access] = await Promise.all([
     api<Member[]>(request, `/lists/${id}/members`).catch(() => [] as Member[]),
     // The owner sees every agent on the list, a member only their own. Older API servers
     // only have /me/agents, which lists the caller's own.
@@ -43,6 +43,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       [] as AgentInfo[],
       "/app/lists/:id/settings",
     ),
+    // SPEC 21.5: who sent each pending invitation (an agent sends at once), joined on the invitation's id. Owner only.
+    list.my_role === "owner" ? apiOptional<ListAccess>(request, `/lists/${id}/access`).catch(() => null) : Promise.resolve(null),
   ]);
   const { items: _items, ...summary } = list;
   // The owner's look gallery: every layout this format offers, each drawn in every offered occasion (plus the list's
@@ -85,6 +87,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       role: list.my_role,
       members,
       agents,
+      invitedBy: Object.fromEntries((access?.pending_invites ?? []).filter((p) => p.invited_by).map((p) => [p.id, p.invited_by!])) as Record<string, ActorRef>,
       looks,
       sample,
       currentTheme: current.slug,
@@ -243,7 +246,7 @@ function Section({ id, title, desc, open = false, children }: { id: string; titl
 
 export default function Settings({ loaderData }: Route.ComponentProps) {
   const currency = useCurrency();
-  const { list, role, members, agents } = loaderData;
+  const { list, role, members, agents, invitedBy } = loaderData;
   const isOwner = role === "owner";
   const { user, origin: rootOrigin, mcpUrl: mcpUrlRoot } = useRootData();
   // What each may see (the loader asks the API: the owner gets every agent on the list, a member their own): theirs first.
@@ -362,7 +365,14 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               name={m.handle && m.handle === user?.handle ? "You" : (m.invited_email ?? m.handle ?? "Invited")}
               meta={
                 <>
-                  {m.role === "owner" ? "Owner" : m.status === "invited" ? "Invite sent" : "Member"}
+                  {/* SPEC 21.5: an agent's invitation goes out at once; the owner sees which agent sent it, and can cancel it. */}
+                  {m.role === "owner"
+                    ? "Owner"
+                    : m.status === "invited"
+                      ? invitedBy[m.id]?.kind === "agent"
+                        ? `${(invitedBy[m.id] as Extract<ActorRef, { kind: "agent" }>).name} invited them · pending`
+                        : "Invite sent"
+                      : "Member"}
                   {m.invited_email && m.handle && m.handle !== user?.handle ? ` · ${m.handle}` : ""} · <Time ts={m.created_at} />
                 </>
               }

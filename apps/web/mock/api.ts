@@ -897,7 +897,8 @@ route("POST", "/lists/{id}/members", ({ caller, params, body }) => {
 
 // SPEC 13.7: invite by email. A second invitation to the same address within a day sends no email (sent: false).
 route("POST", "/lists/{id}/invites", ({ caller, params, body }) => {
-  const c = requireOwner(caller, params[0]);
+  // SPEC 21.5: the owner, or one of the owner's own agents (its invitation goes out at once, as the owner's would).
+  const c = caller?.kind === "agent" && roleOf({ kind: "user", user: caller.user }, params[0]) === "owner" ? caller : requireOwner(caller, params[0]);
   const email = text("email", body.email, 254, true).toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("That doesn't look like an email address");
   if (email === "limit@example.com") throw new HttpError(429, "rate_limited", "Too many invitations from this list today", { limit: "invites.per_list_per_day" });
