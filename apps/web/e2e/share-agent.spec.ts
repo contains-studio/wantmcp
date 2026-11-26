@@ -135,3 +135,19 @@ test("phone: a card's menu is a sheet that names its list, on screen, with the p
   const backdrop = await panel.evaluate((el) => getComputedStyle(el, "::backdrop").backgroundColor);
   expect(backdrop).not.toBe("rgba(0, 0, 0, 0)");
 });
+
+test("/app: a list with an agent connected but nothing posted says so, not 'Connect one'", async ({ page }) => {
+  await signIn(page, freshEmail("quiet-agent"));
+  const id = await createList(page, { format: "Shopping", title: "Quiet agent" });
+  await page.goto("/app");
+  const card = page.locator("li.card", { has: page.getByRole("link", { name: "Quiet agent" }) });
+  await expect(card.getByText("No agent has worked on this yet.")).toBeVisible();
+  await page.goto(`/l/${id}?share=agent`);
+  const panel = page.locator("section", { has: page.getByRole("heading", { name: "Share with an agent" }) });
+  await panel.locator("label", { hasText: /^Claude$/ }).click();
+  await panel.getByRole("button", { name: "Create key and copy prompt" }).click();
+  await expect(panel.getByText("The key is shown this once.")).toBeVisible();
+  await page.goto("/app");
+  await expect(card.getByText("An agent is connected. Nothing posted yet.")).toBeVisible();
+  await expect(card.getByRole("link", { name: /^Connect one/ })).toHaveCount(0);
+});

@@ -437,6 +437,9 @@ function ListCardRow({ card: c }: { card: ListCard }) {
               <span className="sr-only"> on {c.title}</span>
             </Link>
           </p>
+        ) : (c.access?.agents ?? 0) > 0 ? (
+          // An agent can write the list but hasn't posted: connecting another isn't the next step.
+          <p className="text-ink-2">{c.access!.agents === 1 ? "An agent is connected. Nothing posted yet." : `${c.access!.agents} agents are connected. Nothing posted yet.`}</p>
         ) : (
           <p className="text-ink-2">
             No agent has worked on this yet.{" "}
