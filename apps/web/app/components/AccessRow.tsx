@@ -53,12 +53,15 @@ export function RemoveInTwoSteps({
   confirm = "Yes, remove",
   fields,
   who,
+  also,
 }: {
   question: string;
   label?: string;
   confirm?: string;
   fields: Record<string, string>;
   who: string;
+  /** A second, quieter choice in the confirm step (SPEC 22: "Disconnect it from all your lists"). */
+  also?: { label: string; fields: Record<string, string> };
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const busy = fetcher.state !== "idle";
@@ -85,6 +88,17 @@ export function RemoveInTwoSteps({
           </span>
         )}
       </fetcher.Form>
+      {also && (
+        // Its own form, so it works without JavaScript and posts only its own fields.
+        <fetcher.Form method="post" className="row-remove-also">
+          {Object.entries(also.fields).map(([k, v]) => (
+            <input key={k} type="hidden" name={k} value={v} />
+          ))}
+          <button className="textlink-btn hit text-[0.85rem] text-danger" disabled={busy}>
+            {also.label}
+          </button>
+        </fetcher.Form>
+      )}
     </details>
   );
 }

@@ -110,7 +110,7 @@ export function seedStore(now = Date.now()): Store {
 
   // ---- agents
   s.agents.push(
-    { id: "agt_claude", name: "Claude", kind: "oauth", key: null, list_ids: ["lst_desk2026", "lst_empty", "lst_tasks", "lst_research"], owner_id: "usr_demo", created_at: at(11 * DAY), last_used_at: at(25 * 60_000) },
+    { id: "agt_claude", name: "Claude", kind: "oauth", scope: "all", key: null, list_ids: ["lst_desk2026", "lst_empty", "lst_tasks", "lst_research"], owner_id: "usr_demo", created_at: at(11 * DAY), last_used_at: at(25 * 60_000) },
     { id: "agt_chatgpt", name: "ChatGPT", kind: "oauth", key: null, list_ids: ["lst_desk2026"], owner_id: "usr_demo", created_at: at(11 * DAY), last_used_at: at(5 * HOUR) },
     { id: "agt_codex", name: "Codex", kind: "key", key: "wk_democodexkeyaaaaaaaaaaaaaaaaaaaaaaa", list_ids: ["lst_desk2026"], owner_id: "usr_demo", created_at: at(8 * DAY), last_used_at: at(2 * DAY) },
     { id: "agt_muse", name: "Muse", kind: "oauth", key: null, list_ids: ["lst_desk2026"], owner_id: "usr_heron", created_at: at(9 * DAY), last_used_at: at(3 * HOUR) },

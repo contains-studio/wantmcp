@@ -438,6 +438,7 @@ function agentOut(a: AgentRow): AgentInfo {
     kind: a.kind,
     key_prefix: a.key ? a.key.slice(0, 7) : null,
     list_ids: a.list_ids,
+    scope: a.scope ?? (a.kind === "account" ? "all" : "lists"),
     owner_handle: userById(a.owner_id).handle,
     created_at: a.created_at,
     last_used_at: a.last_used_at,
@@ -770,9 +771,11 @@ route("DELETE", "/agents/{id}", ({ caller, params, url }) => {
   const c = requireSession(caller);
   const a = store.agents.find((x) => x.id === params[0]);
   const listId = url.searchParams.get("list_id");
-  if (a && a.owner_id !== c.user.id && listId && a.list_ids.includes(listId) && roleOf(c, listId) === "owner") {
-    // The list owner removes someone else's agent from this list only.
+  // With list_id: this list only, for the agent's person or the list's owner (as the API does). A key left with no
+  // list is revoked.
+  if (a && listId && a.list_ids.includes(listId) && (a.owner_id === c.user.id || roleOf(c, listId) === "owner")) {
     a.list_ids = a.list_ids.filter((id) => id !== listId);
+    if (a.kind === "key" && a.list_ids.length === 0) store.agents = store.agents.filter((x) => x !== a);
     return store.agents.filter((x) => x.list_ids.includes(listId)).map(agentOut);
   }
   if (!a || a.owner_id !== c.user.id) throw notFound("Agent not found");

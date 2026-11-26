@@ -1134,3 +1134,4 @@ button.check-toggle::before { content: ""; position: absolute; top: 50%; left: 5
   50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--want) 12%, transparent); }
 }
 .access-name { min-width: 0; overflow-wrap: anywhere; }
+.row-remove-also { flex-basis: 100%; }

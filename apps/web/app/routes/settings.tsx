@@ -552,7 +552,9 @@ function agentsLine(n: number, yours: number | null): string {
  */
 function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
   const how = a.kind === "oauth" ? "Signed in through its app" : a.kind === "account" ? "Its own account" : "With a key";
-  const listOnly = !own || a.list_ids.length > 1;
+  // SPEC 22: an agent on "all your lists" keeps the others (and lists made later) when it leaves this one.
+  const all = a.scope === "all";
+  const listOnly = !own || all || a.list_ids.length > 1;
   return (
     <AccessRow
       mark={<AgentMark name={a.name} />}
@@ -560,6 +562,7 @@ function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
       meta={
         <>
           {how}
+          {all && <> · All your lists</>}
           {!own && <> · added by {a.owner_handle}</>} · {a.last_used_at ? <>active <Time ts={a.last_used_at} /></> : "never used yet"}
         </>
       }
@@ -568,6 +571,8 @@ function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
           who={a.name}
           question={!own ? `Remove ${a.name} (added by ${a.owner_handle}) from this list?` : listOnly ? `Remove ${a.name} from this list? It keeps your other lists.` : `Remove ${a.name}? Its key stops working.`}
           fields={{ intent: "revoke-agent", agent_id: a.id, ...(listOnly ? { scope: "list" } : {}) }}
+          // The viewer's own all-lists agent: a second, quieter way to disconnect it everywhere.
+          also={own && all ? { label: "Disconnect it from all your lists", fields: { intent: "revoke-agent", agent_id: a.id } } : undefined}
         />
       }
     />

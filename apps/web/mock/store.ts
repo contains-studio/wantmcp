@@ -55,6 +55,8 @@ export interface AgentRow {
   kind: "key" | "oauth" | "account";
   key: string | null;
   list_ids: string[];
+  /** SPEC 22: "all my lists, including new ones" (account keys are always all). */
+  scope?: "all" | "lists";
   owner_id: string;
   created_at: Timestamp;
   last_used_at: Timestamp | null;

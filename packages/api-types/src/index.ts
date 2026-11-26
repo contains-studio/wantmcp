@@ -255,6 +255,8 @@ export interface AgentInfo {
   kind: "key" | "oauth" | "account";
   key_prefix: string | null;
   list_ids: string[];
+  /** SPEC 22. all: every list its person writes, including lists made later (list_ids is what that covers now); lists: only list_ids. */
+  scope?: "all" | "lists";
   owner_handle: string;
   created_at: Timestamp;
   last_used_at: Timestamp | null;
