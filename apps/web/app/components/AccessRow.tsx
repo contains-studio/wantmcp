@@ -12,7 +12,8 @@ export function AccessRow({ mark, name, meta, action }: { mark: React.ReactNode;
         {mark}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{name}</p>
+        {/* Whole, wrapping: in Sharing the address is what the owner checks (owner via review, 26 Nov 2026). */}
+        <p className="access-name font-semibold">{name}</p>
         <p className="text-[0.8rem] text-ink-3">{meta}</p>
       </div>
       {action}
@@ -85,5 +86,20 @@ export function RemoveInTwoSteps({
         )}
       </fetcher.Form>
     </details>
+  );
+}
+
+/** An email address that may wrap after "@" and each "." on a phone, never cut short. */
+export function Email({ value }: { value: string }) {
+  const parts = value.split(/(?<=[@.])/);
+  return (
+    <>
+      {parts.map((p, i) => (
+        <span key={i}>
+          {p}
+          {i < parts.length - 1 && <wbr />}
+        </span>
+      ))}
+    </>
   );
 }

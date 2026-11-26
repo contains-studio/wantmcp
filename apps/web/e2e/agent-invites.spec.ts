@@ -14,3 +14,14 @@ test("a pending invitation an agent sent says so in Sharing, and the owner can c
   await row.getByRole("button", { name: "Yes, cancel it" }).click();
   await expect(page.locator(".access-row", { hasText: "maya@example.com" })).toHaveCount(0);
 });
+
+test("on a phone every Sharing address shows whole, wrapping rather than cut", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, DEMO);
+  await page.goto("/app/lists/lst_desk2026/settings");
+  const sharing = page.locator("#sharing-h").locator("xpath=ancestor::details[1]");
+  if (!(await sharing.evaluate((d: HTMLDetailsElement) => d.open))) await page.locator("#sharing-h").click();
+  const names = sharing.locator(".access-row .access-name");
+  await expect(names.filter({ hasText: "sam@example.com" })).toHaveCount(1);
+  for (const cut of await names.evaluateAll((els) => els.map((e) => e.scrollWidth > e.clientWidth + 1 || getComputedStyle(e).textOverflow === "ellipsis"))) expect(cut).toBe(false);
+});

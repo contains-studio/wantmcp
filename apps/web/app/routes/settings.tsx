@@ -10,7 +10,7 @@ import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin, flashCookie } from "~/lib/session.server";
 import type { ActorRef, AgentInfo, HandoverResult, ListAccess, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { LookFrame } from "~/components/LookFrame";
-import { AccessRow, AgentMark, PersonMark, RemoveInTwoSteps } from "~/components/AccessRow";
+import { AccessRow, AgentMark, Email, PersonMark, RemoveInTwoSteps } from "~/components/AccessRow";
 import { AgentPromptDone, ShareWithAgent } from "~/components/ShareWithAgent";
 import { AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
@@ -362,7 +362,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               mark={<PersonMark />}
               // The owner sees a person by the email they invited, not only a generated handle (review I1); the API gives
               // invited_email to the owner alone.
-              name={m.handle && m.handle === user?.handle ? "You" : (m.invited_email ?? m.handle ?? "Invited")}
+              name={m.handle && m.handle === user?.handle ? "You" : m.invited_email ? <Email value={m.invited_email} /> : (m.handle ?? "Invited")}
               meta={
                 <>
                   {/* SPEC 21.5: an agent's invitation goes out at once; the owner sees which agent sent it, and can cancel it. */}
