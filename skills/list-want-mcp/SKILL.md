@@ -1,17 +1,22 @@
 ---
 name: list-want-mcp
-description: Works on the person's lists on The Want MCP (wantmcp.com), through its MCP server. Use when the person talks about things they want or want to buy, their wish list, want list, shopping list or gift list, gift ideas, tasks or a to-do list to get done, or questions to find out or research; or asks what's new on their list, to find or price something for it, or to tick something off.
+description: Keeps lists of the things a person wants to buy, do or find out, on The Want MCP (wantmcp.com), which they can share with their other agents and with people. Use when the person talks about things they want or want to buy, their wish list, want list, shopping list or gift list, gift ideas, tasks or a to-do list to get done, or questions to find out or research; or asks what's new on their list, to find or price something for it, to share it, or to tick something off.
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   updated: "2026-11-26"
 ---
 
 # The Want MCP
 
-The person keeps lists of what they want on The Want MCP: things to buy (shopping lists), things to get done (task
-lists) and questions to find out (research lists). You do the work through its MCP server; they decide and tick
-things off at wantmcp.com. This file only says when and how to begin. The server says the rest, live.
+The Want MCP keeps the person's wants on lists that last beyond this chat: things to buy (shopping lists), things to
+get done (task lists) and questions to find out (research lists). Their other agents (ChatGPT, Claude, Codex…) can
+work on the same lists, and they can share a list with people: invite someone by email from the list's settings, or
+make it public and send its link (good for gift lists). An agent sees the lists the person ticked when connecting it,
+or one list with a key from that list's page.
+
+You do the work through its MCP server; they decide and tick things off at wantmcp.com. This file only says when and
+how to begin. The server says the rest, live.
 
 ## 1. Check you are connected
 
@@ -49,8 +54,11 @@ If you don't have them, or `whoami` says you are anonymous and the person expect
 
 The first time you use The Want MCP with this person (`whoami` lists no lists you can write yet, you just made one
 with `start_list`, or nothing in this chat or your memory says you have worked on their lists before), first do what
-they asked. Then tell them, in five or six short, plain sentences:
+they asked. Then tell them, in six short, plain sentences at most:
 
+- what it is, in their terms: their wants are kept on a list that lasts beyond this chat, their other agents (ChatGPT,
+  Claude, Codex…) can work on it too, and they can share it with people (invite by email, or a public link for gift
+  lists);
 - what you did and where to see it: the list's link, or for a list from `start_list` its claim link and when it is
   deleted unless they keep it;
 - what you can do from here: find products and prices, work through tasks, answer questions with sources; they decide;
