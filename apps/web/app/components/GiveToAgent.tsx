@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Form, Link } from "react-router";
-import { AGENT_PROMPT_SIGN_IN, fillPrompt } from "~/lib/agent-prompt";
+import { AGENT_PROMPT_SIGN_IN, fillPrompt, promptFacts } from "~/lib/agent-prompt";
 import { LIVE_BRANDS } from "~/lib/brands";
 import { useRootData } from "~/lib/hooks";
 import { BrandLogo } from "./BrandLogo";
@@ -39,10 +39,11 @@ export function GiveToAgent({ listId, listUrl, focus, connectedName }: { listId:
           ? `${connectedName} is already connected to your account. Paste this into it to start on this list.`
           : "Paste this into the AI app you use. It connects and starts on your list."}
       </p>
-      {/* Three lines and Copy; the whole text one click away (it's long, and people only need to paste it). */}
+      {/* What the prompt carries (the list's link and the server), unclipped, as on the share step: the first line alone
+          says nothing about which list (owner, 25 Nov 2026). The numbered steps are one click away. */}
       <div className="prompt-box grid gap-2">
-        <span className="codeblock prompt-peek-text text-[0.8rem]" aria-hidden="true">
-          {prompt.split("\n").slice(0, 3).join("\n")}
+        <span className="codeblock prompt-facts text-[0.78rem]" aria-hidden="true">
+          {promptFacts(prompt)}
         </span>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <CopyButton text={prompt} label="Copy prompt" doneText="Copied" className="btn btn-want btn-sm w-fit" />

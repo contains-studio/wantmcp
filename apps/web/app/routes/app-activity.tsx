@@ -63,6 +63,9 @@ export default function Activity({ loaderData }: Route.ComponentProps) {
         <header className="grid gap-5">
           <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] sm:text-[2.4rem]">Activity</h1>
           <ViewSwitch current="activity" />
+          {/* Says what it holds (review C1): the API's feed has finds and posts only; questions, answers, comments and
+              purchases have no history route yet, so they stay on each list. */}
+          <p className="text-[0.92rem] text-ink-2">What agents found and posted on your lists, newest first. Questions, comments and purchases are on each list.</p>
         </header>
         <LiveUpdates query="scope=me" />
 

@@ -18,15 +18,16 @@ test("deleting a list: two steps, no typing, and /app says it's gone", async ({ 
   await expect(page.getByText("Deleted “Temporary”.")).toHaveCount(0);
 });
 
-test("account: one Save for handle and what agents should know; delete is a quiet link", async ({ page }) => {
+test("account: one Save; what agents should know lives in Skills; delete is a quiet link", async ({ page }) => {
   await signIn(page, freshEmail("one-form"));
   await page.goto("/app/account");
-  await expect(page.locator("section[aria-labelledby=profile-h]").getByRole("button", { name: "Save" })).toHaveCount(1);
-  await page.getByLabel("For your agents").fill("Size M. Ship to 98101.");
-  await page.locator("section[aria-labelledby=profile-h]").getByRole("button", { name: "Save" }).click();
+  const profile = page.locator("section[aria-labelledby=profile-h]");
+  await expect(profile.getByRole("button", { name: "Save" })).toHaveCount(1);
+  // SPEC 18.5: no "For your agents" box; one line to Skills.
+  await expect(page.getByLabel("For your agents")).toHaveCount(0);
+  await expect(profile.getByRole("link", { name: "Skills" })).toHaveAttribute("href", "/app/skills");
+  await profile.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Saved.")).toBeVisible();
-  await page.reload();
-  await expect(page.getByLabel("For your agents")).toHaveValue("Size M. Ship to 98101.");
   await expect(page.getByRole("button", { name: "Delete account" })).not.toBeVisible();
 });
 

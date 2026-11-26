@@ -295,7 +295,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         <a href="#keys-h" className="link">Agents</a>
         {isOwner && <a href="#theme-h" className="link">Look</a>}
         {isOwner && canChangeFormat && <a href="#format-h" className="link">Format</a>}
-        {isOwner && <a href="#danger-h" className="link">Delete</a>}
+        {isOwner && <a href="#danger-h" className="link">Give away or delete</a>}
       </nav>
 
       {isOwner && (
@@ -338,7 +338,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         </Section>
       )}
 
-      <Section id="sharing-h" title="Sharing" desc={accessLine(list.access) ?? "Who can see it, and people"} open={openFor(["visibility", "outside", "invite", "revoke-member", "handover"])}>
+      <Section id="sharing-h" title="Sharing" desc={accessLine(list.access) ?? "Who can see it, and people"} open={openFor(["visibility", "outside", "invite", "revoke-member"])}>
         {isOwner && (
           <>
             <VisibilityControl visibility={visibilityOf(list)} />
@@ -357,10 +357,13 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
             <AccessRow
               key={m.id}
               mark={<PersonMark />}
-              name={m.handle && m.handle === user?.handle ? "You" : (m.handle ?? m.invited_email ?? "Invited")}
+              // The owner sees a person by the email they invited, not only a generated handle (review I1); the API gives
+              // invited_email to the owner alone.
+              name={m.handle && m.handle === user?.handle ? "You" : (m.invited_email ?? m.handle ?? "Invited")}
               meta={
                 <>
-                  {m.role === "owner" ? "Owner" : m.status === "invited" ? "Invite sent" : "Member"} · <Time ts={m.created_at} />
+                  {m.role === "owner" ? "Owner" : m.status === "invited" ? "Invite sent" : "Member"}
+                  {m.invited_email && m.handle && m.handle !== user?.handle ? ` · ${m.handle}` : ""} · <Time ts={m.created_at} />
                 </>
               }
               action={
@@ -403,7 +406,6 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
             </div>
           </Form>
         )}
-        {isOwner && <Handover result={result} busy={busy("handover")} />}
       </Section>
 
       <Section id="keys-h" title="Agents" desc={agentsLine(agentsTotal, isOwner ? null : listAgents.length)} open={openFor(["create-key", "revoke-agent"])}>
@@ -462,7 +464,11 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
             </Section>
           )}
 
-          <Section id="danger-h" title="Delete" desc="Delete this list and everything on it" open={openFor(["delete-list"])}>
+          {/* The rare, final things together: giving the list away, and deleting it (review I2: hand-over sat with everyday sharing). */}
+          <Section id="danger-h" title="Give away or delete" desc="Hand this list to someone, or delete it" open={openFor(["delete-list", "handover"])}>
+            <Handover result={result} busy={busy("handover")} />
+            <div className="grid gap-2 border-t border-line pt-4">
+            <p className="label">Delete this list</p>
             <p className="text-[0.9rem] text-ink-2">Deletes every item, product, price and comment, and disconnects its agents. This can't be undone.</p>
             {/* Two steps, no typing: "Delete list…", then the confirm that names what goes. Works without JavaScript. */}
             <details className="group">
@@ -479,6 +485,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
                 {err("delete-list")}
               </Form>
             </details>
+            </div>
           </Section>
         </>
       )}
@@ -733,7 +740,7 @@ function FormatControl({ list }: { list: Pick<ListSummary, "format" | "item_coun
 function Handover({ result, busy }: { result: ActionData | undefined; busy: boolean }) {
   const made = result?.intent === "handover" && result.ok ? result.handover : undefined;
   return (
-    <div className="grid gap-2 border-t border-line pt-4">
+    <div className="grid gap-2">
       <p className="label">Hand this list to someone</p>
       <p className="hint">They keep it with their own email and become its owner. You stay on the list and your agents keep working.</p>
       {made ? (

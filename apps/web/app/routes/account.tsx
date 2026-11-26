@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { data, Form, redirect, useActionData, useFetcher, useNavigation } from "react-router";
+import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import { useRootData } from "~/lib/hooks";
-import { Field, Select, Textarea } from "~/components/ui";
-import { BIO_PLACEHOLDER, COUNTRIES, COUNTRY_CURRENCY, CURRENCIES } from "~/lib/locales";
+import { Field, Select } from "~/components/ui";
+import { COUNTRIES, COUNTRY_CURRENCY, CURRENCIES } from "~/lib/locales";
 import type { Route } from "./+types/account";
 import { api, apiOptional, formError } from "~/lib/api.server";
 import type { AgentInfo } from "~/lib/types";
@@ -15,15 +15,20 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireUser(request);
-  // Where the request comes from (Cloudflare tells the Worker): a starting guess for country and currency,
-  // only shown in the fields; nothing is saved until the person presses Save.
+  const me = await requireUser(request);
+  // Where the request comes from (Cloudflare tells the Worker): when the person has no country yet, it is saved as theirs
+  // with its currency, without asking (review E2: "Save to keep them" on an account already in use). They can change it.
   const cf = (request as unknown as { cf?: { country?: string } }).cf?.country ?? request.headers.get("cf-ipcountry");
   const country = cf && COUNTRIES.some(([c]) => c === cf) ? cf : null;
-  const guess = !user.country && country ? { country, currency: user.currency ?? COUNTRY_CURRENCY[country] ?? null } : null;
+  let user = me;
+  if (!me.country && country) {
+    const currency = me.currency ?? COUNTRY_CURRENCY[country] ?? null;
+    const saved = await api<typeof me>(request, "/me", { method: "PATCH", body: { country, currency } }).catch(() => null);
+    user = { ...me, ...(saved ?? {}), country, currency };
+  }
   // SPEC 13.6: account keys agents made with their own sign-up. Older API builds don't have the route: none.
   const agentKeys = (await apiOptional<AgentInfo[]>(request, "/me/agent-keys").catch(() => null)) ?? [];
-  return data({ user, guess, agentKeys }, { headers: { "Cache-Control": "private, no-store" } });
+  return data({ user, agentKeys }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -37,7 +42,7 @@ export async function action({ request }: Route.ActionArgs) {
         method: "PATCH",
         body: {
           handle: String(form.get("handle") ?? "").trim(),
-          bio: String(form.get("bio") ?? "").trim(),
+          // No field writes bio any more: never send it, so saving can't clear one.
           country: String(form.get("country") ?? "") || null,
           currency: String(form.get("currency") ?? "") || null,
         },
@@ -74,7 +79,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Account({ loaderData }: Route.ComponentProps) {
-  const { user, guess, agentKeys } = loaderData;
+  const { user, agentKeys } = loaderData;
   const result = useActionData<typeof action>() as { ok?: boolean; error?: string; intent?: string } | undefined;
   const nav = useNavigation();
   return (
@@ -101,14 +106,18 @@ export default function Account({ loaderData }: Route.ComponentProps) {
             <span className="hint">Shown on your lists and comments.</span>
           </label>
           <div id="bio" className="grid scroll-mt-24 gap-4 border-t border-line pt-4">
-            <Field label="For your agents">
-              {(p) => <Textarea {...p} name="bio" maxLength={600} defaultValue={user.bio ?? ""} placeholder={BIO_PLACEHOLDER} className="min-h-24" />}
-            </Field>
-            <p className="hint -mt-2">Only your own agents see this. It's never shown on a list.</p>
+            {/* What agents should know lives in Skills, one place (SPEC 18.5, review E1). The API keeps bio; no page writes it. */}
+            <p className="text-[0.92rem] text-ink-2">
+              Sizes, stores you trust, when to ask you first: tell your agents in{" "}
+              <Link to="/app/skills" className="link font-medium text-ink">
+                Skills
+              </Link>
+              .
+            </p>
             <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
               <Field label="Country">
                 {(p) => (
-                  <Select {...p} name="country" defaultValue={user.country ?? guess?.country ?? ""}>
+                  <Select {...p} name="country" defaultValue={user.country ?? ""}>
                     <option value="">Not set</option>
                     {COUNTRIES.map(([code, name]) => (
                       <option key={code} value={code}>
@@ -120,7 +129,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
               </Field>
               <Field label="Currency">
                 {(p) => (
-                  <Select {...p} name="currency" defaultValue={user.currency ?? guess?.currency ?? ""}>
+                  <Select {...p} name="currency" defaultValue={user.currency ?? ""}>
                     <option value="">Not set</option>
                     {CURRENCIES.map(([code, name]) => (
                       <option key={code} value={code}>
@@ -131,7 +140,6 @@ export default function Account({ loaderData }: Route.ComponentProps) {
                 )}
               </Field>
             </div>
-            {guess && !(result?.intent === "profile" && result.ok) && <p className="hint -mt-2">We guessed your country and currency from your location. Save to keep them.</p>}
           </div>
           <div aria-live="polite">
             {result?.intent === "profile" && result.error && <p className="form-error">{result.error}</p>}

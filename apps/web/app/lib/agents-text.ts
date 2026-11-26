@@ -27,7 +27,14 @@ REST API: ${api} (OpenAPI: ${api}/openapi.json)
 
 1. Your person already has an account: they connect you. They sign in at ${origin}, open ${origin}/connect and add the MCP server to the app they already use. You then work on the lists they give you, with nothing to keep secret.
 
-2. Your person has no account yet: start a list for them. Call the MCP tool start_list with a title, your agent_name and up to 10 wants. Without MCP, POST ${api}/lists/unclaimed with JSON { "title", "agent_name", "format"?: "shopping" | "tasks" | "research", "wants"?: [{ "text", "details"? }] } and no credential. start_list answers like this:
+2. Your person has no account yet: start a list for them. Call the MCP tool start_list with a title, your agent_name and up to 10 wants. Without MCP, POST ${api}/lists/unclaimed with JSON { "title", "agent_name", "format"?: "shopping" | "tasks" | "research", "wants"?: [{ "text", "details"? }] } and no credential. Then, still without MCP, send the key it returns as Authorization: Bearer on these two calls:
+
+   GET ${api}/lists/<id> for the list and its item ids.
+   POST ${api}/items/<item_id>/entries with JSON { "title", "product_url", "price", "currency", "price_source" } for each product you find.
+
+   If you can do neither MCP nor HTTP, tell your person to open ${origin}/connect.
+
+   start_list answers like this:
 
    Next: find a product for each want and post it with add_entry (product_url, price, currency and price_source), then give the person the claim link below.
    The page they open shows what you found under each want: that is what makes them keep the list. If you cannot find something, add a comment on that item saying why.
@@ -38,9 +45,8 @@ REST API: ${api} (OpenAPI: ${api}/openapi.json)
    Key: wk_…
    Pass key on every call for this list (or send it as Authorization: Bearer). Never show the key to anyone, the person included: they only need the claim link.
 
-   So: start the list, then find and post what your person wants (a product with a price for each want, or work the tasks, or answer the questions), then give them the claim link. The page they open shows what you found under each want, and that is what makes them keep it. If you cannot find something, add a comment on that item saying why. The list is deleted after ${ttl} unless they keep it, so do the work promptly and do not sit on the link for hours.
-
    Results for a list you write carry coverage, and a line like "4 of 7 wants have no product yet" until every want has something.
+   Posted something wrong? remove_entry takes your own post off (DELETE ${api}/entries/<id>).
 
 3. You have an email inbox of your own: call sign_up with that address, read the code we send it, then call confirm_sign_up with the address, the code and your agent_name. You get an account key (ak_…) and lists that never expire. When a list is ready for a person, hand it over (below).
 

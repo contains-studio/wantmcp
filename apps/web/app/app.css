@@ -937,6 +937,8 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 /* A skill that is off: kept in the list, on the sunk surface with a dashed edge (and the words "Off"). */
 .skill-off { background: var(--sunk); box-shadow: none; border: 1px dashed var(--line-strong); }
 .skill-body { field-sizing: content; min-height: 9rem; max-height: none; overflow: hidden; resize: none; }
+/* Empty, showing the example: its rows hold the whole example (content sizing would size to the empty value). */
+.skill-body.is-example { field-sizing: fixed; }
 .editor-actions { position: sticky; bottom: 0; z-index: 3; margin: 0 -1.25rem -1.25rem; padding: 0.75rem 1.25rem calc(0.75rem + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
 @media (min-width: 640px) { .editor-actions { position: static; margin: 0; padding: 0; border: 0; background: none; } }
 

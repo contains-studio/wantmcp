@@ -10,7 +10,7 @@ async function saveSkill(page: Page, title: string, body = "Size M.") {
   return res.status();
 }
 
-test("first run: one line of why, three starters that open the editor filled in, then saved with the next step", async ({ page }) => {
+test("first run: one line of why, three starters that open the editor with an example, then saved with the next step", async ({ page }) => {
   await signIn(page, freshEmail("skills-first"));
   await page.goto("/app/skills");
   await expect(page.getByRole("heading", { level: 1, name: "Skills" })).toBeVisible();
@@ -19,8 +19,15 @@ test("first run: one line of why, three starters that open the editor filled in,
   for (const name of ["How I shop", "Gifts for my family", "How to ask me things"]) await expect(page.getByRole("link", { name })).toBeVisible();
   await page.getByRole("link", { name: "How I shop" }).click();
   await expect(page.getByLabel("Title")).toHaveValue("How I shop");
-  await expect(page.getByLabel("Instructions")).toHaveValue(/Ask me before anything over \$200\./);
+  // The starter's text is grey example text, not saved as yours (review D1); Save waits for something written.
+  const box = page.getByLabel("Instructions");
+  await expect(box).toHaveValue("");
+  await expect(box).toHaveAttribute("placeholder", /Ask me before anything over \$200\./);
+  await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
   await expect(page.getByLabel("When should agents use it? (optional)")).toHaveValue("Whenever you shop for me");
+  await page.getByRole("button", { name: "Start from the example" }).click();
+  await expect(box).toHaveValue(/Ask me before anything over \$200\./);
+  await expect(box).toBeFocused();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toContainText("Saved. Your agents get it the next time they start work.");
   // No agent yet: the way to connect one.

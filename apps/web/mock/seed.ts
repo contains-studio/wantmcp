@@ -95,7 +95,7 @@ export function seedStore(now = Date.now()): Store {
   // ---- members
   s.members.push(
     { id: "mem_own1", list_id: "lst_desk2026", user_id: "usr_demo", invited_email: null, role: "owner", status: "active", token: null, created_at: at(12 * DAY) },
-    { id: "mem_her1", list_id: "lst_desk2026", user_id: "usr_heron", invited_email: null, role: "member", status: "active", token: null, created_at: at(10 * DAY) },
+    { id: "mem_her1", list_id: "lst_desk2026", user_id: "usr_heron", invited_email: "heron@example.com", role: "member", status: "active", token: null, created_at: at(10 * DAY) },
     { id: "mem_inv1", list_id: "lst_desk2026", user_id: null, invited_email: "sam@example.com", role: "member", status: "invited", token: "inv_demo_sam", created_at: at(1 * DAY) },
     { id: "mem_own2", list_id: "lst_espresso", user_id: "usr_heron", invited_email: null, role: "owner", status: "active", token: null, created_at: at(9 * DAY) },
     { id: "mem_inv2", list_id: "lst_espresso", user_id: null, invited_email: "demo@example.com", role: "member", status: "invited", token: "inv_demo_espresso", created_at: at(6 * HOUR) },

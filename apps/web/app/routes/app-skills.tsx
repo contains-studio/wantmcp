@@ -84,7 +84,8 @@ export async function loader({ request }: Route.LoaderArgs) {
       editor: editing
         ? { id: editing.id, title: editing.title, description: editing.description, body: editing.body, enabled: editing.enabled }
         : starter && STARTERS[starter] && list.length < MAX_SKILLS
-          ? { id: null, ...STARTERS[starter], enabled: true }
+          ? // A starter's text is an example, never someone else's details saved as yours (review D1): the box starts empty.
+            { id: null, title: STARTERS[starter].title, description: STARTERS[starter].description, body: "", example: STARTERS[starter].body, enabled: true }
           : null,
       saved: url.searchParams.get("saved"),
     },
@@ -286,7 +287,7 @@ function Editor({
   error,
   field,
 }: {
-  editor: { id: string | null; title: string; description: string; body: string; enabled: boolean };
+  editor: { id: string | null; title: string; description: string; body: string; enabled: boolean; example?: string };
   first: boolean;
   error: string | null;
   /** The field the server's validation sentence is about: shown beside it. */
@@ -306,6 +307,9 @@ function Editor({
     el.style.height = `${el.scrollHeight + 2}px`;
   }, [body]);
   const near = (value: string, max: number) => value.length >= max * 0.9;
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+  const example = editor.example ?? "";
   return (
     <section aria-labelledby="editor-h" className="card grid gap-4 p-5 sm:p-6">
       <h2 id="editor-h" className="text-[1.2rem] font-semibold">
@@ -330,10 +334,16 @@ function Editor({
             maxLength={LIMITS.body}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            rows={6}
-            className="textarea skill-body"
-            placeholder="Your sizes, stores you trust, your budget, when to ask you first…"
+            // Tall enough for the whole example, wrapped at about a phone's width (36 characters a line).
+            rows={example && !body ? `For example:\n${example}`.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 36)), 0) + 1 : 6}
+className={`textarea skill-body ${example && !body ? "is-example" : ""}`}
+            placeholder={example ? `For example:\n${example}` : "Your sizes, stores you trust, your budget, when to ask you first…"}
           />
+          {example && !body && hydrated && (
+            <button type="button" className="textlink-btn w-fit text-[0.85rem]" onClick={() => (setBody(example), requestAnimationFrame(() => bodyRef.current?.focus()))}>
+              Start from the example
+            </button>
+          )}
           {near(body, LIMITS.body) && <span className="hint">{(LIMITS.body - body.length).toLocaleString("en-US")} characters left</span>}
           {field === "body" && error && <span className="form-error">{error}</span>}
         </label>
@@ -358,7 +368,8 @@ function Editor({
         {/* Said once, at the moment of writing; outside the sticky Save row so that row stays one line on a phone. */}
         <p className="text-[0.85rem] text-ink-3">Only agents you connect read it.</p>
         <div className="editor-actions flex flex-wrap items-center gap-3">
-          <button className="btn btn-want" disabled={busy}>
+          {/* Nothing to save until something is written (D1). */}
+          <button className="btn btn-want" disabled={busy || (hydrated && !body.trim())}>
             {busy ? "Saving…" : "Save"}
           </button>
           <Link to="/app/skills" className="btn btn-ghost">

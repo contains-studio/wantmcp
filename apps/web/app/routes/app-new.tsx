@@ -11,7 +11,6 @@ import { api, formError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { FORMATS, type FormatInfo } from "~/lib/formats";
 import { moneyPlaceholder, useCurrency } from "~/lib/hooks";
-import { BIO_PLACEHOLDER } from "~/lib/locales";
 import { assertSameOrigin } from "~/lib/session.server";
 import type { ListFormat, ListSummary, ListVisibility } from "~/lib/types";
 
@@ -22,7 +21,7 @@ export function meta() {
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
   const lists = await api<ListSummary[]>(request, "/me/lists").catch(() => [] as ListSummary[]);
-  return data({ first: lists.length === 0, hasBio: !!user.bio }, { headers: { "Cache-Control": "private, no-store" } });
+  return data({ first: lists.length === 0 }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -46,9 +45,6 @@ export async function action({ request }: Route.ActionArgs) {
     // Started from a look's preview (?look=): dress the new list in it.
     const look = String(form.get("look") ?? "");
     if (/^[a-z0-9-]{1,60}$/.test(look)) await api(request, `/lists/${list.id}`, { method: "PATCH", body: { theme: resolveLook(look, list.format ?? "shopping").slug } }).catch(() => null);
-    // Offered once, with the first list: the bio for the person's own agents (SPEC 12.2).
-    const bio = String(form.get("bio") ?? "").trim();
-    if (bio) await api(request, "/me", { method: "PATCH", body: { bio } }).catch(() => null);
     return redirect(`/l/${list.id}?new=1`);
   } catch (err) {
     return data(formError(err), 400);
@@ -62,13 +58,13 @@ export default function NewList({ loaderData }: Route.ComponentProps) {
         <Link to="/app" className="link w-fit text-[0.9rem] text-ink-3">
           ← Your lists
         </Link>
-        <CreateList first={loaderData.first} hasBio={loaderData.hasBio} />
+        <CreateList first={loaderData.first} />
       </div>
     </div>
   );
 }
 
-function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
+function CreateList({ first }: { first: boolean }) {
   const currency = useCurrency();
   const nav = useNavigation();
   const result = useActionData<typeof action>() as { error?: string } | undefined;
@@ -150,13 +146,6 @@ function CreateList({ first, hasBio }: { first: boolean; hasBio: boolean }) {
               <textarea name="note" maxLength={600} className="textarea min-h-16" placeholder={moneyPlaceholder("Gifts for Dad, about {50} each, ship to Denver", currency)} />
               <span className="hint">Everyone who can write this list, and their agents, can see it. Never public.</span>
             </label>
-            {first && !hasBio && (
-              <label className="field">
-                <span className="label">Tell your agents about you (optional)</span>
-                <textarea name="bio" maxLength={600} className="textarea min-h-16" placeholder={BIO_PLACEHOLDER} />
-                <span className="hint">Only your own agents see this. Change it any time in Account.</span>
-              </label>
-            )}
           </div>
         </details>
       </Form>

@@ -61,13 +61,13 @@ test("list settings: sections in order, Format only while the list is empty", as
   await page.goto(`/app/lists/${id}/settings`);
   // The section titles only: the closed Look section also holds a decorative, aria-hidden miniature with headings of its own.
   const titles = await page.locator("details.settings-section > summary > span > h2").allTextContents();
-  expect(titles).toEqual(["Details", "Sharing", "Agents", "Look", "Format", "Delete"]);
+  expect(titles).toEqual(["Details", "Sharing", "Agents", "Look", "Format", "Give away or delete"]);
   await page.goto(`/l/${id}`);
   await page.locator("#new-item").fill("Book the van");
   await page.getByRole("button", { name: "Add task" }).click();
   await expect(page.locator(".item-section", { hasText: "Book the van" })).toBeVisible();
   await page.goto(`/app/lists/${id}/settings`);
-  await expect(page.locator("details.settings-section > summary > span > h2")).toHaveText(["Details", "Sharing", "Agents", "Look", "Delete"]);
+  await expect(page.locator("details.settings-section > summary > span > h2")).toHaveText(["Details", "Sharing", "Agents", "Look", "Give away or delete"]);
 });
 
 test("/for index: a swatch and a promise per page, and Start a list top and bottom", async ({ page }) => {

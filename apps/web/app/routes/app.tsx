@@ -624,10 +624,11 @@ function FirstRun({
       </ol>
       {needsBio && (
         <p className="text-[0.9rem] text-ink-2">
-          <Link to="/app/account#bio" className="link">
-            Tell your agents your sizes and country
+          {/* Skills is the one place for what agents should know (SPEC 18.5). */}
+          <Link to="/app/skills" className="link">
+            Tell your agents your sizes and the stores you trust
           </Link>{" "}
-          so they search the right stores.
+          in Skills.
         </p>
       )}
     </section>

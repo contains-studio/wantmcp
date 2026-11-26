@@ -122,6 +122,13 @@ test("/llms.txt and /agents.txt tell agents how to begin", async ({ request }) =
     ]) {
       expect(body, `${path}: ${s}`).toContain(s);
     }
+    // SPEC 17.3: the REST way to finish the job, the line for an agent that can do neither, and no "So: start the list".
+    expect(body).toContain("/lists/<id> for the list and its item ids.");
+    expect(body).toContain("/items/<item_id>/entries");
+    expect(body).toContain("/connect.");
+    expect(body).not.toContain("So: start the list");
+    // SPEC 18.5: remove_entry for an agent's own posts.
+    expect(body).toContain("remove_entry");
     // The work comes before the link (SPEC 15.2); the old "hand it over now" wording is gone.
     expect(body).not.toContain("Give this to the person now");
     expect(body).not.toContain("straight away");
