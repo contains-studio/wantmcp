@@ -20,6 +20,7 @@ The clients. Each is open source under the MIT licence.
 |---|---|
 | [`apps/web`](apps/web) | The website at wantmcp.com: sign-in, lists in every format and theme, settings, sharing |
 | [`packages/api-types`](packages/api-types) | TypeScript types for the public REST API, shared by every TypeScript client |
+| [`skills/list-want-mcp`](skills/list-want-mcp) | The skill agents install so they know to use The Want MCP next time: `npx skills add contains-studio/wantmcp --skill list-want-mcp -g`. Its reference files are generated from the server's guides (`pnpm skill:build` in `apps/web`) |
 | [`docs`](docs) | Rules every client follows, starting with the [design standards](docs/design-standards.md) |
 
 The API and the MCP server live in a separate, private repository. You do not need them to work on a client:
