@@ -104,10 +104,6 @@ export function ItemIndex({
                 {g.items.map((item) => (
                   <li key={item.id} className={`ix-card ${g.key === "done" ? "is-done" : ""}`}>
                     <a href={`#${item.id}`} className="ix-link">
-                      <span className="ix-labels" aria-hidden="true">
-                        <span className={`ix-label is-${g.key}`} />
-                        {item.due_at && <span className="ix-label is-due" />}
-                      </span>
                       <span className="ix-title">{item.text}</span>
                       <span className="ix-foot">
                         <span className="ix-chips">
@@ -135,7 +131,7 @@ export function ItemIndex({
 
   // Sections
   return (
-    <nav id={preview ? undefined : "list-index"} aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-sections scroll-mt-24">
+    <nav id={preview ? undefined : "list-index"} aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className={`ix ix-sections scroll-mt-24 ${isWriter ? "" : "is-readonly"}`}>
       <div className="ix-table-head" aria-hidden="true">
         <span>Name</span>
         <span>{shopping ? "Found" : "Agent"}</span>
@@ -154,25 +150,34 @@ export function ItemIndex({
               const who = item.claimed_by ?? item.completion?.completed_by ?? null;
               return (
                 <li key={item.id} className={`ix-row ${st === "done" ? "is-done" : ""}`}>
-                  <span className="ix-tick">
-                    <ChecklistBox
-                      itemId={item.id}
-                      text={item.text}
-                      bought={st === "done"}
-                      canWrite={isWriter}
-                      shopping={shopping}
-                      doneWord={fi.done}
-                      waiting={st === "waiting_on_owner"}
-                    />
-                  </span>
+                  {/* The one-tap tick is the writer's (named "Done: …" by ChecklistBox); visitors read the Status column. */}
+                  {isWriter && (
+                    <span className="ix-tick">
+                      <ChecklistBox
+                        itemId={item.id}
+                        text={item.text}
+                        bought={st === "done"}
+                        canWrite
+                        shopping={shopping}
+                        doneWord={fi.done}
+                        waiting={st === "waiting_on_owner"}
+                      />
+                    </span>
+                  )}
                   <a href={`#${item.id}`} className="ix-link">
                     <span className="ix-title">{item.text}</span>
                     <span className="ix-meta">{countLabel(item, fi)}</span>
                   </a>
-                  <span className="ix-cell ix-who">{shopping ? item.entries.length || "–" : who ? <Avatars actors={[who]} named /> : "–"}</span>
-                  <span className="ix-cell ix-due">{item.due_at ? <DueChip due={item.due_at} done={st === "done"} /> : "–"}</span>
-                  <span className="ix-cell">
-                    <span className={`ix-pill is-${st}`}>{st === "done" ? names.done : st === "in_progress" ? names.working : st === "waiting_on_owner" ? waitingName : "Open"}</span>
+                  {/* Table cells on wide screens; on phones one line under the title, without the empty cells,
+                      the bare count (the line above says it) or the status (the group says it). */}
+                  <span className="ix-cells">
+                    <span className={`ix-cell ix-who ${shopping ? "is-count" : ""} ${(shopping ? item.entries.length : who) ? "" : "is-empty"}`}>
+                      {shopping ? item.entries.length || "–" : who ? <Avatars actors={[who]} named /> : "–"}
+                    </span>
+                    <span className={`ix-cell ix-due ${item.due_at ? "" : "is-empty"}`}>{item.due_at ? <DueChip due={item.due_at} done={st === "done"} /> : "–"}</span>
+                    <span className="ix-cell ix-status">
+                      <span className={`ix-pill is-${st}`}>{st === "done" ? names.done : st === "in_progress" ? names.working : st === "waiting_on_owner" ? waitingName : "Open"}</span>
+                    </span>
                   </span>
                 </li>
               );

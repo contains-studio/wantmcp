@@ -15,14 +15,17 @@ test("the retired Cards layout: old links redirect, nothing offers it", async ({
   await expect(page.getByText("Cards", { exact: true })).toHaveCount(0);
 });
 
-test("a season tile starts a gift list in its look, after sign-in", async ({ page }) => {
+test("a season tile opens its preview, which starts a gift list in its look, after sign-in", async ({ page }) => {
   await page.goto("/");
   const band = page.locator("section[aria-labelledby=season-h]");
   await expect(band.getByRole("heading", { name: "Have your agents help you get the right gifts this season." })).toBeVisible();
   await expect(band.locator(".look-tile")).toHaveCount(5);
-  // Signed out: sign in first, then one tap to start.
-  await band.getByRole("button", { name: "Start a Christmas gift list" }).click();
+  // The tile opens the occasion's preview; its one button starts the list. Signed out: sign in first, then one tap.
+  await band.getByRole("link", { name: "Christmas", exact: true }).click();
+  await expect(page).toHaveURL(/\/themes\/sheet--christmas$/);
+  await page.getByRole("link", { name: "Start a Christmas list" }).click();
   await expect(page).toHaveURL(/\/login\?next=/);
+  await expect(page.getByRole("heading", { level: 1, name: "Start your Christmas list" })).toBeVisible();
   await page.getByLabel("Email", { exact: true }).fill(freshEmail("season"));
   await page.getByRole("button", { name: "Email me a code" }).click();
   await page.getByLabel("Code").fill("123456");

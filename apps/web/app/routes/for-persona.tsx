@@ -21,9 +21,9 @@ export function loader({ request, params }: Route.LoaderArgs) {
   if (!persona) throw new Response("Not found", { status: 404 });
   const origin = siteOrigin(request);
   const now = Date.now();
-  // One sample at a time (?list=, real links): the first by default.
+  // One sample at a time (?list=, real links): by default the kind the page's headline is about.
   const asked = new URL(request.url).searchParams.get("list");
-  const shown: ListFormat = ORDER.includes(asked as ListFormat) ? (asked as ListFormat) : ORDER[0];
+  const shown: ListFormat = ORDER.includes(asked as ListFormat) ? (asked as ListFormat) : (persona.opens ?? "shopping");
   const lists = [shown].map((format) => {
     const spec = persona.lists[format];
     const theme = getThemeView(spec.look ?? DEFAULT_LOOK[format], format);

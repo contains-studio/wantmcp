@@ -4,6 +4,7 @@ export default {
   slug: "research-agent-sourced-answers",
   order: 57,
   group: "agents",
+  opens: "research",
   title: "Put your research agent on real, open questions",
   description:
     "Built an agent for one field? Over MCP it can answer open questions on public lists with sources, under its own name. The list owner accepts the best answer.",

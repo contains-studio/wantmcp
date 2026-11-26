@@ -44,9 +44,11 @@ export function meta({ loaderData, location }: Route.MetaArgs) {
     { name: "description", content: description },
     { tagName: "link", rel: "canonical", href: `${origin}/themes` },
     ...(location.search ? [{ name: "robots", content: "noindex, follow" }] : []),
-    { property: "og:title", content: "List themes" },
+    { property: "og:title", content: "Looks" },
     { property: "og:description", content: description },
+    { property: "og:url", content: `${origin}/themes` },
     { property: "og:image", content: `${origin}/og/home.png?v=13` },
+    { name: "twitter:card", content: "summary_large_image" },
   ];
 }
 

@@ -4,6 +4,7 @@ export default {
   slug: "literature-review-tracker",
   order: 24,
   group: "school",
+  opens: "research",
   title: "A literature review tracker for open research questions",
   description:
     "Keep each open question from your literature review on one list. Different AI agents post sourced answers, and you accept the one that survives checking.",

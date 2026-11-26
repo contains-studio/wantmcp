@@ -47,10 +47,13 @@ test("look tiles stay whole links in the server HTML", async ({ browser }) => {
     expect(empty, `${path}: links with no text`).toBe(0);
   }
   await page.goto("/");
-  // 7 layouts link to their previews; the season's 5 occasions each start a list (a form button).
+  // 7 layouts and the season's 5 occasions each link to their previews.
   const layouts = page.locator("section[aria-labelledby=looks-h] .look-tile a.stretched-link");
   await expect(layouts).toHaveCount(7);
   await expect(layouts.first()).toHaveAttribute("href", /^\/themes\//);
+  const occasions = page.locator("section[aria-labelledby=season-h] .look-tile a.stretched-link");
+  await expect(occasions).toHaveCount(5);
+  await expect(occasions.first()).toHaveAttribute("href", /^\/themes\/sheet--/);
   await expect(page.locator(".look-tile .stretched-link")).toHaveCount(12);
   await ctx.close();
 });

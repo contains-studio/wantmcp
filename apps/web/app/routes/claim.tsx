@@ -302,7 +302,8 @@ function ClaimProduct({ entry: e }: { entry: ClaimEntry }) {
         <ProductImage src={e.image_url} alt="" />
       </div>
       <div className="min-w-0 text-[0.92rem] leading-snug">
-        <span className="line-clamp-2">{title}</span>
+        {/* The whole name (orchestrator review of batch 1): the person's first look at the work. */}
+        <span className="break-words">{title}</span>
         {e.retailer && <span className="block text-[0.82rem] text-ink-3">{e.retailer}</span>}
         {trust && <span className="block text-[0.78rem] text-ink-3">{trust}</span>}
       </div>

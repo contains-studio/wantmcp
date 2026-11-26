@@ -20,7 +20,7 @@ type KeyResult = { ok?: boolean; error?: string; intent?: string; key?: string; 
  * It is a real form posting to the list's settings, so without JavaScript it still creates the key: the settings page
  * then shows the done state (`AgentPromptDone`). With JavaScript the press also copies the prompt.
  */
-export function ShareWithAgent({ listId, listUrl, existing }: { listId: string; listUrl: string; existing: string[] }) {
+export function ShareWithAgent({ listId, listUrl, existing, onList }: { listId: string; listUrl: string; existing: string[]; onList?: string[] }) {
   const [round, setRound] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   // Closing the menu (or the sheet on a phone) ends the step: a fresh one next time, with no key in it.
@@ -39,7 +39,7 @@ export function ShareWithAgent({ listId, listUrl, existing }: { listId: string; 
   }, []);
   return (
     <div ref={box}>
-      <Step key={round} round={round} listId={listId} listUrl={listUrl} existing={existing} />
+      <Step key={round} round={round} listId={listId} listUrl={listUrl} existing={existing} onList={onList ?? existing} />
     </div>
   );
 }
@@ -83,13 +83,17 @@ export function AgentPromptDone({ prompt, who, listId, copied }: { prompt: strin
   );
 }
 
-function Step({ round, listId, listUrl, existing }: { round: number; listId: string; listUrl: string; existing: string[] }) {
+function Step({ round, listId, listUrl, existing, onList }: { round: number; listId: string; listUrl: string; existing: string[]; onList: string[] }) {
   const { mcpUrl } = useRootData();
   const fetcher = useFetcher<KeyResult>({ key: `share-agent-${listId}-${round}` });
   // Each step is its own form, so its radios are their own group even when the step is on a page twice.
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
-  const [name, setName] = useState<string>("");
+  // The agent already on the list, when there is exactly one kind: picked to begin with (review G3).
+  const kinds = [...new Set(onList.map((n) => n.trim().toLowerCase()).filter(Boolean))];
+  // Only a name with a chip, so what is picked can be seen (an agent named by hand is typed again under "Other").
+  const known = kinds.length === 1 ? [...FIRST, ...OTHER].find((n) => n.toLowerCase() === kinds[0].toLowerCase()) : undefined;
+  const [name, setName] = useState<string>(known ?? "");
   const [typed, setTyped] = useState("");
   const [again, setAgain] = useState(false);
   const [copied, setCopied] = useState<boolean | null>(null);
@@ -139,7 +143,7 @@ function Step({ round, listId, listUrl, existing }: { round: number; listId: str
     const mark = agentMark(n);
     const on = name === n && !typed.trim();
     return (
-      <label key={n} className={`swatch-option flex-none ${on ? "is-on" : ""}`}>
+      <label key={n} className={`swatch-option agent-chip flex-none ${on ? "is-on" : ""}`}>
         <input type="radio" name="agent_name" value={n} checked={on} onChange={() => (setName(n), setTyped(""))} className="sr-only" />
         {mark && (
           <span className="agent-chip-mark" aria-hidden="true">
@@ -160,8 +164,8 @@ function Step({ round, listId, listUrl, existing }: { round: number; listId: str
         <div className="flex flex-wrap items-start gap-2">
           {FIRST.map(chip)}
           {/* "Other" opens the rest and a name field; a details element, so it opens without JavaScript too. */}
-          <details className="choice-other">
-            <summary className="swatch-option flex-none w-fit">Other</summary>
+          <details className="choice-other" ref={(d) => { if (d && known && OTHER.includes(known) && !d.dataset.init) { d.dataset.init = "1"; d.open = true; } }}>
+            <summary className="swatch-option agent-chip flex-none w-fit">Other</summary>
             <div className="mt-2 grid w-full gap-2">
               <div className="flex flex-wrap gap-2">{OTHER.map(chip)}</div>
               <label className="field">
@@ -193,10 +197,18 @@ function Step({ round, listId, listUrl, existing }: { round: number; listId: str
           </div>
         </div>
       ) : (
-        // Disabled only once JavaScript knows no agent is picked; without it the server answers an empty choice.
-        <button className="btn btn-want w-full sm:w-fit" disabled={busy || (hydrated && !agentName)}>
-          {busy ? "Creating…" : "Create key and copy prompt"}
-        </button>
+        // Disabled only once JavaScript knows no agent is picked, and then it says why; without JavaScript the server
+        // answers an empty choice.
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <button className="btn btn-want w-full sm:w-fit" disabled={busy || (hydrated && !agentName)} aria-describedby={hydrated && !agentName ? `pick-${listId}-${round}` : undefined}>
+            {busy ? "Creating…" : "Create key and copy prompt"}
+          </button>
+          {hydrated && !agentName && (
+            <span id={`pick-${listId}-${round}`} className="text-[0.85rem] text-ink-3">
+              Pick an agent
+            </span>
+          )}
+        </div>
       )}
       {result?.error && (
         <p className="form-error" role="alert">

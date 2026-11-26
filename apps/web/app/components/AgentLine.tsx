@@ -30,17 +30,21 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function AgentLine() {
+/**
+ * `lead` and `className` let another page (/connect) put the same words under its own lead-in; the home page uses the
+ * defaults.
+ */
+export function AgentLine({ lead = "Or just tell your agent:", className = "-mt-2 grid max-w-full justify-items-center gap-1.5" }: { lead?: string; className?: string } = {}) {
   const [state, setState] = useState<"idle" | "done" | "fail">("idle");
   return (
-    <div className="-mt-2 grid max-w-full justify-items-center gap-1.5">
+    <div className={className}>
       <p className="text-[0.92rem] text-ink-3" aria-live="polite">
         {state === "done" ? (
           <span className="font-medium text-ink">Copied. Now share with your agent.</span>
         ) : state === "fail" ? (
           "Could not copy. Type it to your agent as written."
         ) : (
-          "Or just tell your agent:"
+          lead
         )}
       </p>
       <button

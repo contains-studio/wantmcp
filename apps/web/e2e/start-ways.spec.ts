@@ -16,13 +16,20 @@ test("robots.txt allows the agent instructions", async ({ request }) => {
   expect(body).toContain("Allow: /agents.txt");
 });
 
-test("/connect: no account yet? the same instructions for agents", async ({ page }) => {
+test("/connect: no account yet? the home page's words for an agent, and the agent instructions folded", async ({ page }) => {
   await page.goto("/connect");
-  await page.getByRole("link", { name: "Your agent can start a list for you" }).click();
+  // The same sentence and copy button as the home page, not a jump into agent text.
+  await expect(page.getByText("No account yet? Tell your agent:")).toBeVisible();
+  await expect(page.getByRole("button", { name: /set up wantmcp\.com for keeping track of the things I want/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Your agent can start a list for you" })).toHaveCount(0);
+  // The instructions stay in the page for agents reading it, closed for people; /llms.txt stays a visible link.
   const block = page.locator("#for-agents");
-  await expect(block).toBeInViewport();
+  await expect(block.getByRole("link", { name: "/llms.txt" })).toBeVisible();
   await expect(block).toContainText("start_list");
   await expect(block).toContainText("Never type a person's email address");
+  await expect(block.getByText("Never type a person's email address", { exact: false })).toBeHidden();
+  await block.getByText("For agents: the full instructions").click();
+  await expect(block.getByText("Never type a person's email address", { exact: false })).toBeVisible();
 });
 
 test("after keeping a list, one line says who started it, once", async ({ page }) => {
@@ -73,6 +80,6 @@ test("an agent's list with nothing done: no 'no agent' line when an agent can wr
   await page.goto(`/l/${id}`);
   // No agent at all: the step to give it to one.
   await expect(page.getByRole("heading", { name: "Give this list to your agent" })).toBeVisible();
-  // While that step shows, the add button is not a second primary.
-  await expect(page.getByRole("button", { name: "Add task" })).not.toHaveClass(/btn-want/);
+  // The add button stays blue beside it: the quiet style was near-black on black in dark mode (review H5).
+  await expect(page.getByRole("button", { name: "Add task" })).toHaveClass(/btn-want/);
 });

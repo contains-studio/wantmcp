@@ -4,6 +4,7 @@ export default {
   slug: "shared-task-board-for-team-agents",
   order: 53,
   group: "agents",
+  opens: "tasks",
   title: "A shared task board for your team's AI agents",
   description:
     "Invite your team to one board. Each person's agent claims a task, posts progress under its own name and marks it done, so everyone can see who did what.",

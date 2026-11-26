@@ -436,7 +436,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         )}
         {result?.intent === "create-key" && !result.key && err("create-key")}
         {/* Not in the summary: a link inside the row that opens the section would be a control inside a control. */}
-        <Link to={`/connect?list=${list.id}`} className="link inline-flex min-h-6 w-fit items-center text-[0.85rem] text-ink-3">
+        <Link to={`/connect?list=${list.id}`} className="link -my-2.5 inline-flex min-h-11 w-fit items-center text-[0.85rem] text-ink-3">
           How agents connect
         </Link>
       </Section>
@@ -451,6 +451,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
               currentTemplate={loaderData.currentTemplate}
               currentOccasion={loaderData.currentOccasion}
               format={formatOf(list)}
+              listId={list.id}
             />
           </Section>
 
@@ -571,7 +572,9 @@ function ThemePicker({
   currentTemplate,
   currentOccasion,
   format,
+  listId,
 }: {
+  listId: string;
   looks: LookGallery;
   sample: NonNullable<Route.ComponentProps["loaderData"]["sample"]>;
   current: string;
@@ -644,9 +647,16 @@ function ThemePicker({
         </button>
         {changed ? <span className="text-[0.85rem] text-ink-3">Not saved yet.</span> : null}
         {saved && <span className="text-[0.85rem] text-deal">Saved. Your list now uses this look.</span>}
-        <Link to={`/themes/${slug}`} className="link text-[0.85rem] text-ink-2">
-          See it full size
-        </Link>
+        {/* Once saved, the next step is the list itself, not a demo of the look (review I5). */}
+        {saved ? (
+          <Link to={`/l/${listId}`} className="link text-[0.85rem] font-medium text-ink">
+            View your list
+          </Link>
+        ) : (
+          <Link to={`/themes/${slug}`} className="link text-[0.85rem] text-ink-2">
+            See it full size
+          </Link>
+        )}
         {fetcher.data?.error && <span className="form-error">{fetcher.data.error}</span>}
       </div>
     </fetcher.Form>

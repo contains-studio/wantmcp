@@ -98,7 +98,11 @@ export function Menu({
   wide = false,
   iconTrigger = false,
   sheetTitle,
+  align = "end",
 }: {
+  /** Which edge of the trigger the menu lines up with: "start" for a control at the left of its row, so the menu
+   * opens below it and to the right instead of over the row (review H7). */
+  align?: "start" | "end";
   label: string;
   /** On a phone the menu is a sheet at the bottom of the screen: this names what it is for (a list's title). */
   sheetTitle?: string;
@@ -129,7 +133,7 @@ export function Menu({
         {trigger ?? <span aria-hidden="true">⋯</span>}
       </button>
       {(
-        <div id={id} popover="auto" role="group" aria-label={label} className={`menu-panel ${wide ? "menu-wide" : ""}`} style={{ positionAnchor: anchor } as React.CSSProperties}>
+        <div id={id} popover="auto" role="group" aria-label={label} className={`menu-panel ${wide ? "menu-wide" : ""} ${align === "start" ? "menu-start" : ""}`} style={{ positionAnchor: anchor } as React.CSSProperties}>
           {/* On a phone the menu is a sheet: its title (what it is for) and a Close, as the item sheets have. */}
           <div className="menu-sheet-head">
             <p className="menu-sheet-title" aria-hidden="true">

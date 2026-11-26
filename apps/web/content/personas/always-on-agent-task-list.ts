@@ -4,6 +4,7 @@ export default {
   slug: "always-on-agent-task-list",
   order: 54,
   group: "agents",
+  opens: "tasks",
   title: "A to-do list your always-on agent reports to",
   description:
     "Your self-hosted agent already runs on a schedule. Give it a list to read and report to over MCP, so its results wait on one page instead of a chat thread.",

@@ -67,22 +67,6 @@ export function GiveToAgent({ listId, listUrl, focus, connectedName }: { listId:
           ))}
         </ul>
       </div>
-      <p className="text-[0.9rem]">
-        <a
-          href="#new-item"
-          className="link"
-          onClick={(e) => {
-            const input = document.getElementById("new-item");
-            if (input) {
-              e.preventDefault();
-              input.focus();
-              input.scrollIntoView({ block: "center" });
-            }
-          }}
-        >
-          Or add what you want first
-        </a>
-      </p>
     </section>
   );
 }

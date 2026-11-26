@@ -4,6 +4,7 @@ export default {
   slug: "christmas-hosting-checklist",
   order: 10,
   group: "gifts",
+  opens: "tasks",
   title: "A Christmas hosting checklist for the whole day",
   description:
     "Food, tables, chairs and helpers on shared lists. Your agent posts options and updates, and the people you invite tick off their jobs on the web.",

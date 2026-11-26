@@ -64,7 +64,8 @@ test("release a stale claim, and take over another, from the status menu", async
   await expect(status).toContainText("In progress · Claude, 3 days");
   await status.click();
   await page.locator(":popover-open").getByRole("button", { name: "Release" }).click();
-  await expect(status).toContainText(/^Open/);
+  // Back to open: no "Open" pill unless there's a note to show (review H3); the status is in the item's "…" menu.
+  await expect(broadband.getByText(/In progress · Claude/)).toHaveCount(0);
 
   await page.goto("/l/lst_research");
   const grant = page.locator("section#itm_r_grant");

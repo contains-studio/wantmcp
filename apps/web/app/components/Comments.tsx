@@ -24,7 +24,7 @@ export function CommentList({
             <Time ts={c.created_at} className="text-[0.78rem] text-ink-3" />
             <span className="ml-auto">
               <Menu label="More actions for this comment">
-                <ReportMenuItem type="comment" id={c.id} />
+                <ReportMenuItem type="comment" id={c.id} author={c.author} />
                 {canDelete?.(c) && <MenuRemove intent="delete-comment" fields={{ comment_id: c.id }} label="Delete" confirmText="Delete this comment?" />}
               </Menu>
             </span>

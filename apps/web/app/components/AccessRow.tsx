@@ -63,7 +63,7 @@ export function RemoveInTwoSteps({
   const busy = fetcher.state !== "idle";
   return (
     <details className="row-remove">
-      <summary className="textlink-btn text-[0.85rem]">
+      <summary className="hit textlink-btn text-[0.85rem]">
         <span className="rr-closed text-danger">
           {label}
           <span className="sr-only"> {who}</span>

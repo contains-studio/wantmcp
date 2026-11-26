@@ -8,6 +8,8 @@ import { updatesOptInDefault } from "~/lib/consent";
 import { cleanRef, RefField } from "~/lib/ref";
 import { safeNext } from "~/lib/url";
 import type { VerifyResult } from "~/lib/types";
+import { SEASON } from "~/lib/season";
+import { OCCASIONS } from "~/themes/catalogue.server";
 
 export function meta() {
   return [
@@ -21,7 +23,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   const next = safeNext(new URL(request.url).searchParams.get("next"));
   if (await getUser(request)) throw redirect(next);
   // Computed here, so the box renders in its right state with or without JavaScript (lib/consent explains the list).
-  return { optInDefault: updatesOptInDefault(visitorCountry(request)) };
+  return { optInDefault: updatesOptInDefault(visitorCountry(request)), occasion: occasionName(next) };
+}
+
+/** Starting an occasion's list (/start?occasion=black-friday): the occasion's own name, so the title can say it. */
+function occasionName(next: string): string | null {
+  const url = new URL(next, "http://x");
+  if (url.pathname !== "/start") return null;
+  const slug = url.searchParams.get("occasion");
+  if (!slug || !SEASON.occasions.includes(slug)) return null;
+  return OCCASIONS.find((o) => o.slug === slug)?.name ?? null;
 }
 
 /**
@@ -115,7 +126,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
   return (
     <div className="wrap grid place-items-center py-12">
       <div className="card w-full max-w-md p-6 sm:p-8">
-        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : starting ? "Start your list" : "Sign in"}</h1>
+        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : starting ? (loaderData?.occasion ? `Start your ${loaderData.occasion} list` : "Start your list") : "Sign in"}</h1>
 
         {onCode ? (
           <Form method="post" action={action} className="mt-6 grid gap-4" key="code">

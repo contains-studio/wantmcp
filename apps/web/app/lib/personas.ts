@@ -51,6 +51,8 @@ export interface Persona {
   /** Display order (1 to 67). */
   order: number;
   group: PersonaGroup;
+  /** The sample the page opens on: the kind of list its headline is about. Shopping when absent. */
+  opens?: "shopping" | "tasks" | "research";
   /** The page title, 25 to 60 characters, without the site name. */
   title: string;
   /** The meta description, 110 to 160 characters. */

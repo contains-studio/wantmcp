@@ -2,11 +2,13 @@ import { expect, test } from "@playwright/test";
 import { freshEmail, signIn } from "./helpers";
 
 // Pages from three different groups, all cleared for search.
+// Each page opens on the kind of list its headline is about.
 const PAGES = [
-  { slug: "black-friday-shopping-list", h1: "A Black Friday list with the price before the sale" },
-  { slug: "literature-review-tracker", h1: "Track the open questions in your literature review" },
-  { slug: "task-list-for-multiple-coding-agents", h1: "A shared task list for your coding agents" },
-];
+  { slug: "black-friday-shopping-list", h1: "A Black Friday list with the price before the sale", opens: "Shopping" },
+  { slug: "literature-review-tracker", h1: "Track the open questions in your literature review", opens: "Research" },
+  { slug: "task-list-for-multiple-coding-agents", h1: "A shared task list for your coding agents", opens: "Tasks" },
+] as const;
+const LIST_NAME = { Shopping: "Shopping list", Tasks: "Task list", Research: "Research list" } as const;
 
 test("the /for index links to persona pages @phone", async ({ page }) => {
   await page.goto("/for");
@@ -23,13 +25,14 @@ for (const p of PAGES) {
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/for/${p.slug}$`));
     await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", new RegExp(`/og/for/${p.slug}\\.png`));
-    // The first sample shows; the switch has real links to the others.
-    await expect(page.getByRole("heading", { level: 2, name: "Shopping list", exact: true })).toBeVisible();
+    // The headline's sample shows; the switch has real links to the others.
+    await expect(page.getByRole("heading", { level: 2, name: LIST_NAME[p.opens], exact: true })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Sample lists" }).getByRole("link", { name: p.opens })).toHaveAttribute("aria-current", "page");
     await expect(page.locator(".themed")).toHaveCount(1);
     // The one thing to do here: start with this list. No counts or owner inside the sample, just its tag.
     await expect(page.getByRole("button", { name: "Start with this list" })).toHaveClass(/btn-want/);
     await expect(page.locator(".themed .list-meta")).toHaveText("Sample");
-    for (const [tab, name] of [["Tasks", "Task list"], ["Research", "Research list"]]) {
+    for (const [tab, name] of (["Shopping", "Tasks", "Research"] as const).filter((t) => t !== p.opens).map((t) => [t, LIST_NAME[t]])) {
       await page.getByRole("navigation", { name: "Sample lists" }).getByRole("link", { name: tab }).click();
       await expect(page.getByRole("heading", { level: 2, name, exact: true })).toBeVisible();
     }

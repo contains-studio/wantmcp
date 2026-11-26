@@ -6,6 +6,7 @@ import { siteOrigin } from "~/lib/config.server";
 import { FORMATS, formatOf } from "~/lib/formats";
 import type { ListFormat } from "~/lib/types";
 import { getThemeView, isOffered, parseLook } from "~/themes/catalogue.server";
+import { SEASON } from "~/lib/season";
 import { sampleList } from "~/themes/sample.server";
 
 export function loader({ request, params }: Route.LoaderArgs) {
@@ -27,7 +28,10 @@ export function loader({ request, params }: Route.LoaderArgs) {
   // ?items=0 or ?items=1 previews an empty or one-item list.
   const n = new URL(request.url).searchParams.get("items");
   if (n !== null && /^\d+$/.test(n)) sample.items = sample.items.slice(0, Number(n));
-  return { theme, sample, format, origin: siteOrigin(request) };
+  // A season's occasion on the Sheet layout (the home page's holiday tiles open these): its shopping preview starts that
+  // occasion's gift list (/start), named for it.
+  const season = look.occasion && look.template.slug === "sheet" && format === "shopping" && SEASON.occasions.includes(look.occasion.slug) ? { slug: look.occasion.slug, name: look.occasion.name } : null;
+  return { theme, sample, format, season, origin: siteOrigin(request) };
 }
 
 export function headers() {
@@ -35,19 +39,28 @@ export function headers() {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-  if (!loaderData) return [{ title: "Theme not found · The Want MCP" }, { name: "robots", content: "noindex" }];
+  if (!loaderData) return [{ title: "Look not found · The Want MCP" }, { name: "robots", content: "noindex" }];
+  const { theme, origin } = loaderData;
+  const title = `${theme.name} look`;
+  const url = `${origin}/themes/${theme.slug}`;
+  // The same share tags as the other public pages; looks have no card of their own, so the site's card.
   return [
-    { title: `${loaderData.theme.name} theme · The Want MCP` },
-    { name: "description", content: loaderData.theme.idea },
-    { tagName: "link", rel: "canonical", href: `${loaderData.origin}/themes/${loaderData.theme.slug}` },
+    { title: `${title} · The Want MCP` },
+    { name: "description", content: theme.idea },
+    { tagName: "link", rel: "canonical", href: url },
+    { property: "og:title", content: title },
+    { property: "og:description", content: theme.idea },
+    { property: "og:url", content: url },
+    { property: "og:image", content: `${origin}/og/home.png?v=13` },
+    { name: "twitter:card", content: "summary_large_image" },
   ];
 }
 
 export default function ThemePreview({ loaderData }: Route.ComponentProps) {
-  const { theme, sample, format, origin } = loaderData;
+  const { theme, sample, format, season, origin } = loaderData;
   const { user } = useRootData();
-  // Not a dead end: start a list in this look (sign-in first when needed).
-  const startHref = `/app/new?${new URLSearchParams({ format, look: theme.slug })}`;
+  // Not a dead end: start a list in this look (sign-in first when needed). An occasion's own preview starts its gift list.
+  const startHref = season ? `/start?occasion=${season.slug}` : `/app/new?${new URLSearchParams({ format, look: theme.slug })}`;
   return (
     <div>
       <div className="wrap flex flex-wrap items-center gap-x-4 gap-y-2 py-3 text-[0.9rem]">
@@ -65,14 +78,14 @@ export default function ThemePreview({ loaderData }: Route.ComponentProps) {
               replace
               preventScrollReset
               aria-current={f.format === format ? "page" : undefined}
-              className={`btn btn-sm ${f.format === format ? "" : "btn-ghost"}`}
+              className={`btn btn-sm hit ${f.format === format ? "" : "btn-ghost"}`}
             >
               {f.label}
             </Link>
           ))}
         </nav>
-        <Link to={user ? startHref : `/login?next=${encodeURIComponent(startHref)}`} className="btn btn-want btn-sm ml-auto">
-          Start a list with this look
+        <Link to={user ? startHref : `/login?next=${encodeURIComponent(startHref)}`} className={`btn btn-want ml-auto ${season ? "max-sm:w-full" : "btn-sm hit"}`}>
+          {season ? `Start a ${season.name} list` : "Start a list with this look"}
         </Link>
       </div>
       <ListView

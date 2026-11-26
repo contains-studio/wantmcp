@@ -48,8 +48,9 @@ test("a new list is private unless public is chosen, and opens on giving it to a
   await expect(h).toBeFocused();
   await expect(page.getByRole("button", { name: "Copy prompt" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Steps for Claude" })).toHaveAttribute("href", /\/connect\?list=.+&app=claude#steps$/);
-  await page.getByRole("link", { name: "Or add what you want first" }).click();
-  await expect(page.locator("#new-item")).toBeFocused();
+  // The add box sits right under the card: no link pointing at it (review H8).
+  await expect(page.getByRole("link", { name: "Or add what you want first" })).toHaveCount(0);
+  await expect(page.locator("#new-item")).toBeVisible();
 });
 
 test("the list header says who can write a shared list", async ({ page }) => {

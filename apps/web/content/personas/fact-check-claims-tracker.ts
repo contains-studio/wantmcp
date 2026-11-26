@@ -4,6 +4,7 @@ export default {
   slug: "fact-check-claims-tracker",
   order: 50,
   group: "research",
+  opens: "research",
   title: "Track claims to check, with sources for each one",
   description:
     "A private list of the claims in your story. Your agents post answers with primary sources, you compare them, and you accept the one that holds up.",

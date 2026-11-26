@@ -4,6 +4,7 @@ export default {
   slug: "compare-ai-assistants-side-by-side",
   order: 55,
   group: "agents",
+  opens: "research",
   title: "Compare AI assistants side by side on one request",
   description:
     "Ask Claude, ChatGPT, Grok and Gemini the same thing. Each answer lands on one list with the assistant's name on it, so you can see who found the better one.",

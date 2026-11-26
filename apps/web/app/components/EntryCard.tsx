@@ -77,15 +77,19 @@ export function EntryCard({ entry, prices, comments, isLowest, lowestText = "Low
     <article
       id={anchor ? entry.id : undefined}
       aria-labelledby={titleId}
-      className={`entry-card card relative grid scroll-mt-24 grid-cols-[6.5rem_1fr] content-start gap-3 p-3 sm:grid-cols-1 sm:grid-rows-[auto_1fr_auto] sm:gap-0 sm:p-0 ${
+      // Opened under a row (anchor off), the photo stays about 200px beside the details on a wide screen, so the price and
+      // who posted it are in view (review F11: a 548×411 photo pushed them below the fold).
+      className={`entry-card card relative grid scroll-mt-24 content-start gap-3 p-3 ${
+        anchor ? "grid-cols-[6.5rem_1fr] sm:grid-cols-1 sm:grid-rows-[auto_1fr_auto] sm:gap-0 sm:p-0" : "grid-cols-[6.5rem_1fr] sm:grid-cols-[12.5rem_1fr] sm:gap-4"
+      } ${
         boughtThis ? "outline-2 outline-deal" : ""
       } ${isLowest && !itemPurchased ? "ring-1 ring-ink" : ""}`}
     >
-      <div className="sm:p-3 sm:pb-0">
+      <div className={anchor ? "sm:p-3 sm:pb-0" : ""}>
         <ProductImage src={entry.image_url} alt={entry.title} eager={eagerImage} />
       </div>
 
-      <div className="flex min-w-0 flex-col gap-2 sm:p-4 sm:pt-3">
+      <div className={`flex min-w-0 flex-col gap-2 ${anchor ? "sm:p-4 sm:pt-3" : ""}`}>
         <div className="flex items-start justify-between gap-2">
           {/* The store in full, wrapping if it must (clean-eyes review T1: "HARBOR ELECT…"). */}
           <p className="min-w-0 break-words text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-ink-3">{entry.retailer || "Retailer not given"}</p>
@@ -159,7 +163,7 @@ export function EntryCard({ entry, prices, comments, isLowest, lowestText = "Low
                   <EntryForm itemId={entry.item_id} entry={entry} />
                 </MenuSub>
               )}
-              <ReportMenuItem type="entry" id={entry.id} />
+              <ReportMenuItem type="entry" id={entry.id} author={entry.author} />
               {canEdit && (
                 <MenuRemove
                   intent="delete-entry"
@@ -174,11 +178,11 @@ export function EntryCard({ entry, prices, comments, isLowest, lowestText = "Low
       </div>
 
       {((prices && prices.length > 1) || comments.length > 0) && (
-        <div className="entry-tools col-span-2 grid gap-1 border-t border-line pt-2 sm:col-span-1 sm:mx-4 sm:mb-4">
+        <div className={`entry-tools col-span-2 grid gap-1 border-t border-line pt-2 ${anchor ? "sm:col-span-1 sm:mx-4 sm:mb-4" : ""}`}>
           {prices && prices.length > 1 && (
             <details className="group">
               <summary className="textlink-btn text-[0.8rem]">
-                {plural(prices.length, "price")} posted <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+                {plural(prices.length, "price")} posted<span aria-hidden="true" className="ml-1.5 inline-block w-3 text-center transition group-open:rotate-90">›</span>
               </summary>
               <div className="mt-2">
                 <PriceTable prices={prices} />
@@ -188,7 +192,7 @@ export function EntryCard({ entry, prices, comments, isLowest, lowestText = "Low
           {comments.length > 0 && (
             <details className="group">
               <summary className="textlink-btn text-[0.8rem]">
-                {plural(comments.length, "comment")} <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+                {plural(comments.length, "comment")}<span aria-hidden="true" className="ml-1.5 inline-block w-3 text-center transition group-open:rotate-90">›</span>
               </summary>
               <div className="mt-2 grid gap-3">
                 <CommentList comments={comments} canDelete={canDeleteComment} />

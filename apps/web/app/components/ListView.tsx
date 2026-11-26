@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { SEASON, seasonActive } from "~/lib/season";
 import { MetaLine, type MetaItem } from "~/components/MetaLine";
 import { GiveToAgent } from "~/components/GiveToAgent";
@@ -16,9 +16,9 @@ import { PreviewContext, ReportLink, ReportMenuItem } from "~/components/Report"
 import { closeMenuOf, Icon, Menu, MenuRemove, MenuSub } from "~/components/Actions";
 import { Time } from "~/components/Time";
 import { canManage, EditItem, EntryForm, MarkBoughtElsewhere, MarkBoughtForm } from "~/components/WriteTools";
-import { discountPercent, formatDate, formatMoney, plural } from "~/lib/format";
+import { discountPercent, formatDate, formatMoney, plural, timeAgo } from "~/lib/format";
 import { formatInfo, visibilityOf, type FormatInfo } from "~/lib/formats";
-import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, TextEntryCard, TextEntryForm, useActorLabel } from "~/components/ItemWork";
+import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, StatusOptions, TextEntryCard, TextEntryForm, useActorLabel } from "~/components/ItemWork";
 import { BUILD_ID } from "~/lib/build";
 import { itemCurrency, listCurrency } from "~/lib/currency";
 import { lowestEntryId, lowestLabel } from "~/lib/prices";
@@ -78,6 +78,8 @@ export function ListView(props: ListViewProps) {
   const listUrl = `${origin}/l/${list.id}`;
   // The list's own agents with keys, so "Share with an agent" can say when one already has a key.
   const agentNames = (props.accessList?.agents ?? []).filter((a) => a.kind === "key").map((a) => a.name);
+  // Every agent on the list, signed in or with a key: when they are all one kind, the step starts with it picked (G3).
+  const onList = (props.accessList?.agents ?? []).map((a) => a.name);
   // /l/<id>?share=agent (from a list card's ⋯ on /app): the same step, open on the page.
   const shareParam = new URLSearchParams(useLocation().search).get("share");
   const shareAgentOpen = isWriter && !preview && shareParam === "agent";
@@ -182,7 +184,7 @@ export function ListView(props: ListViewProps) {
                       )}
                       {/* A write key for one agent, and the prompt that sets it up: only this step's button creates one. */}
                       <MenuSub label="Share with an agent">
-                        <ShareWithAgent listId={list.id} listUrl={listUrl} existing={agentNames} />
+                        <ShareWithAgent listId={list.id} listUrl={listUrl} existing={agentNames} onList={onList} />
                       </MenuSub>
                       {/* Inviting is the owner's (the API refuses members). */}
                       {role === "owner" && (
@@ -249,7 +251,7 @@ export function ListView(props: ListViewProps) {
           </div>
         )}
         {props.kept && !preview && <KeptNote listId={list.id} kept={props.kept} isPrivate={isPrivate} />}
-        {shareAgentOpen && <ShareAgentPanel listId={list.id} listUrl={listUrl} existing={agentNames} />}
+        {shareAgentOpen && <ShareAgentPanel listId={list.id} listUrl={listUrl} existing={agentNames} onList={onList} />}
         {/* With items waiting for the person to accept, those come first and this card follows the list. */}
         {props.handoff && !preview && heldCount === 0 && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
         {nothingYet && !preview && !props.handoff && (!isWriter || (!agentActive && agentsCanWrite === 0) || idleAgent) && (
@@ -266,7 +268,8 @@ export function ListView(props: ListViewProps) {
             ) : isWriter ? (
               <>
                 No agent has worked on this list yet.{" "}
-                <Link to={`/connect?list=${list.id}`} className="link font-medium text-ink">
+                {/* This list's own share-with-an-agent step, not the general Connect page (review J1). */}
+                <Link to={`/l/${list.id}?share=agent`} replace preventScrollReset className="hit link font-medium text-ink">
                   Connect one
                 </Link>
               </>
@@ -275,7 +278,7 @@ export function ListView(props: ListViewProps) {
             )}
           </p>
         )}
-        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={listCurrencyHint} quiet={!!props.handoff && !preview} />}
+        {isWriter && <AddItem listId={list.id} empty={items.length === 0} fi={fi} isPrivate={isPrivate} currency={listCurrencyHint} />}
         {!isWriter && !preview && items.length === 0 && <p className="text-ink-3">No {fi.items} yet.</p>}
 
         {indexKind && (
@@ -425,6 +428,7 @@ function ItemSection({
   const boughtEntry = p?.entry_id ? entries.find((e) => e.id === p.entry_id) : undefined;
   const boughtPrice = p?.price ? { price: p.price, currency: p.currency } : boughtEntry?.current_price ?? null;
   const boughtRetailer = p?.retailer ?? boughtEntry?.retailer ?? null;
+  const inDoneRow = useContext(InDoneRow);
   const headingId = `${item.id}-h`;
   // SPEC 16.2: someone outside the list wrote it (a feedback task); held until a person who can write the list accepts it.
   const outsider = item.text_by === "outsider";
@@ -450,7 +454,7 @@ function ItemSection({
         </a>
       )}
       <header className="grid gap-2">
-        <div className="flex items-start gap-3">
+        <div className="item-head flex items-start gap-3">
           {checklist ? (
             <ChecklistBox
               itemId={item.id}
@@ -495,12 +499,19 @@ function ItemSection({
                   <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />
                 </MenuSub>
               )}
+              {isWriter && !shopping && status === "open" && !item.status_note && (
+                // The status pill shows only once there is something to say (in progress, waiting, a note); until then
+                // the status is changed here (review H3).
+                <MenuSub label="Status">
+                  <StatusOptions itemId={item.id} status="open" doneWord={fi.format === "research" ? "Answered" : "Done"} claimed={false} canTakeOver={false} outsider={outsider} />
+                </MenuSub>
+              )}
               {canEditItem && (
                 <MenuSub label={`Edit ${fi.item}`}>
                   <EditItem item={item} onDone={() => closeMenuOf(document.getElementById(headingId)?.closest("section")?.querySelector(":popover-open"))} label={`Edit ${fi.item}`} />
                 </MenuSub>
               )}
-              <ReportMenuItem type="item" id={item.id} />
+              <ReportMenuItem type="item" id={item.id} author={item.created_by} />
               {canEditItem && (
                 <MenuRemove intent="delete-item" fields={{ item_id: item.id }} label="Remove" confirmText={`Remove “${item.text.slice(0, 80)}” and everything on it?`} />
               )}
@@ -523,7 +534,8 @@ function ItemSection({
           {sortControl("is-inline")}
         </div>
         {p && (
-          <div className="item-indent mt-2 flex flex-wrap items-center gap-3 rounded-md border border-deal/40 bg-deal-soft px-4 py-3 text-[0.9rem] sm:ml-11">
+          // In an opened done row, one plain line with Undo beside it, not a box (review F9).
+          <div className={`item-indent mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.9rem] sm:ml-11 ${inDoneRow ? "" : "rounded-md border border-deal/40 bg-deal-soft px-4 py-3"}`}>
             <span className="text-ink">
               Bought{boughtPrice ? <> for <strong>{formatMoney(boughtPrice.price, boughtPrice.currency)}</strong></> : null}
               {boughtRetailer ? ` at ${boughtRetailer}` : ""} by{" "}
@@ -728,7 +740,7 @@ function OutsiderDetails({ details, title }: { details: string | undefined; titl
 }
 
 /** Share with an agent, opened on the page (from a list card's menu on /app): the same step as in the Share menu. */
-function ShareAgentPanel({ listId, listUrl, existing }: { listId: string; listUrl: string; existing: string[] }) {
+function ShareAgentPanel({ listId, listUrl, existing, onList }: { listId: string; listUrl: string; existing: string[]; onList?: string[] }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     heading.current?.focus();
@@ -744,7 +756,7 @@ function ShareAgentPanel({ listId, listUrl, existing }: { listId: string; listUr
           Done
         </Link>
       </div>
-      <ShareWithAgent listId={listId} listUrl={listUrl} existing={existing} />
+      <ShareWithAgent listId={listId} listUrl={listUrl} existing={existing} onList={onList} />
       <noscript>
         <p className="text-[0.9rem] text-ink-2">
           This step needs JavaScript. You can make a key for an agent in <a href={`/app/lists/${listId}/settings#keys-h`} className="link">Settings › Agents</a>.
@@ -757,7 +769,7 @@ function ShareAgentPanel({ listId, listUrl, existing }: { listId: string; listUr
 function UndoPurchase({ itemId }: { itemId: string }) {
   const fetcher = useFetcher();
   return (
-    <fetcher.Form method="post" className="ml-auto">
+    <fetcher.Form method="post" className="undo-purchase ml-auto">
       <input type="hidden" name="intent" value="unpurchase" />
       <input type="hidden" name="item_id" value={itemId} />
       <button className="btn-quiet" disabled={fetcher.state !== "idle"}>
@@ -773,15 +785,12 @@ function AddItem({
   fi,
   isPrivate,
   currency: hint,
-  quiet = false,
 }: {
   listId: string;
   empty: boolean;
   fi: FormatInfo;
   isPrivate: boolean;
   currency?: string;
-  /** Another step is the primary action right now (giving the list to an agent): the add button is the quiet style. */
-  quiet?: boolean;
 }) {
   const currency = useCurrency(hint);
   const fetcher = useFetcher<{ ok?: boolean; error?: string; itemId?: string }>();
@@ -821,13 +830,14 @@ function AddItem({
             {fi.addItemTitle}
           </label>
           <input id="new-item" name="text" required maxLength={500} placeholder={moneyPlaceholder(fi.itemPlaceholder, currency)} className="input flex-1" />
-          <button className={quiet ? "btn" : "btn btn-want"} disabled={busy}>
+          {/* Blue even beside the agent card: the quiet style was near-black on black in dark mode (review H5). */}
+          <button className="btn btn-want" disabled={busy}>
             {busy ? "Adding…" : `Add ${fi.item}`}
           </button>
         </div>
         <details className="group">
           <summary className="textlink-btn text-[0.85rem]">
-            Add details or a due date <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+            Add details or a due date<span aria-hidden="true" className="ml-1.5 inline-block w-3 text-center transition group-open:rotate-90">›</span>
           </summary>
           <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_12rem]">
             <label className="field" htmlFor="new-item-details">
@@ -1124,6 +1134,9 @@ function KeptNote({ listId, kept, isPrivate }: { listId: string; kept: { kind: "
   );
 }
 
+/** Inside an opened done row: the row's summary already says the title, so the item says its status once (review F9, H6). */
+const InDoneRow = createContext(false);
+
 /** A finished want as one line ("Bought · $649.99 at Harbor Electronics · you, Tuesday"); the whole item opens under it. */
 function DoneRow({ item, fi, children }: { item: ItemWithEntries; fi: FormatInfo; children: React.ReactNode }) {
   const who = useActorLabel();
@@ -1136,7 +1149,9 @@ function DoneRow({ item, fi, children }: { item: ItemWithEntries; fi: FormatInfo
   // regenerates the whole page and loses an early tap on a menu).
   const hydrated = useHydrated();
   const when = at
-    ? now - Date.parse(at) < 6 * 86_400_000
+    ? now - Date.parse(at) < 86_400_000
+      ? timeAgo(at, now)
+      : now - Date.parse(at) < 6 * 86_400_000
       ? new Date(at).toLocaleDateString("en-US", { weekday: "long", ...(hydrated ? {} : { timeZone: "UTC" }) })
       : formatDate(at)
     : null;
@@ -1153,14 +1168,17 @@ function DoneRow({ item, fi, children }: { item: ItemWithEntries; fi: FormatInfo
           ✓
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-ink-2 line-through decoration-ink-3/60">{item.text}</span>
-          <span className="block text-[0.85rem] text-ink-3">{detail.join(" · ")}</span>
+          {/* The whole title, wrapping (H6: "still cut"). */}
+          <span className="block break-words text-ink-2 line-through decoration-ink-3/60">{item.text}</span>
+          <span className="done-detail block text-[0.85rem] text-ink-3">{detail.join(" · ")}</span>
         </span>
         <span aria-hidden="true" className="mt-1 text-ink-3 transition group-open:rotate-90">
           ›
         </span>
       </summary>
-      <div className="mt-2">{children}</div>
+      <div className="mt-2">
+        <InDoneRow.Provider value={true}>{children}</InDoneRow.Provider>
+      </div>
     </details>
   );
 }

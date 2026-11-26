@@ -25,12 +25,12 @@
 .themed.tpl-board .ix-card .ix-link { box-shadow: 0 1px 1px rgb(9 30 66 / 0.25), 0 0 1px rgb(9 30 66 / 0.31); border-radius: 8px; }
 .themed.tpl-board .ix-card .ix-link:hover { box-shadow: 0 0 0 2px var(--want); }
 .themed.tpl-board .ix-title { font-weight: 500; font-size: 0.95rem; line-height: 1.35; }
-.themed.tpl-board .ix-label.is-open { background: #4bce97; }
-.themed.tpl-board .ix-label.is-working { background: #f5cd47; }
-.themed.tpl-board .ix-label.is-done { background: #9f8fef; }
-.themed.tpl-board .ix-label.is-due { background: #f87168; }
 .themed.tpl-board .ix-add { color: var(--ink-2); }
 .themed.tpl-board .ix-panel:has(:target) { background: var(--col); }
+/* The opened item is one full-width column: the board's sideways columns (.layout-board .items-region)
+   and its card frame do not apply inside the panel. */
+.themed.tpl-board .ix-panel:has(:target) { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr) !important; overflow-x: hidden; scroll-snap-type: none; padding-bottom: 3rem; }
+.themed.tpl-board .items-region.ix-panel .item-section { background: none; border: 0; box-shadow: none; padding: 0; }
 
 /* Shopping boards: one grey column per item. */
 .themed.tpl-board.layout-board .item-section { background: var(--col); border: 0; box-shadow: 0 1px 1px rgb(9 30 66 / 0.25); }

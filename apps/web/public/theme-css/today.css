@@ -37,7 +37,8 @@
 .themed.tpl-today .bought-divider h2 { font-family: var(--font-sans); font-size: 0.85rem; font-weight: 700; color: var(--ink-3); letter-spacing: 0.02em; }
 .themed.tpl-today .bought-divider .divider-dots { background: var(--line); height: 1px; }
 .themed.tpl-today .is-bought .item-title { color: var(--ink-3); text-decoration: none !important; }
-.themed.tpl-today .add-item { background: transparent; border: 0; box-shadow: none; padding: 0 0 0 0.75rem; }
+/* Flush with the cards above it (review H5: inset 12px more than the agent card). */
+.themed.tpl-today .add-item { background: transparent; border: 0; box-shadow: none; padding: 0; }
 .themed.tpl-today .add-item > p { display: none; }
 .themed.tpl-today .add-item h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .themed.tpl-today .item-status, .themed.tpl-today .item-section .btn { font-size: 0.85rem; }

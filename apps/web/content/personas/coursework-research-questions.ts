@@ -4,6 +4,7 @@ export default {
   slug: "coursework-research-questions",
   order: 23,
   group: "school",
+  opens: "research",
   title: "Keep coursework questions, answers and sources together",
   description:
     "Write down the questions a course raises. Ask your AI agent for answers with sources, then check each source yourself and keep what holds up in one place.",

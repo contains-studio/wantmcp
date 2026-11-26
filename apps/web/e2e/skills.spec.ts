@@ -71,8 +71,8 @@ test("an existing person's skills: on, off, and the tab row fits a phone with th
   const tabs = page.getByRole("navigation", { name: "View" }).getByRole("link");
   await expect(tabs).toHaveText(["Lists", "Activity", "Skills"]);
   await expect(tabs.nth(2)).toHaveAttribute("aria-current", "page");
-  // One "you are here": the header's Lists is current only where the Lists tab is.
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Lists" })).not.toHaveAttribute("aria-current", "page");
+  // The header marks the section ("Lists", review C2); the tab marks the page.
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Lists" })).toHaveAttribute("aria-current", "true");
   const tops = await tabs.evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
   expect(tops.length).toBe(1);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

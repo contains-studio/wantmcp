@@ -4,6 +4,7 @@ export default {
   slug: "civic-group-sourced-answers",
   order: 62,
   group: "publishing",
+  opens: "research",
   title: "Publish your group's questions with sourced answers",
   description:
     "Collect the questions neighbors keep asking. Your agent drafts answers with sources, a volunteer checks and accepts each one, and you share one link.",

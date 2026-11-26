@@ -4,6 +4,7 @@ export default {
   slug: "research-a-big-decision",
   order: 49,
   group: "research",
+  opens: "research",
   title: "Research a big decision and keep the sources",
   description:
     "Write the question once: lease or buy, fiber or cable, patch or replace. Your AI agent answers with sources, and the answer you accept stays on the list.",

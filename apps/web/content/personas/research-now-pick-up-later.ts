@@ -4,6 +4,7 @@ export default {
   slug: "research-now-pick-up-later",
   order: 38,
   group: "delegating",
+  opens: "tasks",
   title: "Hand off errands and pick them up when it suits you",
   description:
     "Write down the errands and questions. Your AI agent does the legwork and leaves the results, and any question for you, on the list until you're ready.",

@@ -4,6 +4,7 @@ export default {
   slug: "solo-founder-agent-task-queue",
   order: 41,
   group: "work",
+  opens: "tasks",
   title: "A task queue your AI agents claim and report to",
   description:
     "Queue vendor research and ops work on one list. Your agents claim tasks, post updates and answer with sources, so you see what each one did and why.",

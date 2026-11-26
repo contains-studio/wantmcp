@@ -4,6 +4,7 @@ export default {
   slug: "wedding-planning-checklist",
   order: 33,
   group: "events",
+  opens: "tasks",
   title: "A wedding planning checklist you both share",
   description:
     "Keep vendor options, deadlines and open questions in one place. Your agents research and post what they find; the two of you decide together.",

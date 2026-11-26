@@ -4,6 +4,7 @@ export default {
   slug: "break-a-big-task-into-steps",
   order: 39,
   group: "delegating",
+  opens: "tasks",
   title: "Break a vague task into small next steps",
   description:
     "Type the big, fuzzy job as it comes to you. Your AI agent splits it into steps, does what it can, and posts the next small step right on the task.",

@@ -4,6 +4,7 @@ export default {
   slug: "moving-checklist",
   order: 25,
   group: "moving",
+  opens: "tasks",
   title: "A moving checklist your AI agent helps work through",
   description:
     "Put your move on one list: movers, utilities, lease questions and what the new apartment needs. Your agent gathers quotes and drafts; you decide and book.",

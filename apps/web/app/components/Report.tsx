@@ -1,6 +1,7 @@
 import { useContext } from "react";
 import { useFetcher } from "react-router";
-import type { ReportTargetType } from "~/lib/types";
+import { useRootData } from "~/lib/hooks";
+import type { ActorRef, ReportTargetType } from "~/lib/types";
 import { Icon, Menu, MenuSub } from "./Actions";
 import { PreviewContext } from "./preview";
 
@@ -47,10 +48,12 @@ function ReportForm({ type, id }: { type: ReportTargetType; id: string }) {
   );
 }
 
-/** "Report" as an entry in a row's "⋯" menu. */
-export function ReportMenuItem({ type, id }: { type: ReportTargetType; id: string }) {
+/** "Report" as an entry in a row's "⋯" menu. Not on what you wrote, or your own agent did (review F4). */
+export function ReportMenuItem({ type, id, author }: { type: ReportTargetType; id: string; author?: ActorRef | null }) {
   const preview = useContext(PreviewContext);
+  const me = useRootData().user?.handle ?? null;
   if (preview) return null;
+  if (me && author && ((author.kind === "user" && author.handle === me) || (author.kind === "agent" && author.owner_handle === me))) return null;
   return (
     <MenuSub label={<>Report<span className="sr-only"> this {type}</span></>}>
       <ReportForm type={type} id={id} />

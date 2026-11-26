@@ -14,7 +14,8 @@ async function setLook(page: Page, id: string, look: string) {
 test("a done task's box is visibly ticked in every layout, light and dark", async ({ page }) => {
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    for (const look of ["today", "sections", "today--christmas", "today--chanukah", "sections--kwanzaa"]) {
+    // Sections shows visitors no box at all (its Status column says it in words), so only layouts that show one.
+    for (const look of ["today", "today--christmas", "today--chanukah", "today--kwanzaa"]) {
       await page.goto(`/themes/${look}?format=tasks`);
       const box = page.locator('.check-toggle.is-checked, .check-toggle[aria-checked="true"]').first();
       await expect(box, `${look} ${scheme}`).toBeAttached();
@@ -134,7 +135,10 @@ test("people see 'you', not their own handle", async ({ page }) => {
 test("a gift list from the home page is private", async ({ page }) => {
   await signIn(page, freshEmail("giftprivate"));
   await page.goto("/");
-  await page.locator("section[aria-labelledby=season-h]").getByRole("button", { name: "Start a Christmas gift list" }).click();
+  await page.locator("section[aria-labelledby=season-h]").getByRole("link", { name: "Christmas", exact: true }).click();
+  await page.getByRole("link", { name: "Start a Christmas list" }).click();
+  await expect(page).toHaveURL(/\/start\?occasion=christmas$/);
+  await page.getByRole("button", { name: "Start the list" }).click();
   await expect(page).toHaveURL(/\/l\/[^/]+$/);
   await expect(page.locator(".list-meta")).toContainText("Private");
 });

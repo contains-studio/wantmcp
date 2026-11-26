@@ -1,6 +1,5 @@
 import { BrandLogo } from "~/components/BrandLogo";
-import { RefField } from "~/lib/ref";
-import { Form, Link } from "react-router";
+import { Link } from "react-router";
 import type { Route } from "./+types/home";
 import { FeedCard } from "~/components/FeedCard";
 import { LookFrame } from "~/components/LookFrame";
@@ -144,7 +143,8 @@ export default function Home({ loaderData }: Route.ComponentProps) {
       {/* The three kinds of list in one card: a switch (real links, so each has an address), one line, one picture, one action. */}
       <section aria-labelledby="kinds-h" className="bg-sunk">
         <div className="wrap grid gap-6 py-12 sm:py-16">
-          <h2 id="kinds-h" className="serif text-[2rem] sm:text-[2.4rem]">
+          {/* Room for the 64px sticky bar when a tab jumps here (review H4). */}
+          <h2 id="kinds-h" className="serif scroll-mt-20 text-[2rem] sm:text-[2.4rem]">
             Three kinds of list
           </h2>
           <nav aria-label="Kinds of list" className="view-switch w-fit">
@@ -278,8 +278,8 @@ function WorksWith() {
 }
 
 /**
- * The season's band under the hero: one tile per occasion, each starting a gift list dressed for it
- * (POST /start; signed out, sign in first). A quiet "Preview" link opens the look in the gallery.
+ * The season's band under the hero: one tile per occasion. Like the look tiles below, a tap opens the occasion's
+ * preview, whose one button starts a gift list dressed for it (through sign-in when needed).
  */
 function SeasonBand({ season, origin }: { season: { heading: string; sample: ThemeSample; occasions: ThemeView[] }; origin: string }) {
   return (
@@ -293,21 +293,12 @@ function SeasonBand({ season, origin }: { season: { heading: string; sample: The
             const name = v.name.split(" · ").pop()!;
             return (
               <li key={v.slug}>
-                {/* The miniature holds links of its own, so the start button stretches over the tile instead of wrapping it. */}
+                {/* The miniature holds links of its own, so it sits beside the link, never inside it: the link stretches over the tile. */}
                 <div className="look-tile relative grid overflow-hidden rounded-[14px] bg-card shadow-[var(--shadow)]">
                   <ThemeThumb theme={v} sample={season.sample} origin={origin} className="h-36 sm:h-40" />
-                  <div className="flex items-center justify-between gap-2 bg-card px-3 py-2">
-                    <Form method="post" action="/start">
-                      <input type="hidden" name="occasion" value={v.occasion!} />
-                      <RefField />
-                      <button className="stretched-link text-left text-[0.9rem] font-medium" aria-label={`Start a ${name} gift list`}>
-                        {name}
-                      </button>
-                    </Form>
-                    <Link to={`/themes/${v.slug}`} className="relative z-[2] rounded bg-card px-1 text-[0.8rem] text-ink-2 underline underline-offset-2 hover:text-ink">
-                      Preview<span className="sr-only"> {name}</span>
-                    </Link>
-                  </div>
+                  <Link to={`/themes/${v.slug}`} className="stretched-link flex min-h-[var(--ctl)] items-center bg-card px-3 py-2 text-[0.9rem] font-medium">
+                    {name}
+                  </Link>
                 </div>
               </li>
             );

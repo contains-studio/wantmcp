@@ -78,7 +78,9 @@ export default function Account({ loaderData }: Route.ComponentProps) {
   const result = useActionData<typeof action>() as { ok?: boolean; error?: string; intent?: string } | undefined;
   const nav = useNavigation();
   return (
-    <div className="wrap grid max-w-2xl gap-6 py-8">
+    // The same grey page as the other app pages (review E3).
+    <div className="bg-sunk">
+      <div className="wrap grid max-w-2xl gap-6 py-8">
       <h1 className="text-[1.75rem] leading-tight font-semibold tracking-[-0.02em] sm:text-[2rem]">Account</h1>
 
       {/* One form, one Save: who you are here, and what your agents should know. */}
@@ -171,6 +173,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
           </Form>
         </section>
       </details>
+      </div>
     </div>
   );
 }

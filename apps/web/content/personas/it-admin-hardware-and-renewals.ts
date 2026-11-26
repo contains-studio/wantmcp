@@ -4,6 +4,7 @@ export default {
   slug: "it-admin-hardware-and-renewals",
   order: 46,
   group: "work",
+  opens: "tasks",
   title: "A scratch queue for IT hardware, renewals and research",
   description:
     "Small-org IT on one private list: agents price laptops, track license renewals, and research advisories with sources. Connect any MCP client you already use.",

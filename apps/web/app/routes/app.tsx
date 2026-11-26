@@ -149,8 +149,9 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
         {listCount > 0 && (
           <section aria-labelledby="lists-h" className="grid gap-3">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <h2 id="lists-h" className="text-[0.95rem] font-semibold text-ink-2">
-                Lists
+              {/* Named for screen readers only: the header, the page title and the tab already say "Lists" (review A2). */}
+              <h2 id="lists-h" className="sr-only">
+                Your lists
               </h2>
               {listCount >= FILTER_FROM && (
                 <Form method="get" role="search" className="flex items-end gap-2">
@@ -356,7 +357,8 @@ function ListCardRow({ card: c, agentUse }: { card: ListCard; agentUse: { name: 
               !(c.items === 0 && c.held > 0) && plural(c.items, fi.item),
               c.done > 0 && `${c.done} ${fi.done}`,
               c.role === "member" && `by ${c.ownerHandle}`,
-              c.role === "owner" && c.access && c.access.people > 1 && `Shared with ${plural(c.access.people - 1, "person", "people")}`,
+              // Counted as the list's header counts them, you included ("2 people"; review A4).
+              c.role === "owner" && c.access && c.access.people > 1 && plural(c.access.people, "person", "people"),
               c.held > 0 && <span className="font-medium text-warn">{c.held} waiting for you to accept</span>,
               c.waiting > 0 && (
                 <span className="font-medium text-warn">
@@ -417,12 +419,22 @@ function ListCardRow({ card: c, agentUse }: { card: ListCard; agentUse: { name: 
               </span>
             )}
           </p>
+        ) : c.latest?.question && c.waiting === 0 ? (
+          // The question was the last thing that happened and nothing waits on you now: you answered it (review A1).
+          <p className="flex items-baseline gap-2">
+            <span className="min-w-0 flex-1 text-ink-2">
+              You answered <ActorTag actor={c.latest.actor} compact />
+            </span>
+            <span className="flex-none text-[0.82rem] text-ink-3">
+              <Time ts={c.latest.at} />
+            </span>
+          </p>
         ) : c.latest ? (
           <p className="flex items-baseline gap-2">
             <span className="min-w-0 flex-1">
               <ActorTag actor={c.latest.actor} compact />{" "}
-              <span className="text-ink-2">{c.latest.verb}</span>{" "}
-              <span className="text-ink">{c.latest.title}</span>
+              <span className="text-ink-2">{c.latest.question ? "asked:" : c.latest.verb}</span>{" "}
+              <span className="text-ink">{c.latest.question ? `“${cutAtWord(c.latest.title, 100)}”` : cutAtWord(c.latest.title, 100)}</span>
               {c.latest.price && (
                 <>
                   {" "}
@@ -459,7 +471,7 @@ function ListCardRow({ card: c, agentUse }: { card: ListCard; agentUse: { name: 
         ) : (
           <p className="text-ink-2">
             No agent has worked on this yet.{" "}
-            <Link to={`/connect?list=${c.id}`} className="relative z-[2] link font-medium text-ink">
+            <Link to={`/l/${c.id}?share=agent`} className="hit relative z-[2] link font-medium text-ink">
               Connect one<span className="sr-only"> to {c.title}</span>
             </Link>
           </p>
@@ -484,9 +496,19 @@ function AddToList({ card }: { card: ListCard }) {
     }
   }, [done]);
   const inputId = `add-${card.id}`;
+  // The cursor goes in the box when the sheet opens (clean-eyes review A5).
+  useEffect(() => {
+    const pop = ref.current?.closest("[popover]");
+    if (!pop) return;
+    const onToggle = (e: Event) => {
+      if ((e as ToggleEvent).newState === "open") document.getElementById(inputId)?.focus();
+    };
+    pop.addEventListener("toggle", onToggle);
+    return () => pop.removeEventListener("toggle", onToggle);
+  }, [inputId]);
   return (
     <Menu
-      label={`${fi.addItemTitle}: ${card.title}`}
+      label={`Add to ${card.title}`}
       wide
       triggerClass="btn btn-sm"
       trigger={
@@ -498,8 +520,9 @@ function AddToList({ card }: { card: ListCard }) {
       <fetcher.Form method="post" ref={ref} className="grid gap-2 p-3">
         <input type="hidden" name="intent" value="add-item" />
         <input type="hidden" name="list_id" value={card.id} />
+        {/* Names the list it adds to (A5): "Add to Home office upgrade". */}
         <label htmlFor={inputId} className="label">
-          {fi.addItemTitle}
+          Add to {card.title}
         </label>
         <input id={inputId} name="text" required maxLength={500} placeholder={moneyPlaceholder(fi.itemPlaceholder, currency)} className="input" />
         <div className="flex items-center gap-3">
@@ -645,4 +668,12 @@ function PendingInvites({ invites }: { invites: PendingInvite[] }) {
       )}
     </section>
   );
+}
+
+/** At most `max` characters, cut at a word with "…" (the server clips at 140, sometimes mid-word; review A1). */
+function cutAtWord(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const at = cut.lastIndexOf(" ");
+  return `${(at > max / 2 ? cut.slice(0, at) : cut).replace(/[\s,;:.…-]+$/, "")}…`;
 }

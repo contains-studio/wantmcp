@@ -1,20 +1,8 @@
-/* Sections: a project-tracker app. A dark rail down the left, a tinted surface, a toolbar row,
-   and the list as a dense table with column rules. Items open in a side panel. */
+/* Sections: a project-tracker app. A tinted surface, a toolbar row, and the list as a dense table
+   with column rules. Items open in a side panel. */
 .themed.tpl-sections {
-  --rail: var(--occ-band); --rail-dot: color-mix(in srgb, var(--occ-band-ink) 28%, var(--occ-band)); --surface: var(--paper); --toolbar: var(--card);
+  --surface: var(--paper); --toolbar: var(--card);
   background: var(--surface);
-}
-
-/* The rail: app navigation drawn as decoration (desktop only). */
-@media (min-width: 1024px) {
-  .themed.tpl-sections.list-page, .themed.tpl-sections { padding-left: 4.5rem; position: relative; }
-  .themed.tpl-sections::before {
-    content: ""; position: absolute; inset: 0 auto 0 0; width: 4.5rem; background:
-      radial-gradient(circle, var(--want) 0.55rem, transparent 0.6rem) center 1.6rem / 100% 3rem no-repeat,
-      radial-gradient(circle, var(--rail-dot) 0.45rem, transparent 0.5rem) center 5rem / 100% 3rem repeat-y,
-      var(--rail);
-    background-size: 100% 3rem, 100% 3rem, auto; background-position: center 1rem, center 4.5rem, 0 0;
-  }
 }
 .themed.tpl-sections .list-hero { background: var(--toolbar); border-bottom: 1px solid var(--line); }
 .themed.tpl-sections .list-hero > .wrap { max-width: none; padding: 1.1rem 1.5rem 0; display: grid; gap: 0.3rem; }
@@ -34,13 +22,21 @@
 .themed.tpl-sections .list-hero > .wrap > div:not(:has(.chip-live)) > span:not(:has(button)) {
   display: inline-flex; align-items: center; gap: 0.3em; min-height: 1.9rem; padding: 0 0.7rem; border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
 }
+/* The boxed stats keep MetaLine's rule (no dot starts a line): the box's padding would otherwise show the first dot,
+   so the dots' band is clipped on the row itself. */
+.themed.tpl-sections .list-hero .meta-line > span:not(:has(button)) { overflow: visible; }
+.themed.tpl-sections .list-hero .meta-line .meta-row { clip-path: inset(-4px -4px -4px 1.1rem); }
 .themed.tpl-sections .list-hero > .wrap > div:has(.chip-live) { order: 3; margin: 0 0 0.6rem; }
 .themed.tpl-sections > .wrap { max-width: none; padding: 1.25rem 1.5rem 3rem; gap: 1.5rem; }
 
 /* The table. */
 .themed.tpl-sections .ix-sections { background: var(--toolbar); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; gap: 0; }
 .themed.tpl-sections .ix-table-head { padding: 0.55rem 0.5rem; background: var(--surface); border-bottom: 1px solid var(--line-strong); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.7rem; }
-.themed.tpl-sections .ix-table-head > span, .themed.tpl-sections .ix-row > .ix-cell { border-left: 1px solid var(--line); padding-left: 0.6rem; align-self: stretch; display: flex; align-items: center; }
+.themed.tpl-sections .ix-table-head > span { border-left: 1px solid var(--line); padding-left: 0.6rem; align-self: stretch; display: flex; align-items: center; }
+/* Column rules only while it is a table (app.css stacks the rows in a narrow container). */
+@container (min-width: 721px) {
+  .themed.tpl-sections .ix-row .ix-cell { border-left: 1px solid var(--line); padding-left: 0.6rem; align-self: stretch; display: flex; align-items: center; }
+}
 .themed.tpl-sections .ix-table-head > :first-child { border-left: 0; }
 .themed.tpl-sections .ix-group-head { border-radius: 0; background: var(--toolbar); border-bottom: 1px solid var(--line); font-size: 0.95rem; }
 .themed.tpl-sections .ix-group-head:hover { background: var(--surface); }
@@ -61,11 +57,7 @@
 .themed.tpl-sections .item-title { font-family: var(--font-sans); font-weight: 650; }
 .themed.tpl-sections .add-item, .themed.tpl-sections > .wrap > aside.card { background: var(--toolbar); border-radius: 8px; box-shadow: none; }
 
-/* Occasions: the rail takes the occasion's band and pattern, the title mark becomes its glyph,
-   and its strip runs along the top of the toolbar row. */
-@media (min-width: 1024px) {
-  .themed.tpl-sections.has-occ::before { background: var(--occ-pattern, none), var(--rail); }
-}
+/* Occasions: the title mark becomes the occasion's glyph and its strip runs along the top of the toolbar row. */
 .themed.tpl-sections.has-occ .list-title-mark { background: var(--want); border-radius: 0; -webkit-mask: var(--occ-mark) center / contain no-repeat; mask: var(--occ-mark) center / contain no-repeat; }
 .themed.tpl-sections.has-occ .list-hero > .wrap > div:not(:has(.chip-live)) { border-top: 0; position: relative; }
 .themed.tpl-sections.has-occ .list-hero > .wrap > div:not(:has(.chip-live))::before { content: ""; position: absolute; inset: 0 0 auto; height: var(--occ-strip-h); max-height: 10px; background: var(--occ-strip); }

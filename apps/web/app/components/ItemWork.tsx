@@ -135,14 +135,16 @@ export function ItemStatusBar({
   }
   // Shopping lists finish items by marking them bought, so their status is shown, not changed here.
   const control = canWrite && !shopping;
-  // A visitor already sees a dot for an open item; a chip saying "Open" would repeat it.
-  if (!canWrite && status === "open" && !statusNote) return null;
+  // An open item says nothing: "4 open" heads the list, and a pill saying "Open" on every task repeats it (review H3).
+  // Writers change it from the item's "…" menu (Status).
+  if (status === "open" && !statusNote) return null;
   return (
     <div className="item-status item-indent flex flex-wrap items-center gap-2 text-[0.88rem] sm:pl-11">
       {control ? (
         <Menu
           label={`Status: ${typeof text === "string" ? text : status.replace(/_/g, " ")}. Change status`}
           triggerClass={`chip chip-btn ${tone}`}
+          align="start"
           trigger={
             <>
               {text}
@@ -183,7 +185,7 @@ export function ItemStatusBar({
 }
 
 /** The status menu: one form, one button per state, plus Release and Take over for claims. */
-function StatusOptions({
+export function StatusOptions({
   itemId,
   status,
   doneWord,
@@ -342,7 +344,7 @@ export function TextEntryCard({
                 <TextEntryForm itemId={entry.item_id} fi={fi} entry={entry} />
               </MenuSub>
             )}
-            <ReportMenuItem type="entry" id={entry.id} />
+            <ReportMenuItem type="entry" id={entry.id} author={entry.author} />
             {canEdit && (
               <MenuRemove intent="delete-entry" fields={{ entry_id: entry.id }} label={`Remove ${fi.entry}`} confirmText={`Remove “${entry.title}” and its comments?`} />
             )}
@@ -487,9 +489,19 @@ export function OwnerQuestion({ question, history = [], compact = false }: { que
       )}
       {!compact && answered.length > 0 && (
         <details className="group">
+          {/* The answer just shown above isn't said again inside (review F7): that question shows alone. */}
           <summary className="textlink-btn text-[0.85rem]">
-            {answered.length === 1 ? "1 earlier question" : `${answered.length} earlier questions`}{" "}
-            <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
+            {!question && lastAnswer
+              ? answered.length === 1
+                ? "Show the question"
+                : "Show the questions"
+              : answered.length === 1
+                ? "1 earlier question"
+                : `${answered.length} earlier questions`}
+            {/* Its own room, so it never sits on the last letter when it turns (F6). */}
+            <span aria-hidden="true" className="ml-1.5 inline-block w-3 text-center transition group-open:rotate-90">
+              ›
+            </span>
           </summary>
           <ul className="mt-2 grid border-t border-line">
             {answered.map((q) => (
@@ -498,6 +510,7 @@ export function OwnerQuestion({ question, history = [], compact = false }: { que
                   <span className="text-ink-3">{cap(label(q.asked_by))}: </span>
                   {q.text}
                 </p>
+                {!(q === lastAnswer && !question) && (
                 <p className="whitespace-pre-line break-words text-ink-2">
                   <span className="text-ink-3">{cap(label(q.answer!.answered_by))}: </span>
                   {q.answer!.text}
@@ -505,6 +518,7 @@ export function OwnerQuestion({ question, history = [], compact = false }: { que
                     <span className="text-[0.85em] text-ink-3"> · answered in {q.answer!.via_agent.name}'s form</span>
                   )}
                 </p>
+                )}
               </li>
             ))}
           </ul>

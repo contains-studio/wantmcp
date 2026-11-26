@@ -87,10 +87,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 function Header({ minimal = false }: { minimal?: boolean }) {
   const { user } = useRootData();
   const nav = useNavigation();
-  // "Lists" is current where the Lists tab is: the lists page and a list's own pages. On Activity, Skills and Account
-  // their own tab or link says where you are, so the header doesn't claim a second "you are here".
   const { pathname } = useLocation();
-  const listsOn = pathname === "/app" || pathname === "/app/" || pathname.startsWith("/app/new") || pathname.startsWith("/app/lists/");
+  // Every app page under "Lists" (lists, Activity, Skills, a list and its settings) marks it, so the header always says
+  // where you are (review C2); Account marks its own link.
+  const listsOn = (pathname.startsWith("/app") && !pathname.startsWith("/app/account")) || pathname.startsWith("/l/");
   const navCls = ({ isActive }: { isActive: boolean }) =>
     `whitespace-nowrap px-1.5 py-2.5 text-[0.92rem] font-medium sm:px-3 ${isActive ? "text-ink underline decoration-1 underline-offset-[6px]" : "text-ink-2 hover:text-ink"}`;
   return (
@@ -114,7 +114,7 @@ function Header({ minimal = false }: { minimal?: boolean }) {
           </NavLink>
           {user ? (
             <>
-              <Link to="/app" className={navCls({ isActive: listsOn })} aria-current={listsOn ? "page" : undefined}>
+              <Link to="/app" className={navCls({ isActive: listsOn })} aria-current={listsOn ? (pathname === "/app" || pathname === "/app/" ? "page" : "true") : undefined}>
                 Lists
               </Link>
               <NavLink to="/app/account" className={navCls}>

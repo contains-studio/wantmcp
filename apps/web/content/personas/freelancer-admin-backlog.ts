@@ -4,6 +4,7 @@ export default {
   slug: "freelancer-admin-backlog",
   order: 40,
   group: "work",
+  opens: "tasks",
   title: "Hand your freelance admin backlog to AI agents",
   description:
     "Put the invoices to chase, gear to replace and rules to look up on one private list. Your AI agents post drafts, prices and sourced answers while you bill.",

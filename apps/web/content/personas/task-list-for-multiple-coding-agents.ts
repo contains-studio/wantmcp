@@ -4,6 +4,7 @@ export default {
   slug: "task-list-for-multiple-coding-agents",
   order: 52,
   group: "agents",
+  opens: "tasks",
   title: "One task list for Claude Code, Codex and Cursor",
   description:
     "Add one MCP server to each coding agent. They claim tasks so the others see what's taken, post updates with links and mark work done with a note.",

@@ -54,6 +54,11 @@ test("/connect shows one app at a time: Claude by default, the one picked, or th
 test("a key app: signed out says sign in to fill it; signed in makes the key right there", async ({ page }) => {
   await page.goto("/connect?app=grok-bot");
   await expect(page.getByRole("link", { name: "Sign in to fill this in" })).toBeVisible();
+  // Folded like the Claude Code prompt: the opening shows, the rest is behind "Show all".
+  const steps = page.locator("#steps");
+  await expect(steps.getByRole("region", { name: "Prompt for Grok Bot" })).toBeHidden();
+  await steps.getByText("Show all").click();
+  await expect(steps.getByRole("region", { name: "Prompt for Grok Bot" })).toContainText("wk_YOUR_WRITE_KEY");
   await signIn(page, DEMO);
   await page.goto("/connect?app=grok-bot&list=lst_research");
   await expect(page.getByText("wk_YOUR_WRITE_KEY")).toHaveCount(0);
@@ -61,4 +66,19 @@ test("a key app: signed out says sign in to fill it; signed in makes the key rig
   const prompt = page.getByRole("region", { name: "Prompt for Grok Bot, with your new key" });
   await expect(prompt).toContainText("Authorization: Bearer wk_");
   await expect(prompt).toContainText("/l/lst_research");
+});
+
+test("/connect says what each app's check covers: ChatGPT's plans up front, what partly means, and not yet checked", async ({ page }) => {
+  await page.goto("/connect?app=chatgpt");
+  await expect(page.locator("#steps").getByText(/Business, Enterprise and Edu plans can post/)).toBeVisible();
+  await page.goto("/connect?app=openclaw");
+  await expect(page.getByText("Partly checked 24 Nov 2026")).toBeVisible();
+  await expect(page.getByText("Sign-in and posting not tested yet.")).toBeVisible();
+  for (const app of ["hermes", "muse", "hark", "instinct"]) {
+    await page.goto(`/connect?app=${app}`);
+    await expect(page.getByText("Not yet checked"), app).toBeVisible();
+  }
+  // A key app's sign-in link comes back to that app.
+  await page.goto("/connect?app=hark");
+  await expect(page.getByRole("link", { name: "Sign in to fill this in" })).toHaveAttribute("href", `/login?next=${encodeURIComponent("/connect?app=hark")}`);
 });

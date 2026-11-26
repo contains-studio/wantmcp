@@ -4,6 +4,7 @@ export default {
   slug: "household-admin-list",
   order: 17,
   group: "home",
+  opens: "tasks",
   title: "A household admin list your AI agent works through",
   description:
     "Renewals, quotes, forms and repairs on one private list. Your AI agent finds options and drafts messages, and leaves a clear question when it needs you.",

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { dealState, discountPercent, formatDateTime, formatMoney, timeAgo } from "~/lib/format";
 import { useNow } from "~/lib/hooks";
 import { checkedAt, isFresh, LOWEST_VERIFIED_NOTE, lowestLabel, SOURCE_LABEL } from "~/lib/prices";
@@ -146,33 +146,47 @@ export function EntrySheet({
                     )}
                   </span>
                   {/* Who found it and how sure the price is: one quiet line, the trust words as everywhere else. */}
-                  <span className="sheet-meta">
-                    {/* On a phone the store leads this line (beside the price there it would be cut). */}
-                    {e.retailer && <span className="sheet-meta-store">{e.retailer}</span>}
-                    <span>
-                      <ActorTag actor={e.author} compact />
-                    </span>
-                    <span>
-                      checked{" "}
-                      <time dateTime={updated} title={formatDateTime(updated)}>
-                        {timeAgo(updated, now)}
-                      </time>
-                      {stale && ", not today"}
-                    </span>
-                    {p && <span>{SHEET_SOURCE[p.source ?? "unknown"] ?? SOURCE_LABEL[p.source ?? "unknown"]}</span>}
-                    {p?.in_stock === false && <span className="text-warn">out of stock</span>}
-                    {e.coupon_code && (
-                      <span>
-                        Code <code className="font-semibold text-ink-2">{e.coupon_code}</code>
-                      </span>
-                    )}
-                    {deal && <span className="text-ink-2">{deal.label}</span>}
-                    {e.buy_url && (
-                      <ExtLink href={e.buy_url} className="link">
-                        Buy ↗<span className="sr-only"> {e.title} (new tab)</span>
-                      </ExtLink>
-                    )}
-                  </span>
+                  <MetaLine
+                    pieces={[
+                      // On a phone the store leads this line (beside the price there it would be cut).
+                      e.retailer && (
+                        <span key="store" className="sheet-meta-store">
+                          {e.retailer}
+                        </span>
+                      ),
+                      <span key="who">
+                        <ActorTag actor={e.author} compact />
+                      </span>,
+                      <span key="when">
+                        checked{" "}
+                        <time dateTime={updated} title={formatDateTime(updated)}>
+                          {timeAgo(updated, now)}
+                        </time>
+                        {stale && ", not today"}
+                      </span>,
+                      p && <span key="src">{SHEET_SOURCE[p.source ?? "unknown"] ?? SOURCE_LABEL[p.source ?? "unknown"]}</span>,
+                      p?.in_stock === false && (
+                        <span key="stock" className="text-warn">
+                          out of stock
+                        </span>
+                      ),
+                      e.coupon_code && (
+                        <span key="code">
+                          Code <code className="font-semibold text-ink-2">{e.coupon_code}</code>
+                        </span>
+                      ),
+                      deal && (
+                        <span key="deal" className="text-ink-2">
+                          {deal.label}
+                        </span>
+                      ),
+                      e.buy_url && (
+                        <ExtLink key="buy" href={e.buy_url} className="link">
+                          Buy ↗<span className="sr-only"> {e.title} (new tab)</span>
+                        </ExtLink>
+                      ),
+                    ]}
+                  />
                 </div>
                 {/* The answer: the price, with where it is sold right under it. */}
                 <div className="sheet-price">
@@ -202,5 +216,30 @@ export function EntrySheet({
         })}
       </ul>
     </div>
+  );
+}
+
+/**
+ * Who found it and how sure the price is: one quiet line. Each piece stays whole and carries the dot after it, with a
+ * space between pieces, so the line breaks only between pieces and the dot ends the line above (no line starts with
+ * one; orchestrator review of batch 1).
+ */
+function MetaLine({ pieces }: { pieces: React.ReactNode[] }) {
+  const shown = pieces.filter(Boolean);
+  return (
+    <span className="sheet-meta">
+      {shown.map((node, i) => (
+        <Fragment key={i}>
+          <span className="sheet-meta-piece">
+            {node}
+            {i < shown.length - 1 && (
+              <span className="sheet-meta-dot" aria-hidden="true">
+                {"\u00a0·"}
+              </span>
+            )}
+          </span>{" "}
+        </Fragment>
+      ))}
+    </span>
   );
 }

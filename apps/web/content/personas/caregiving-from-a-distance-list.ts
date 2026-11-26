@@ -4,6 +4,7 @@ export default {
   slug: "caregiving-from-a-distance-list",
   order: 21,
   group: "home",
+  opens: "tasks",
   title: "Arranging care for a relative from a distance",
   description:
     "A private family list for helping a relative from out of town: home fixes, rides, purchases and updates. Your AI agent does the looking up, with sources.",

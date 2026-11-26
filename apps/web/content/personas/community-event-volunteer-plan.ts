@@ -4,6 +4,7 @@ export default {
   slug: "community-event-volunteer-plan",
   order: 35,
   group: "events",
+  opens: "tasks",
   title: "Organize a community event with volunteers",
   description:
     "Keep the jobs, the supplies and the permit questions for a neighborhood event on one list. Helpers you invite tick off their part; agents do the digging.",

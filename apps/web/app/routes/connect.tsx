@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { data, Link, useFetcher } from "react-router";
-import { AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
+import { AGENT_PROMPT_WITH_KEY, fillPrompt, promptFacts } from "~/lib/agent-prompt";
 import { agentsText } from "~/lib/agents-text";
 import { AgentPromptBuilder } from "~/components/AgentPrompt";
 import { api, formError } from "~/lib/api.server";
@@ -12,6 +12,7 @@ import { apiBaseUrl, mcpUrl, siteOrigin } from "~/lib/config.server";
 import { signinUrl, useRootData } from "~/lib/hooks";
 import { BRANDS, type Brand } from "~/lib/brands";
 import { BrandLogo } from "~/components/BrandLogo";
+import { AgentLine } from "~/components/AgentLine";
 
 export async function loader({ request }: Route.LoaderArgs) {
   // Signed in: offer the person's own lists in the agent prompt (so the page is private then).
@@ -76,7 +77,7 @@ const CHECKED = "24 Nov 2026";
 type Client = {
   id: string;
   name: string;
-  status: "confirmed" | "partial" | "generic" | "soon";
+  status: "confirmed" | "partial" | "unchecked" | "generic" | "soon";
   sources: Array<[string, string]>;
   steps: (ctx: Ctx) => React.ReactNode;
   more?: (ctx: Ctx) => React.ReactNode;
@@ -97,7 +98,7 @@ function UrlCopy({ mcp }: { mcp: string }) {
  * list settings uses) and fills it in, shown once, leaving only through Copy. Signed out: the placeholders, and a way to
  * sign in to fill them.
  */
-function KeyPrompt({ ctx, agent }: { ctx: Ctx; agent: string }) {
+function KeyPrompt({ ctx, agent, app }: { ctx: Ctx; agent: string; app: string }) {
   const fetcher = useFetcher<{ ok?: boolean; key?: string; listUrl?: string; error?: string }>();
   const [listId, setListId] = useState(ctx.selected ?? ctx.lists[0]?.id ?? "");
   const made = fetcher.data?.ok && fetcher.data.key ? fetcher.data : null;
@@ -117,17 +118,26 @@ function KeyPrompt({ ctx, agent }: { ctx: Ctx; agent: string }) {
   }
   if (!ctx.signedIn) {
     const text = fillPrompt(AGENT_PROMPT_WITH_KEY, { mcpUrl: ctx.mcp, listUrl: "https://wantmcp.com/l/YOUR_LIST", key: "wk_YOUR_WRITE_KEY" });
+    // Folded like the Claude Code and Codex prompts: the opening (list, server, key) and the whole text behind "Show all".
     return (
       <div className="grid gap-2">
-        <pre className="codeblock text-[0.78rem]" tabIndex={0} role="region" aria-label={`Prompt for ${agent}`}>
-          {text}
-        </pre>
-        <p className="text-[0.85rem] text-ink-2">
-          <Link to={`/login?next=${encodeURIComponent(`/connect?app=${agent === "Muse" ? "muse" : "grok-bot"}`)}`} className="link">
+        <p className="text-[0.92rem] text-ink-2">
+          <Link to={`/login?next=${encodeURIComponent(`/connect?app=${app}`)}`} className="link">
             Sign in to fill this in
           </Link>{" "}
           with your list and a key.
         </p>
+        <div className="prompt-box grid gap-2">
+          <span className="codeblock prompt-facts text-[0.78rem]" aria-hidden="true">
+            {promptFacts(text)}
+          </span>
+          <details className="prompt-peek">
+            <summary className="add-link text-[0.85rem]">Show all</summary>
+            <pre className="codeblock text-[0.78rem]" tabIndex={0} role="region" aria-label={`Prompt for ${agent}`}>
+              {text}
+            </pre>
+          </details>
+        </div>
       </div>
     );
   }
@@ -171,6 +181,22 @@ function KeyPrompt({ ctx, agent }: { ctx: Ctx; agent: string }) {
   );
 }
 
+/**
+ * A disclosure's summary with an arrow that turns when open. The arrow is its own flex item after a gap (a trailing space
+ * collapses in a flex row), and only the words are underlined: on the summary itself the underline carried into the
+ * turned arrow and stood as a stroke over the last letter (WebKit).
+ */
+function SummaryArrow({ children }: { children: React.ReactNode }) {
+  return (
+    <summary className="textlink-btn gap-1.5 text-[0.9rem] no-underline">
+      <span className="underline decoration-line-strong underline-offset-[3px]">{children}</span>
+      <span aria-hidden="true" className="inline-block w-[0.6em] text-center transition group-open:rotate-90">
+        ›
+      </span>
+    </summary>
+  );
+}
+
 function Code({ children }: { children: string }) {
   return (
     <div className="grid gap-2">
@@ -201,7 +227,7 @@ const CLIENT_LIST: Client[] = [
     steps: (c) => (
       <>
         <p>Paste this in a chat with Grok Bot. It adds the server itself and sends your key with every call.</p>
-        <KeyPrompt ctx={c} agent="Grok Bot" />
+        <KeyPrompt ctx={c} agent="Grok Bot" app="grok-bot" />
       </>
     ),
     more: (c) => (
@@ -225,12 +251,12 @@ const CLIENT_LIST: Client[] = [
   {
     id: "muse",
     name: "Muse",
-    status: "generic",
+    status: "unchecked",
     sources: [["Meta: How Muse works with Connectors", "https://www.meta.com/help/superintelligence/1687253048996149/"]],
     steps: (c) => (
       <>
         <p>Paste this in a chat with Muse. It creates a custom connector and keeps your key in its credential store.</p>
-        <KeyPrompt ctx={c} agent="Muse" />
+        <KeyPrompt ctx={c} agent="Muse" app="muse" />
       </>
     ),
     more: () => <p>Muse has no "add server" setting. Meta's docs describe custom connectors but don't mention MCP servers; we haven't tested this in Muse yet.</p>,
@@ -244,19 +270,22 @@ const CLIENT_LIST: Client[] = [
       ["OpenAI Help Center", "https://help.openai.com/en/articles/12584461"],
     ],
     steps: (c) => (
-      <Steps>
-        <li>
-          On chatgpt.com, go to <strong>Plugins</strong> › <strong>+</strong> › <strong>Add custom MCP server</strong>.
-        </li>
-        <li>
-          Name it The Want MCP, paste the server URL as <strong>Connection</strong>, choose <strong>OAuth</strong>, tick{" "}
-          <strong>I understand and want to continue</strong> and press <strong>Create as a plugin</strong>.
-          <UrlCopy mcp={c.mcp} />
-        </li>
-        <li>
-          Install it, sign in and tick your lists. In a chat, type <kbd>@</kbd> and pick The Want MCP.
-        </li>
-      </Steps>
+      <>
+        <p className="text-ink-2">Business, Enterprise and Edu plans can post. Pro can read lists but not post; Plus and Free aren't in OpenAI's docs.</p>
+        <Steps>
+          <li>
+            On chatgpt.com, go to <strong>Plugins</strong> › <strong>+</strong> › <strong>Add custom MCP server</strong>.
+          </li>
+          <li>
+            Name it The Want MCP, paste the server URL as <strong>Connection</strong>, choose <strong>OAuth</strong>, tick{" "}
+            <strong>I understand and want to continue</strong> and press <strong>Create as a plugin</strong>.
+            <UrlCopy mcp={c.mcp} />
+          </li>
+          <li>
+            Install it, sign in and tick your lists. In a chat, type <kbd>@</kbd> and pick The Want MCP.
+          </li>
+        </Steps>
+      </>
     ),
     more: () => (
       <p>
@@ -282,18 +311,27 @@ const CLIENT_LIST: Client[] = [
         <li>
           Under Authentication choose <strong>Sign in now</strong>. Claude pre-selects <strong>No sign-in</strong>, and with that it can't see your
           private lists.
-          {/* Owner's screenshot of the Claude desktop app, 25 Nov 2026: the step where the wrong choice is the default. */}
+          {/* Owner's screenshot of the Claude desktop app, 25 Nov 2026 (820×1061), cropped to its Authentication block (y 232–632),
+              which leaves out the warning, Request headers and the recording's pointer. Shown at 96% width with a 2% white margin
+              so the ring drawn over "Sign in now" (y 268–382) clears the radio buttons. Percentages of the fixed 820:400 frame,
+              so the ring stays put at any width. */}
           <figure className="mt-2 grid max-w-[26rem] gap-1.5">
-            <img
-              src="/shots/claude-add-custom-connector.webp"
-              alt="Claude's Add custom connector screen for The Want MCP. Under Authentication there are three choices: Sign in now, Sign in when needed, and No sign-in, which is selected and marked Detected. Below is a Request headers section with an authorization header."
-              width={820}
-              height={1061}
-              loading="lazy"
-              decoding="async"
-              className="h-auto w-full rounded-xl border border-line"
-            />
-            <figcaption className="text-[0.82rem] text-ink-3">The screen as Claude first shows it. Change the choice to Sign in now.</figcaption>
+            <div className="relative aspect-[820/400] overflow-hidden rounded-xl border border-line bg-white">
+              <img
+                src="/shots/claude-add-custom-connector.webp"
+                alt="Claude's Authentication choices: Sign in now, Sign in when needed, and No sign-in, which Claude has selected and marked Detected. Sign in now is circled."
+                width={820}
+                height={1061}
+                loading="lazy"
+                decoding="async"
+                className="block h-auto w-[96%] max-w-none"
+                style={{ margin: "calc(-232 / 820 * 96%) 0 0 2%" }}
+              />
+              <span aria-hidden="true" className="pointer-events-none absolute top-[8.4%] left-[0.6%] h-[27.6%] w-[96.8%] rounded-lg border-[3px] border-[#0a6fe0]" />
+            </div>
+            <figcaption className="text-[0.85rem] text-ink-2">
+              Claude selects No sign-in at first. <strong className="text-ink">Choose Sign in now.</strong>
+            </figcaption>
           </figure>
         </li>
         <li>
@@ -467,8 +505,8 @@ const CLIENT_LIST: Client[] = [
   {
     id: "hermes",
     name: "Hermes",
-    // "generic": no "checked" chip. These steps are from Hermes Agent's docs and nobody here has run them.
-    status: "generic",
+    // "Not yet checked": these steps are from Hermes Agent's docs and nobody here has run them.
+    status: "unchecked",
     sources: [["Hermes Agent docs: MCP", "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp"]],
     steps: (c) => (
       <>
@@ -489,12 +527,12 @@ const CLIENT_LIST: Client[] = [
   {
     id: "hark",
     name: "Hark",
-    status: "generic",
+    status: "unchecked",
     sources: [["Hark", "https://hark.com/"]],
     steps: (c) => (
       <>
         <p>Paste this in a chat with Hark.</p>
-        <KeyPrompt ctx={c} agent="Hark" />
+        <KeyPrompt ctx={c} agent="Hark" app="hark" />
       </>
     ),
     more: () => <p>Hark publishes no "add a server" setting that we could find, and we haven't tested this in Hark yet.</p>,
@@ -502,12 +540,12 @@ const CLIENT_LIST: Client[] = [
   {
     id: "instinct",
     name: "Instinct",
-    status: "generic",
+    status: "unchecked",
     sources: [["Instinct", "https://instinct.com/"]],
     steps: (c) => (
       <>
         <p>Send this to Instinct.</p>
-        <KeyPrompt ctx={c} agent="Instinct" />
+        <KeyPrompt ctx={c} agent="Instinct" app="instinct" />
       </>
     ),
     more: () => <p>Instinct publishes no "add a server" setting that we could find, and we haven't tested this in Instinct yet.</p>,
@@ -551,9 +589,11 @@ const CLIENT_LIST: Client[] = [
 const ORDER = ["chatgpt", "codex", "claude", "claude-code", "grok-bot", "muse", "openclaw", "cursor", "grok", "gemini", "hermes", "hark", "instinct", "msgblast", "other"];
 const CLIENTS = [...CLIENT_LIST].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
-const STATUS = {
+/** `note`: what "partly" leaves out (docs/marketing-plan.md: sign-in and posting end to end are untested for these). */
+const STATUS: Record<Client["status"], { label: string; cls: string; note?: string } | null> = {
   confirmed: { label: `Checked ${CHECKED}`, cls: "chip chip-live" },
-  partial: { label: `Partly checked ${CHECKED}`, cls: "chip chip-warn" },
+  partial: { label: `Partly checked ${CHECKED}`, cls: "chip chip-warn", note: "Sign-in and posting not tested yet." },
+  unchecked: { label: "Not yet checked", cls: "chip", note: "We haven't tried these steps in this app yet." },
   generic: null,
   soon: { label: "Coming soon", cls: "chip" },
 };
@@ -579,15 +619,8 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
       <header className="grid max-w-3xl gap-5">
         <h1 className="display text-[2.25rem] sm:text-[2.75rem]">Connect an agent</h1>
         <p className="max-w-[65ch] text-[1.0625rem] text-ink-2">Add The Want MCP to your AI app, sign in, and pick the lists it can work on.</p>
-        {!loaderData.signedIn && (
-          <p className="text-[0.95rem] text-ink-2">
-            No account yet?{" "}
-            <a href="#for-agents" className="link">
-              Your agent can start a list for you
-            </a>
-            .
-          </p>
-        )}
+        {/* The home page's words for an agent, with its copy button. */}
+        {!loaderData.signedIn && <AgentLine lead="No account yet? Tell your agent:" className="grid max-w-full justify-items-start gap-1.5" />}
         <div className="grid max-w-xl gap-1.5">
           <span id="url-l" className="label">
             Server URL
@@ -610,17 +643,19 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
       <AwaySection />
 
 
-      {/* The same text agents read at /llms.txt and /agents.txt, for anyone (or any agent) reading this page. */}
-      <section id="for-agents" aria-labelledby="agents-h" className="grid scroll-mt-24 gap-4 lg:grid-cols-[18rem_1fr] lg:gap-10">
-        <div className="grid content-start gap-2">
-          <h2 id="agents-h" className="serif text-[1.75rem] leading-tight">
-            For agents
-          </h2>
-          <p className="text-[0.9rem] text-ink-3">
-            Also at <a href="/llms.txt" className="link">/llms.txt</a>.
-          </p>
-        </div>
-        <pre className="max-w-3xl font-sans text-[0.88rem] leading-relaxed whitespace-pre-wrap text-ink-2">{loaderData.forAgents}</pre>
+      {/* The same text agents read at /llms.txt and /agents.txt: folded for people, still in the page for agents reading it. */}
+      <section id="for-agents" aria-label="For agents" className="grid scroll-mt-24 gap-1 border-t border-line pt-6">
+        <details className="group">
+          <SummaryArrow>For agents: the full instructions</SummaryArrow>
+          <pre className="mt-3 max-w-3xl font-sans text-[0.88rem] leading-relaxed whitespace-pre-wrap text-ink-2">{loaderData.forAgents}</pre>
+        </details>
+        <p className="text-[0.9rem] text-ink-3">
+          Also at{" "}
+          <a href="/llms.txt" className="link">
+            /llms.txt
+          </a>
+          .
+        </p>
       </section>
     </div>
   );
@@ -745,6 +780,7 @@ function AppPicker({ app, ctx, listParam }: { app: string; ctx: Ctx; listParam: 
             {c.name}
           </h2>
           {status && <span className={`${status.cls} text-[0.75rem]`}>{status.label}</span>}
+          {status?.note && <p className="text-[0.82rem] text-ink-3">{status.note}</p>}
         </div>
         <div className="grid min-w-0 max-w-3xl gap-4 text-[0.97rem] [&_code]:rounded-[3px] [&_code]:bg-sunk [&_code]:px-1 [&_code]:text-[0.85em]">
           {c.steps(ctx)}
@@ -756,9 +792,7 @@ function AppPicker({ app, ctx, listParam }: { app: string; ctx: Ctx; listParam: 
           )}
           {(c.more || c.sources.length > 0) && (
             <details className="group">
-              <summary className="textlink-btn text-[0.9rem]">
-                Details and troubleshooting <span aria-hidden="true" className="inline-block transition group-open:rotate-90">›</span>
-              </summary>
+              <SummaryArrow>Details and troubleshooting</SummaryArrow>
               <div className="mt-3 grid gap-3 text-[0.92rem] text-ink-2">
                 {c.more?.(ctx)}
                 {c.sources.length > 0 && (

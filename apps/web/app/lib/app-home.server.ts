@@ -26,6 +26,8 @@ export interface ListCard {
     actor: ActorRef;
     /** "found", "posted", "answered", "commented on"… in plain words. */
     verb: string;
+    /** A question: the line quotes it, and says it's answered once nothing waits on the list (review A1). */
+    question?: boolean;
     title: string;
     price: { price: string; currency: string } | null;
     at: string;
@@ -144,6 +146,7 @@ export async function loadCards(request: Request, waiting: Parameters<typeof lis
         ? {
             actor: s.latest.actor,
             verb: (VERB[s.latest.kind] ?? (() => "posted"))(format),
+            question: s.latest.kind === "question",
             title: s.latest.title,
             price: s.latest.price ? { price: s.latest.price.amount, currency: s.latest.price.currency } : null,
             at: s.latest.at,
