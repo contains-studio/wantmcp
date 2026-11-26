@@ -1038,17 +1038,18 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 .access-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: 12px; }
 .access-mark { display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: 10px; background: var(--sunk); color: var(--ink-3); overflow: hidden; }
 .access-mark img { width: 1.25rem; height: 1.25rem; object-fit: contain; grid-area: 1 / 1; }
-/* Home › Share a list: Apple-style tiles, faces along the picture's edge, and the one quiet "more" link. */
+/* Home › Share a list: Apple-style tiles and the one quiet "more" link. */
 .share-tile { display: grid; justify-items: center; align-content: start; gap: 0.75rem; padding: 2rem 1.25rem; border-radius: 28px; background: var(--sunk); text-align: center; }
 .share-tile > p { max-width: 26rem; }
 .share-tile .access-row { background: var(--card); border-color: transparent; }
+/* The marks read at a glance on a phone: 30px marks in 44px tiles (the shared mark component evens out their sizes). */
+.share-tile .access-mark { width: 2.75rem; height: 2.75rem; border-radius: 12px; }
+.share-tile .access-mark img { width: 1.875rem; height: 1.875rem; }
+.share-tile .access-mark svg { width: 1.5rem; height: 1.5rem; }
 .share-tile-h { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; font-size: 1.6rem; line-height: 1.15; color: var(--ink); }
-.share-face { display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; margin-left: -0.5rem; border-radius: 999px; border: 2px solid var(--sunk); background: var(--card); color: var(--ink-2); font-weight: 600; font-size: 0.95rem; overflow: hidden; }
-.share-face:first-child { margin-left: 0; }
-.share-face img { width: 1.35rem; height: 1.35rem; object-fit: contain; grid-area: 1 / 1; }
 .link-more { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--want); font-weight: 500; }
 .link-more:hover { text-decoration: underline; text-underline-offset: 3px; }
-@media (min-width: 640px) { .share-face { width: 2.9rem; height: 2.9rem; } .share-face img { width: 1.6rem; height: 1.6rem; } .share-tile { padding: 2.5rem 2rem; } }
+@media (min-width: 640px) { .share-tile { padding: 2.5rem 2rem; } }
 .row-remove > summary { list-style: none; }
 .row-remove > summary::-webkit-details-marker { display: none; }
 .row-remove[open] { flex-basis: 100%; display: flex; flex-wrap: wrap-reverse; align-items: center; justify-content: space-between; gap: 0.5rem; }

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 /**
  * The "Works with" row on the home page. Each mark links to that client's setup on /connect.
  *
@@ -57,8 +58,16 @@ export const LIVE_BRANDS = BRANDS.filter((b) => !b.comingSoon);
  * Square marks for agents we know by name, used in place of a letter tile wherever an agent is named (ActorTag). The
  * name is always written beside the mark, so ChatGPT and Codex (both OpenAI's mark) stay apart.
  */
-const OPENAI = { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg" };
-export const AGENT_MARKS: Record<string, { light: string; dark?: string }> = {
+// The blossom's art fills only the middle half of its file (measured: 355 of 716 units), where the other marks fill
+// theirs: drawn at twice the size so it sits at the same optical size beside them.
+const OPENAI = { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg", scale: 1.9 };
+export interface AgentMarkArt {
+  light: string;
+  dark?: string;
+  /** How much to enlarge art that leaves empty margin inside its file, so every mark reads at one size. */
+  scale?: number;
+}
+export const AGENT_MARKS: Record<string, AgentMarkArt> = {
   chatgpt: OPENAI,
   codex: OPENAI,
   claude: { light: "/brands/claude-spark.svg" },
@@ -73,6 +82,11 @@ export const AGENT_MARKS: Record<string, { light: string; dark?: string }> = {
   instinct: { light: "/brands/instinct-icon.svg" },
 };
 
-export function agentMark(name: string): { light: string; dark?: string } | null {
+export function agentMark(name: string): AgentMarkArt | null {
   return AGENT_MARKS[name.trim().toLowerCase()] ?? null;
+}
+
+/** The style for a mark's img: its optical scale, if it has one. */
+export function markStyle(mark: AgentMarkArt): CSSProperties | undefined {
+  return mark.scale ? { transform: `scale(${mark.scale})` } : undefined;
 }

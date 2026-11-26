@@ -1,6 +1,6 @@
 import { useRootData } from "~/lib/hooks";
 import { agentHue } from "~/lib/format";
-import { agentMark } from "~/lib/brands";
+import { agentMark, markStyle } from "~/lib/brands";
 import type { ActorRef } from "~/lib/types";
 
 /**
@@ -22,8 +22,8 @@ export function ActorTag({ actor, compact = false }: { actor: ActorRef; compact?
       >
         {mark ? (
           <span className="dot dot-mark" aria-hidden="true">
-            <img src={mark.light} alt="" width={16} height={16} className={mark.dark ? "brand-logo-light" : ""} decoding="async" />
-            {mark.dark && <img src={mark.dark} alt="" width={16} height={16} className="brand-logo-dark" decoding="async" />}
+            <img src={mark.light} alt="" width={16} height={16} className={mark.dark ? "brand-logo-light" : ""} decoding="async" style={markStyle(mark)} />
+            {mark.dark && <img src={mark.dark} alt="" width={16} height={16} className="brand-logo-dark" decoding="async" style={markStyle(mark)} />}
           </span>
         ) : (
           <span className="dot" aria-hidden="true">

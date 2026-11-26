@@ -10,8 +10,7 @@ import { siteOrigin } from "~/lib/config.server";
 import { useRootData } from "~/lib/hooks";
 import { AgentLine } from "~/components/AgentLine";
 import { AccessRow, AgentMark, PersonMark } from "~/components/AccessRow";
-import { ActorTag } from "~/components/ActorTag";
-import type { ActorRef, FeedEntry, Page } from "~/lib/types";
+import type { FeedEntry, Page } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeSample } from "~/components/ThemeThumb";
@@ -315,12 +314,10 @@ function SeasonBand({ season, origin }: { season: { heading: string; sample: The
 
 /**
  * Sharing a list, with agents and with people (owner, 25 Nov 2026: "mention the collaborative features … give examples",
- * "designed like an apple website promotional page"): one big line, one picture, two tiles, captions, one quiet link.
+ * "designed like an apple website promotional page"): one big line, two tiles each with its picture, captions, one quiet link.
  * Every sentence is what the product does today (list settings › Sharing and › Agents, the invite page, new lists).
- * The pictures are made of the app's own parts (ActorTag, AccessRow) for one made-up list; nothing in them is a control.
+ * The pictures are settings › Agents' own rows (AccessRow) for one made-up list; nothing in them is a control.
  */
-const agent = (name: string, owner: string): ActorRef => ({ kind: "agent", agent_id: name, name, owner_handle: owner });
-
 function Sharing() {
   const examples = [
     ["Before we move", "You, Sam and both your agents"],
@@ -337,8 +334,6 @@ function Sharing() {
           </h2>
           <p className="max-w-xl text-[1.1rem] text-ink-2 sm:text-[1.25rem]">The people you invite and every agent you use, on one list.</p>
         </div>
-
-        <ShareHeroPicture />
 
         <div className="grid gap-4 md:grid-cols-2 md:gap-5">
           <div className="share-tile">
@@ -378,50 +373,6 @@ function Sharing() {
         </Link>
       </div>
     </section>
-  );
-}
-
-/**
- * The section's picture: one list, everyone on it along its top edge (two people, three agents, marks only), and two
- * agents' posts on it, each named the way the list names them (ActorTag).
- */
-function ShareHeroPicture() {
-  const people = ["You", "Sam"];
-  const agents = ["Claude", "ChatGPT", "Muse"];
-  const posts = [
-    { item: "Get moving quotes", by: agent("Claude", "you"), text: "Three quotes in. The lowest is $1,850 for Dec 12." },
-    { item: "Pack the kitchen", by: agent("ChatGPT", "sam"), text: "Done. 6 of 11 left before Dec 12." },
-  ];
-  return (
-    <figure className="share-hero mx-auto grid w-full max-w-2xl gap-5 rounded-[28px] bg-sunk p-5 sm:p-8">
-      <figcaption className="sr-only">A list called Before we move, shared by you and Sam, with Claude, ChatGPT and Muse working on it.</figcaption>
-      <div className="flex items-center justify-between gap-3" aria-hidden="true">
-        <p className="text-[1.15rem] font-semibold sm:text-[1.3rem]">Before we move</p>
-        <div className="flex items-center">
-          {people.map((p) => (
-            <span key={p} className="share-face" title={p}>
-              {p.slice(0, 1)}
-            </span>
-          ))}
-          {agents.map((a) => (
-            <span key={a} className="share-face share-face-agent" title={a}>
-              <AgentMark name={a} />
-            </span>
-          ))}
-        </div>
-      </div>
-      <ul className="grid gap-3" aria-hidden="true">
-        {posts.map((p) => (
-          <li key={p.item} className="card grid gap-2 p-4 text-left">
-            <p className="font-semibold">{p.item}</p>
-            <div className="grid gap-1.5">
-              <ActorTag actor={p.by} compact />
-              <p className="text-[0.92rem] text-ink-2">{p.text}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </figure>
   );
 }
 

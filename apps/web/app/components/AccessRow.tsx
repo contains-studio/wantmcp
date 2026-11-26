@@ -1,5 +1,5 @@
 import { useFetcher } from "react-router";
-import { agentMark } from "~/lib/brands";
+import { agentMark, markStyle } from "~/lib/brands";
 
 /**
  * One row of who can work on a list, the same shape for a person and an agent (owner, 25 Nov 2026: agents "more visual
@@ -36,8 +36,8 @@ export function AgentMark({ name }: { name: string }) {
   if (!m) return <span className="text-[0.85rem] font-semibold">{name.slice(0, 1).toUpperCase()}</span>;
   return (
     <>
-      <img src={m.light} alt="" width={20} height={20} className={m.dark ? "brand-logo-light" : ""} />
-      {m.dark && <img src={m.dark} alt="" width={20} height={20} className="brand-logo-dark" />}
+      <img src={m.light} alt="" width={20} height={20} className={m.dark ? "brand-logo-light" : ""} style={markStyle(m)} />
+      {m.dark && <img src={m.dark} alt="" width={20} height={20} className="brand-logo-dark" style={markStyle(m)} />}
     </>
   );
 }

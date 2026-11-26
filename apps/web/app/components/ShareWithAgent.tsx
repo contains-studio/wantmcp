@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { AGENT_PROMPT_WITH_KEY, fillPrompt, promptFacts } from "~/lib/agent-prompt";
-import { agentMark } from "~/lib/brands";
+import { agentMark, markStyle } from "~/lib/brands";
 import { useRootData } from "~/lib/hooks";
 import { CopyButton } from "./CopyButton";
 
@@ -147,8 +147,8 @@ function Step({ round, listId, listUrl, existing, onList }: { round: number; lis
         <input type="radio" name="agent_name" value={n} checked={on} onChange={() => (setName(n), setTyped(""))} className="sr-only" />
         {mark && (
           <span className="agent-chip-mark" aria-hidden="true">
-            <img src={mark.light} alt="" width={16} height={16} className={mark.dark ? "brand-logo-light" : ""} />
-            {mark.dark && <img src={mark.dark} alt="" width={16} height={16} className="brand-logo-dark" />}
+            <img src={mark.light} alt="" width={16} height={16} className={mark.dark ? "brand-logo-light" : ""} style={markStyle(mark)} />
+            {mark.dark && <img src={mark.dark} alt="" width={16} height={16} className="brand-logo-dark" style={markStyle(mark)} />}
           </span>
         )}
         {n}
