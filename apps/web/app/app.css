@@ -1119,3 +1119,17 @@ button.check-toggle::before { content: ""; position: absolute; top: 50%; left: 5
 .gal-card.is-done .gal-img { opacity: 0.55; }
 .gal-card.is-done .gal-title { color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--ink-3); }
 .gal-card.is-done .gal-price strong { color: var(--ink-2); }
+
+/* "Share list" on a list with nobody else on it (owner, 26 Nov 2026): the word shows at every width, with a soft ring
+   that breathes slowly (2 s) a few times, then rests; opening the menu stops it (.is-seen). With Reduce Motion the
+   ring is held still. .pulse-always (ListView SHARE_PULSE_ALWAYS) runs the pulse regardless. */
+.btn-tool.share-invite { padding: 0 0.75rem; box-shadow: 0 0 0 2px color-mix(in srgb, var(--want) 45%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  .btn-tool.share-invite { animation: share-breathe 2s ease-in-out 4; }
+}
+.btn-tool.share-invite.pulse-always { animation: share-breathe 2s ease-in-out 4; }
+.btn-tool.share-invite.is-seen { animation: none; box-shadow: none; }
+@keyframes share-breathe {
+  0%, 100% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--want) 45%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--want) 12%, transparent); }
+}

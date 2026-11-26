@@ -84,9 +84,7 @@ export default function ThemePreview({ loaderData }: Route.ComponentProps) {
             </Link>
           ))}
         </nav>
-        <Link to={user ? startHref : `/login?next=${encodeURIComponent(startHref)}`} className={`btn btn-want ml-auto ${season ? "max-sm:w-full" : "btn-sm hit"}`}>
-          {season ? `Start a ${season.name} list` : "Start a list with this look"}
-        </Link>
+        <StartWithLook href={user ? startHref : `/login?next=${encodeURIComponent(startHref)}`} label={season ? `Start a ${season.name} list` : "Start a list with this look"} />
       </div>
       <ListView
         list={sample.list}
@@ -107,3 +105,15 @@ export default function ThemePreview({ loaderData }: Route.ComponentProps) {
 
 /** Cloudflare Web Analytics may count views of this page (root.tsx, AnalyticsBeacon). */
 export const handle = { analytics: true };
+
+/**
+ * The one way out of a look's preview, the same for a layout and for a holiday (owner, 26 Nov 2026: the small one "seems
+ * off"): a full-size primary, the width of the screen on a phone, at the end of the tabs row from 640px.
+ */
+function StartWithLook({ href, label }: { href: string; label: string }) {
+  return (
+    <Link to={href} className="btn btn-want ml-auto max-sm:w-full">
+      {label}
+    </Link>
+  );
+}

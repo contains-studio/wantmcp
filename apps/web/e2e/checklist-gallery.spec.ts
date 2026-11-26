@@ -103,3 +103,21 @@ test("Gallery is offered with the other layouts, and its preview carries share t
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", /Gallery look/);
   await expect(page.locator(".gal-card").first()).toBeVisible();
 });
+
+test("every look preview ends in the same full-size start button: full width on a phone, on the tabs row on desktop", async ({ page }) => {
+  for (const [slug, name] of [
+    ["gallery", "Start a list with this look"],
+    ["sheet--black-friday", "Start a Black Friday list"],
+  ]) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`/themes/${slug}`);
+    const start = page.getByRole("link", { name, exact: true });
+    const phone = (await start.boundingBox())!;
+    expect(phone.height).toBeGreaterThanOrEqual(44);
+    expect(phone.width).toBeGreaterThan(340);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const desk = (await start.boundingBox())!;
+    const tabs = (await page.getByRole("navigation", { name: "Sample list format" }).boundingBox())!;
+    expect(Math.abs(desk.y + desk.height / 2 - (tabs.y + tabs.height / 2))).toBeLessThan(6);
+  }
+});

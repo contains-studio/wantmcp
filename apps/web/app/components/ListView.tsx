@@ -107,6 +107,10 @@ export function ListView(props: ListViewProps) {
   // The want just checked off, for "Bought “…”. Undo" (owner, 26 Nov 2026: check-offs on the Checklist look).
   const [justChecked, setJustChecked] = useState<JustChecked | null>(null);
   const listCurrencyHint = listCurrency(items);
+  // Nobody else on it yet (owner, 26 Nov 2026): a private list with no other person, no pending invite and no agent.
+  // Its owner gets "Share list" in words, with a soft ring. The moment someone joins or it's made public, the icon returns.
+  const alone =
+    role === "owner" && isPrivate && !preview && !!list.access && list.access.people <= 1 && list.access.agents === 0 && (list.access.pending_invites ?? 0) === 0;
   const productCount = items.reduce((n, i) => n + i.entries.length, 0);
   // Nothing posted on any want yet: one line for the list instead of one per want.
   const nothingYet = items.length > 0 && productCount === 0;
@@ -166,14 +170,22 @@ export function ListView(props: ListViewProps) {
                 {/* Public: the link carries ?ref=share so sign-ups from shared lists can be counted. Private: the plain link, and who can open it. */}
                 {isWriter ? (
                   // A private list's link opens for no one else: Share says so and offers the two ways to change that.
+                  <ShareInvite listId={list.id} on={alone}>
                   <Menu
-                    label="Share"
-                    triggerClass="btn-tool"
+                    label={alone ? "Share list" : "Share"}
+                    triggerClass={alone ? `btn-tool share-invite${SHARE_PULSE_ALWAYS ? " pulse-always" : ""}` : "btn-tool"}
                     trigger={
-                      <>
-                        <Icon name="share" />
-                        <span className="btn-tool-label">Share</span>
-                      </>
+                      alone ? (
+                        <>
+                          <Icon name="share" />
+                          <span>Share list</span>
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="share" />
+                          <span className="btn-tool-label">Share</span>
+                        </>
+                      )
                     }
                     wide
                   >
@@ -200,6 +212,7 @@ export function ListView(props: ListViewProps) {
                       <CopyButton text={isPrivate ? listUrl : `${listUrl}?ref=share`} label="Copy link" doneText="Link copied" className="menu-item" />
                     </div>
                   </Menu>
+                  </ShareInvite>
                 ) : (
                   <CopyButton
                     text={isPrivate ? listUrl : `${listUrl}?ref=share`}
@@ -1080,6 +1093,48 @@ export function DetailsPrompt({ itemId, fi, onDone }: { itemId: string; fi: Form
       </div>
       {fetcher.data?.error && <p className="form-error">{fetcher.data.error}</p>}
     </fetcher.Form>
+  );
+}
+
+/**
+ * The pulse of the lonely "Share list" button follows Reduce Motion: with it on, the ring is held still. Set this to true
+ * to let the pulse run regardless (the one line to change; app.css .share-invite.pulse-always).
+ */
+const SHARE_PULSE_ALWAYS = false;
+
+/**
+ * Wraps the Share menu while the list has nobody else on it. Opening the menu once stops the pulse for this list, and
+ * that is remembered on this browser (localStorage, when it's there).
+ */
+function ShareInvite({ listId, on, children }: { listId: string; on: boolean; children: React.ReactNode }) {
+  const box = useRef<HTMLSpanElement>(null);
+  const key = `share-seen:${listId}`;
+  useEffect(() => {
+    const el = box.current;
+    if (!on || !el) return;
+    const mark = () => el.querySelector(".share-invite")?.classList.add("is-seen");
+    try {
+      if (localStorage.getItem(key)) mark();
+    } catch {
+      // storage blocked: the pulse runs its few cycles and stops on its own
+    }
+    const pop = el.querySelector("[popover]");
+    const onToggle = (e: Event) => {
+      if ((e as ToggleEvent).newState !== "open") return;
+      mark();
+      try {
+        localStorage.setItem(key, "1");
+      } catch {
+        // ignore
+      }
+    };
+    pop?.addEventListener("toggle", onToggle);
+    return () => pop?.removeEventListener("toggle", onToggle);
+  }, [on, key]);
+  return (
+    <span ref={box} className="contents">
+      {children}
+    </span>
   );
 }
 
