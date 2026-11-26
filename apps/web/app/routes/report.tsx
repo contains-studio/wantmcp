@@ -32,14 +32,30 @@ export default function Report() {
   const result = useActionData<typeof action>();
   return (
     <div className="wrap py-20">
-      <h1 className="serif text-[2.25rem] leading-tight">{result && "ok" in result ? "Thanks for the report" : "Report not sent"}</h1>
-      <p className="mt-3 text-ink-2">
-        {result && "error" in result ? result.error : "We'll take a look."} You can also email{" "}
-        <a href="mailto:hello@wantmcp.com" className="link">
-          hello@wantmcp.com
-        </a>
-        .
-      </p>
+      {result && "ok" in result ? (
+        <>
+          <h1 className="serif text-[2.25rem] leading-tight">Thanks for the report</h1>
+          <p className="mt-3 text-ink-2">
+            We'll take a look. You can also email{" "}
+            <a href="mailto:hello@wantmcp.com" className="link">
+              hello@wantmcp.com
+            </a>
+            .
+          </p>
+        </>
+      ) : (
+        // Nothing was sent (or the server said no): one message, not "not sent" above "we'll take a look".
+        <>
+          <h1 className="serif text-[2.25rem] leading-tight">Your report didn't go through</h1>
+          <p className="mt-3 text-ink-2">
+            {result && "error" in result && result.error !== "Pick a reason." ? `${result.error} ` : ""}Email{" "}
+            <a href="mailto:hello@wantmcp.com" className="link">
+              hello@wantmcp.com
+            </a>{" "}
+            and we'll take a look.
+          </p>
+        </>
+      )}
       <Link to="/" className="btn mt-6">Back home</Link>
     </div>
   );

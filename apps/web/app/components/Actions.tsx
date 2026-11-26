@@ -3,10 +3,13 @@
  * and a status control. Menus are native popovers: they open without JavaScript (popovertarget),
  * close on Escape or a click outside, and render above clipped containers.
  */
-import { useContext, useEffect, useId, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useRef, type ReactNode } from "react";
 import { useFetcher } from "react-router";
 import { PreviewContext } from "./preview";
 import type { IntentResult } from "./WriteTools";
+
+/** The open menu's id: its sub-forms share it as an exclusive group, so one is open at a time (review S2). */
+const MenuIdContext = createContext<string | undefined>(undefined);
 
 /** A dashed-ident-safe version of a React id, for ids and anchor names. */
 function useSafeId(prefix: string) {
@@ -36,6 +39,40 @@ export function Icon({ name }: { name: keyof typeof ICONS }) {
         <path d={d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       )}
     </svg>
+  );
+}
+
+/**
+ * A tap outside an open menu closes it, and nothing else (clean-eyes review S1): browsers light-dismiss the popover on
+ * the press, but WebKit then delivers the click to whatever was underneath (a link, a details summary). The click that
+ * follows such a press is swallowed. Installed once.
+ */
+let outsideGuard = false;
+function installOutsideTapGuard() {
+  if (outsideGuard || typeof document === "undefined") return;
+  outsideGuard = true;
+  let swallowUntil = 0;
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      const open = document.querySelector(".menu-panel:popover-open");
+      if (!open) return;
+      const t = e.target as Element | null;
+      // Inside the menu, or on a trigger (which toggles it itself): an ordinary press.
+      if (t && (open.contains(t) || t.closest("[popovertarget]"))) return;
+      swallowUntil = Date.now() + 600;
+    },
+    true,
+  );
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (Date.now() > swallowUntil) return;
+      swallowUntil = 0;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    true,
   );
 }
 
@@ -75,6 +112,7 @@ export function Menu({
 }) {
   const id = useSafeId("m");
   const preview = useContext(PreviewContext);
+  useEffect(installOutsideTapGuard, []);
   const anchor = `--${id}`;
   // Previews (gallery, persona pages) are read-only: no menu, just whatever the trigger shows.
   if (preview) return trigger && !iconTrigger ? <span className={triggerClass}>{trigger}</span> : null;
@@ -92,12 +130,16 @@ export function Menu({
       </button>
       {(
         <div id={id} popover="auto" role="group" aria-label={label} className={`menu-panel ${wide ? "menu-wide" : ""}`} style={{ positionAnchor: anchor } as React.CSSProperties}>
-          {sheetTitle && (
+          {/* On a phone the menu is a sheet: its title (what it is for) and a Close, as the item sheets have. */}
+          <div className="menu-sheet-head">
             <p className="menu-sheet-title" aria-hidden="true">
-              {sheetTitle}
+              {sheetTitle ?? ""}
             </p>
-          )}
-          {children}
+            <button type="button" popoverTarget={id} popoverTargetAction="hide" className="menu-close">
+              Close
+            </button>
+          </div>
+          <MenuIdContext.Provider value={id}>{children}</MenuIdContext.Provider>
         </div>
       )}
     </span>
@@ -106,8 +148,9 @@ export function Menu({
 
 /** A menu entry that reveals a small form or a confirmation in place. */
 export function MenuSub({ label, danger = false, id, children }: { label: ReactNode; danger?: boolean; id?: string; children: ReactNode }) {
+  const group = useContext(MenuIdContext);
   return (
-    <details className="menu-sub group" id={id}>
+    <details className="menu-sub group" id={id} name={group}>
       <summary className={`menu-item ${danger ? "is-danger" : ""}`}>
         <span className="flex-1">{label}</span>
         <span aria-hidden="true" className="text-ink-3 transition group-open:rotate-90">

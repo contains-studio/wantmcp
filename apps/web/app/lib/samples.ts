@@ -146,7 +146,8 @@ export function buildSample(spec: SampleListSpec, opts: { id?: string; now?: num
         author: agent(p.by),
         title: p.title,
         description: p.note ?? "",
-        product_url: `https://example.com/${lid}/${i + 1}/${j + 1}`,
+        // A sample's products don't link out: example.com pages don't exist (clean-eyes review T2).
+        product_url: null,
         image_url: p.image ? `/mock-images/${p.image}.svg` : null,
         retailer: p.store,
         coupon_code: p.coupon ?? null,

@@ -576,9 +576,11 @@ button.check-toggle:hover { border-color: var(--ink); }
     /* A sheet, not a menu floating over the next card: the page dims behind it, and it says what it is for. */
     .menu-panel::backdrop { background: rgb(0 0 0 / 0.32); }
   }
-  .menu-sheet-title { display: none; }
+  .menu-sheet-head { display: none; }
   @media (max-width: 639px) {
-    .menu-sheet-title { display: block; padding: 0.55rem 0.75rem 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid var(--line); margin-bottom: 0.25rem; }
+    .menu-sheet-head { display: flex; align-items: center; gap: 0.5rem; padding: 0 0 0.25rem 0.75rem; border-bottom: 1px solid var(--line); margin-bottom: 0.25rem; }
+    .menu-sheet-title { flex: 1; min-width: 0; font-size: 0.8rem; font-weight: 600; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .menu-close { min-height: var(--ctl); padding: 0 0.75rem; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
   }
   .menu-item {
     display: flex; align-items: center; gap: 0.5rem; width: 100%; min-height: var(--ctl-sm); padding: 0 0.75rem;
@@ -938,16 +940,30 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 .sheet-thumb .product-img .fallback svg { width: 1.1rem; height: 1.1rem; }
 /* Title and price the same size: the title says what it is, the price is set apart by weight and place, not size. */
 .sheet-title { font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
-.sheet-meta { display: none; }
-@media (min-width: 640px) {
-  .sheet-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.45rem; margin-top: 0.2rem; font-size: 0.8rem; color: var(--ink-3); }
-  .sheet-meta > * + *::before { content: "·"; margin-right: 0.45rem; color: var(--ink-3); }
+/* Who found it, when, and where the price was seen: at every width (clean-eyes review T1, F1). On a phone the store
+   leads the line, in full; from 640px it sits under the price. */
+/* One quiet line that flows like a sentence on a phone (pieces wrap as words, not one per line), a flex row from 640px. */
+.sheet-meta { display: block; margin-top: 0.2rem; font-size: 0.76rem; line-height: 1.45; color: var(--ink-3); }
+.sheet-meta > * { display: inline; vertical-align: baseline; white-space: nowrap; }
+/* The agent's mark and name stay together, as one word of the line. */
+.sheet-meta .agent-tag { display: inline-flex; align-items: center; vertical-align: bottom; }
+/* On a phone the quiet line runs under the title and the price, the row's full width (beside the price it had ~170px). */
+@media (max-width: 639.98px) {
+  .sheet-main { display: contents; }
+  .sheet-title { grid-row: 1; }
+  .sheet-meta { grid-row: 2; grid-column: 1 / -1; margin-top: 0; }
+  .sheet-row.has-photo .sheet-meta { grid-column: 2 / -1; }
+  .sheet-row.has-photo .sheet-thumb { grid-row: 1 / span 2; }
+  .sheet-price, .row-toggle { grid-row: 1; }
 }
+/* The line may break before a dot (a zero-width space, outside the piece's nowrap), never inside a piece. */
+.sheet-meta > * + *::before { content: "\200B·"; white-space: normal; margin: 0 0.35rem 0 0.3rem; color: var(--ink-3); }
+@media (min-width: 640px) { .sheet-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.45rem; font-size: 0.8rem; } .sheet-meta > * + *::before { margin: 0 0.45rem 0 0; } .sheet-meta-store { display: none; } .sheet-meta-store + *::before { content: none; } }
 .sheet-price { display: grid; justify-items: end; text-align: right; font-variant-numeric: tabular-nums; }
 .sheet-price .price { font-size: 0.95rem; font-weight: 700; line-height: 1.3; }
 .sheet-price-sub { display: flex; gap: 0.4rem; align-items: baseline; justify-content: flex-end; font-size: 0.78rem; color: var(--ink-3); white-space: nowrap; }
-.sheet-retailer { max-width: 4.75rem; overflow: hidden; text-overflow: ellipsis; }
-@media (min-width: 640px) { .sheet-retailer { max-width: 10rem; } }
+.sheet-retailer { display: none; }
+@media (min-width: 640px) { .sheet-retailer { display: inline; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; } }
 .is-lowest > .sheet-row .price { color: var(--deal); }
 /* The bought one: a soft band that reaches a little past the row's edges (a shadow, so nothing overflows). */
 .is-bought > .sheet-row { background: var(--deal-soft); box-shadow: -0.5rem 0 0 var(--deal-soft), 0.5rem 0 0 var(--deal-soft); }

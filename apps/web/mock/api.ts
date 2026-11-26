@@ -948,7 +948,12 @@ function claimFixture(kind: string, l: ListRow, by: ActorRef, t: string) {
     addProduct(mount, "Belkin MagSafe vent mount Pro", "Apple", "39.99");
     const cargo = addItem("A cargo organizer for the trunk, collapsible");
     addProduct(cargo, "Drive Auto collapsible trunk organizer", "Amazon", "59.37", "79.99");
-    addItem("Sunshade for the windshield that folds small");
+    const shade = addItem("Sunshade for the windshield that folds small");
+    // SPEC 17.1: why nothing was found, in the agent's words.
+    store.comments.push({
+      id: newId("cmt"), list_id: l.id, target_type: "item", target_id: shade.id, url: `${WEB}/l/${l.id}#${shade.id}`, author: by,
+      body: "The folding shades that fit the 2025 Outback are sold out at every store I checked. I'll look again on Friday.", created_at: nowIso(),
+    });
     addItem("A dash cam with parking mode, front and rear");
     addItem("Seat-back organizers for the kids, two of them");
     addItem("A portable jump starter that fits in the glovebox");
@@ -1094,6 +1099,8 @@ function claimPreview(token: string): ClaimPreview {
       .map(({ e, p }) => ({
         title: e.title, retailer: e.retailer ?? "", image_url: e.image_url, product_url: e.product_url,
         price: p?.price ?? null, original_price: p?.original_price ?? null, currency: p?.currency ?? null,
+        // SPEC 17.1: how sure the price is.
+        price_source: p ? (p.source ?? "unknown") : null, verified: p ? p.source === "retailer_page" : false, checked_at: p ? (p.checked_at ?? p.posted_at) : null,
       }));
   const summary = (i: ItemRow): string | null => {
     if (format === "tasks") {
@@ -1126,6 +1133,11 @@ function claimPreview(token: string): ClaimPreview {
       entry_count: listed(i.id).length,
       entries: format === "shopping" ? claimEntries(i.id) : [],
       summary: summary(i),
+      // SPEC 17.1: the newest comment on the item by an agent (on an unclaimed list, only its agent can write).
+      note: (() => {
+        const c = store.comments.filter((x) => x.target_type === "item" && x.target_id === i.id && x.author.kind === "agent").sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+        return c ? { text: c.body.slice(0, 280), at: c.created_at } : null;
+      })(),
     })),
     agent_name: k.agent_name,
     expires_at: k.expires_at,

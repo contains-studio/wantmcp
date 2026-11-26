@@ -31,7 +31,11 @@ import { useRootData } from "./lib/hooks";
 import { clearSessionCookie, getSessionToken, readCookie } from "./lib/session.server";
 
 export const links: Route.LinksFunction = () => [
+  // The .ico first for browsers that ask for it; the SVG (with its dark-mode colours) for those that take it.
+  { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
   { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  // The home-screen icon (iOS): opaque, 180px.
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 ];
 
 export async function loader({ request }: Route.LoaderArgs) {

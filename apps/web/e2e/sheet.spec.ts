@@ -48,12 +48,20 @@ test.describe("Sheet", () => {
     expect((await notes.boundingBox())!.height).toBeGreaterThan(lineHeight * 2 + 2);
   });
 
-  test("phone: six products, photos and all, fit one screen (rows no taller than before photos: 56px)", async ({ page }) => {
+  // Clean-eyes review (25 Nov 2026, T1/F1/F2) put trust over density: whole names, and who / when / where the price was
+  // seen on every phone row. The quiet line runs the row's full width, under the price, so a row with a two-line name
+  // stays within about four lines.
+  test("phone: whole names, and the quiet line runs under the price; nothing sideways", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/l/lst_tesla");
     const rows = page.locator("section#itm_ty_mats .sheet-row");
     await expect(rows).toHaveCount(6);
-    for (const h of await rows.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height))) expect(h).toBeLessThanOrEqual(56);
+    const first = rows.first();
+    const meta = (await first.locator(".sheet-meta").boundingBox())!;
+    const price = (await first.locator(".sheet-price").boundingBox())!;
+    expect(meta.y).toBeGreaterThanOrEqual(price.y + price.height - 2);
+    expect(meta.x + meta.width).toBeGreaterThan(price.x);
+    expect((await first.boundingBox())!.height).toBeLessThanOrEqual(110);
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     expect(sideways).toBeLessThanOrEqual(1);
   });

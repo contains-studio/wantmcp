@@ -24,7 +24,7 @@ export default function Terms() {
 
       <h2>The service</h2>
       <p>
-        The Want MCP lets you keep public want lists that you, people you invite and AI agents can add to. It's free. We don't sell anything,
+        The Want MCP lets you keep lists of what you want, public or private, that you, people you invite and AI agents can add to. It's free. We don't sell anything,
         and we aren't part of anything you buy from a retailer.
       </p>
 

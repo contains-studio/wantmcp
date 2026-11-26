@@ -67,6 +67,13 @@ export async function loader({ request }: Route.LoaderArgs) {
       waitingTotal: waiting.count,
       showAllQuestions: url.searchParams.get("questions") === "all",
       hasAgent: agents.length > 0,
+      // Per list: whether one of the person's own agents on it has ever connected (review A3).
+      agentUse: Object.fromEntries(
+        cards.map((c) => {
+          const mine = agents.filter((a) => a.list_ids.includes(c.id));
+          return [c.id, mine.length ? { name: (mine.find((a) => a.last_used_at) ?? mine[0]!).name, used: mine.some((a) => a.last_used_at) } : null];
+        }),
+      ),
       listsError,
       flash,
     },
@@ -159,7 +166,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
             ) : (
               <ul className="grid gap-3">
                 {cards.map((c) => (
-                  <ListCardRow key={c.id} card={c} />
+                  <ListCardRow key={c.id} card={c} agentUse={loaderData.agentUse?.[c.id] ?? null} />
                 ))}
               </ul>
             )}
@@ -323,7 +330,7 @@ function AnswerField({
 
 /* ---------------------------------------------------------------- Lists */
 
-function ListCardRow({ card: c }: { card: ListCard }) {
+function ListCardRow({ card: c, agentUse }: { card: ListCard; agentUse: { name: string; used: boolean } | null }) {
   const fi = FORMATS[c.format];
   const progress = c.items > 0 && c.done > 0 ? c.done / c.items : 0;
   return (
@@ -439,7 +446,16 @@ function ListCardRow({ card: c }: { card: ListCard }) {
           </p>
         ) : (c.access?.agents ?? 0) > 0 ? (
           // An agent can write the list but hasn't posted: connecting another isn't the next step.
-          <p className="text-ink-2">{c.access!.agents === 1 ? "An agent is connected. Nothing posted yet." : `${c.access!.agents} agents are connected. Nothing posted yet.`}</p>
+          // "Connected" only once one has been used; a key nobody has used yet says so (review A3).
+          <p className="text-ink-2">
+            {agentUse?.used
+              ? `${agentUse.name} is connected. Nothing posted yet.`
+              : agentUse
+                ? `Key made for ${agentUse.name}. It hasn't connected yet.`
+                : c.access!.agents === 1
+                  ? "An agent can work on this list. Nothing posted yet."
+                  : `${c.access!.agents} agents can work on this list. Nothing posted yet.`}
+          </p>
         ) : (
           <p className="text-ink-2">
             No agent has worked on this yet.{" "}

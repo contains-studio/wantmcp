@@ -17,7 +17,7 @@ test("shopping: products under each want, cheapest first, at most three; a want 
   assert.equal(p.list.counts.items, 7);
   assert.equal(p.list.counts.items_with_entries, 3);
   const mats = p.items[0];
-  assert.deepEqual(Object.keys(mats).sort(), ["entries", "entry_count", "status", "summary", "text"]);
+  assert.deepEqual(Object.keys(mats).sort(), ["entries", "entry_count", "note", "status", "summary", "text"]);
   assert.equal(mats.status, "open");
   assert.equal(mats.summary, null);
   assert.equal(mats.entry_count, 2);
@@ -25,7 +25,7 @@ test("shopping: products under each want, cheapest first, at most three; a want 
     mats.entries.map((e: { price: string }) => e.price),
     ["189.95", "239.99"],
   );
-  assert.deepEqual(Object.keys(mats.entries[0]).sort(), ["currency", "image_url", "original_price", "price", "product_url", "retailer", "title"]);
+  assert.deepEqual(Object.keys(mats.entries[0]).sort(), ["checked_at", "currency", "image_url", "original_price", "price", "price_source", "product_url", "retailer", "title", "verified"]);
   assert.equal(mats.entries[1].original_price, "259.99");
   const empty = p.items.find((i: { entry_count: number }) => i.entry_count === 0);
   assert.deepEqual(empty.entries, []);

@@ -28,7 +28,9 @@ test.describe("the claim page shows the work", () => {
     await expect(mats.locator(".price-was")).toHaveText("$259.99");
     await expect(mats.getByText("WeatherTech", { exact: true })).toBeVisible();
     // Wants with nothing say so.
-    await expect(page.getByText("Nothing found yet")).toHaveCount(4);
+    // Wants with nothing say so, or say why in the agent's words (SPEC 17.1: Muse's note on the sunshade).
+    await expect(page.getByText("Nothing found yet")).toHaveCount(3);
+    await expect(page.getByText(/^Muse:/)).toBeVisible();
     // One primary action, in reach at the bottom of the screen.
     const keep = page.getByRole("button", { name: "Keep this list" });
     await expect(keep).toHaveCount(1);

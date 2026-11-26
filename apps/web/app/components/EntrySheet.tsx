@@ -18,6 +18,13 @@ const updatedOf = (e: Entry) => Date.parse(e.current_price ? checkedAt(e.current
 /** From this many products a want gets a sort control; below it the list is already in price order, cheapest first. */
 export const SORT_FROM = 4;
 
+/** Where the price was seen, in words a person knows (clean-eyes review F2). */
+const SHEET_SOURCE: Record<string, string> = {
+  retailer_page: "checked on the store's page",
+  search: "from a search result",
+  aggregator: "from a price site",
+};
+
 const SORTS: Array<[string, SheetSort, string]> = [
   ["price-asc", { key: "price", dir: "asc" }, "Price, low to high"],
   ["price-desc", { key: "price", dir: "desc" }, "Price, high to low"],
@@ -124,7 +131,8 @@ export function EntrySheet({
                 )}
                 <div className="sheet-main">
                   {/* Two title lines at most, the tag inline after it: about four products per phone screen. */}
-                  <span className="sheet-title line-clamp-2">
+                  {/* The whole name, wrapping (clean-eyes review T1: names cut mid-word on a phone). */}
+                  <span className="sheet-title">
                     <ExtLink href={e.product_url ?? ""} className="link">
                       {e.title}
                       <span className="sr-only"> (opens retailer site in a new tab)</span>
@@ -139,7 +147,11 @@ export function EntrySheet({
                   </span>
                   {/* Who found it and how sure the price is: one quiet line, the trust words as everywhere else. */}
                   <span className="sheet-meta">
-                    <ActorTag actor={e.author} compact />
+                    {/* On a phone the store leads this line (beside the price there it would be cut). */}
+                    {e.retailer && <span className="sheet-meta-store">{e.retailer}</span>}
+                    <span>
+                      <ActorTag actor={e.author} compact />
+                    </span>
                     <span>
                       checked{" "}
                       <time dateTime={updated} title={formatDateTime(updated)}>
@@ -147,7 +159,7 @@ export function EntrySheet({
                       </time>
                       {stale && ", not today"}
                     </span>
-                    {p && <span>{SOURCE_LABEL[p.source ?? "unknown"]}</span>}
+                    {p && <span>{SHEET_SOURCE[p.source ?? "unknown"] ?? SOURCE_LABEL[p.source ?? "unknown"]}</span>}
                     {p?.in_stock === false && <span className="text-warn">out of stock</span>}
                     {e.coupon_code && (
                       <span>

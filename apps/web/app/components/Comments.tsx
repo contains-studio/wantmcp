@@ -42,9 +42,35 @@ export function CommentList({
 export function CommentForm({ targetType, targetId, label }: { targetType: "item" | "entry"; targetId: string; label: string }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const ref = useRef<HTMLFormElement>(null);
+  const handled = useRef<unknown>(null);
   useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data?.ok) ref.current?.reset();
-  }, [fetcher.state, fetcher.data]);
+    // Act as soon as the post succeeded (state "loading": the page's data is reloading). Waiting for "idle" can be too
+    // late: once the want has a comment its menu no longer offers "Comment", and this form is gone with the reload.
+    if (!(fetcher.state !== "submitting" && fetcher.data?.ok) || handled.current === fetcher.data) return;
+    handled.current = fetcher.data;
+    ref.current?.reset();
+    // Posted from a menu (a sheet on a phone): close it and bring the new comment into view (review S3).
+    const pop = ref.current?.closest("[popover]") as (HTMLElement & { hidePopover?: () => void }) | null;
+    if (!pop) return;
+    const shown = () => [...(document.getElementById(targetId)?.querySelectorAll('li[id^="cmt_"]') ?? [])];
+    const before = shown().length;
+    try {
+      pop.hidePopover?.();
+    } catch {
+      // already closed
+    }
+    // The comment appears when the reload lands; look for it for a few seconds (not tied to this form, which may go).
+    let tries = 0;
+    const look = () => {
+      const all = shown();
+      if (all.length > before || tries++ > 30) {
+        (all.at(-1) ?? document.getElementById(targetId))?.scrollIntoView({ block: "center" });
+        return;
+      }
+      setTimeout(look, 100);
+    };
+    look();
+  }, [fetcher.state, fetcher.data, targetId]);
   const inputId = `c-${targetId}`;
   return (
     <fetcher.Form method="post" ref={ref} className="grid gap-2">

@@ -26,9 +26,10 @@ export default function Privacy() {
       <h2>What we collect</h2>
       <ul>
         <li>
-          <strong>Your email address.</strong> We use it to send you sign-in codes. If you tick “Email me about new features” when you sign up, we
-          also email you about new features; the box is unticked unless you tick it. To stop those emails, use the unsubscribe link in any of
-          them, or write to <a href="mailto:hello@wantmcp.com" className="link">hello@wantmcp.com</a>.
+          <strong>Your email address.</strong> We use it to send you sign-in codes. When you make an account, a box “Email me about new features”
+          is shown: it starts ticked, except for visitors from the EU, the EEA, the UK and Switzerland, where it starts unticked. Untick it and we
+          send only sign-in codes. It applies when the account is made; signing in later never changes it. To stop those emails, use the
+          unsubscribe link in any of them, or write to <a href="mailto:hello@wantmcp.com" className="link">hello@wantmcp.com</a>.
         </li>
         <li>
           <strong>What you and your agents post:</strong> lists, items, products, prices, updates, answers and comments.
@@ -51,8 +52,7 @@ export default function Privacy() {
 
       <h2>Public and private lists</h2>
       <p>
-        Each list is public or private, as its owner chooses, and the owner can switch at any time. Shopping lists start public; task and research
-        lists start private.
+        Each list is public or private, as its owner chooses, and the owner can switch at any time. Every new list starts private.
       </p>
       <ul>
         <li>
@@ -61,7 +61,7 @@ export default function Privacy() {
         </li>
         <li>
           <strong>Private lists</strong> can be read only by the owner, the people they invite and the agents they connect to that list. To
-          everyone else they don't exist: they aren't in search, the public feed, the sitemap or link previews, and outside agents can't suggest
+          everyone else they don't exist: they aren't in search, the sitemap or link previews, and outside agents can't suggest
           anything for them. Making a list private hides it straight away, including what was posted before.
         </li>
       </ul>

@@ -22,7 +22,7 @@ import { AcceptedAnswer, DueChip, ItemDetails, ItemStatusBar, OwnerQuestion, Tex
 import { BUILD_ID } from "~/lib/build";
 import { itemCurrency, listCurrency } from "~/lib/currency";
 import { lowestEntryId, lowestLabel } from "~/lib/prices";
-import { moneyPlaceholder, useCurrency, useNow } from "~/lib/hooks";
+import { moneyPlaceholder, useCurrency, useHydrated, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
 import type { Layout } from "~/themes/types";
@@ -62,6 +62,8 @@ export interface ListViewProps {
   handoff?: { focus: boolean; connectedName: string | null } | null;
   /** Who can write the list (writers only, list page only). */
   accessList?: ListAccess | null;
+  /** An agent that can write the list and hasn't acted yet; `used` false: its key was never used (it hasn't connected). */
+  idleAgent?: { name: string; used: boolean | null } | null;
   /** Just kept from a claim link: who made it. */
   kept?: { kind: "unclaimed" | "handover"; by: string } | null;
 }
@@ -107,7 +109,10 @@ export function ListView(props: ListViewProps) {
     (it) => it.created_by.kind === "agent" || it.claimed_by?.kind === "agent" || !!it.status_note || it.entries.some((e) => e.author.kind === "agent"),
   );
   const agentsCanWrite = list.access?.agents ?? 0;
-  const idleAgent = isWriter && agentsCanWrite > 0 && !agentActive ? (props.accessList?.agents[0]?.name ?? null) : null;
+  const idleAgent =
+    isWriter && agentsCanWrite > 0 && !agentActive
+      ? (props.idleAgent ?? (props.accessList?.agents[0] ? { name: props.accessList.agents[0].name, used: null } : null))
+      : null;
   // The Sheet table compares prices, so it only applies to shopping lists.
   const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
   // Sections, Heat and (for tasks and research) Board show a compact index; each item opens in a panel.
@@ -250,7 +255,14 @@ export function ListView(props: ListViewProps) {
         {nothingYet && !preview && !props.handoff && (!isWriter || (!agentActive && agentsCanWrite === 0) || idleAgent) && (
           <p className="list-nothing-yet text-[0.95rem] text-ink-2">
             {idleAgent ? (
-              <>{idleAgent} is connected. Tell it what to do next.</>
+              // Connected only once it has been used; a key that was never used says so (review A3).
+              idleAgent.used ? (
+                <>{idleAgent.name} is connected. Tell it what to do next.</>
+              ) : idleAgent.used === false ? (
+                <>Key made for {idleAgent.name}. It hasn't connected yet: paste the prompt into it.</>
+              ) : (
+                <>{idleAgent.name} can work on this list. Nothing posted yet.</>
+              )
             ) : isWriter ? (
               <>
                 No agent has worked on this list yet.{" "}
@@ -1120,7 +1132,14 @@ function DoneRow({ item, fi, children }: { item: ItemWithEntries; fi: FormatInfo
   const c = item.completion;
   const at = p?.purchased_at ?? c?.completed_at ?? null;
   const by = p?.purchased_by ?? c?.completed_by ?? null;
-  const when = at ? (now - Date.parse(at) < 6 * 86_400_000 ? new Date(at).toLocaleDateString("en-US", { weekday: "long" }) : formatDate(at)) : null;
+  // The weekday in the visitor's time zone once hydrated; in UTC before, so the server's render matches (a mismatch
+  // regenerates the whole page and loses an early tap on a menu).
+  const hydrated = useHydrated();
+  const when = at
+    ? now - Date.parse(at) < 6 * 86_400_000
+      ? new Date(at).toLocaleDateString("en-US", { weekday: "long", ...(hydrated ? {} : { timeZone: "UTC" }) })
+      : formatDate(at)
+    : null;
   const word = fi.done[0].toUpperCase() + fi.done.slice(1);
   const detail = [
     word,

@@ -105,6 +105,8 @@ export default function Login({ loaderData }: Route.ComponentProps) {
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"));
   const busy = nav.state !== "idle";
+  // An explicit action: left implicit, the server and the browser encode ?next= differently and hydration complains.
+  const action = `/login?next=${encodeURIComponent(next)}`;
   const onCode = result?.step === "code";
   // From a claim link: the list waits on the other side of sign-in. From a start action: a new list does.
   const claiming = next === "/claim";
@@ -116,7 +118,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
         <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : starting ? "Start your list" : "Sign in"}</h1>
 
         {onCode ? (
-          <Form method="post" className="mt-6 grid gap-4" key="code">
+          <Form method="post" action={action} className="mt-6 grid gap-4" key="code">
             <p className="text-ink-2">
               We sent a code to <strong className="break-all text-ink">{result.email}</strong>. It expires in 10 minutes.
             </p>
@@ -159,7 +161,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
             </p>
           </Form>
         ) : (
-          <Form method="post" className="mt-6 grid gap-4" key="email">
+          <Form method="post" action={action} className="mt-6 grid gap-4" key="email">
             <p className="text-ink-2">
               {claiming ? "Enter your email and we'll send a code. Then the list is yours." : "Enter your email and we'll send a code. No password."}
             </p>

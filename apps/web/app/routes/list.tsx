@@ -89,10 +89,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   // Just kept from a claim link: one line, once (the cookie is cleared with this response).
   const kept = role === "owner" ? readKept(request) : null;
   const keptHere = kept?.listId === list.id ? kept : null;
-  const [handoff, accessList] = await Promise.all([
+  const [handoff, accessList, idleAgent] = await Promise.all([
     role === "owner" ? orFallback(handoffFor(request, list), null, "/l/:id") : Promise.resolve(null),
     // Who can write it, for writers (older API builds don't have it: the header shows only the counts).
     isWriter ? apiOptional<ListAccess>(request, `/lists/${encodeURIComponent(id)}/access`).catch(() => null) : Promise.resolve(null),
+    isWriter ? idleAgentFor(request, list).catch(() => null) : Promise.resolve(null),
   ]);
   return data(
     {
@@ -108,6 +109,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       isPrivate,
       handoff,
       accessList,
+      idleAgent,
       kept: keptHere,
       // Only this list's theme is sent to the page: custom properties and motif, no theme code.
       // No theme picked: the format's default (Checklist for tasks, Doc for research).
@@ -152,6 +154,21 @@ function agentActive(items: ListDetail["items"]): boolean {
  * "Give this list to your agent" (the owner's next step): until an agent connects to the list or writes on it, or the
  * owner dismisses it. Opened from /app/new with ?new=1, which also moves focus to it.
  */
+/**
+ * An agent that can write the list but hasn't done anything on it yet, and whether it has ever connected: a key that
+ * was never used hasn't connected (clean-eyes review A3). Only the person's own agents carry that (GET /me/agents);
+ * someone else's is known by name only.
+ */
+async function idleAgentFor(request: Request, list: ListDetail): Promise<{ name: string; used: boolean | null } | null> {
+  if ((list.access?.agents ?? 0) === 0 || agentActive(list.items)) return null;
+  const mine = (await api<AgentInfo[]>(request, "/me/agents").catch(() => [] as AgentInfo[])).filter((a) => a.list_ids.includes(list.id));
+  if (mine.length) {
+    const used = mine.find((a) => a.last_used_at);
+    return { name: (used ?? mine[0]!).name, used: !!used };
+  }
+  return null;
+}
+
 async function handoffFor(request: Request, list: ListDetail): Promise<{ focus: boolean; connectedName: string | null } | null> {
   if (dismissedHandoffs(request).includes(list.id)) return null;
   if (agentActive(list.items)) return null;

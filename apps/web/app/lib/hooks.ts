@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useRouteLoaderData } from "react-router";
 import type { UserSelf } from "./types";
 import { defaultCurrency } from "./currency";
@@ -28,4 +29,14 @@ export function useNow(): number {
 /** The MCP URL that asks for sign-in at connect time, for clients that never prompt on first write. */
 export function signinUrl(mcpUrl: string): string {
   return `${mcpUrl}${mcpUrl.includes("?") ? "&" : "?"}signin=1`;
+}
+
+/**
+ * False on the server render and the hydration pass, true after. For text that depends on the visitor's time zone
+ * (a weekday): render a zone-free form first so hydration matches, then the visitor's own.
+ */
+export function useHydrated(): boolean {
+  const [h, setH] = useState(false);
+  useEffect(() => setH(true), []);
+  return h;
 }

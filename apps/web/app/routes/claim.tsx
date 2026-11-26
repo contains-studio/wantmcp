@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { ExtLink } from "~/components/ExtLink";
 import { ProductImage } from "~/components/ProductImage";
-import { formatMoney } from "~/lib/format";
+import { formatMoney, timeAgo } from "~/lib/format";
+import { useNow } from "~/lib/hooks";
 import type { ClaimEntry, ClaimItem, ListFormat } from "~/lib/types";
 import { orUnavailable } from "~/lib/degrade.server";
 import { Unavailable } from "~/components/Unavailable";
@@ -81,7 +82,8 @@ export default function Claim({ loaderData, actionData }: Route.ComponentProps) 
   const ownLink = claim.kind === "handover" && !!user && user.handle === claim.from?.handle;
 
   return (
-    <div className="wrap grid max-w-2xl gap-5 py-6 sm:py-10">
+    <div className="wrap grid max-w-2xl gap-5 pt-6 sm:py-10">
+      {/* No bottom padding on a phone: the Keep bar is the page's last thing, with nothing empty under it (SPEC 17.1). */}
       <header className="grid gap-1">
         <p className="text-[0.95rem] text-ink-2">
           {ownLink
@@ -109,28 +111,25 @@ export default function Claim({ loaderData, actionData }: Route.ComponentProps) 
       {items.length > 0 && (
         <ol aria-label="What's on it" className="card grid divide-y divide-line p-0">
           {items.map((it, i) => (
-            <ClaimItemRow key={i} item={it} format={claim.list.format} />
+            <ClaimItemRow
+              key={i}
+              item={it}
+              format={claim.list.format}
+              who={who}
+              question={claim.open_questions.find((q) => q.item.text === it.text) ?? null}
+            />
           ))}
           {total > items.length && <li className="px-4 py-3 text-[0.9rem] text-ink-3">and {total - items.length} more</li>}
         </ol>
       )}
 
-      {claim.open_questions.length > 0 && (
-        <section aria-labelledby="claim-q" className="grid gap-2 rounded-[14px] bg-card p-4">
-          <h2 id="claim-q" className="text-[0.95rem] font-semibold">
-            {claim.open_questions.length === 1 ? `${who} has a question for you` : `${who} has ${claim.open_questions.length} questions for you`}
-          </h2>
-          <ul className="grid gap-2">
-            {claim.open_questions.slice(0, 3).map((q) => (
-              <li key={q.id} className="grid gap-0.5">
-                <span>{q.text}</span>
-                <span className="text-[0.85rem] text-ink-3">On “{q.item.text}”</span>
-              </li>
-            ))}
-          </ul>
-          <p className="text-[0.85rem] text-ink-3">You can answer once the list is yours.</p>
+      {/* SPEC 17.1: a question sits under its own want (above). One whose want is past the first 20 still shows here. */}
+      {claim.open_questions.filter((q) => !items.some((it) => it.text === q.item.text)).map((q) => (
+        <section key={q.id} aria-label={`A question about ${q.item.text}`} className="card grid gap-2 p-4">
+          <p className="text-[0.85rem] text-ink-3">On “{q.item.text}”</p>
+          <ClaimQuestion question={q} who={who} />
         </section>
-      )}
+      ))}
 
       {ownLink ? (
         <p className="text-ink-2">
@@ -200,10 +199,36 @@ function localWhen(iso: string): string {
 const TASK_STATUS: Record<string, string> = { open: "Open", in_progress: "In progress", waiting_on_owner: "Waiting on you", done: "Done" };
 
 /** One want and what was found under it, in the list page's own product look (image, title, retailer, price). */
-function ClaimItemRow({ item, format }: { item: ClaimItem; format: ListFormat }) {
+type OpenQuestion = { id: string; text: string; options: string[]; item: { id: string; text: string } };
+
+/** The agent's question, with its choices, under its want (SPEC 17.1). Answering comes with keeping the list. */
+function ClaimQuestion({ question: q, who }: { question: OpenQuestion; who: string }) {
+  return (
+    <div className="grid gap-1.5 rounded-[10px] bg-sunk px-3 py-2.5">
+      <p className="text-[0.9rem]">
+        <span className="font-medium text-warn">{who} asks: </span>
+        {q.text}
+      </p>
+      {q.options.length > 0 && (
+        <ul aria-label="Choices" className="flex flex-wrap gap-1.5">
+          {q.options.map((o) => (
+            <li key={o} className="chip">
+              {o}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-[0.8rem] text-ink-3">You can answer once the list is yours.</p>
+    </div>
+  );
+}
+
+function ClaimItemRow({ item, format, who, question }: { item: ClaimItem; format: ListFormat; who: string; question: OpenQuestion | null }) {
   const entries = item.entries ?? [];
   const more = (item.entry_count ?? entries.length) - entries.length;
   const detailed = item.status !== undefined || item.entries !== undefined;
+  // The question is shown in full below, so the status line doesn't also say "A question for you".
+  const asking = item.status === "waiting_on_owner" && !question;
   return (
     <li className="grid gap-2 px-4 py-3.5">
       <p className="font-semibold leading-snug break-words">{item.text}</p>
@@ -212,7 +237,7 @@ function ClaimItemRow({ item, format }: { item: ClaimItem; format: ListFormat })
           <p className="text-[0.9rem] text-deal">Bought</p>
         ) : entries.length > 0 ? (
           <>
-            {item.status === "waiting_on_owner" && <p className="text-[0.88rem] font-medium text-warn">A question for you</p>}
+            {asking && <p className="text-[0.88rem] font-medium text-warn">A question for you</p>}
           <ul className="grid gap-2">
             {entries.map((e, i) => (
               <ClaimProduct key={i} entry={e} />
@@ -220,9 +245,14 @@ function ClaimItemRow({ item, format }: { item: ClaimItem; format: ListFormat })
             {more > 0 && <li className="text-[0.85rem] text-ink-3">and {more} more</li>}
           </ul>
           </>
-        ) : item.status === "waiting_on_owner" ? (
+        ) : asking ? (
           <p className="text-[0.9rem] font-medium text-warn">A question for you</p>
-        ) : (
+        ) : item.note ? (
+          // SPEC 17.1: why nothing was found, in the agent's own words.
+          <p className="text-[0.9rem] text-ink-2">
+            <span className="font-medium">{who}:</span> {item.note.text}
+          </p>
+        ) : question ? null : (
           <p className="text-[0.9rem] text-ink-3">Nothing found yet</p>
         )
       ) : format === "tasks" ? (
@@ -234,15 +264,25 @@ function ClaimItemRow({ item, format }: { item: ClaimItem; format: ListFormat })
         <p className="text-[0.9rem] text-ink-2">
           {item.status === "done" && item.summary ? (
             <>Answer: {item.summary}</>
-          ) : item.status === "waiting_on_owner" ? (
+          ) : asking ? (
             <span className="font-medium text-warn">A question for you</span>
-          ) : (
+          ) : question ? null : (
             <span className="text-ink-3">Not answered yet</span>
           )}
         </p>
       )}
+      {question && <ClaimQuestion question={question} who={who} />}
     </li>
   );
+}
+
+/** SPEC 17.1: how sure the price is, in words: checked on the store's page, or only seen in a search result. */
+function trustLine(e: ClaimEntry, now: number): string | null {
+  if (!e.price || e.verified === undefined) return null;
+  const when = e.checked_at ? ` · ${timeAgo(e.checked_at, now)}` : "";
+  if (e.verified) return `Checked on the store's page${when}`;
+  const from = e.price_source === "aggregator" ? "From a price site" : e.price_source === "user" ? "Entered by hand" : e.price_source === "search" ? "From a search result" : "Where it was seen isn't recorded";
+  return `${from}, not checked on the store's page${when}`;
 }
 
 function ClaimProduct({ entry: e }: { entry: ClaimEntry }) {
@@ -254,6 +294,7 @@ function ClaimProduct({ entry: e }: { entry: ClaimEntry }) {
     <span className="font-medium">{e.title}</span>
   );
   const was = e.price && e.original_price && Number(e.original_price) > Number(e.price) ? e.original_price : null;
+  const trust = trustLine(e, useNow());
   return (
     <li className="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-start gap-3">
       {/* A fixed frame, so nothing moves when the image arrives. */}
@@ -263,6 +304,7 @@ function ClaimProduct({ entry: e }: { entry: ClaimEntry }) {
       <div className="min-w-0 text-[0.92rem] leading-snug">
         <span className="line-clamp-2">{title}</span>
         {e.retailer && <span className="block text-[0.82rem] text-ink-3">{e.retailer}</span>}
+        {trust && <span className="block text-[0.78rem] text-ink-3">{trust}</span>}
       </div>
       <div className="text-right tabular-nums">
         {e.price ? <span className="price text-[1.1rem]">{formatMoney(e.price, e.currency ?? "USD")}</span> : <span className="text-ink-3">–</span>}

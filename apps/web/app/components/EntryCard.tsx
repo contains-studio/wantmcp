@@ -87,7 +87,8 @@ export function EntryCard({ entry, prices, comments, isLowest, lowestText = "Low
 
       <div className="flex min-w-0 flex-col gap-2 sm:p-4 sm:pt-3">
         <div className="flex items-start justify-between gap-2">
-          <p className="truncate text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-ink-3">{entry.retailer || "Retailer not given"}</p>
+          {/* The store in full, wrapping if it must (clean-eyes review T1: "HARBOR ELECT…"). */}
+          <p className="min-w-0 break-words text-[0.78rem] font-semibold uppercase tracking-[0.06em] text-ink-3">{entry.retailer || "Retailer not given"}</p>
           {boughtThis ? (
             <span className="stamp shrink-0">Bought</span>
           ) : isLowest ? (
@@ -105,7 +106,7 @@ export function EntryCard({ entry, prices, comments, isLowest, lowestText = "Low
         </H3>
 
         <PriceBlock price={cur} />
-        <Provenance price={cur} />
+        <Provenance price={cur} author={entry.author} />
 
         {(entry.coupon_code || entry.deal_starts_at || entry.deal_ends_at) && (
           <div className="flex flex-wrap items-center gap-2">

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createList, freshEmail, signIn } from "./helpers";
+import { addItem, createList, freshEmail, signIn } from "./helpers";
 
 /**
  * Share › Share with an agent (owner, 25 Nov 2026): pick the agent, one press creates a write key for the list and
@@ -136,7 +136,7 @@ test("phone: a card's menu is a sheet that names its list, on screen, with the p
   expect(backdrop).not.toBe("rgba(0, 0, 0, 0)");
 });
 
-test("/app: a list with an agent connected but nothing posted says so, not 'Connect one'", async ({ page }) => {
+test("/app and the list: a key that was made but never used says so, not 'Connect one' and not 'connected'", async ({ page }) => {
   await signIn(page, freshEmail("quiet-agent"));
   const id = await createList(page, { format: "Shopping", title: "Quiet agent" });
   await page.goto("/app");
@@ -148,6 +148,11 @@ test("/app: a list with an agent connected but nothing posted says so, not 'Conn
   await panel.getByRole("button", { name: "Create key and copy prompt" }).click();
   await expect(panel.getByText("The key is shown this once.")).toBeVisible();
   await page.goto("/app");
-  await expect(card.getByText("An agent is connected. Nothing posted yet.")).toBeVisible();
+  // A key nobody has used yet hasn't connected: the card says so, and doesn't say "connected" (review A3).
+  await expect(card.getByText("Key made for Claude. It hasn't connected yet.")).toBeVisible();
+  await expect(card.getByText(/is connected/)).toHaveCount(0);
+  await page.goto(`/l/${id}`);
+  await addItem(page, "A good kettle");
+  await expect(page.getByText("Key made for Claude. It hasn't connected yet: paste the prompt into it.")).toBeVisible();
   await expect(card.getByRole("link", { name: /^Connect one/ })).toHaveCount(0);
 });

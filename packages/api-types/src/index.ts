@@ -437,11 +437,19 @@ export interface ClaimItem {
   entries?: ClaimEntry[];
   /** Tasks: the current status note (or, when done, the completion note). Research: the start of the answer. 140 characters; null on shopping. */
   summary?: string | null;
+  /** SPEC 17.1: the newest comment on the item by the agent that started the list (280 characters). Absent from older builds. */
+  note?: { text: string; at: Timestamp } | null;
 }
 
 export interface ClaimEntry {
   title: string;
   retailer: string;
+  /** SPEC 17.1: where the latest price was seen (null without a price). Absent from older API builds. */
+  price_source?: PriceSource | null;
+  /** SPEC 17.1: true only when the price was read on the store's own page. */
+  verified?: boolean;
+  /** SPEC 17.1: when the latest price was checked. */
+  checked_at?: Timestamp | null;
   image_url: string | null;
   product_url: string | null;
   price: Decimal | null;
