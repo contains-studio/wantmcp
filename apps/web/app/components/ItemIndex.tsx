@@ -1,4 +1,4 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { PreviewContext } from "~/components/preview";
 import { DueChip } from "~/components/ItemWork";
 import { ChecklistBox, type ItemWithEntries } from "~/components/ListView";
@@ -6,7 +6,7 @@ import { agentHue, formatMoney, plural } from "~/lib/format";
 import type { FormatInfo } from "~/lib/formats";
 import type { ActorRef } from "~/lib/types";
 
-type Kind = "sections" | "heat" | "board";
+type Kind = "sections" | "heat" | "board" | "gallery";
 
 /**
  * A compact index of a list's items, used by the Sections, Heat and (for tasks and research)
@@ -56,6 +56,20 @@ export function ItemIndex({
     kind === "board"
       ? ([byKey("waiting"), byKey("open"), byKey("working"), byKey("done")].filter(Boolean) as typeof groups)
       : groups.filter((g) => g.items.length > 0);
+
+  if (kind === "gallery") {
+    // Open first (what's waiting on you leads), then the done ones, dimmed, at the end.
+    const ordered = [...waiting, ...working, ...open, ...done];
+    return (
+      <nav id={preview ? undefined : "list-index"} aria-label={`${fi.items[0].toUpperCase()}${fi.items.slice(1)}`} className="ix ix-gallery scroll-mt-24">
+        <ol className="gal-grid">
+          {ordered.map((item, i) => (
+            <GalleryCard key={item.id} item={item} fi={fi} status={statusOf(item)} waitingName={waitingName} working={names.working} doneName={names.done} eager={i < 4} />
+          ))}
+        </ol>
+      </nav>
+    );
+  }
 
   if (kind === "heat") {
     const ordered = [...waiting, ...working, ...open];
@@ -150,7 +164,7 @@ export function ItemIndex({
               const who = item.claimed_by ?? item.completion?.completed_by ?? null;
               return (
                 <li key={item.id} className={`ix-row ${st === "done" ? "is-done" : ""}`}>
-                  {/* The one-tap tick is the writer's (named "Done: …" by ChecklistBox); visitors read the Status column. */}
+                  {/* The one-tap tick is the writer's (named "Mark “…” done" by ChecklistBox); visitors read the Status column. */}
                   {isWriter && (
                     <span className="ix-tick">
                       <ChecklistBox
@@ -249,4 +263,82 @@ function useEscapeCloses() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+}
+
+/** The photos a want can lead with, in order: its best product's (the cheapest with a price), then the newest first. */
+function galleryPick(item: ItemWithEntries) {
+  const listed = item.entries;
+  const priced = listed.filter((e) => e.current_price).sort((a, b) => Number(a.current_price!.price) - Number(b.current_price!.price));
+  const best = priced[0] ?? null;
+  const newest = [...listed].filter((e) => e.image_url).sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const photos = [...new Set([best?.image_url, ...newest.map((e) => e.image_url)].filter((u): u is string => !!u))];
+  return { best, photos };
+}
+
+/** One card: the photo at its natural height (or none: a calm text card), the want, the best price and store, the count. */
+function GalleryCard({
+  item,
+  fi,
+  status,
+  waitingName,
+  working,
+  doneName,
+  eager,
+}: {
+  item: ItemWithEntries;
+  fi: FormatInfo;
+  status: string;
+  waitingName: string;
+  working: string;
+  doneName: string;
+  eager: boolean;
+}) {
+  const { best, photos } = galleryPick(item);
+  // A photo that fails gives way to the next one; with none left, the card is a text card (never a hole).
+  const [tried, setTried] = useState(0);
+  const photo = photos[tried] ?? null;
+  const failed = !photo;
+  const img = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    // Failed before hydration attached onError. A lazy image not fetched yet is "complete" with no size too: only one
+    // that was fetched (currentSrc) counts.
+    const el = img.current;
+    if (el && el.complete && el.currentSrc && el.naturalWidth === 0) setTried((n) => n + 1);
+  }, [photo]);
+  const n = item.entries.length;
+  const p = best?.current_price;
+  return (
+    <li className={`gal-card ${failed ? "is-text" : ""} ${status === "done" ? "is-done" : ""}`}>
+      <a href={`#${item.id}`} className="gal-link">
+        {photo && (
+          <img
+            key={photo}
+            ref={img}
+            src={photo}
+            alt=""
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            referrerPolicy="no-referrer"
+            className="gal-img"
+            onError={() => setTried((n) => n + 1)}
+          />
+        )}
+        <span className="gal-body">
+          {(status === "waiting_on_owner" || status === "in_progress" || status === "done") && (
+            <span className={`gal-pill ${status === "waiting_on_owner" ? "is-warn" : ""}`}>
+              {status === "waiting_on_owner" ? waitingName : status === "in_progress" ? working : doneName}
+            </span>
+          )}
+          <span className="gal-title">{item.text}</span>
+          {p && (
+            <span className="gal-price">
+              <strong>{formatMoney(p.price, p.currency)}</strong>
+              {best?.retailer && <span className="gal-store"> at {best.retailer}</span>}
+            </span>
+          )}
+          <span className="gal-meta">{n ? plural(n, fi.entry) : `No ${fi.entries} yet`}</span>
+        </span>
+      </a>
+    </li>
+  );
 }

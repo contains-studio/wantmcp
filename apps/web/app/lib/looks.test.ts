@@ -5,7 +5,7 @@ import { getThemeView, lookSlug, occasionViews, OFFERED_OCCASIONS, resolveLook, 
 test("Cards is no longer offered", () => {
   assert.deepEqual(
     TEMPLATES.map((t) => t.slug),
-    ["sheet", "today", "doc", "board", "sections", "heat", "tracker"],
+    ["sheet", "today", "doc", "board", "sections", "heat", "tracker", "gallery"],
   );
 });
 

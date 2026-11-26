@@ -9,6 +9,7 @@ import { chanukah } from "./defs/chanukah.ts";
 import { christmas } from "./defs/christmas.ts";
 import { cyberMonday } from "./defs/cyber-monday.ts";
 import { doc } from "./defs/doc.ts";
+import { gallery } from "./defs/gallery.ts";
 import { halloween } from "./defs/halloween.ts";
 import { heat } from "./defs/heat.ts";
 import { kwanzaa } from "./defs/kwanzaa.ts";
@@ -23,7 +24,7 @@ import type { ListFormat } from "../lib/types.ts";
 import { lookView, type ThemeView } from "./view.ts";
 
 /** Templates: how a list is laid out. (The old Cards look, slug `default`, is retired: see resolveLook.) */
-export const TEMPLATES: Theme[] = [sheet, today, doc, board, sections, heat, tracker];
+export const TEMPLATES: Theme[] = [sheet, today, doc, board, sections, heat, tracker, gallery];
 
 /** Occasions: how a list is dressed, on any template. In calendar order from the end of November. */
 export const OCCASIONS: Theme[] = [blackFriday, cyberMonday, chanukah, christmas, kwanzaa, newYear, valentines, halloween, birthday];

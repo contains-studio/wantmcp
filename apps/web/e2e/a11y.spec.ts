@@ -49,11 +49,11 @@ test("look tiles stay whole links in the server HTML", async ({ browser }) => {
   await page.goto("/");
   // 7 layouts and the season's 5 occasions each link to their previews.
   const layouts = page.locator("section[aria-labelledby=looks-h] .look-tile a.stretched-link");
-  await expect(layouts).toHaveCount(7);
+  await expect(layouts).toHaveCount(8);
   await expect(layouts.first()).toHaveAttribute("href", /^\/themes\//);
   const occasions = page.locator("section[aria-labelledby=season-h] .look-tile a.stretched-link");
   await expect(occasions).toHaveCount(5);
   await expect(occasions.first()).toHaveAttribute("href", /^\/themes\/sheet--/);
-  await expect(page.locator(".look-tile .stretched-link")).toHaveCount(12);
+  await expect(page.locator(".look-tile .stretched-link")).toHaveCount(13);
   await ctx.close();
 });

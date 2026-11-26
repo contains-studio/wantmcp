@@ -59,9 +59,10 @@ export type FontKey = keyof typeof FONTS;
  * board: shopping lists get one column per item; task and research lists get status columns
  * of item cards that open in a panel · sheet: a comparison table per item (shopping only) ·
  * sections: an index of rows in collapsible groups, items open in a side panel ·
- * heat: full-width colour-graded bars, items open in a panel.
+ * heat: full-width colour-graded bars, items open in a panel ·
+ * gallery: a masonry of photo cards, one per item, items open in a panel.
  */
-export type Layout = "grid" | "list" | "rows" | "board" | "sheet" | "sections" | "heat";
+export type Layout = "grid" | "list" | "rows" | "board" | "sheet" | "sections" | "heat" | "gallery";
 
 /** Generic style switches defined once in app.css (`.t-<trait>`). */
 export type Trait = "serif-display" | "upper-display" | "italic-display" | "soft" | "mono-meta" | "dense" | "roomy" | "checklist";

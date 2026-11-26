@@ -101,7 +101,11 @@ export function ListView(props: ListViewProps) {
   // Accept would slide the next one under the finger), and the connect card waits until after them.
   const heldCount = isWriter ? (list.awaiting_review ?? items.filter((i) => i.pending_review).length) : 0;
   const wanted = items.filter((i) => !isDone(i)).slice(0, previewItems ?? Infinity);
-  const bought = previewItems ? [] : items.filter(isDone);
+  // Newest first, so what was just checked off sits at the top of the Done group (and isn't folded away).
+  const doneAt = (i: ItemWithEntries) => i.purchase?.purchased_at ?? i.completion?.completed_at ?? "";
+  const bought = previewItems ? [] : items.filter(isDone).sort((a, b) => doneAt(b).localeCompare(doneAt(a)));
+  // The want just checked off, for "Bought “…”. Undo" (owner, 26 Nov 2026: check-offs on the Checklist look).
+  const [justChecked, setJustChecked] = useState<JustChecked | null>(null);
   const listCurrencyHint = listCurrency(items);
   const productCount = items.reduce((n, i) => n + i.entries.length, 0);
   // Nothing posted on any want yet: one line for the list instead of one per want.
@@ -118,7 +122,7 @@ export function ListView(props: ListViewProps) {
   // The Sheet table compares prices, so it only applies to shopping lists.
   const layout: Layout = theme.layout === "sheet" && !shopping ? "list" : theme.layout;
   // Sections, Heat and (for tasks and research) Board show a compact index; each item opens in a panel.
-  const indexKind = layout === "sections" || layout === "heat" || (layout === "board" && !shopping) ? layout : null;
+  const indexKind = layout === "sections" || layout === "heat" || layout === "gallery" || (layout === "board" && !shopping) ? layout : null;
   const className = `${theme.className.replace(/\blayout-\w+\b/, `layout-${layout}`)} format-${fi.format}${indexKind ? " has-index" : ""}${previewItems ? "" : " list-page"}`;
 
   // Row 2 of the header: counts, and for anyone but the owner, whose list it is and (if over a day) its age.
@@ -137,6 +141,7 @@ export function ListView(props: ListViewProps) {
 
   return (
     <PreviewContext.Provider value={preview}>
+    <CheckedContext.Provider value={setJustChecked}>
     <div
       className={className}
       style={{ ...theme.style, ["--list-progress" as string]: items.length - heldCount > 0 ? items.filter(isDone).length / (items.length - heldCount) : 0 } as React.CSSProperties}
@@ -320,7 +325,7 @@ export function ListView(props: ListViewProps) {
               <H2 id={`${list.id}-bought-h`} className="text-2xl font-semibold">{fi.doneGroup}</H2>
               <div className="divider-dots flex-1" />
             </div>
-            {bought.map((item) => {
+            {(indexKind ? bought : bought.slice(0, DONE_SHOWN)).map((item) => {
               const section = (
               <ItemSection
                 fi={fi}
@@ -342,8 +347,38 @@ export function ListView(props: ListViewProps) {
               // Index layouts already show a done item as one compact row; elsewhere it collapses to one line, the rest behind it.
               return indexKind ? section : <DoneRow key={item.id} item={item} fi={fi}>{section}</DoneRow>;
             })}
+            {/* After a few, the rest of the Done group folds (owner, 26 Nov 2026). */}
+            {!indexKind && bought.length > DONE_SHOWN && (
+              <details className="done-more group">
+                <summary className="textlink-btn text-[0.9rem]">
+                  Show {bought.length - DONE_SHOWN} more {fi.done}
+                </summary>
+                <div className="mt-4 grid gap-10">
+                  {bought.slice(DONE_SHOWN).map((item) => (
+                    <DoneRow key={item.id} item={item} fi={fi}>
+                      <ItemSection
+                        fi={fi}
+                        layout={layout}
+                        checklist={theme.checklist}
+                        item={item}
+                        prices={prices}
+                        commentsFor={commentsFor}
+                        isWriter={isWriter}
+                        role={role}
+                        user={user}
+                        canDeleteComment={canDeleteComment}
+                        inPanel={false}
+                        ownerHandle={list.owner_handle}
+                        listCurrency={listCurrencyHint}
+                      />
+                    </DoneRow>
+                  ))}
+                </div>
+              </details>
+            )}
           </section>
         )}
+        {isWriter && justChecked && <UndoCheck key={justChecked.itemId} checked={justChecked} fi={fi} onDone={() => setJustChecked(null)} />}
         </div>
 
         {props.handoff && !preview && heldCount > 0 && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
@@ -366,6 +401,7 @@ export function ListView(props: ListViewProps) {
         )}
       </div>
     </div>
+    </CheckedContext.Provider>
     </PreviewContext.Provider>
   );
 }
@@ -1043,6 +1079,46 @@ export function DetailsPrompt({ itemId, fi, onDone }: { itemId: string; fi: Form
   );
 }
 
+type JustChecked = { itemId: string; text: string; shopping: boolean };
+/** Set by a box the moment it's checked, so the list can offer Undo even as the row moves to the Done group. */
+const CheckedContext = createContext<((c: JustChecked | null) => void) | null>(null);
+const DONE_SHOWN = 3;
+
+/** "Bought “Wool socks”. Undo": right after a check-off, at the bottom of the screen, until undone or after a while. */
+function UndoCheck({ checked, fi, onDone }: { checked: JustChecked; fi: FormatInfo; onDone: () => void }) {
+  const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  useEffect(() => {
+    const t = setTimeout(onDone, 12_000);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data?.ok) onDone();
+  }, [fetcher.state, fetcher.data, onDone]);
+  const word = fi.done[0].toUpperCase() + fi.done.slice(1);
+  return (
+    <div role="status" className="undo-check">
+      <span className="min-w-0 flex-1 truncate">
+        {word} “{checked.text}”.
+      </span>
+      <fetcher.Form method="post">
+        {checked.shopping ? (
+          <input type="hidden" name="intent" value="unpurchase" />
+        ) : (
+          <>
+            <input type="hidden" name="intent" value="set-status" />
+            <input type="hidden" name="status" value="open" />
+          </>
+        )}
+        <input type="hidden" name="item_id" value={checked.itemId} />
+        <button className="btn btn-sm" disabled={fetcher.state !== "idle"}>
+          Undo<span className="sr-only"> {word.toLowerCase()} for {checked.text}</span>
+        </button>
+      </fetcher.Form>
+      {fetcher.data?.error && <span className="form-error w-full">{fetcher.data.error}</span>}
+    </div>
+  );
+}
+
 export function ChecklistBox({
   itemId,
   text,
@@ -1062,11 +1138,16 @@ export function ChecklistBox({
   waiting?: boolean;
 }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
+  const setJustChecked = useContext(CheckedContext);
   const busy = fetcher.state !== "idle";
   // No optimistic tick: the box shows what the server says. A refusal (an open question, a claim)
   // comes back as an error, shown next to the box with a way to the question.
   const checked = bought;
   const error = fetcher.state === "idle" ? fetcher.data?.error : undefined;
+  // Refused (an open question, a claim): no Undo to offer.
+  useEffect(() => {
+    if (error) setJustChecked?.(null);
+  }, [error, setJustChecked]);
   if (!canWrite) {
     // Visitors get a status mark, not something that looks tickable: a tick when done, a small dot while open.
     return checked ? (
@@ -1078,7 +1159,7 @@ export function ChecklistBox({
     );
   }
   return (
-    <fetcher.Form method="post" className="relative">
+    <fetcher.Form method="post" className="relative" onSubmit={() => !checked && setJustChecked?.({ itemId, text, shopping })}>
       {shopping ? (
         <input type="hidden" name="intent" value={checked ? "unpurchase" : "purchase"} />
       ) : (
@@ -1093,7 +1174,7 @@ export function ChecklistBox({
         role="checkbox"
         aria-checked={checked}
         aria-busy={busy || undefined}
-        aria-label={`${doneWord[0].toUpperCase()}${doneWord.slice(1)}: ${text}`}
+        aria-label={checked ? `Mark “${text}” not ${doneWord}` : `Mark “${text}” ${doneWord}`}
         className={`check-toggle ${busy ? "opacity-60" : ""}`}
         disabled={busy}
       >

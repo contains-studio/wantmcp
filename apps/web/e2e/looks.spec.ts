@@ -47,13 +47,13 @@ test("gallery: tap a miniature, Save, and the list wears it; an occasion re-dres
   const id = await createList(page, { format: "Shopping", title: "Gallery" });
   const look = await openLook(page, id);
   const minis = look.locator(".look-gallery [data-list-theme]");
-  await expect(minis).toHaveCount(7);
+  await expect(minis).toHaveCount(8);
   // The default is marked in words, the chosen one with a ring and a check.
   await expect(look.locator(".look-choice.is-on .look-note")).toHaveText(/default$/);
   await expect(look.locator(".look-choice.is-on .look-check")).toHaveCount(1);
 
   await look.getByRole("radio", { name: "Christmas" }).check({ force: true });
-  await expect.poll(() => minis.evaluateAll((els) => els.filter((e) => e.getAttribute("data-list-theme")!.endsWith("--christmas")).length)).toBe(7);
+  await expect.poll(() => minis.evaluateAll((els) => els.filter((e) => e.getAttribute("data-list-theme")!.endsWith("--christmas")).length)).toBe(8);
 
   await look.locator(".look-choice", { hasText: "Board" }).click();
   await expect(look.getByRole("radio", { name: /^Board\b/ })).toBeChecked();
@@ -102,7 +102,7 @@ test("gallery: a tasks list shows only the layouts tasks lists offer (no Sheet)"
   await signIn(page, freshEmail("gallery-tasks"));
   const id = await createList(page, { format: "Tasks", title: "Tasks gallery" });
   const look = await openLook(page, id);
-  await expect(look.locator(".look-gallery .look-choice")).toHaveCount(6);
+  await expect(look.locator(".look-gallery .look-choice")).toHaveCount(7);
   await expect(look.getByRole("radio", { name: /^Sheet\b/ })).toHaveCount(0);
 });
 

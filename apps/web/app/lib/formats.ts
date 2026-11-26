@@ -59,7 +59,7 @@ export const FORMATS: Record<ListFormat, FormatInfo> = {
     waitingWriter: "Waiting for an agent to find something. Ask one of your connected agents to shop for this.",
     defaultTheme: "sheet",
     defaultVisibility: "public",
-    suits: ["sheet", "board", "tracker"],
+    suits: ["sheet", "board", "tracker", "gallery"],
   },
   tasks: {
     format: "tasks",

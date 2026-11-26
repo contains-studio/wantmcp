@@ -90,7 +90,7 @@ test("no promises the product can't keep", () => {
 });
 
 test("every list names a current layout (no retired Cards, no occasion without a layout)", () => {
-  const LAYOUTS = ["sheet", "today", "doc", "board", "sections", "heat", "tracker"];
+  const LAYOUTS = ["sheet", "today", "doc", "board", "sections", "heat", "tracker", "gallery"];
   // Offered occasions only (Valentine's Day and Halloween are out of season).
   const OCCASIONS = ["black-friday", "cyber-monday", "chanukah", "christmas", "kwanzaa", "new-year", "birthday"];
   for (const p of personas)
