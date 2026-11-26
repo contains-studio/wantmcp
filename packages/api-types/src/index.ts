@@ -695,3 +695,36 @@ export interface FeedbackStatus {
   received_at: Timestamp;
   updated_at: Timestamp;
 }
+
+/** GET /me/activity (server 4e7db49): what happened on the lists the person writes, newest first, their own actions included. */
+export type ActivityType =
+  | "entry.suggested"
+  | "entry.listed"
+  | "comment.created"
+  | "price.posted"
+  | "item.created"
+  | "item.purchased"
+  | "item.status_changed"
+  | "question.asked"
+  | "question.answered";
+export interface ActivityEvent {
+  /** The event's seq; the last one on a page is the next page's cursor. */
+  id: string;
+  type: ActivityType;
+  at: Timestamp;
+  list: { id: string; title: string };
+  item: { id: string; text: string } | null;
+  actor: { kind: "person" | "agent" | "outsider"; name: string; handle?: string };
+  by: "you" | "your_agent" | "other";
+  text: {
+    entry_title?: string;
+    price?: { amount: Decimal; currency: string; verified?: boolean };
+    accepted?: boolean;
+    comment?: string;
+    question?: string;
+    options?: string[];
+    answer?: string;
+    status?: ItemStatus;
+    status_note?: string;
+  };
+}

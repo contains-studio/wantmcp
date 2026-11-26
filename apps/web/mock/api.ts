@@ -10,7 +10,7 @@
  * Sign-in: any email, code 123456.
  */
 import type {
-  ActorRef, AgentInfo, ClaimPreview, Skill, HandoverResult, ListWithSummary, UnclaimedListResult, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
+  ActivityEvent, ActorRef, AgentInfo, ClaimPreview, Skill, HandoverResult, ListWithSummary, UnclaimedListResult, Comment, Entry, EntryInput, EventType, FeedEntry, Item, ItemStatus, ListDetail, ListFormat, ListSummary, ListVisibility,
   ItemSummary, ListSummaryPage, Member, OpenQuestionsPage, Page, PriceInput, PriceObservation, PriceSource, PurchaseInput, Question, UserSelf, WantEvent,
 } from "../app/lib/types.ts";
 import { HANDOVER_TTL_DAYS, UNCLAIMED_TTL_HOURS } from "../app/lib/claims.ts";
@@ -596,6 +596,61 @@ route("GET", "/me/feed", ({ caller, url }) => {
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .map(feedRow);
   return paginate(rows, url.searchParams.get("cursor"));
+});
+
+// GET /me/activity (server 4e7db49): every kind of event on the lists the person writes, theirs included, newest
+// first. The mock has no event log for its seed, so it derives the events from what the store holds.
+route("GET", "/me/activity", ({ caller, url }) => {
+  const c = requireSession(caller);
+  const listId = url.searchParams.get("list_id");
+  const lists = store.lists.filter((l) => canWrite(c, l.id) && (!listId || l.id === listId));
+  const ids = new Set(lists.map((l) => l.id));
+  const listOf = (id: string) => {
+    const l = store.lists.find((x) => x.id === id)!;
+    return { id: l.id, title: l.title };
+  };
+  const itemOf = (id: string | null | undefined) => {
+    const i = id ? store.items.find((x) => x.id === id) : null;
+    return i ? { id: i.id, text: i.text } : null;
+  };
+  const actor = (a: ActorRef): ActivityEvent["actor"] =>
+    a.kind === "user" ? { kind: "person", name: a.handle, handle: a.handle } : a.kind === "agent" ? { kind: "agent", name: a.name, handle: a.owner_handle } : { kind: "outsider", name: a.name ?? "An outside agent" };
+  const by = (a: ActorRef): ActivityEvent["by"] =>
+    a.kind === "user" && a.handle === c.user.handle ? "you" : a.kind === "agent" && a.owner_handle === c.user.handle ? "your_agent" : "other";
+  const out: Array<Omit<ActivityEvent, "id">> = [];
+  const ev = (type: ActivityEvent["type"], at: string, list: string, item: string | null | undefined, who: ActorRef, text: ActivityEvent["text"]) =>
+    out.push({ type, at, list: listOf(list), item: itemOf(item), actor: actor(who), by: by(who), text });
+  for (const i of store.items.filter((x) => ids.has(x.list_id))) {
+    ev("item.created", i.created_at, i.list_id, i.id, i.created_by, {});
+    if (i.purchase) ev("item.purchased", i.purchase.purchased_at, i.list_id, i.id, i.purchase.purchased_by, i.purchase.price ? { price: { amount: i.purchase.price, currency: i.purchase.currency ?? "USD" } } : {});
+    if (i.completion) ev("item.status_changed", i.completion.completed_at, i.list_id, i.id, i.completion.completed_by, { status: "done", ...(i.completion.note ? { status_note: i.completion.note } : {}) });
+    else if (i.status === "in_progress" && i.claimed_by && i.claimed_at) ev("item.status_changed", i.claimed_at, i.list_id, i.id, i.claimed_by, { status: "in_progress", ...(i.status_note ? { status_note: i.status_note } : {}) });
+  }
+  for (const e of store.entries.filter((x) => ids.has(x.list_id) && x.status !== "rejected")) {
+    const prices = store.prices.filter((p) => p.entry_id === e.id).sort((a, b) => a.posted_at.localeCompare(b.posted_at));
+    const first = prices[0];
+    ev(e.status === "suggested" ? "entry.suggested" : "entry.listed", e.created_at, e.list_id, e.item_id, e.author, {
+      entry_title: e.title,
+      ...(first ? { price: { amount: first.price, currency: first.currency, verified: first.verified ?? false } } : {}),
+    });
+    for (const p of prices.slice(1)) ev("price.posted", p.posted_at, e.list_id, e.item_id, p.posted_by, { entry_title: e.title, price: { amount: p.price, currency: p.currency, verified: p.verified ?? false } });
+  }
+  for (const cm of store.comments.filter((x) => ids.has(x.list_id))) {
+    const item = cm.target_type === "item" ? cm.target_id : store.entries.find((e) => e.id === cm.target_id)?.item_id;
+    ev("comment.created", cm.created_at, cm.list_id, item, cm.author, { comment: cm.body.length > 280 ? `${cm.body.slice(0, 277).replace(/\s+\S*$/, "")}…` : cm.body });
+  }
+  for (const q of store.questions) {
+    const i = store.items.find((x) => x.id === q.item_id);
+    if (!i || !ids.has(i.list_id)) continue;
+    ev("question.asked", q.asked_at, i.list_id, i.id, q.asked_by, { question: q.text, options: q.options });
+    if (q.answer) ev("question.answered", q.answer.answered_at, i.list_id, i.id, q.answer.answered_by, { question: q.text, answer: q.answer.text });
+  }
+  const rows = out.sort((a, b) => b.at.localeCompare(a.at)).map((e, n) => ({ id: String(out.length - n), ...e }));
+  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") ?? "50", 10) || 50));
+  const cursor = url.searchParams.get("cursor");
+  const start = cursor ? rows.findIndex((r) => r.id === cursor) + 1 : 0;
+  const data = rows.slice(start, start + limit);
+  return { data, next_cursor: start + limit < rows.length ? data.at(-1)!.id : null };
 });
 
 // SPEC 13.6: account keys (ak_) agents made for themselves; the person can see and remove them.

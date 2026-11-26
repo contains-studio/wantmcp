@@ -44,8 +44,26 @@ test("list settings: hand-over sits with Delete; a member shows as the email the
   await expect(page.getByText("heron@example.com")).toBeAttached();
 });
 
-test("Activity says what it holds", async ({ page }) => {
+test("Activity: every kind of event in plain sentences, your own included, bursts folded, each linked to its want", async ({ page }) => {
   await signIn(page, DEMO);
   await page.goto("/app/activity");
-  await expect(page.getByText("What agents found and posted on your lists")).toBeVisible();
+  await expect(page.getByText("Everything on your lists, newest first")).toBeVisible();
+  const rows = page.locator("ol.card > li");
+  // Questions, answers, comments and finds all appear, and the person's own actions say "You".
+  await expect(rows.filter({ hasText: /asked: “/ }).first()).toBeVisible();
+  await expect(rows.filter({ hasText: /^You answered “/ }).first()).toBeVisible();
+  await expect(rows.filter({ hasText: /commented: “/ }).first()).toBeVisible();
+  await expect(rows.filter({ hasText: / found .+ for \$/ }).first()).toBeVisible();
+  // A row links to its want on the list.
+  const link = rows.filter({ hasText: /asked: “/ }).first().locator("a[href*='/l/']").first();
+  await expect(link).toHaveAttribute("href", /\/l\/[^#]+#itm_/);
+  // A burst from one actor on one list is one row that opens to the rest.
+  const burst = rows.filter({ has: page.locator("details") }).first();
+  await expect(burst).toContainText(/ \d+ /);
+  await burst.locator("summary").click();
+  await expect(burst.locator("details ul > li").first()).toBeVisible();
+  // The filter by list still works.
+  await page.getByRole("navigation", { name: "Show activity for" }).getByRole("link", { name: "Moving day: things to sort" }).click();
+  await expect(page).toHaveURL(/list=lst_tasks/);
+  for (const t of await rows.allTextContents()) expect(t).not.toContain("Home office refresh");
 });

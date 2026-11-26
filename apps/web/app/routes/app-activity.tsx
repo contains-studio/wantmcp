@@ -1,21 +1,22 @@
 /**
- * /app/activity: everything agents posted across the person's lists, newest first (the feed the
- * spec requires), one or two lines a row. Filter by list with one row of chips.
+ * /app/activity: everything that happened on the person's lists, newest first (GET /me/activity): finds, prices,
+ * questions and answers, comments, what was added, bought or done, their own actions included. One plain sentence a
+ * row; a burst of the same thing from one actor on one list folds into one row, so twenty finds never bury a question.
+ * Filter by list with one row of chips.
  */
 import { orFallback, orUnavailable } from "~/lib/degrade.server";
 import { data, Link } from "react-router";
 import type { Route } from "./+types/app-activity";
 import { ActorTag } from "~/components/ActorTag";
-import { CommentForm } from "~/components/Comments";
 import { LiveUpdates } from "~/components/LiveUpdates";
-import { ProductImage } from "~/components/ProductImage";
 import { Time } from "~/components/Time";
 import { api } from "~/lib/api.server";
 import { loadCards } from "~/lib/app-home.server";
 import { requireUser } from "~/lib/auth.server";
 import { formatMoney } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
-import type { FeedEntry, ListSummary, Page } from "~/lib/types";
+import { FORMATS } from "~/lib/formats";
+import type { ActivityEvent, ListFormat, ListSummary, Page } from "~/lib/types";
 import { ViewSwitch } from "./app";
 
 export function meta() {
@@ -29,11 +30,13 @@ export async function loader({ request }: Route.LoaderArgs) {
   const cursor = url.searchParams.get("cursor");
   const [lists, feedResult] = await Promise.all([
     api<ListSummary[]>(request, "/me/lists"),
-    orUnavailable(api<Page<FeedEntry>>(request, "/me/feed", { query: { list_id: listId, cursor } }), "/app/activity"),
+    orUnavailable(api<Page<ActivityEvent>>(request, "/me/activity", { query: { list_id: listId, cursor, limit: 60 } }), "/app/activity"),
   ]);
-  const feed: Page<FeedEntry> = feedResult.value ?? { data: [], next_cursor: null };
+  const feed: Page<ActivityEvent> = feedResult.value ?? { data: [], next_cursor: null };
   const feedUnavailable = feedResult.unavailable;
   const chips = [...lists].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).map((l) => ({ id: l.id, title: l.title }));
+  // Each list's own words for a burst ("12 products", "3 questions").
+  const formats = Object.fromEntries(lists.map((l) => [l.id, l.format ?? "shopping"])) as Record<string, ListFormat>;
   // What agents say they are doing now (status_note), on the first page only.
   const working = cursor
     ? []
@@ -41,7 +44,7 @@ export async function loader({ request }: Route.LoaderArgs) {
         .filter((c) => c.note && (!listId || c.id === listId))
         .map((c) => ({ listId: c.id, listTitle: c.title, ...c.note! }))
         .sort((a, b) => b.at.localeCompare(a.at));
-  return data({ chips, listId, cursor, feed, working, feedUnavailable }, { headers: { "Cache-Control": "private, no-store" } });
+  return data({ chips, formats, listId, cursor, feed, working, feedUnavailable }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -49,7 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Activity({ loaderData }: Route.ComponentProps) {
-  const { chips, listId, cursor, feed, working, feedUnavailable } = loaderData;
+  const { chips, formats, listId, cursor, feed, working, feedUnavailable } = loaderData;
   const q = (id: string | null, c?: string | null) => {
     const p = new URLSearchParams();
     if (id) p.set("list", id);
@@ -63,9 +66,8 @@ export default function Activity({ loaderData }: Route.ComponentProps) {
         <header className="grid gap-5">
           <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] sm:text-[2.4rem]">Activity</h1>
           <ViewSwitch current="activity" />
-          {/* Says what it holds (review C1): the API's feed has finds and posts only; questions, answers, comments and
-              purchases have no history route yet, so they stay on each list. */}
-          <p className="text-[0.92rem] text-ink-2">What agents found and posted on your lists, newest first. Questions, comments and purchases are on each list.</p>
+          {/* Says what it holds (review C1). */}
+          <p className="text-[0.92rem] text-ink-2">Everything on your lists, newest first: what was found, questions and answers, comments, and what was bought or done.</p>
         </header>
         <LiveUpdates query="scope=me" />
 
@@ -117,16 +119,16 @@ export default function Activity({ loaderData }: Route.ComponentProps) {
           </p>
         ) : feed.data.length === 0 ? (
           <div className="card grid justify-items-start gap-3 p-6">
-            <p className="font-semibold">Nothing posted yet</p>
-            <p className="text-ink-2">When an agent finds something or posts an update, it shows here.</p>
+            <p className="font-semibold">Nothing has happened yet</p>
+            <p className="text-ink-2">When an agent finds something, asks you a question or posts an update, it shows here.</p>
             <Link to={listId ? `/connect?list=${listId}` : "/connect"} className="btn btn-sm">
               Connect an agent
             </Link>
           </div>
         ) : (
           <ol className="card grid divide-y divide-line p-0">
-            {feed.data.map((row) => (
-              <ActivityRow key={row.entry.id} row={row} />
+            {groupEvents(feed.data).map((g) => (
+              <ActivityRow key={g[0].id} group={g} format={formats[g[0].list.id] ?? "shopping"} />
             ))}
           </ol>
         )}
@@ -150,52 +152,198 @@ export default function Activity({ loaderData }: Route.ComponentProps) {
   );
 }
 
-/** Who did what, the price when there is one, for which want, on which list, when. */
-function ActivityRow({ row }: { row: FeedEntry }) {
-  const { entry: e, item, list } = row;
-  const href = `/l/${list.id}#${e.id}`;
-  const suggested = e.status === "suggested";
-  const kind = e.kind ?? "product";
-  const verb = suggested ? "suggested" : kind === "product" ? "found" : kind === "answer" ? "answered" : "posted";
-  // Outside suggestions are untrusted text: no image, no link to their URL, reviewed on the list.
-  const image = !suggested && kind === "product" && e.image_url;
+/** Kinds that come in bursts from one agent run: a run of them by one actor on one list is one row. */
+const BURSTY = new Set<ActivityEvent["type"]>(["entry.listed", "entry.suggested", "price.posted", "item.created"]);
+const BURST_WINDOW = 3 * 3600_000;
+
+/** Newest first, consecutive same-kind events by one actor on one list within a few hours fold together. */
+export function groupEvents(events: ActivityEvent[]): ActivityEvent[][] {
+  const out: ActivityEvent[][] = [];
+  for (const e of events) {
+    const g = out.at(-1);
+    const head = g?.[0];
+    if (
+      g &&
+      head &&
+      BURSTY.has(e.type) &&
+      e.type === head.type &&
+      e.list.id === head.list.id &&
+      e.actor.kind === head.actor.kind &&
+      e.actor.name === head.actor.name &&
+      Date.parse(head.at) - Date.parse(e.at) < BURST_WINDOW
+    )
+      g.push(e);
+    else out.push([e]);
+  }
+  return out;
+}
+
+const money = (p: ActivityEvent["text"]["price"]) => (p ? formatMoney(p.amount, p.currency) : null);
+
+/** Who, in the sentence: "You", or the agent's or person's name. */
+function Who({ e }: { e: ActivityEvent }) {
+  if (e.by === "you") return <span className="font-semibold">You</span>;
   return (
-    <li className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 px-5 py-4">
-      <div className="min-w-0">
-        <p className="leading-snug">
-          <ActorTag actor={e.author} compact /> <span className="text-ink-2">{verb}</span>{" "}
-          <Link to={suggested ? `/l/${list.id}#sugg-h` : href} className="link font-medium">
-            {e.title}
-          </Link>
-          {e.current_price && (
+    <span className="font-semibold">
+      {e.actor.name}
+      {e.by === "your_agent" && <span className="sr-only">, your agent</span>}
+    </span>
+  );
+}
+
+/** At most `max` characters, cut at a word: item texts can be paragraphs. */
+const cut = (t: string, max = 70) => {
+  if (t.length <= max) return t;
+  const c = t.slice(0, max);
+  const at = c.lastIndexOf(" ");
+  return `${(at > max / 2 ? c.slice(0, at) : c).replace(/[\s,;:.…-]+$/, "")}…`;
+};
+const quote = (t: string | undefined, max = 200) => (t ? `“${cut(t, max)}”` : "");
+
+/** One event as a plain sentence after its actor. */
+function sentence(e: ActivityEvent): React.ReactNode {
+  const t = e.text;
+  const item = e.item?.text;
+  switch (e.type) {
+    case "entry.listed": {
+      if (t.accepted) return <>accepted the suggestion {quote(t.entry_title)}</>;
+      const p = money(t.price);
+      return p ? (
+        <>
+          found {t.entry_title} for <strong className="font-semibold tabular-nums">{p}</strong>
+        </>
+      ) : (
+        <>posted {quote(t.entry_title)}</>
+      );
+    }
+    case "entry.suggested":
+      return e.actor.kind === "outsider" ? <>suggested {quote(t.entry_title)}</> : <>suggested {quote(t.entry_title)} from outside</>;
+    case "price.posted":
+      return (
+        <>
+          checked {t.entry_title}: <strong className="font-semibold tabular-nums">{money(t.price)}</strong>
+        </>
+      );
+    case "comment.created":
+      return <>commented: {quote(t.comment)}</>;
+    case "question.asked":
+      return <>asked: {quote(t.question)}</>;
+    case "question.answered":
+      return (
+        <>
+          answered {quote(t.answer)}
+          {t.question && <span className="text-ink-2"> to {quote(t.question, 90)}</span>}
+        </>
+      );
+    case "item.created":
+      return <>added {quote(item, 90)}</>;
+    case "item.purchased": {
+      const p = money(t.price);
+      return (
+        <>
+          bought {quote(item)}
+          {p && (
             <>
               {" "}
-              <span className="text-ink-2">for</span>{" "}
-              <strong className="font-semibold tabular-nums">{formatMoney(e.current_price.price, e.current_price.currency)}</strong>
+              for <strong className="font-semibold tabular-nums">{p}</strong>
             </>
           )}
-          {suggested && <span className="chip chip-warn ml-2">Outside suggestion</span>}
+        </>
+      );
+    }
+    case "item.status_changed": {
+      const what =
+        t.status === "done" ? <>marked {quote(item)} done</> : t.status === "in_progress" ? <>started on {quote(item)}</> : t.status === "waiting_on_owner" ? <>is waiting on you about {quote(item)}</> : <>reopened {quote(item)}</>;
+      return (
+        <>
+          {what}
+          {t.status_note && <>: {quote(t.status_note)}</>}
+        </>
+      );
+    }
+    default:
+      return <>changed {quote(item)}</>;
+  }
+}
+
+/** A folded burst, in the list's own words: "found 12 products", "posted 3 updates", "added 5 questions". */
+function burst(g: ActivityEvent[], format: ListFormat): React.ReactNode {
+  const n = g.length;
+  const fi = FORMATS[format];
+  switch (g[0].type) {
+    case "entry.listed":
+      return <>{format === "shopping" ? "found" : format === "research" ? "answered with" : "posted"} {n} {fi.entries}</>;
+    case "entry.suggested":
+      return <>suggested {n} {fi.entries}</>;
+    case "price.posted":
+      return <>checked {n} prices</>;
+    default:
+      return <>added {n} {fi.items}</>;
+  }
+}
+
+/** One row: the sentence, then the want it's about (a link to it on the list), the list and when. */
+function ActivityRow({ group, format }: { group: ActivityEvent[]; format: ListFormat }) {
+  const e = group[0];
+  const href = (x: ActivityEvent) => `/l/${x.list.id}${x.item ? `#${x.item.id}` : ""}`;
+  if (group.length > 1) {
+    return (
+      <li className="px-5 py-4" data-type={e.type}>
+        <p className="leading-snug">
+          <Who e={e} /> {burst(group, format)} on{" "}
+          <Link to={`/l/${e.list.id}`} className="link font-medium">
+            {e.list.title}
+          </Link>
         </p>
         <p className="mt-0.5 text-[0.85rem] text-ink-3">
-          {item.text} · {list.title} · <Time ts={e.created_at} />
-          {item.purchase && <span className="chip chip-live ml-2">Bought</span>}
+          <Time ts={e.at} />
         </p>
-        {!suggested && (
-          <details className="group mt-1">
-            <summary className="add-link text-[0.85rem]">
-              Comment<span className="sr-only"> on {e.title}</span>
-            </summary>
-            <div className="mt-2">
-              <CommentForm targetType="entry" targetId={e.id} label={`Comment on ${e.title}`} />
-            </div>
-          </details>
+        <details className="group mt-1">
+          <summary className="textlink-btn text-[0.85rem]">
+            Show all {group.length}
+          </summary>
+          <ul className="mt-2 grid gap-2 border-l border-line pl-3">
+            {group.map((x) => (
+              <li key={x.id} className="text-[0.92rem] leading-snug">
+                {x.type === "item.created" && x.item ? (
+                  <Link to={href(x)} className="link">
+                    {cut(x.item.text, 90)}
+                  </Link>
+                ) : (
+                  sentence(x)
+                )}
+                {x.item && x.type !== "item.created" && (
+                  <>
+                    {" "}
+                    <span className="text-ink-3">·</span>{" "}
+                    <Link to={href(x)} className="link text-ink-2">
+                      {cut(x.item.text)}
+                    </Link>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      </li>
+    );
+  }
+  return (
+    <li className="px-5 py-4" data-type={e.type}>
+      <p className="leading-snug break-words">
+        <Who e={e} /> {sentence(e)}
+      </p>
+      <p className="mt-0.5 text-[0.85rem] text-ink-3">
+        {e.item && (
+          <>
+            <Link to={href(e)} className="link text-ink-2">
+              {e.type === "item.created" ? "Open it" : cut(e.item.text)}
+            </Link>{" "}
+            ·{" "}
+          </>
         )}
-      </div>
-      {image && (
-        <Link to={href} tabIndex={-1} aria-hidden="true" className="row-span-2 block w-16 sm:w-20">
-          <ProductImage src={e.image_url} alt="" />
-        </Link>
-      )}
+        {e.list.title} · <Time ts={e.at} />
+      </p>
     </li>
   );
 }

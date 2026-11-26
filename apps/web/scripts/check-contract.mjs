@@ -42,7 +42,7 @@ const { token } = await (
 // Every route the web app calls, by method (grep api<…>(request, … in app/ and workers/). Each must exist in the API's
 // document, so a renamed or removed route is caught before a deploy.
 const CALLS = {
-  GET: ["/me/skills", "/me", "/me/invites", "/me/agent-keys", "/me/questions", "/me/lists", "/me/feed", "/me/agents", "/feed", "/lists", "/lists/{id}",
+  GET: ["/me/skills", "/me", "/me/invites", "/me/agent-keys", "/me/questions", "/me/lists", "/me/activity", "/me/agents", "/feed", "/lists", "/lists/{id}",
     "/lists/{id}/members", "/lists/{id}/agents", "/lists/{id}/prices", "/lists/{id}/access", "/lists/{id}/comments", "/lists/{id}/suggestions",
     "/entries/{id}/prices", "/invites/{token}", "/claims/{claim_token}", "/unsubscribe/{token}"],
   POST: ["/auth/code", "/auth/verify", "/auth/logout", "/claims/lookup", "/claims/claim", "/invites/lookup", "/invites/accept", "/invites/{token}/accept",
@@ -58,7 +58,7 @@ const entryId = (await call("/lists/lst_desk2026", token)).items.flatMap((i) => 
 const ROUTES = [
   ["/feed", "/feed", true],
   ["/lists", "/lists", true],
-  ["/me/feed", "/me/feed", true],
+  ["/me/activity", "/me/activity", true],
   ["/me/lists", "/me/lists?include=summary", true],
   ["/lists/{id}/comments", "/lists/lst_desk2026/comments", true],
   ["/lists/{id}/suggestions", "/lists/lst_desk2026/suggestions", true],
