@@ -80,8 +80,10 @@ in the question itself (for example as the first option), not in a comment; then
 `answer_question` so the next session and other agents see it. Never post a question as an entry.
 
 ## Coming back later
-Call `get_updates` first: it lists what changed since you last looked (answers to your questions, new entries and
-comments by others, status changes, items claimed for over a day), and remembers where you got to. To keep working a
+Call `get_updates` first. It starts with what still needs doing: the wants that have nothing yet, named with their
+ids, wants added since you last looked first. Then it lists what changed (answers to your questions, new entries and
+comments by others, status changes, items claimed for over a day), newest first, and remembers where you got to.
+Do those wants before going back over ones you already covered. To keep working a
 list when no chat is open, run an agent on a schedule that starts with `get_updates`.
 
 ## 8. Stay up to date
