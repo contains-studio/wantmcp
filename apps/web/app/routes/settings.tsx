@@ -10,6 +10,9 @@ import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin, flashCookie } from "~/lib/session.server";
 import type { AgentInfo, HandoverResult, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { LookFrame } from "~/components/LookFrame";
+import { AccessRow, AgentMark, PersonMark, RemoveInTwoSteps } from "~/components/AccessRow";
+import { AgentPromptDone, ShareWithAgent } from "~/components/ShareWithAgent";
+import { AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
 import type { ThemeView } from "~/themes/view";
@@ -169,7 +172,8 @@ export async function action({ request, params }: Route.ActionArgs) {
         await api(request, `/lists/${id}/members/${encodeURIComponent(s("member_id"))}`, { method: "DELETE" });
         return { ok: true, intent } satisfies ActionData;
       case "create-key": {
-        const res = await api<{ agent: AgentInfo; key: string }>(request, `/lists/${id}/keys`, { method: "POST", body: { agent_name: s("agent_name") } });
+        // From the Share step: a typed name (Other) wins over a chip.
+        const res = await api<{ agent: AgentInfo; key: string }>(request, `/lists/${id}/keys`, { method: "POST", body: { agent_name: s("agent_name_other") || s("agent_name") } });
         return data({ ok: true, intent, key: res.key, agent: res.agent } satisfies ActionData, { headers: { "Cache-Control": "no-store" } });
       }
       case "revoke-agent":
@@ -241,9 +245,12 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
   const currency = useCurrency();
   const { list, role, members, agents } = loaderData;
   const isOwner = role === "owner";
-  const { user, origin: rootOrigin } = useRootData();
-  const mine = agents.filter((a) => a.owner_handle === user?.handle);
-  const others = agents.filter((a) => a.owner_handle !== user?.handle);
+  const { user, origin: rootOrigin, mcpUrl: mcpUrlRoot } = useRootData();
+  // What each may see (the loader asks the API: the owner gets every agent on the list, a member their own): theirs first.
+  const listAgents = [...agents.filter((a) => a.owner_handle === user?.handle), ...agents.filter((a) => a.owner_handle !== user?.handle)];
+  const keyNames = agents.filter((a) => a.kind === "key").map((a) => a.name);
+  const agentsTotal = Math.max(list.access?.agents ?? 0, listAgents.length);
+  const rootMcp = mcpUrlRoot;
   const result = useActionData<typeof action>() as ActionData | undefined;
   const nav = useNavigation();
   const busy = (intent: string) => nav.state === "submitting" && nav.formData?.get("intent") === intent;
@@ -346,21 +353,28 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         )}
         <ul className="grid gap-2">
           {members.map((m) => (
-            <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{m.handle && m.handle === user?.handle ? "You" : (m.handle ?? m.invited_email ?? "Invited")}</p>
-                <p className="text-[0.78rem] text-ink-3">
+            // The same row as an agent's (AccessRow): people and agents read as two kinds of the same thing.
+            <AccessRow
+              key={m.id}
+              mark={<PersonMark />}
+              name={m.handle && m.handle === user?.handle ? "You" : (m.handle ?? m.invited_email ?? "Invited")}
+              meta={
+                <>
                   {m.role === "owner" ? "Owner" : m.status === "invited" ? "Invite sent" : "Member"} · <Time ts={m.created_at} />
-                </p>
-              </div>
-              {isOwner && m.role !== "owner" && (
-                <Form method="post" onSubmit={(e) => !confirm(`Remove ${m.handle ?? m.invited_email ?? "this person"}? Their agents lose access too.`) && e.preventDefault()}>
-                  <input type="hidden" name="intent" value="revoke-member" />
-                  <input type="hidden" name="member_id" value={m.id} />
-                  <button className="textlink-btn text-[0.85rem] text-danger">{m.status === "invited" ? "Cancel invite" : "Remove"}</button>
-                </Form>
-              )}
-            </li>
+                </>
+              }
+              action={
+                isOwner && m.role !== "owner" ? (
+                  <RemoveInTwoSteps
+                    who={m.handle ?? m.invited_email ?? "this person"}
+                    label={m.status === "invited" ? "Cancel invite" : "Remove"}
+                    confirm={m.status === "invited" ? "Yes, cancel it" : "Yes, remove"}
+                    question={m.status === "invited" ? "Cancel this invite?" : `Remove ${m.handle ?? "this person"}? Their agents lose access too.`}
+                    fields={{ intent: "revoke-member", member_id: m.id }}
+                  />
+                ) : undefined
+              }
+            />
           ))}
         </ul>
         {err("revoke-member")}
@@ -392,69 +406,39 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         {isOwner && <Handover result={result} busy={busy("handover")} />}
       </Section>
 
-      <Section
-        id="keys-h"
-        title="Agents"
-        desc="Connected apps and write keys"
-        open={openFor(["create-key", "revoke-agent"])}
-      >
-        {/* Not in the summary: a link inside the row that opens the section would be a control inside a control. */}
-        <Link to={`/connect?list=${list.id}`} className="link inline-flex min-h-6 w-fit items-center text-[0.9rem]">
-          How agents connect
-        </Link>
-        {result?.intent === "create-key" && result.key ? (
-          <NewKey keyValue={result.key} agentName={result.agent?.name ?? "agent"} listUrl={list.url} />
+      <Section id="keys-h" title="Agents" desc={agentsLine(agentsTotal, isOwner ? null : listAgents.length)} open={openFor(["create-key", "revoke-agent"])}>
+        {/* Who is on the list first (the step below them); with nobody yet, the step is the obvious next thing. */}
+        {listAgents.length > 0 ? (
+          <ul className="grid gap-2">
+            {listAgents.map((a) => (
+              <AgentRow key={a.id} agent={a} own={a.owner_handle === user?.handle} />
+            ))}
+          </ul>
         ) : (
-          <Form method="post" className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
-            <input type="hidden" name="intent" value="create-key" />
-            <label className="field">
-              <span className="label">Agent name</span>
-              <input name="agent_name" required maxLength={60} placeholder="e.g. Codex on my laptop" className="input" />
-            </label>
-            <button className="btn" disabled={busy("create-key")}>
-              {busy("create-key") ? "Creating…" : "Create write key"}
-            </button>
-            <div className="sm:col-span-2">{err("create-key")}</div>
-          </Form>
+          <p className="text-ink-2">Pick your agent, then paste the prompt into it.</p>
         )}
-
-        <h3 className="eyebrow mt-2">Your connected clients</h3>
-        {mine.filter((a) => a.kind !== "key").length === 0 ? (
-          <p className="text-[0.9rem] text-ink-3">
-            None yet.
+        {/* A member sees only their own agents (the API's rule): say the rest exist, once. */}
+        {!isOwner && agentsTotal > listAgents.length && (
+          <p className="text-[0.85rem] text-ink-3">
+            {agentsTotal - listAgents.length === 1 ? "The other agent belongs to someone else on the list." : `The other ${agentsTotal - listAgents.length} belong to other people on the list.`}
           </p>
-        ) : (
-          <ul className="grid gap-2">
-            {mine
-              .filter((a) => a.kind !== "key")
-              .map((a) => (
-                <AgentRow key={a.id} agent={a} own />
-              ))}
-          </ul>
-        )}
-        <h3 className="eyebrow mt-2">Your write keys</h3>
-        {mine.filter((a) => a.kind === "key").length === 0 ? (
-          <p className="text-[0.9rem] text-ink-3">No write keys for this list.</p>
-        ) : (
-          <ul className="grid gap-2">
-            {mine
-              .filter((a) => a.kind === "key")
-              .map((a) => (
-                <AgentRow key={a.id} agent={a} own />
-              ))}
-          </ul>
-        )}
-        {isOwner && others.length > 0 && (
-          <>
-            <h3 className="eyebrow mt-2">Members' agents</h3>
-            <ul className="grid gap-2">
-              {others.map((a) => (
-                <AgentRow key={a.id} agent={a} own={false} />
-              ))}
-            </ul>
-          </>
         )}
         {err("revoke-agent")}
+        {result?.intent === "create-key" && result.key && result.agent ? (
+          // Without JavaScript the step posts here: the same done state.
+          <AgentPromptDone prompt={fillPrompt(AGENT_PROMPT_WITH_KEY, { mcpUrl: rootMcp, listUrl: list.url, key: result.key })} who={result.agent.name} listId={list.id} copied={false} />
+        ) : (
+          // One element either way, so making the first agent doesn't remount the step (its done state stays put):
+          // with agents it is "Add another agent", folded; with none it is open and its summary hidden.
+          <AddAgent open={listAgents.length === 0} hideSummary={listAgents.length === 0}>
+            <ShareWithAgent listId={list.id} listUrl={list.url} existing={keyNames} />
+          </AddAgent>
+        )}
+        {result?.intent === "create-key" && !result.key && err("create-key")}
+        {/* Not in the summary: a link inside the row that opens the section would be a control inside a control. */}
+        <Link to={`/connect?list=${list.id}`} className="link inline-flex min-h-6 w-fit items-center text-[0.85rem] text-ink-3">
+          How agents connect
+        </Link>
       </Section>
 
       {isOwner && (
@@ -522,108 +506,56 @@ function OutsideToggle({ allow }: { allow: boolean }) {
   );
 }
 
-function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
-  const fetcher = useFetcher<ActionData>();
-  if (fetcher.state === "idle" && fetcher.data?.ok) return null;
-  // Your own single-list agent is revoked outright. Otherwise only this list is removed from it.
-  const listOnly = !own || a.list_ids.length > 1;
-  const action = listOnly ? "Remove from list" : a.kind === "key" ? "Revoke" : "Disconnect";
-  const question = !own
-    ? `Remove ${a.name} (connected by ${a.owner_handle}) from this list?`
-    : listOnly
-      ? `Remove ${a.name} from this list? It keeps access to your other lists.`
-      : `${a.kind === "key" ? "Revoke the key for" : "Disconnect"} ${a.name}?`;
+/** The step's holder in settings › Agents: open while it was opened (or while the list had no agent), whatever the
+ *  page's data does after a key is made. */
+function AddAgent({ open, hideSummary, children }: { open: boolean; hideSummary: boolean; children: React.ReactNode }) {
+  const [isOpen, setOpen] = useState(open);
+  const [summaryHidden] = useState(hideSummary);
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-line p-3">
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{a.name}</p>
-        <p className="text-[0.78rem] text-ink-3">
-          {a.kind === "oauth" ? "Signed in" : a.kind === "account" ? "Its own account key" : <>Key <code>{a.key_prefix}…</code></>}
-          {!own && <> · connected by {a.owner_handle}</>} · added <Time ts={a.created_at} /> ·{" "}
-          {a.last_used_at ? <>last used <Time ts={a.last_used_at} /></> : "never used"}
-          {own && a.list_ids.length > 1 && ` · can write ${a.list_ids.length} lists`}
-        </p>
-      </div>
-      <fetcher.Form method="post" onSubmit={(e) => !confirm(question) && e.preventDefault()}>
-        <input type="hidden" name="intent" value="revoke-agent" />
-        <input type="hidden" name="agent_id" value={a.id} />
-        {listOnly && <input type="hidden" name="scope" value="list" />}
-        <button className="textlink-btn text-[0.85rem] text-danger" disabled={fetcher.state !== "idle"}>
-          {fetcher.state !== "idle" ? "Removing…" : action}
-          <span className="sr-only"> {a.name}</span>
-        </button>
-      </fetcher.Form>
-      {fetcher.data?.error && (
-        <p className="form-error w-full" role="alert">
-          {fetcher.data.error}
-        </p>
-      )}
-    </li>
+    <details className="add-agent" open={isOpen} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary className={`add-link text-[0.95rem] ${summaryHidden ? "hidden" : ""}`}>
+        <span aria-hidden="true">+ </span>Add another agent
+      </summary>
+      <div className={summaryHidden ? "" : "mt-2"}>{children}</div>
+    </details>
   );
 }
 
-function NewKey({ keyValue, agentName, listUrl }: { keyValue: string; agentName: string; listUrl: string }) {
-  const { mcpUrl } = useRootData();
-  const slug = "wantmcp";
-  const snippets: Array<[string, string]> = [
-    ["Claude Code", `claude mcp add --transport http ${slug} ${mcpUrl} \\\n  --header "Authorization: Bearer ${keyValue}"`],
-    [
-      "Codex",
-      `# ~/.codex/config.toml\n[mcp_servers.${slug}]\nurl = "${mcpUrl}"\nbearer_token_env_var = "WANTMCP_TOKEN"\n\n# then, in your shell profile:\nexport WANTMCP_TOKEN="${keyValue}"`,
-    ],
-    [
-      "Cursor",
-      `// ~/.cursor/mcp.json\n{\n  "mcpServers": {\n    "${slug}": {\n      "url": "${mcpUrl}",\n      "headers": { "Authorization": "Bearer ${keyValue}" }\n    }\n  }\n}`,
-    ],
-    ["Grok CLI", `grok mcp add --transport http ${slug} ${mcpUrl} \\\n  --header "Authorization: Bearer ${keyValue}"`],
-    [
-      "OpenClaw",
-      `{\n  "mcp": {\n    "servers": {\n      "${slug}": {\n        "url": "${mcpUrl}",\n        "transport": "streamable-http",\n        "headers": { "Authorization": "Bearer ${keyValue}" }\n      }\n    }\n  }\n}`,
-    ],
-    ["Any MCP client", `URL:    ${mcpUrl}\nHeader: Authorization: Bearer ${keyValue}`],
-  ];
+/** "2 agents can work on this list" / "No agent yet": the section's summary, from the list's access counts. */
+function agentsLine(n: number, yours: number | null): string {
+  const all = n === 0 ? "No agent yet" : n === 1 ? "1 agent can work on this list" : `${n} agents can work on this list`;
+  return yours === null || n === 0 ? all : `${all} (${yours} yours)`;
+}
+
+/**
+ * One agent on the list, shaped like a person's row: its mark, its name, how it is connected and when it last did
+ * something, and Remove (two steps). The owner can remove anyone's agent from the list; a member only their own (the
+ * API's rule), and the list here is already what each may see.
+ */
+function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
+  const how = a.kind === "oauth" ? "Signed in through its app" : a.kind === "account" ? "Its own account" : "With a key";
+  const listOnly = !own || a.list_ids.length > 1;
   return (
-    <div className="grid gap-4 rounded-[14px] bg-sunk p-4" role="status">
-      <div>
-        <p className="font-display text-lg font-semibold">Write key for “{agentName}”</p>
-        <p className="text-[0.88rem] text-ink-2">
-          Copy it now. It's shown once and we only keep a hash. Anyone with this key can post to this list as {agentName}.
-        </p>
-      </div>
-      <div className="flex flex-col items-stretch gap-2 rounded-md border border-line-strong bg-card p-3 sm:flex-row sm:items-center sm:p-2 sm:pl-3">
-        <code className="min-w-0 flex-1 break-all text-[0.9rem] font-semibold" aria-label="Write key">
-          {keyValue}
-        </code>
-        <CopyButton text={keyValue} label="Copy key" className="btn btn-sm" />
-      </div>
-      <div className="grid gap-2 rounded-md border border-line bg-card p-3">
-        <AgentPrompt
-          mcpUrl={mcpUrl}
-          listUrl={listUrl}
-          keyValue={keyValue}
-          title="Or hand your agent this prompt: it sets itself up with this key and starts on the list"
+    <AccessRow
+      mark={<AgentMark name={a.name} />}
+      name={a.name}
+      meta={
+        <>
+          {how}
+          {!own && <> · added by {a.owner_handle}</>} · {a.last_used_at ? <>active <Time ts={a.last_used_at} /></> : "never used yet"}
+        </>
+      }
+      action={
+        <RemoveInTwoSteps
+          who={a.name}
+          question={!own ? `Remove ${a.name} (added by ${a.owner_handle}) from this list?` : listOnly ? `Remove ${a.name} from this list? It keeps your other lists.` : `Remove ${a.name}? Its key stops working.`}
+          fields={{ intent: "revoke-agent", agent_id: a.id, ...(listOnly ? { scope: "list" } : {}) }}
         />
-      </div>
-      <div className="grid gap-2">
-        <p className="label">Or set it up yourself</p>
-        {snippets.map(([name, code], i) => (
-          <details key={name} open={i === 0} className="rounded-md border border-line bg-card">
-            <summary className="flex items-center justify-between px-3 py-2 font-semibold">
-              {name} <span aria-hidden="true" className="text-ink-3">›</span>
-            </summary>
-            <div className="grid gap-2 px-3 pb-3">
-              <pre className="codeblock">{code}</pre>
-              <CopyButton text={code} label={`Copy ${name} setup`} />
-            </div>
-          </details>
-        ))}
-      </div>
-      <Link to="." className="btn btn-ghost btn-sm w-fit" replace>
-        Done, I've saved it
-      </Link>
-    </div>
+      }
+    />
   );
 }
+
 
 type LookGallery = NonNullable<Route.ComponentProps["loaderData"]["looks"]>;
 

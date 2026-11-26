@@ -66,7 +66,7 @@ test("Other opens the rest of the apps and a name field; the key limit shows the
   await signIn(page, freshEmail("share-agent-other"));
   await createList(page, { format: "Shopping", title: "Other" });
   await openStep(page);
-  await page.getByRole("button", { name: "Other" }).click();
+  await page.locator("summary", { hasText: /^Other$/ }).first().click();
   await expect(page.getByRole("radio", { name: "Codex" })).toBeAttached();
   await page.getByLabel("Or its name").fill("mock: limit");
   await page.getByRole("button", { name: "Create key and copy prompt" }).click();

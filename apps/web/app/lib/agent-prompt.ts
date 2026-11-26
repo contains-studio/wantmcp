@@ -43,3 +43,16 @@ export function fillPrompt(template: string, values: { mcpUrl: string; listUrl: 
     .replaceAll("{LIST_URL}", values.listUrl)
     .replaceAll("{KEY}", values.key ?? "");
 }
+
+/**
+ * The prompt's opening, through the line that carries the key (or the server line in the sign-in form): what was
+ * shared, where, and with which key. Shown unclipped where a prompt is folded (owner, 25 Nov 2026: the first line alone
+ * "doesnt mention the list or the token"); the numbered steps stay behind "Show all".
+ */
+export function promptFacts(prompt: string): string {
+  const lines = prompt.split("\n");
+  const keyLine = lines.findIndex((l) => l.includes("Bearer wk_"));
+  const serverLine = lines.findIndex((l) => l.startsWith("Server:"));
+  const end = keyLine >= 0 ? keyLine + 1 : serverLine >= 0 ? serverLine + 1 : 5;
+  return lines.slice(0, end).join("\n").trim() + "\n…";
+}

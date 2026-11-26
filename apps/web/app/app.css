@@ -999,3 +999,16 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 /* Share › Share with an agent: the agent's mark in its chip. */
 .agent-chip-mark { display: inline-grid; width: 1rem; height: 1rem; flex: none; }
 .agent-chip-mark img { width: 1rem; height: 1rem; object-fit: contain; grid-area: 1 / 1; }
+
+/* Who can work on a list: people and agents in the same row (settings › Sharing and › Agents). */
+.access-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: 12px; }
+.access-mark { display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: 10px; background: var(--sunk); color: var(--ink-3); overflow: hidden; }
+.access-mark img { width: 1.25rem; height: 1.25rem; object-fit: contain; grid-area: 1 / 1; }
+.row-remove > summary { list-style: none; }
+.row-remove > summary::-webkit-details-marker { display: none; }
+.row-remove[open] { flex-basis: 100%; display: flex; flex-wrap: wrap-reverse; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.row-remove .rr-open, .row-remove[open] .rr-closed { display: none; }
+.row-remove[open] .rr-open { display: inline; }
+.row-remove-body { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding-top: 0.25rem; }
+.add-agent > summary { list-style: none; width: fit-content; }
+.add-agent > summary::-webkit-details-marker { display: none; }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Form, Link } from "react-router";
-import { AGENT_PROMPT_RESTART_NOTE, AGENT_PROMPT_SIGN_IN, AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
+import { AGENT_PROMPT_RESTART_NOTE, AGENT_PROMPT_SIGN_IN, AGENT_PROMPT_WITH_KEY, fillPrompt, promptFacts } from "~/lib/agent-prompt";
 import { CopyButton } from "./CopyButton";
 
 /**
@@ -12,10 +12,10 @@ export function AgentPrompt({ mcpUrl, listUrl, keyValue, title }: { mcpUrl: stri
   return (
     <div className="grid gap-2">
       {title && <p className="label">{title}</p>}
-      {/* Three lines and Copy; the whole text one tap away (people paste it, they don't read it). */}
+      {/* The opening (list, server, key) and Copy; the whole text one tap away. */}
       <div className="prompt-box grid gap-2">
-        <span className="codeblock prompt-peek-text text-[0.78rem]" aria-hidden="true">
-          {text.split("\n").slice(0, 3).join("\n")}
+        <span className="codeblock prompt-facts text-[0.78rem]" aria-hidden="true">
+          {promptFacts(text)}
         </span>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <CopyButton text={text} label="Copy prompt" className="btn btn-want btn-sm w-fit" />
