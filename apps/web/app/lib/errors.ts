@@ -1,5 +1,6 @@
 /** Plain messages for API failures, shared by every form (and unit-tested without the Worker runtime). */
 export const NETWORK_MESSAGE = "Can't reach the server. Check your connection and try again.";
+export const INVALID_EMAIL = "That doesn't look like an email address. Check it and try again.";
 
 /** One plain sentence for each kind of failure a form can meet; the API's own words where they are specific. */
 export function friendlyError(err: { status: number; code: string; message: string; details?: unknown }): string {
@@ -21,5 +22,7 @@ export function friendlyError(err: { status: number; code: string; message: stri
       return NETWORK_MESSAGE;
   }
   if (err.status >= 500) return "Something went wrong on our side. Try again in a moment.";
+  // The API's validator speaks in field names ("email is not valid"): say it as a person would (bug audit, 27 Nov 2026).
+  if (err.status === 400 && /^email\b.*\b(valid|invalid|format)\b/i.test(err.message)) return INVALID_EMAIL;
   return err.message;
 }

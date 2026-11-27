@@ -1,3 +1,4 @@
+import { afterChange } from "~/lib/prg.server";
 import { useState } from "react";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation } from "react-router";
 import { useRootData } from "~/lib/hooks";
@@ -31,7 +32,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return data({ user, agentKeys }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
-export async function action({ request }: Route.ActionArgs) {
+async function act({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
   const form = await request.formData();
   const intent = String(form.get("intent"));
@@ -272,4 +273,9 @@ function AgentKeys({ keys }: { keys: AgentInfo[] }) {
       </ul>
     </section>
   );
+}
+
+/** Without JavaScript, a change that worked is answered with a redirect back here (prg.server.ts), never re-posted. */
+export async function action(args: Route.ActionArgs) {
+  return afterChange(args.request, await act(args));
 }

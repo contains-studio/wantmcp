@@ -3,6 +3,7 @@
  * needs me (questions waiting), then how my lists are doing. One column, the same on every screen.
  * The cross-list feed lives at /app/activity; a new list is made at /app/new.
  */
+import { afterChange } from "~/lib/prg.server";
 import { errorLine } from "~/lib/telemetry";
 import { currentTrace } from "~/lib/trace.server";
 import { MetaLine } from "~/components/MetaLine";
@@ -81,7 +82,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   );
 }
 
-export async function action({ request }: Route.ActionArgs) {
+async function act({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
   const form = await request.formData();
   if (form.get("intent") === "accept-invite") {
@@ -677,4 +678,9 @@ function cutAtWord(text: string, max: number): string {
   const cut = text.slice(0, max);
   const at = cut.lastIndexOf(" ");
   return `${(at > max / 2 ? cut.slice(0, at) : cut).replace(/[\s,;:.…-]+$/, "")}…`;
+}
+
+/** Without JavaScript, a change that worked is answered with a redirect back here (prg.server.ts), never re-posted. */
+export async function action(args: Route.ActionArgs) {
+  return afterChange(args.request, await act(args));
 }

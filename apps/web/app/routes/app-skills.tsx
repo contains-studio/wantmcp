@@ -4,6 +4,7 @@
  *
  * The editor opens on this same page (?new=<starter> or ?edit=<id>), so everything works without JavaScript.
  */
+import { afterChange } from "~/lib/prg.server";
 import { useEffect, useRef, useState } from "react";
 import { data, Form, Link, redirect, useFetcher, useNavigation } from "react-router";
 import type { Route } from "./+types/app-skills";
@@ -93,7 +94,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   );
 }
 
-export async function action({ request }: Route.ActionArgs) {
+async function act({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -391,4 +392,9 @@ className={`textarea skill-body ${example && !body ? "is-example" : ""}`}
       )}
     </section>
   );
+}
+
+/** Without JavaScript, a change that worked is answered with a redirect back here (prg.server.ts), never re-posted. */
+export async function action(args: Route.ActionArgs) {
+  return afterChange(args.request, await act(args));
 }

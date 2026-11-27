@@ -1,3 +1,4 @@
+import { afterChange } from "~/lib/prg.server";
 import { data, redirect } from "react-router";
 import { orFallback } from "~/lib/degrade.server";
 import type { Route } from "./+types/list";
@@ -134,7 +135,7 @@ export function headers({ loaderHeaders }: Route.HeadersArgs) {
   return loaderHeaders;
 }
 
-export async function action({ request, params }: Route.ActionArgs) {
+async function act({ request, params }: Route.ActionArgs) {
   const form = await request.formData();
   if (form.get("intent") === "dismiss-handoff") {
     assertSameOrigin(request);
@@ -278,3 +279,8 @@ export default function ListPage({ loaderData }: Route.ComponentProps) {
 export const handle = {
   analytics: (data: unknown) => (data as { list?: { visibility?: string } } | null)?.list?.visibility === "public",
 };
+
+/** Without JavaScript, a change that worked is answered with a redirect back here (prg.server.ts), never re-posted. */
+export async function action(args: Route.ActionArgs) {
+  return afterChange(args.request, await act(args));
+}

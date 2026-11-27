@@ -74,7 +74,8 @@ function resolveCaller(req: Request): Caller {
     return { kind: "agent", agent, user: userById(agent.owner_id) };
   }
   const uid = store.sessions.get(token);
-  if (!uid) return null;
+  // A bearer the API doesn't know is a bad credential (401), as on the server, not an anonymous caller.
+  if (!uid) throw unauthorized();
   const user = store.users.find((u) => u.id === uid);
   return user ? { kind: "user", user } : null;
 }
@@ -479,7 +480,7 @@ const NO_CONTENT = Symbol("no content");
 // auth
 route("POST", "/auth/code", ({ body }) => {
   const email = text("email", body.email, 254, true).toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("That doesn't look like an email address");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("email is not valid"); // the server's own words; the web says them plainly
   // Lets contributors see the "email could not be sent" state.
   if (email === "fail@example.com") {
     throw new HttpError(503, "email_unavailable", "We couldn't send your sign-in email right now. Please try again in a few minutes.");
@@ -942,7 +943,7 @@ route("GET", "/lists/{id}/members", ({ caller, params }) => {
 route("POST", "/lists/{id}/members", ({ caller, params, body }) => {
   requireOwner(caller, params[0]);
   const email = text("email", body.email, 254, true).toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("That doesn't look like an email address");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("email is not valid"); // the server's own words; the web says them plainly
   const existing = store.members.find((m) => m.list_id === params[0] && (m.invited_email === email || (m.user_id && userById(m.user_id).email === email)));
   if (existing) throw new HttpError(409, "conflict", "That person is already invited");
   const m = { id: newId("mem"), list_id: params[0], user_id: null, invited_email: email, role: "member" as const, status: "invited" as const, token: "inv_" + randomToken(24), created_at: nowIso(), invited_by: actorRef(caller!) };
@@ -956,7 +957,7 @@ route("POST", "/lists/{id}/invites", ({ caller, params, body }) => {
   // SPEC 21.5: the owner, or one of the owner's own agents (its invitation goes out at once, as the owner's would).
   const c = caller?.kind === "agent" && roleOf({ kind: "user", user: caller.user }, params[0]) === "owner" ? caller : requireOwner(caller, params[0]);
   const email = text("email", body.email, 254, true).toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("That doesn't look like an email address");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid("email is not valid"); // the server's own words; the web says them plainly
   if (email === "limit@example.com") throw new HttpError(429, "rate_limited", "Too many invitations from this list today", { limit: "invites.per_list_per_day" });
   const existing = store.members.find((m) => m.list_id === params[0] && (m.invited_email === email || (m.user_id && userById(m.user_id).email === email)));
   if (existing?.status === "active") throw new HttpError(409, "conflict", "That person can already write this list");

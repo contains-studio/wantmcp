@@ -4,6 +4,7 @@
  * row; a burst of the same thing from one actor on one list folds into one row, so twenty finds never bury a question.
  * Filter by list with one row of chips.
  */
+import { afterChange } from "~/lib/prg.server";
 import { orFallback, orUnavailable } from "~/lib/degrade.server";
 import { data, Link } from "react-router";
 import type { Route } from "./+types/app-activity";
@@ -47,7 +48,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return data({ chips, formats, listId, cursor, feed, working, feedUnavailable }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
-export async function action({ request }: Route.ActionArgs) {
+async function act({ request }: Route.ActionArgs) {
   return handleWriterIntent(request, await request.formData());
 }
 
@@ -346,4 +347,9 @@ function ActivityRow({ group, format }: { group: ActivityEvent[]; format: ListFo
       </p>
     </li>
   );
+}
+
+/** Without JavaScript, a change that worked is answered with a redirect back here (prg.server.ts), never re-posted. */
+export async function action(args: Route.ActionArgs) {
+  return afterChange(args.request, await act(args));
 }

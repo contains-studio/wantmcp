@@ -13,4 +13,7 @@ test("every kind of failure gets its own plain sentence", () => {
   assert.equal(friendlyError(e("network", 503)), "Can't reach the server. Check your connection and try again.");
   assert.equal(friendlyError(e("internal", 500, "boom")), "Something went wrong on our side. Try again in a moment.");
   assert.equal(friendlyError(e("invalid", 400, "Title is required")), "Title is required");
+  // Bug audit, 27 Nov 2026: the validator's field-name wording, said plainly.
+  assert.equal(friendlyError(e("invalid", 400, "email is not valid")), "That doesn't look like an email address. Check it and try again.");
+  assert.equal(friendlyError(e("invalid_request", 400, "email must be a valid address")), "That doesn't look like an email address. Check it and try again.");
 });

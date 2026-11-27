@@ -1,3 +1,4 @@
+import { INVALID_EMAIL } from "~/lib/errors";
 import { data, Form, Link, redirect, useActionData, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/login";
 import { api, ApiError, friendlyError } from "~/lib/api.server";
@@ -85,7 +86,7 @@ export async function action({ request }: Route.ActionArgs) {
     }
   }
 
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, optIn, error: "Enter a valid email." }, 400);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, optIn, error: INVALID_EMAIL }, 400);
   let devCode: string | undefined;
   let attemptId: string | null = null;
   try {

@@ -1,3 +1,4 @@
+import { afterChange } from "~/lib/prg.server";
 import { data, Form, Link, redirect, useActionData, useFetcher, useNavigation, useSearchParams } from "react-router";
 import { orFallback } from "~/lib/degrade.server";
 import type { Route } from "./+types/settings";
@@ -117,7 +118,7 @@ type ActionData = {
   handover?: HandoverResult;
 };
 
-export async function action({ request, params }: Route.ActionArgs) {
+async function act({ request, params }: Route.ActionArgs) {
   assertSameOrigin(request);
   const form = await request.formData();
   const intent = String(form.get("intent") ?? "");
@@ -781,3 +782,8 @@ function Handover({ result, busy }: { result: ActionData | undefined; busy: bool
   );
 }
 
+
+/** Without JavaScript, a change that worked is answered with a redirect back here (prg.server.ts), never re-posted. */
+export async function action(args: Route.ActionArgs) {
+  return afterChange(args.request, await act(args));
+}

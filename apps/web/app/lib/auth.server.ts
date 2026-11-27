@@ -1,3 +1,4 @@
+import { clearSessionCookie } from "./session.server";
 import { redirect } from "react-router";
 import { api, ApiError } from "./api.server";
 import { getSessionToken } from "./session.server";
@@ -18,7 +19,9 @@ export async function requireUser(request: Request): Promise<UserSelf> {
   const user = await getUser(request);
   if (!user) {
     const url = new URL(request.url);
-    throw redirect(`/login?next=${encodeURIComponent(url.pathname + url.search)}`);
+    // A session cookie the API no longer knows is cleared on the way (bug audit, 27 Nov 2026).
+    const headers = getSessionToken(request) ? { "set-cookie": clearSessionCookie(request) } : undefined;
+    throw redirect(`/login?next=${encodeURIComponent(url.pathname + url.search)}`, { headers });
   }
   return user;
 }

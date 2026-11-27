@@ -89,6 +89,9 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
   if (res.status === 401 && cookieToken && (init.method ?? "GET") === "GET") {
     return api<T>(request, path, { ...init, anonymous: true });
   }
+  // The session ended mid-action (bug audit, 27 Nov 2026): sign in again and come back to the page the person was on,
+  // not /app. For an action that's the page that posted (same site only), else the action's own address.
+  if (res.status === 401 && cookieToken) throw redirect(`/login?next=${encodeURIComponent(backTo(request))}`);
   init.onHeaders?.(res.headers);
   if (!res.ok && res.status !== 401) {
     // One line per upstream failure, with the API's own request id so the two logs can be joined.
@@ -150,4 +153,20 @@ export function toRouteError(err: unknown): never {
     throw new Response(err.message, { status: err.status >= 500 ? 503 : err.status });
   }
   throw err;
+}
+
+/** Where to come back to after signing in again: the referring page for a post from this site, else this address. */
+function backTo(request: Request): string {
+  const here = new URL(request.url);
+  const ref = request.headers.get("referer");
+  if (request.method !== "GET" && ref) {
+    try {
+      const r = new URL(ref);
+      if (r.origin === here.origin) return r.pathname + r.search;
+    } catch {
+      // not a URL: fall through
+    }
+  }
+  here.searchParams.delete("index");
+  return here.pathname.replace(/\.data$/, "") + here.search;
 }
