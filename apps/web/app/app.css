@@ -1211,3 +1211,10 @@ button.check-toggle::before { content: ""; position: absolute; top: 50%; left: 5
 .dev-code .dev-fold:not([open]) > .dev-fold-btn { width: 100%; }
 .dev-back { display: inline-flex; align-items: center; min-height: 2.75rem; }
 @media (min-width: 1024px) { .dev-back { display: none; } }
+/* Routines (SPEC 20.3): a change that moves a routine onto the viewer's key confirms in place; Rename and Change
+   schedule fold open under their links. The same weight as the rest of the card. */
+.rt-confirm > summary, .rt-fold > summary { list-style: none; }
+.rt-confirm > summary::-webkit-details-marker, .rt-fold > summary::-webkit-details-marker { display: none; }
+.rt-confirm[open], .rt-fold[open] { flex-basis: 100%; }
+.rt-confirm-body, .rt-fold-body { padding-top: 0.5rem; }
+.rt-day { min-height: 2.75rem; padding: 0.25rem 0.8rem; }

@@ -18,7 +18,7 @@ test("Privacy and Terms say what is true", async ({ page }) => {
 });
 
 test("a report that didn't go through says so, once", async ({ request }) => {
-  const res = await request.post("/report", { form: { target_type: "list", target_id: "" }, headers: { origin: "http://localhost:5190" } });
+  const res = await request.post("/report", { form: { target_type: "list", target_id: "" }, headers: { origin: `http://localhost:${process.env.E2E_PORT ?? 5190}` } });
   const html = await res.text();
   expect(html).toContain("Your report didn&#x27;t go through");
   expect(html).not.toContain("Report not sent");

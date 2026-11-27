@@ -24,7 +24,7 @@ import { itemCurrency, listCurrency } from "~/lib/currency";
 import { lowestEntryId, lowestLabel } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useHydrated, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
-import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, UserSelf } from "~/lib/types";
+import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, RoutineSummary, UserSelf } from "~/lib/types";
 import type { Layout } from "~/themes/types";
 import type { ThemeView } from "~/themes/view";
 
@@ -254,6 +254,7 @@ export function ListView(props: ListViewProps) {
             ]}
           />
           {list.description && <p className="list-desc mt-3 max-w-2xl text-[0.98rem] text-ink-2">{list.description}</p>}
+          {isWriter && !preview && <RoutineLine list={list} me={user?.handle ?? null} />}
             </>
           )}
         </div>
@@ -401,7 +402,7 @@ export function ListView(props: ListViewProps) {
         {props.handoff && !preview && heldCount > 0 && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
 
         {/* Outside suggestions come after the person's own list, never before it. */}
-        {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} />}
+        {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} routines={list.routines ?? null} me={user?.handle ?? null} />}
 
         {!isWriter && !preview && (
           <aside aria-labelledby="own-h" className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -615,6 +616,7 @@ function ItemSection({
         )}
         {/* SPEC 12.1: questions and answers are for writers only, on public lists too. */}
         {isWriter && <OwnerQuestion question={item.open_question ?? null} history={item.questions ?? []} />}
+        {isWriter && item.routine_stops?.map((st) => <RoutineStopped key={st.routine_id} itemId={item.id} stop={st} />)}
       </header>
 
       {accepted && <AcceptedAnswer entry={accepted} />}
@@ -925,25 +927,28 @@ function AddEntry({ itemId, fi, currency }: { itemId: string; fi: FormatInfo; cu
  * Outside suggestions. Untrusted third-party text: rendered as plain text only. No links,
  * no images loaded from their URLs. This section only renders for writers.
  */
-function Suggestions({ suggestions }: { suggestions: Array<{ entry: Entry; item: Pick<Item, "id" | "text"> }> }) {
+function Suggestions({ suggestions, routines, me }: { suggestions: Array<{ entry: Entry; item: Pick<Item, "id" | "text"> }>; routines: RoutineSummary[] | null; me: string | null }) {
+  // SPEC 20.3: a routine's suggestions are not from outside agents; with any of them, the heading says only how many.
+  const anyRoutine = suggestions.some((s) => routineOf(s.entry));
   return (
     <section aria-labelledby="sugg-h" className="untrusted grid gap-4 p-4 sm:p-6">
       <div>
         <h2 id="sugg-h" className="text-[1.15rem] font-semibold">
-          {plural(suggestions.length, "suggestion")} from outside agents
+          {plural(suggestions.length, "suggestion")}
+          {anyRoutine ? "" : " from outside agents"}
         </h2>
         <p className="mt-1 max-w-2xl text-[0.88rem] text-ink-2">Only writers see these. Links stay as text until you promote one.</p>
       </div>
       <ul className="grid gap-3 lg:grid-cols-2">
         {suggestions.map(({ entry: e, item }) => (
-          <SuggestionCard key={e.id} entry={e} itemText={item.text} />
+          <SuggestionCard key={e.id} entry={e} itemText={item.text} routines={routines} me={me} />
         ))}
       </ul>
     </section>
   );
 }
 
-function SuggestionCard({ entry: e, itemText }: { entry: Entry; itemText: string }) {
+function SuggestionCard({ entry: e, itemText, routines, me }: { entry: Entry; itemText: string; routines: RoutineSummary[] | null; me: string | null }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const pendingIntent = fetcher.formData?.get("intent");
   const doneIntent = fetcher.state === "idle" && fetcher.data?.ok ? "done" : null;
@@ -961,7 +966,8 @@ function SuggestionCard({ entry: e, itemText }: { entry: Entry; itemText: string
           {p.original_price && <span className="price-was ml-2 font-sans text-[0.9rem] font-normal">{formatMoney(p.original_price, p.currency)}</span>}
         </p>
       )}
-      {e.description && <p className="whitespace-pre-line break-words text-[0.88rem] text-ink-2">{e.description}</p>}
+      {/* A routine's own "not checked" line is in its byline below: not said twice. */}
+      {e.description && !(routineOf(e) && e.description === ROUTINE_NOTE) && <p className="whitespace-pre-line break-words text-[0.88rem] text-ink-2">{e.description}</p>}
       <dl className="grid gap-1 text-[0.8rem]">
         {e.retailer && (
           <div className="flex gap-2">
@@ -986,9 +992,13 @@ function SuggestionCard({ entry: e, itemText }: { entry: Entry; itemText: string
           </div>
         )}
       </dl>
-      <div className="flex flex-wrap items-center gap-2 text-[0.8rem] text-ink-3">
-        <ActorTag actor={e.author} /> <Time ts={e.created_at} />
-      </div>
+      {routineOf(e) ? (
+        <RoutineByline entry={e} routines={routines} me={me} />
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 text-[0.8rem] text-ink-3">
+          <ActorTag actor={e.author} /> <Time ts={e.created_at} />
+        </div>
+      )}
       <fetcher.Form method="post" className="mt-1 flex gap-2">
         <input type="hidden" name="entry_id" value={e.id} />
         <button name="intent" value="promote" className="btn btn-ghost btn-sm" disabled={fetcher.state !== "idle"}>
@@ -1406,5 +1416,80 @@ export function PrivateBadge({ bare = false }: { bare?: boolean }) {
       </svg>
       Private
     </span>
+  );
+}
+
+/* ---------------------------------------------------------------- Routines (SPEC 20.3) */
+
+/** What a search routine says on every shopping suggestion (20.6). */
+const ROUTINE_NOTE = "From a search result, not checked on the store's page.";
+
+/** The routine that posted a suggestion, when one did. */
+function routineOf(e: Entry) {
+  return e.author.kind === "outside" ? (e.author.routine ?? null) : null;
+}
+
+/**
+ * One quiet line under the header while any routine on the list is active, for writers: its name, its schedule and
+ * whose key, linking to the list's routines. Its name may be an agent's: shown in quotes, as a name.
+ */
+function RoutineLine({ list, me }: { list: ListSummary; me: string | null }) {
+  const active = (list.routines ?? []).filter((r) => !r.paused && !r.blocked_reason);
+  if (!active.length) return null;
+  return (
+    <ul className="mt-2 grid gap-0.5 text-[0.88rem] text-ink-3">
+      {active.map((r) => (
+        <li key={r.id}>
+          <Link to={`/app/lists/${list.id}/settings#routines`} className="hover:text-ink hover:underline">
+            {r.name_by === "agent" ? `“${r.name}”` : r.name} · {r.schedule_text}
+            {r.key_holder && <> · {r.key_holder.handle === me ? "your" : `@${r.key_holder.handle}'s`} Exa key</>}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** "Suggested by “Search the web for these wants” (@sam's routine) · from a search result, not checked on the store's page · Pause this routine". */
+function RoutineByline({ entry: e, routines, me }: { entry: Entry; routines: RoutineSummary[] | null; me: string | null }) {
+  const rt = routineOf(e)!;
+  const name = e.author.kind === "outside" ? (e.author.name ?? "a routine") : "a routine";
+  const summary = routines?.find((r) => r.id === rt.id);
+  const f = useFetcher<{ ok?: boolean; error?: string }>();
+  const whose = rt.key_holder === me ? "your routine" : `@${rt.key_holder}'s routine`;
+  return (
+    <div className="grid gap-1 text-[0.8rem] text-ink-3">
+      <p>
+        Suggested by “{name}” ({whose}) · from a search result, not checked on the store's page
+      </p>
+      {summary && !summary.paused && !summary.blocked_reason && (
+        <f.Form method="post">
+          <input type="hidden" name="intent" value="routine-pause" />
+          <input type="hidden" name="routine_id" value={rt.id} />
+          <button className="textlink-btn text-[0.8rem]" disabled={f.state !== "idle"}>
+            {f.state !== "idle" ? "Pausing…" : "Pause this routine"}
+          </button>
+        </f.Form>
+      )}
+      {f.data?.error && <p className="form-error" role="alert">{f.data.error}</p>}
+    </div>
+  );
+}
+
+/** SPEC 20.6: a routine stopped looking for this want after two rejected rounds; any writer can ask it to look again. */
+function RoutineStopped({ itemId, stop }: { itemId: string; stop: NonNullable<Item["routine_stops"]>[number] }) {
+  const f = useFetcher<{ ok?: boolean; error?: string; message?: string }>();
+  if (f.state === "idle" && f.data?.ok) return <p className="text-[0.85rem] text-ink-3" role="status">{f.data.message}</p>;
+  return (
+    <f.Form method="post" className="flex flex-wrap items-center gap-x-2 text-[0.85rem] text-ink-3">
+      <input type="hidden" name="intent" value="routine-item-resume" />
+      <input type="hidden" name="routine_id" value={stop.routine_id} />
+      <input type="hidden" name="item_id" value={itemId} />
+      <span className="w-full">This routine stopped looking for this: you rejected its last two rounds.</span>
+      <button className="textlink-btn text-[0.85rem]" disabled={f.state !== "idle"} title={stop.routine_name}>
+        Search again<span className="sr-only"> ({stop.routine_name})</span>
+      </button>
+      {f.data?.error && <span className="form-error w-full" role="alert">{f.data.error}</span>}
+    </f.Form>
   );
 }

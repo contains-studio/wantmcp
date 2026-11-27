@@ -15,6 +15,8 @@ import type {
 } from "../app/lib/types.ts";
 import { HANDOVER_TTL_DAYS, UNCLAIMED_TTL_HOURS } from "../app/lib/claims.ts";
 import { seedStore } from "./seed.ts";
+import { emptyRoutineStore, registerRoutineRoutes, routinesFor, scheduleText, type RoutineStore } from "./routines.ts";
+import { seedRoutines } from "./seed-routines.ts";
 import { newId, randomToken, type AgentRow, type ClaimRow, type SkillRow, type EntryRow, type ItemRow, type ListRow, type Store, type UserRow } from "./store.ts";
 
 export const MOCK_LOGIN_CODE = "123456";
@@ -24,10 +26,17 @@ const PAGE_SIZE = 20;
 // Seeded on the first request, not at import: in a Worker, Date.now() is frozen at 0
 // during global-scope evaluation, which would date all seed data to 1970.
 let store: Store = undefined as unknown as Store;
+/** SPEC 20: routines and what goes with them (mock/routines.ts). Reset with the store. */
+let routineStore: RoutineStore = emptyRoutineStore();
+function seedAll() {
+  store = seedStore();
+  routineStore = emptyRoutineStore();
+  seedRoutines(store, routineStore);
+}
 
 /** Reset to the seed data (used by tests and `POST /__reset`). */
 export function resetMockStore() {
-  store = seedStore();
+  seedAll();
 }
 
 // ---------- helpers
@@ -274,6 +283,14 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
   // SPEC 13.1
   const pending = store.claims.find((x) => x.list_id === l.id && x.kind === "unclaimed" && !x.used_by);
   out.claim = pending ? { state: "unclaimed", expires_at: pending.expires_at } : null;
+  // SPEC 20.10: the list's routines, for writers who can see routines; absent for everyone else (as an older build).
+  if (c && routinesFor(c.user.email)?.visible) {
+    out.routines = canWrite(c, l.id)
+      ? routineStore.routines
+          .filter((r) => r.list_id === l.id && !r.deleted_at)
+          .map((r) => ({ id: r.id, name: r.name, name_by: r.name_by, kind: r.kind, schedule_text: scheduleText(r.schedule), paused: !!r.paused, blocked_reason: r.blocked?.reason ?? null, key_holder: r.key_user_id ? { handle: userById(r.key_user_id).handle } : null }))
+      : null;
+  }
   return out;
 }
 
@@ -398,6 +415,10 @@ function itemOut(i: ItemRow, c: Caller): Item {
       suggested: writer ? entries.filter((e) => e.status === "suggested").length : 0,
     },
     comment_count: store.comments.filter((x) => x.target_type === "item" && x.target_id === i.id).length,
+    // SPEC 20.14: routines that stopped looking for this want, for writers who can see routines.
+    ...(writer && c && routinesFor(c.user.email)?.visible
+      ? { routine_stops: routineStore.routines.filter((r) => !r.deleted_at && r.stopped_items.includes(i.id)).map((r) => ({ routine_id: r.id, routine_name: r.name, name_by: r.name_by })) }
+      : {}),
   };
 }
 
@@ -450,6 +471,8 @@ function userSelf(u: UserRow): UserSelf {
   return {
     id: u.id, email: u.email, handle: u.handle, updates_opt_in: u.updates_opt_in,
     bio: u.bio ?? "", country: u.country ?? null, currency: u.currency ?? null, created_at: u.created_at,
+    // SPEC 20.14: absent until routines are visible for this person (mock rule in mock/routines.ts).
+    ...(routinesFor(u.email) ? { time_zone: u.time_zone ?? null, routines: routinesFor(u.email) } : {}),
   };
 }
 
@@ -535,6 +558,16 @@ route("PATCH", "/me", ({ caller, body }) => {
     user.handle = h;
   }
   if (typeof body.updates_opt_in === "boolean") user.updates_opt_in = body.updates_opt_in;
+  // SPEC 20.4: an IANA zone for new routines, set on the web.
+  if (body.time_zone !== undefined && routinesFor(user.email)) {
+    const tz = String(body.time_zone);
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: tz });
+    } catch {
+      throw invalid("time_zone must be an IANA time zone like Europe/London");
+    }
+    user.time_zone = tz;
+  }
   // SPEC 12.2
   if (body.bio !== undefined) user.bio = text("bio", body.bio, 600);
   if (body.country !== undefined) {
@@ -1860,8 +1893,37 @@ route("POST", "/__reset", () => {
  * Handle a request whose path starts with `/v1`. Any origin works, e.g.
  * `new Request("http://mock/v1/lists/lst_desk2026")`.
  */
+// SPEC 20: routines (mock/routines.ts).
+registerRoutineRoutes({
+  rs: () => routineStore,
+  route: route as never,
+  helpers: {
+    nowIso,
+    newId,
+    randomToken,
+    requireSession,
+    requireWriter,
+    canWrite,
+    actorRef: actorRef as never,
+    getList,
+    userById,
+    lists: () => store.lists,
+    items: () => store.items,
+    entries: () => store.entries,
+    unclaimed: (listId: string) => store.claims.some((x) => x.list_id === listId && x.kind === "unclaimed" && !x.used_by),
+    emit: emit as never,
+    webUrl: WEB,
+    notFound,
+    forbidden,
+    invalid,
+    conflict: (what: string, details?: unknown) => new HttpError(409, "conflict", what, details),
+    created,
+    noContent: NO_CONTENT,
+  },
+});
+
 export async function handleMockRequest(req: Request): Promise<Response> {
-  store ??= seedStore();
+  if (!store) seedAll();
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/v1/, "").replace(/\/$/, "") || "/";
   try {

@@ -5,7 +5,8 @@ import { defineConfig, devices } from "@playwright/test";
  * default in .dev.vars.example). The server starts fresh for every run, so the mock's seed data is
  * clean. Locally the installed Chrome is used; CI installs Playwright's Chromium.
  */
-const PORT = 5190;
+// E2E_PORT: another checkout may be running its suite on 5190 at the same time.
+const PORT = Number(process.env.E2E_PORT ?? 5190);
 
 export default defineConfig({
   testDir: "./e2e",

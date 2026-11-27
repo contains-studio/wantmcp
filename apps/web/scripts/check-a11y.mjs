@@ -68,12 +68,16 @@ async function audit(path, { session, viewport, scheme }) {
 }
 
 const session = await signIn("demo@example.com");
+// SPEC 20: routines show only to people they are launched for; the mock's routines@example.com has them (seed-routines.ts).
+const ROUTINES_PAGES = ["/app/routines", "/app/lists/lst_rt_kitchen/settings#routines", "/l/lst_rt_kitchen"];
+const routinesSession = await signIn("routines@example.com");
 const ONLY = process.argv.find((a) => a.startsWith("--only="))?.slice(7);
 const runs = [];
 for (const viewport of Object.keys(VIEWPORTS))
   for (const scheme of SCHEMES) {
     for (const p of PUBLIC_PAGES) runs.push([p, { viewport, scheme }]);
     for (const p of SIGNED_IN_PAGES) runs.push([p, { session, viewport, scheme }]);
+    for (const p of ROUTINES_PAGES) runs.push([p, { session: routinesSession, viewport, scheme }]);
   }
 if (WITH_THEMES) {
   // Every template with each format, every occasion on Sheet, and every occasion on a rotating

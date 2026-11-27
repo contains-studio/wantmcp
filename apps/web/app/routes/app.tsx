@@ -21,7 +21,8 @@ import { loadCards, orderCards, type ListCard } from "~/lib/app-home.server";
 import { requireUser } from "~/lib/auth.server";
 import { formatMoney, plural } from "~/lib/format";
 import { FORMATS } from "~/lib/formats";
-import { moneyPlaceholder, useCurrency } from "~/lib/hooks";
+import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
+import { routinesOn } from "~/lib/routines";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin, clearFlashCookie, readFlash } from "~/lib/session.server";
 import type { AgentInfo, ListSummary, PendingInvite } from "~/lib/types";
@@ -180,7 +181,9 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
 }
 
 /** Lists | Activity: two real links, the current one marked. */
-export function ViewSwitch({ current }: { current: "lists" | "activity" | "skills" }) {
+export function ViewSwitch({ current }: { current: "lists" | "activity" | "skills" | "routines" }) {
+  // SPEC 20.3: Routines joins the row once routines are launched for this person (20.14); until then, today's row.
+  const routines = !!routinesOn(useRootData().user);
   const tab = (to: string, label: string, on: boolean) => (
     <Link to={to} aria-current={on ? "page" : undefined} className={`view-tab ${on ? "is-on" : ""}`}>
       {label}
@@ -191,6 +194,7 @@ export function ViewSwitch({ current }: { current: "lists" | "activity" | "skill
       {tab("/app", "Lists", current === "lists")}
       {tab("/app/activity", "Activity", current === "activity")}
       {tab("/app/skills", "Skills", current === "skills")}
+      {routines && tab("/app/routines", "Routines", current === "routines")}
     </nav>
   );
 }

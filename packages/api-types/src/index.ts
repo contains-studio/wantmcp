@@ -19,7 +19,8 @@ export type TextAuthor = "person" | "agent" | "outsider";
 export type ActorRef =
   | { kind: "user"; handle: string }
   | { kind: "agent"; agent_id: string; name: string; owner_handle: string }
-  | { kind: "outside"; name: string | null }; // anonymous outside agent, name is self-reported and unverified
+  // anonymous outside agent, name is self-reported and unverified; or (SPEC 20.10) a routine, named by its name
+  | { kind: "outside"; name: string | null; routine?: { id: string; kind: RoutineKind; key_holder: string } };
 
 /** POST /auth/verify. updates_opt_in applies only when this call creates the account (`created`). */
 export interface VerifyResult {
@@ -34,6 +35,13 @@ export interface UserSelf {
   email: string;
   handle: string;
   updates_opt_in: boolean;
+  /** SPEC 20.4: an IANA time zone for new routines; set on the web (PATCH /me { time_zone }), null until then. Absent from older API builds. */
+  time_zone?: string | null;
+  /**
+   * SPEC 20.14: whether routines exist yet (`visible`, the launch switch), whether they run (`running`, the operator's
+   * pause) and each kind's switch. Absent or `visible: false`: show nothing about routines anywhere.
+   */
+  routines?: { visible: boolean; running: boolean; kinds: { exa_search: boolean } };
   /** SPEC 12.2. The person's standing preferences, 0..600 plain text. Only ever returned to its person (and as context to their own agents). */
   bio: string;
   /** ISO 3166-1 alpha-2, e.g. "GB". */
@@ -87,6 +95,8 @@ export interface ListSummary {
   note_by?: "person" | "agent" | null;
   /** Present only for the signed-in caller. */
   my_role?: "owner" | "member" | null;
+  /** SPEC 20.10: the list's routines, for writers only; null for everyone else. Absent from older API builds. */
+  routines?: RoutineSummary[] | null;
 }
 
 export interface Purchase {
@@ -109,6 +119,8 @@ export interface Completion {
 export interface Item {
   id: string;
   list_id: string;
+  /** SPEC 20.14: routines that stopped looking for this want (writers only; omitted otherwise). */
+  routine_stops?: RoutineStop[];
   url: string; // https://wantmcp.com/l/{list_id}#itm_...
   text: string;
   /** Plain text, 0..2000, written by list writers. */
@@ -271,7 +283,8 @@ export type EventType =
   | "item.purchased"
   | "item.status_changed"
   | "question.asked" // writers only, always
-  | "question.answered"; // writers only, always
+  | "question.answered" // writers only, always
+  | "routine.changed"; // SPEC 20.10: a person or agent changed a routine on the list; writers only
 
 export interface WantEvent {
   /** Monotonic cursor. Pass the last seen value as `after` to resume. */
@@ -742,4 +755,223 @@ export interface TrafficReport {
   tags: Array<{ name: string; visits: number }>;
   paths: Array<{ name: string; visits: number }>;
   sign_ups_by_source: Array<{ name: string; sign_ups: number }>;
+}
+
+/** Who wrote a piece of text a person can set: the person, or their agent. */
+export type NoteAuthor = "person" | "agent";
+
+// ---------- SPEC 20: routines ----------
+
+export type RoutineKind = "exa_search";
+/** Later steps add "date" | "event". */
+export type RoutineStart = "schedule";
+export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+/** SPEC 20.4. `anchor` (a local date, YYYY-MM-DD) is set by the server when the schedule is saved. */
+export interface Schedule {
+  every: "day" | "week" | "month";
+  /** 1-4 */
+  interval: number;
+  /** week only: one or more days. */
+  days?: Weekday[];
+  /** month only: 1-28, or "last". */
+  day_of_month?: number | "last";
+  /** A whole hour, "00:00"-"23:00". */
+  time: string;
+  /** IANA name. */
+  time_zone: string;
+  anchor: string;
+}
+
+/**
+ * What clients send. Omitted parts take the defaults of 20.4 (every week, on today's weekday, at 09:00, in the
+ * person's time zone). Agents never send time_zone (the person's own is used); nobody sends anchor.
+ */
+export interface ScheduleInput {
+  every: Schedule["every"];
+  interval?: number;
+  days?: Weekday[];
+  day_of_month?: number | "last";
+  time?: string;
+  time_zone?: string;
+}
+
+export type BlockReason = "key_missing" | "key_refused" | "out_of_credit" | "key_holder_left" | "all_rejected" | "unattended" | "by_admin";
+
+export type RoutineRunState = "queued" | "running" | "ok" | "partial" | "skipped" | "blocked" | "failed";
+
+export interface RoutineRun {
+  id: string;
+  trigger: "schedule" | "run_now";
+  /** Who pressed Run now; null for a scheduled run. */
+  run_by: ActorRef | null;
+  state: RoutineRunState;
+  attempts: number;
+  queued_at: Timestamp;
+  started_at: Timestamp | null;
+  finished_at: Timestamp | null;
+  wants_searched: number;
+  suggestions_posted: number;
+  searches_used: number;
+  /** One line in our words. */
+  note: string | null;
+}
+
+/** A routine as one reader sees it (SPEC 20.10). */
+export interface Routine {
+  id: string;
+  list_id: string;
+  /** Reserved (one want); always null in this step. */
+  item_id: null;
+  kind: RoutineKind;
+  /** The kind's own choices; {} for exa_search. */
+  settings: Record<string, unknown>;
+  start: RoutineStart;
+  /** 1-60, one line. */
+  name: string;
+  /** Who wrote the name: agents' names are agents' text (text_by=agent in agent-facing text). */
+  name_by: NoteAuthor;
+  schedule: Schedule;
+  /** The schedule in plain words, made by the server ("Every Friday at 9:00"). */
+  schedule_text: string;
+  paused: { by: ActorRef; at: Timestamp } | null;
+  blocked: { reason: BlockReason; at: Timestamp } | null;
+  next_run_at: Timestamp | null;
+  last_run: RoutineRun | null;
+  /** "Last ran … · Next: …", or the reason it can't run. Same words on the web and for agents. */
+  status_text: string;
+  /** The person whose key it runs on; null for kinds that spend nothing. */
+  key_holder: { handle: string } | null;
+  created: { by: ActorRef; at: Timestamp };
+  changed: { by: ActorRef; at: Timestamp };
+  // Worked out for each reader; never stored in an event.
+  uses_my_key: boolean;
+  run_now_left_today: number;
+  /**
+   * The person_asked of the latest change, only for the person whose agent made it, on the web (else absent). Never
+   * filled for an agent.
+   */
+  reported_words?: string | null;
+}
+
+/** ListSummary.routines entries (writers only). */
+export interface RoutineSummary {
+  id: string;
+  name: string;
+  name_by: NoteAuthor;
+  kind: RoutineKind;
+  schedule_text: string;
+  paused: boolean;
+  blocked_reason: BlockReason | null;
+  key_holder: { handle: string } | null;
+}
+
+export type RoutineChange = "created" | "renamed" | "rescheduled" | "paused" | "resumed" | "deleted" | "restored" | "run_now";
+
+/** The routine.changed event's fixed fields (SPEC 20.10). */
+export interface RoutineChangedPayload {
+  routine: {
+    id: string;
+    list_id: string;
+    kind: RoutineKind;
+    name: string;
+    name_by: NoteAuthor;
+    schedule: Schedule;
+    paused: boolean;
+    blocked_reason: BlockReason | null;
+    key_holder_handle: string | null;
+  };
+  change: RoutineChange;
+  key_holder_changed: boolean;
+}
+
+/** POST /lists/{id}/routines. `person_asked` (1-200) is required on every write by an agent. */
+export interface RoutineInput {
+  kind: RoutineKind;
+  name?: string;
+  schedule?: ScheduleInput;
+  person_asked?: string;
+}
+
+/** PATCH /routines/{id}. */
+export interface RoutinePatch {
+  name?: string;
+  schedule?: ScheduleInput;
+  /** true: the person's pause. */
+  paused?: boolean;
+  /** true: clear the person's pause and any block a person may clear, and become the key holder (20.2). */
+  resume?: boolean;
+  person_asked?: string;
+}
+
+/**
+ * What a write returns through Services: the routine and the 20.2 sentence for the person ("New routine on …"), so
+ * the web and agents say the same thing. REST returns `routine` alone.
+ */
+export interface RoutineWrite {
+  routine: Routine;
+  tell_your_person: string;
+}
+
+/** SPEC 20.7: what a routine-ask link shows; no stranger's text. */
+export interface RoutineAskView {
+  routine: { name: string; list_title: string };
+  /** True once the link was used (it is single-use). */
+  done: boolean;
+}
+
+/** For get_updates' needs_you.routines_blocked: routines on the agent's person's key that their person can fix. */
+export interface RoutineBlockedForPerson {
+  list: { id: string; title: string };
+  routine: { id: string; name: string; name_by: NoteAuthor };
+  reason: BlockReason;
+  fix_url: string;
+}
+
+/** SPEC 20.5. Never the key: its last 4 characters and status only. */
+export interface ServiceKey {
+  service: "exa";
+  last4: string;
+  status: "ok" | "refused" | "out_of_credit";
+  status_at: Timestamp;
+  /** Searches per UTC calendar month, 10-5000. */
+  monthly_cap: number;
+  used_this_month: number;
+  routines: Array<{ id: string; name: string; list: { id: string; title: string } }>;
+}
+
+/** PUT /me/service-keys/exa. */
+export interface ServiceKeyInput {
+  key: string;
+  /** Default true: one search for a fixed harmless query (about $0.007 of the person's credit). */
+  check?: boolean;
+}
+
+/** SPEC 20.8. */
+export interface EmailPrefs {
+  kinds: { routine_key: boolean; routine_unattended: boolean };
+}
+
+/** PATCH /me/email-prefs. */
+export interface EmailPrefsPatch {
+  kinds: Partial<EmailPrefs["kinds"]>;
+}
+
+/** SPEC 20.14: GET /me/routine-changes, one change an agent of this person made (last 7 days, newest first). */
+export interface RoutineChangeRecord {
+  id: string;
+  routine: { id: string; name: string; name_by: NoteAuthor; deleted: boolean; list: { id: string; title: string } };
+  change: RoutineChange;
+  by: ActorRef;
+  at: Timestamp;
+  /** What the agent reported its person said; only ever to that person, on the web. */
+  reported_words: string | null;
+  can_undo: boolean;
+}
+
+/** SPEC 20.14: a want a routine stopped looking for (Item.routine_stops, writers only). */
+export interface RoutineStop {
+  routine_id: string;
+  routine_name: string;
+  name_by: NoteAuthor;
 }

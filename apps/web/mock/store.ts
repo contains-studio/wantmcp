@@ -20,6 +20,8 @@ export interface UserRow {
   bio?: string;
   country?: string | null;
   currency?: string | null;
+  /** SPEC 20.4 */
+  time_zone?: string | null;
   created_at: Timestamp;
 }
 

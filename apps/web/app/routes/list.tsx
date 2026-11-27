@@ -7,6 +7,7 @@ import { api, apiOptional, toRouteError } from "~/lib/api.server";
 import { siteOrigin } from "~/lib/config.server";
 import { clip, plural } from "~/lib/format";
 import { handleWriterIntent } from "~/lib/intents.server";
+import { routineAction, ROUTINE_INTENTS } from "~/lib/routines.server";
 import { assertSameOrigin, clearKeptCookie, dismissedHandoffs, dismissHandoffCookie, getSessionToken, readKept } from "~/lib/session.server";
 import type { AgentInfo, Comment, ListAccess, Entry, Item, ListDetail, ListPrices, Page, PriceObservation } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
@@ -62,6 +63,9 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   // not_found to everyone else; this is a second line of defence, and it 404s exactly like
   // a list that does not exist.
   if (isPrivate && !isWriter) throw new Response("Not found", { status: 404 });
+  // SPEC 20.7: a person who writes the list opened it, so a routine's latest round counts as seen. Only when routines
+  // exist for them (the list carries `routines` only then); the server keeps at most one an hour. Never blocks the page.
+  const recordView = isWriter && Array.isArray(list.routines) ? api(request, `/lists/${encodeURIComponent(id)}/views`, { method: "POST" }).catch(() => null) : null;
 
   // Suggestions are writers-only. Never let one reach an anonymous page or a crawler,
   // even if the API were to return it.
@@ -96,6 +100,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     isWriter ? apiOptional<ListAccess>(request, `/lists/${encodeURIComponent(id)}/access`).catch(() => null) : Promise.resolve(null),
     isWriter ? idleAgentFor(request, list).catch(() => null) : Promise.resolve(null),
   ]);
+  await recordView;
   return data(
     {
       list: summary,
@@ -140,6 +145,11 @@ async function act({ request, params }: Route.ActionArgs) {
   if (form.get("intent") === "dismiss-handoff") {
     assertSameOrigin(request);
     throw redirect(`/l/${encodeURIComponent(params.id)}`, { headers: { "Set-Cookie": dismissHandoffCookie(request, params.id) } });
+  }
+  // SPEC 20.3: "Pause this routine" on a routine's suggestion, and "Search again" under a want it stopped looking for.
+  if (ROUTINE_INTENTS.has(String(form.get("intent")))) {
+    assertSameOrigin(request);
+    return routineAction(request, form);
   }
   return handleWriterIntent(request, form, params.id);
 }
