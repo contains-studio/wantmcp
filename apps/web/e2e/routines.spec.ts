@@ -23,7 +23,9 @@ test.describe("dark: routines not launched", () => {
     await page.goto("/app");
     await expect(page.locator("main")).not.toContainText(/routine/i);
     await page.goto("/app/account");
-    await expect(page.locator("main")).not.toContainText(/routine|Exa key|How I hear|Time zone/i);
+    await expect(page.locator("main")).not.toContainText(/routine|Exa key|Notifications|Time zone/i);
+    await page.goto("/privacy");
+    await expect(page.locator("main")).not.toContainText(/\broutines?\b|\bExa\b/i);
   });
 });
 
@@ -115,6 +117,13 @@ test("New routine: the Exa notice before confirming; without a key, the way to a
   await expect(page.getByText("The text of every open want on this list, including other people's, goes to your Exa account each time it runs.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Make this routine" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Add your Exa key" })).toHaveAttribute("href", "/app/account#keys");
+});
+
+test("privacy: what saving an Exa key means, once routines are visible", async ({ page }) => {
+  await signIn(page, freshEmail("routines-privacy"));
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { name: "Routines and your Exa key" })).toBeVisible();
+  await expect(page.locator("main")).toContainText("Encryption protects your key if our database is copied, not if our hosting account is taken over.");
 });
 
 test("paused for everyone: the page says so", async ({ page }) => {

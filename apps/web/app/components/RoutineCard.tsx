@@ -10,9 +10,11 @@
 import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { RemoveInTwoSteps } from "./AccessRow";
+import { RoutineHistory } from "./RoutineHistory";
 import type { RoutineResult } from "~/lib/routines.server";
 import {
   MOVES_TO_YOUR_KEY,
+  agentWroteName,
   PAUSED_FOR_EVERYONE,
   WEEKDAYS,
   namedBy,
@@ -46,7 +48,7 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           {/* An agent's name is shown as a name (in quotes), never as the site's own words. */}
           <h3 id={titleId} className="min-w-0 break-words text-[1.05rem] font-semibold">
-            {r.name_by === "agent" ? `“${r.name}”` : r.name}
+            {agentWroteName(r) ? `“${r.name}”` : r.name}
           </h3>
           {by && <span className="chip">named by {by}</span>}
         </div>
@@ -96,6 +98,7 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1">
+        <RoutineHistory routineId={r.id} name={r.name} />
         <Rename f={f} routine={r} />
         <ChangeSchedule f={f} routine={r} keyOk={keyOk} />
         {inSettings && (

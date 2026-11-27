@@ -55,7 +55,7 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
       list_id: "lst_rt_kitchen",
       kind: "exa_search",
       name: "Search the web for these wants",
-      name_by: "person",
+      name_by: "server",
       schedule: weekly,
       paused: null,
       blocked: null,
@@ -92,7 +92,7 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     list_id: "lst_rt_ana",
     kind: "exa_search",
     name: "Search the web for these wants",
-    name_by: "person",
+    name_by: "server",
     schedule: { every: "day", interval: 1, time: "07:00", time_zone: "Europe/London", anchor: at(3 * DAY).slice(0, 10) },
     paused: null,
     blocked: { reason: "out_of_credit", at: at(5 * HOUR) },
@@ -156,4 +156,5 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     { user_id: "usr_rt_sam", last4: "k29q", status: "out_of_credit", status_at: at(5 * HOUR), monthly_cap: 100, used: 40 },
   );
   rs.asks.set("ask_seed_kitchen", { routine_id: "rtn_kitchen", used: null });
+  rs.asks.set("ask_seed_garden", { routine_id: "rtn_garden", used: null });
 }

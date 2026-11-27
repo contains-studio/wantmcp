@@ -2,9 +2,12 @@ import { Link } from "react-router";
 import type { Route } from "./+types/privacy";
 import { ContactLink, LegalPage } from "~/components/Legal";
 import { siteOrigin } from "~/lib/config.server";
+import { getUser } from "~/lib/auth.server";
+import { routinesOn } from "~/lib/routines";
 
-export function loader({ request }: Route.LoaderArgs) {
-  return { origin: siteOrigin(request) };
+export async function loader({ request }: Route.LoaderArgs) {
+  // SPEC 20.10: the routines paragraph, only once routines are launched for this reader (20.14).
+  return { origin: siteOrigin(request), routines: !!routinesOn(await getUser(request).catch(() => null)) };
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -15,7 +18,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-export default function Privacy() {
+export default function Privacy({ loaderData }: Route.ComponentProps) {
   return (
     <LegalPage title="Privacy">
       <p>
@@ -101,6 +104,38 @@ export default function Privacy() {
         <li>Once a list is deleted, nothing on it is served any more.</li>
         <li>Usage statistics hold counts only: no email addresses and no content.</li>
       </ul>
+
+      {loaderData.routines && (
+        <>
+          <h2 id="routines-exa">Routines and your Exa key</h2>
+          <ul>
+            <li>
+              If you add an Exa key, we keep it encrypted and use it only for routines that search the web, on lists where you (or your agent,
+              when you asked it) made, resumed or ran one.
+            </li>
+            <li>
+              Each run sends the text of that list's open wants (and your country, if you set one) to Exa Labs, Inc., under your Exa account and
+              Exa's terms.
+            </li>
+            <li>
+              Encryption protects your key if our database is copied, not if our hosting account is taken over. A deleted key can stay in
+              encrypted backups for up to 30 days.
+            </li>
+            <li>
+              You can remove the key at any time, on your <Link to="/app/account#keys" className="link">account page</Link>.
+            </li>
+            <li>Everyone on a list can see its routines and whose key each uses.</li>
+            <li>
+              We email you about your own routines only: when your Exa key stops working (off unless you turn it on), and when a routine's
+              suggestions go unlooked at for two rounds (on; you can turn it off in{" "}
+              <Link to="/app/account#notifications" className="link">
+                Notifications
+              </Link>
+              ).
+            </li>
+          </ul>
+        </>
+      )}
 
       <h2>Security</h2>
       <p>

@@ -10,7 +10,7 @@ import type { AgentInfo } from "~/lib/types";
 import { Time } from "~/components/Time";
 import { requireUser } from "~/lib/auth.server";
 import { assertSameOrigin, clearSessionCookie } from "~/lib/session.server";
-import { ExaKeySection, HowIHear, TimeZoneSection } from "~/components/AccountRoutines";
+import { ExaKeySection, Notifications, TimeZoneSection } from "~/components/AccountRoutines";
 import { routinesOn } from "~/lib/routines";
 import { ACCOUNT_ROUTINE_INTENTS, accountRoutineAction, myEmailPrefs, myExaKey } from "~/lib/routines.server";
 
@@ -166,7 +166,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
       {routines && (
         <>
           <ExaKeySection exaKey={routines.exaKey} />
-          <HowIHear prefs={routines.prefs} />
+          <Notifications prefs={routines.prefs} />
           <TimeZoneSection saved={user.time_zone ?? null} />
         </>
       )}

@@ -12,6 +12,8 @@ export default [
   route("app/skills", "routes/app-skills.tsx"),
   route("app/traffic", "routes/app-traffic.tsx"),
   route("app/routines", "routes/app-routines.tsx"),
+  route("app/routines/:id/runs", "routes/app-routine-runs.tsx"),
+  route("routine-asks/:token", "routes/routine-ask.tsx"),
   route("app/lists/:id/settings", "routes/settings.tsx"),
   route("invite/:token", "routes/invite.tsx"),
   route("claim", "routes/claim-resume.tsx"),

@@ -74,7 +74,7 @@ export default function Routines({ loaderData }: Route.ComponentProps) {
                   </Link>
                 </h2>
                 <Link to={`/app/lists/${g.list.id}/settings#routines`} className="link text-[0.88rem] text-ink-3">
-                  In its settings
+                  List settings
                 </Link>
               </div>
               {g.routines.map((r) => (

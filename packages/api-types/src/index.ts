@@ -759,6 +759,8 @@ export interface TrafficReport {
 
 /** Who wrote a piece of text a person can set: the person, or their agent. */
 export type NoteAuthor = "person" | "agent";
+/** SPEC 20 (server e0eb1df): who wrote a routine's name; "server" for the kind's default name, whoever made it. */
+export type RoutineNameBy = "person" | "agent" | "server";
 
 // ---------- SPEC 20: routines ----------
 
@@ -830,7 +832,7 @@ export interface Routine {
   /** 1-60, one line. */
   name: string;
   /** Who wrote the name: agents' names are agents' text (text_by=agent in agent-facing text). */
-  name_by: NoteAuthor;
+  name_by: RoutineNameBy;
   schedule: Schedule;
   /** The schedule in plain words, made by the server ("Every Friday at 9:00"). */
   schedule_text: string;
@@ -858,7 +860,7 @@ export interface Routine {
 export interface RoutineSummary {
   id: string;
   name: string;
-  name_by: NoteAuthor;
+  name_by: RoutineNameBy;
   kind: RoutineKind;
   schedule_text: string;
   paused: boolean;
@@ -875,7 +877,7 @@ export interface RoutineChangedPayload {
     list_id: string;
     kind: RoutineKind;
     name: string;
-    name_by: NoteAuthor;
+    name_by: RoutineNameBy;
     schedule: Schedule;
     paused: boolean;
     blocked_reason: BlockReason | null;
@@ -918,12 +920,14 @@ export interface RoutineAskView {
   routine: { name: string; list_title: string };
   /** True once the link was used (it is single-use). */
   done: boolean;
+  /** Which choice was made, if any; each works once and the other stays available. */
+  answered: "keep" | "pause" | null;
 }
 
 /** For get_updates' needs_you.routines_blocked: routines on the agent's person's key that their person can fix. */
 export interface RoutineBlockedForPerson {
   list: { id: string; title: string };
-  routine: { id: string; name: string; name_by: NoteAuthor };
+  routine: { id: string; name: string; name_by: RoutineNameBy };
   reason: BlockReason;
   fix_url: string;
 }
@@ -960,7 +964,7 @@ export interface EmailPrefsPatch {
 /** SPEC 20.14: GET /me/routine-changes, one change an agent of this person made (last 7 days, newest first). */
 export interface RoutineChangeRecord {
   id: string;
-  routine: { id: string; name: string; name_by: NoteAuthor; deleted: boolean; list: { id: string; title: string } };
+  routine: { id: string; name: string; name_by: RoutineNameBy; deleted: boolean; list: { id: string; title: string } };
   change: RoutineChange;
   by: ActorRef;
   at: Timestamp;
@@ -973,5 +977,5 @@ export interface RoutineChangeRecord {
 export interface RoutineStop {
   routine_id: string;
   routine_name: string;
-  name_by: NoteAuthor;
+  name_by: RoutineNameBy;
 }

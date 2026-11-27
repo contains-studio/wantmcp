@@ -10,7 +10,7 @@ import type {
   ActorRef,
   BlockReason,
   EmailPrefs,
-  NoteAuthor,
+  RoutineNameBy,
   Routine,
   RoutineChange,
   RoutineChangeRecord,
@@ -27,7 +27,7 @@ export interface RoutineRow {
   list_id: string;
   kind: "exa_search";
   name: string;
-  name_by: NoteAuthor;
+  name_by: RoutineNameBy;
   schedule: Schedule;
   paused: { by: ActorRef; at: Timestamp } | null;
   blocked: { reason: BlockReason; at: Timestamp } | null;
@@ -387,7 +387,8 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       list_id: params[0],
       kind: "exa_search",
       name,
-      name_by: c.kind === "agent" && body.name ? "agent" : "person",
+      // The kind's default name is the server's words, whoever made it.
+      name_by: typeof body.name === "string" && body.name.trim() ? (c.kind === "agent" ? "agent" : "person") : "server",
       schedule: sched,
       paused: null,
       blocked: null,
@@ -672,20 +673,20 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   };
   route("GET", "/routine-asks/{token}", ({ params }) => {
     const { a, r } = ask(params[0]);
-    return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: !!a.used };
+    return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: !!a.used, answered: a.used };
   });
   route("POST", "/routine-asks/{token}", ({ params, body }) => {
     const { a, r } = ask(params[0]);
     if (body.action !== "keep" && body.action !== "pause") throw h.invalid("action must be keep or pause");
     // Used for this action already: nothing more to do. The other choice stays open (the page offers it afterwards).
-    if (a.used === body.action) return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: true };
+    if (a.used === body.action) return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: true, answered: a.used };
     if (body.action === "keep") r.paused = null;
     a.used = body.action;
     if (body.action === "pause") {
       const holder = r.key_user_id ? h.userById(r.key_user_id) : null;
       r.paused = { by: { kind: "user", handle: holder?.handle ?? "" }, at: h.nowIso() };
     }
-    return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: true };
+    return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: true, answered: a.used };
   });
 
   return { out, runOnce };

@@ -1,6 +1,6 @@
 /**
  * The account page's routine parts (SPEC 20.3, 20.5, 20.8, 20.14), shown only once routines are launched for this
- * person: Keys (#keys), How I hear (#email) and Time zone. All web only: an agent can never add, see or change any of
+ * person: Keys (#keys), Notifications (#notifications, also #email) and Time zone. All web only: an agent can never add, see or change any of
  * them.
  *
  * The Exa key is typed once and never shown again: the field is write-only (empty on every load, never in the
@@ -45,7 +45,13 @@ export function ExaKeySection({ exaKey }: { exaKey: ServiceKey | null }) {
         <h2 id="keys-h" className="text-xl font-semibold">
           Keys
         </h2>
-        <p className="text-[0.92rem] text-ink-2">Routines that search the web run on your own Exa key, so the searches are yours. We never pay for them, and nobody else can see your key.</p>
+        <p className="text-[0.92rem] text-ink-2">
+          Routines that search the web run on your own Exa key, so the searches are yours. We never pay for them. Nobody on your lists can see your
+          key; we keep it encrypted.{" "}
+          <Link to="/privacy#routines-exa" className="link">
+            How we keep it
+          </Link>
+        </p>
       </div>
 
       {exaKey && (
@@ -158,7 +164,7 @@ function KeyForm({ f, busy, replacing = false }: { f: ReturnType<typeof useFetch
       {!replacing && (
         <label className="check">
           <input type="checkbox" name="email_routine_key" />
-          <span>Email me if my Exa key stops working</span>
+          <span>Email me when my Exa key stops working</span>
         </label>
       )}
       <button className="btn btn-want w-full sm:w-fit" disabled={busy}>
@@ -168,13 +174,14 @@ function KeyForm({ f, busy, replacing = false }: { f: ReturnType<typeof useFetch
   );
 }
 
-export function HowIHear({ prefs }: { prefs: EmailPrefs }) {
+export function Notifications({ prefs }: { prefs: EmailPrefs }) {
   const f = useFetcher<AccountRoutineResult>({ key: "email-prefs" });
   return (
-    <section aria-labelledby="email-h" id="email" className="card grid scroll-mt-24 gap-4 p-5 sm:p-6">
-      <div className="grid gap-1">
-        <h2 id="email-h" className="text-xl font-semibold">
-          How I hear
+    <section aria-labelledby="notifications-h" id="notifications" className="card grid scroll-mt-24 gap-4 p-5 sm:p-6">
+      {/* id="email": the section's first name, so anything that linked to #email still lands here. */}
+      <div id="email" className="grid scroll-mt-24 gap-1">
+        <h2 id="notifications-h" className="text-xl font-semibold">
+          Notifications
         </h2>
         <p className="text-[0.92rem] text-ink-2">Your routines always show on your lists and in the app. Email is for the two things that need you.</p>
       </div>
@@ -183,15 +190,15 @@ export function HowIHear({ prefs }: { prefs: EmailPrefs }) {
         <label className="check rt-check">
           <input type="checkbox" name="routine_key" defaultChecked={prefs.kinds.routine_key} />
           <span>
-            <span className="block">Email me if my Exa key stops working</span>
-            <span className="hint">When Exa refuses it or the account runs out of credit, so your routines don't stop without you knowing.</span>
+            <span className="block">Email me when my Exa key stops working</span>
+            <span className="hint">When Exa refuses it, or your Exa account runs out of credit.</span>
           </span>
         </label>
         <label className="check rt-check">
           <input type="checkbox" name="routine_unattended" defaultChecked={prefs.kinds.routine_unattended} />
           <span>
-            <span className="block">Email me when nobody has looked at what my routine found</span>
-            <span className="hint">Once, with a link to keep it running or pause it. Without this email, it pauses without asking.</span>
+            <span className="block">Email me when a routine's suggestions go unlooked at for two rounds</span>
+            <span className="hint">Without this, it pauses without asking.</span>
           </span>
         </label>
         <button className="btn btn-sm w-fit" disabled={f.state !== "idle"}>

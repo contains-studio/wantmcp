@@ -36,7 +36,7 @@ export function actorName(a: ActorRef | null | undefined): string {
 
 /** The agent that wrote a routine's name, for "named by Claude" (the latest agent among its changes or its maker). */
 export function namedBy(r: Pick<Routine, "name_by" | "changed" | "created">): string | null {
-  if (r.name_by !== "agent") return null;
+  if (!agentWroteName(r)) return null;
   const a = r.changed.by.kind === "agent" ? r.changed.by : r.created.by.kind === "agent" ? r.created.by : null;
   return a ? a.name : "an agent";
 }
@@ -77,4 +77,9 @@ export function runsPer28(s: { every: "day" | "week" | "month"; interval?: numbe
 /** "New York time", from a routine's IANA zone (shown as text; a routine keeps its own zone). */
 export function zoneCity(tz: string): string {
   return tz === "UTC" ? "UTC" : `${tz.split("/").pop()!.replace(/_/g, " ")} time`;
+}
+
+/** Whether to show a name as an agent's words (in quotes, "named by …"). "server" is the kind's default name. */
+export function agentWroteName(r: { name_by: string }): boolean {
+  return r.name_by === "agent";
 }

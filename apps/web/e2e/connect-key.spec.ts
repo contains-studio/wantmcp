@@ -35,7 +35,11 @@ test("/connect/key: pick a list, Create key, Copy key; the address never changes
   await signIn(page, freshEmail("ck"));
   await createList(page, { format: "Shopping", title: "First list" });
   const second = await createList(page, { format: "Tasks", title: "Second list" });
-  await page.goto("/connect/key?app=msgblast");
+  const res = await page.goto("/connect/key?app=msgblast");
+  // Never cached, never indexed, never a referrer to another site (the page can show a key).
+  expect(res?.headers()["cache-control"]).toBe("private, no-store");
+  expect(res?.headers()["x-robots-tag"]).toBe("noindex");
+  expect(res?.headers()["referrer-policy"]).toBe("same-origin");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Connect msgblast to a list");
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
   await page.getByRole("radio", { name: "Second list" }).check();

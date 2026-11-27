@@ -21,6 +21,11 @@ import type { AgentInfo, ListSummary, Page } from "~/lib/types";
 // same-origin, not no-referrer: no-referrer makes a form post send `Origin: null`, which React Router refuses.
 const HEADERS = { "Cache-Control": "private, no-store", "Referrer-Policy": "same-origin", "X-Robots-Tag": "noindex" };
 
+/** The page and every answer to its form carry these (React Router sends a route's own headers from here only). */
+export function headers() {
+  return HEADERS;
+}
+
 export function meta({ loaderData: d }: Route.MetaArgs) {
   const app = d && "app" in d ? d.app : null;
   return [{ title: `Connect ${app ?? "an app"} · The Want MCP` }, { name: "robots", content: "noindex" }, { name: "referrer", content: "same-origin" }];

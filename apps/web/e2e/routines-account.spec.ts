@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createList, freshEmail, signIn } from "./helpers";
 
-/** SPEC 20.5, 20.8, 20.14: Keys, How I hear and Time zone on the account page, and the key line in For you. */
+/** SPEC 20.5, 20.8, 20.14: Keys, Notifications and Time zone on the account page, and the key line in For you. */
 
 const GOOD = "exa-test-key-good-7777";
 
@@ -27,6 +27,9 @@ test("Keys: write-only, checked with Exa on saving; the last 4, status, use this
   await expect(keys).toContainText("Exa key ending in 7777");
   await expect(keys).toContainText("Working");
   await expect(keys).toContainText("0 of 100 searches used this month");
+  // What we can honestly promise, and where it is explained.
+  await expect(keys).toContainText("Nobody on your lists can see your key; we keep it encrypted.");
+  await expect(keys.getByRole("link", { name: "How we keep it" })).toHaveAttribute("href", "/privacy#routines-exa");
   // Never shown again: not in the page, not in the address, the field empty.
   await page.reload();
   expect(await page.content()).not.toContain(GOOD);
@@ -60,12 +63,12 @@ test("out of credit: its routines stop, For you says so with Change key, and Che
   await expect(page.locator("main")).toContainText(/Next: /);
 });
 
-test("How I hear: key emails off and unlooked-at emails on by default; choices are kept", async ({ page }) => {
-  await signIn(page, freshEmail("routines-hear"));
-  await page.goto("/app/account#email");
-  const hear = page.getByRole("region", { name: "How I hear" });
-  const key = hear.getByLabel(/Email me if my Exa key stops working/);
-  const unattended = hear.getByLabel(/Email me when nobody has looked/);
+test("Notifications: key emails off and unlooked-at emails on by default; choices are kept", async ({ page }) => {
+  await signIn(page, freshEmail("routines-notify"));
+  await page.goto("/app/account#notifications");
+  const hear = page.getByRole("region", { name: "Notifications" });
+  const key = hear.getByLabel(/Email me when my Exa key stops working/);
+  const unattended = hear.getByLabel(/Email me when a routine's suggestions go unlooked at/);
   await expect(key).not.toBeChecked();
   await expect(unattended).toBeChecked();
   await key.check();

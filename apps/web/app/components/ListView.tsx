@@ -25,6 +25,7 @@ import { lowestEntryId, lowestLabel } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useHydrated, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, RoutineSummary, UserSelf } from "~/lib/types";
+import { agentWroteName } from "~/lib/routines";
 import type { Layout } from "~/themes/types";
 import type { ThemeView } from "~/themes/view";
 
@@ -1441,7 +1442,7 @@ function RoutineLine({ list, me }: { list: ListSummary; me: string | null }) {
       {active.map((r) => (
         <li key={r.id}>
           <Link to={`/app/lists/${list.id}/settings#routines`} className="hover:text-ink hover:underline">
-            {r.name_by === "agent" ? `“${r.name}”` : r.name} · {r.schedule_text}
+            {agentWroteName(r) ? `“${r.name}”` : r.name} · {r.schedule_text}
             {r.key_holder && <> · {r.key_holder.handle === me ? "your" : `@${r.key_holder.handle}'s`} Exa key</>}
           </Link>
         </li>
