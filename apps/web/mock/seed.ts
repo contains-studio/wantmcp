@@ -462,6 +462,38 @@ export function seedStore(now = Date.now()): Store {
     },
   );
 
+  // ---- SPEC 23: 30 days of page views and a few sign-ups with their sources, made up but steady (no randomness).
+  const SOURCES: Array<[string, number]> = [["direct", 9], ["news.ycombinator.com", 6], ["t.co", 4], ["google.com", 3], ["reddit.com", 2], ["chatgpt.com", 2], ["claude.ai", 1]];
+  const PAGES: Array<[string, number]> = [["/", 10], ["/for/:slug", 5], ["/connect", 4], ["/l/:id", 4], ["/themes", 2], ["/app", 3], ["/llms.txt", 1], ["/claim/:token", 1]];
+  const TAGS = ["x-post", "hn-launch", "newsletter"];
+  const pick = <T,>(list: Array<[T, number]>, n: number): T => {
+    const total = list.reduce((a, [, w]) => a + w, 0);
+    let k = n % total;
+    for (const [v, w] of list) {
+      if (k < w) return v;
+      k -= w;
+    }
+    return list[0][0];
+  };
+  for (let d = 0; d < 30; d++) {
+    // A launch bump around a week ago, a quieter weekend rhythm otherwise.
+    const n = 18 + ((d * 7) % 11) + (d >= 6 && d <= 8 ? 40 : 0) + (d === 1 ? 12 : 0);
+    for (let i = 0; i < n; i++) {
+      const seed = d * 97 + i * 31;
+      const ref = pick(SOURCES, seed);
+      s.visits.push({
+        at: new Date(now - d * DAY - ((i * 37) % 23) * HOUR).toISOString(),
+        path: pick(PAGES, seed * 3 + 1),
+        ref_host: ref,
+        tag: ref === "t.co" ? "x-post" : ref === "news.ycombinator.com" && i % 2 ? "hn-launch" : i % 13 === 0 ? TAGS[2] : null,
+        signed_in: i % 4 === 0,
+      });
+    }
+  }
+  for (const [i, src] of ["news.ycombinator.com", "x-post", "x-post", "direct", "hn-launch", "google.com"].entries()) {
+    s.users.push({ id: `usr_signup_${i}`, email: `signup${i}@example.com`, handle: `new-person-${100 + i}`, updates_opt_in: false, created_at: at((i * 4 + 1) * DAY), signup_src: src });
+  }
+
   // A question releases any claim.
   const movers = s.items.find((i) => i.id === "itm_t_movers");
   if (movers) movers.claimed_by = null;

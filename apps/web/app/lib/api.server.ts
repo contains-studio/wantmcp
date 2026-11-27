@@ -36,7 +36,8 @@ interface ApiInit {
 
 let mockModule: Promise<typeof import("../../mock/api")> | null = null;
 
-async function send(req: Request): Promise<Response> {
+/** One request to the API (or the in-process mock), as is. */
+export async function send(req: Request): Promise<Response> {
   const base = apiBaseUrl();
   if (base === "mock") {
     mockModule ??= import("../../mock/api");

@@ -11,6 +11,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import puppeteer from "puppeteer-core";
+import { tagPage } from "./check-header.mjs";
 
 const require = createRequire(import.meta.url);
 const AXE = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
@@ -40,7 +41,7 @@ const found = new Map(); // rule id -> { impact, help, where: Set }
 let checked = 0;
 
 async function audit(path, { session, viewport, scheme }) {
-  const page = await browser.newPage();
+  const page = await tagPage(await browser.newPage());
   await page.setViewport(VIEWPORTS[viewport]);
   await page.emulateMediaFeatures([
     { name: "prefers-color-scheme", value: scheme },

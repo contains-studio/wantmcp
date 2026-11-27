@@ -3,6 +3,7 @@
  * Each path is taken at phone and desktop, light and dark (full page).
  */
 import puppeteer from "puppeteer-core";
+import { tagPage } from "./check-header.mjs";
 const args = process.argv.slice(2);
 const out = args.shift();
 const BASE = args.find((a) => a.startsWith("--base="))?.slice(7) ?? "http://localhost:5173";
@@ -24,7 +25,7 @@ for (const path of paths)
   for (const [vp, view] of [["phone", { width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }], ["desktop", { width: 1280, height: 900 }]])
     for (const scheme of ["light", "dark"]) {
       if (only && only !== `${vp}-${scheme}`) continue;
-      const p = await b.newPage();
+      const p = await tagPage(await b.newPage());
       await p.setViewport(view);
       await p.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }, { name: "prefers-reduced-motion", value: "reduce" }]);
       if (sid) await p.setCookie({ name: "wm_session", value: sid, url: BASE });

@@ -20,6 +20,8 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     channel: process.env.CI ? undefined : "chrome",
     trace: "retain-on-failure",
+    // SPEC 23: never counted as a visit, wherever the suite points.
+    extraHTTPHeaders: { "x-wantmcp-check": "1" },
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], channel: process.env.CI ? undefined : "chrome" } },

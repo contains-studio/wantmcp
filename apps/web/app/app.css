@@ -1135,3 +1135,14 @@ button.check-toggle::before { content: ""; position: absolute; top: 50%; left: 5
 }
 .access-name { min-width: 0; overflow-wrap: anywhere; }
 .row-remove-also { flex-basis: 100%; }
+
+/* /app/traffic (SPEC 23): visits per day, one series in the accent; thin bars, rounded tops, a recessive baseline. */
+.traffic-bars { display: flex; align-items: flex-end; gap: 2px; height: 9rem; border-bottom: 1px solid var(--line); }
+.traffic-bar-slot { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; min-width: 0; }
+.traffic-bar { width: 100%; max-width: 1.25rem; margin: 0 auto; border-radius: 4px 4px 0 0; background: var(--want); }
+.traffic-bar-slot:hover .traffic-bar { filter: brightness(1.15); }
+.traffic-axis { display: flex; gap: 2px; margin-top: -0.4rem; font-size: 0.72rem; color: var(--ink-3); }
+.traffic-axis > span { flex: 1 1 0; min-width: 0; overflow: visible; white-space: nowrap; }
+.traffic-axis > span:last-child { text-align: right; direction: rtl; }
+.traffic-rank { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.traffic-rank > div { height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--want) 70%, transparent); }

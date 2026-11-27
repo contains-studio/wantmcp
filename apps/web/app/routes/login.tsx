@@ -70,7 +70,8 @@ export async function action({ request }: Route.ActionArgs) {
       const res = await api<VerifyResult>(request, "/auth/verify", {
         method: "POST",
         anonymous: true,
-        body: { email, code, updates_opt_in: optIn, ...(attempt ? { attempt_id: attempt } : {}) },
+        // SPEC 23: where this person first came from (wm_src), counted only when this call creates the account.
+        body: { email, code, updates_opt_in: optIn, ...(attempt ? { attempt_id: attempt } : {}), ...(signupSource(request) ? { src: signupSource(request) } : {}) },
         ref: cleanRef(form.get("ref")),
       });
       const headers = new Headers();
@@ -212,4 +213,11 @@ export default function Login({ loaderData }: Route.ComponentProps) {
       </div>
     </div>
   );
+}
+
+/** The wm_src cookie (a tag or a referring host, set by the Worker on the first visit), when it is plain. */
+function signupSource(request: Request): string | null {
+  const m = /(?:^|;\s*)wm_src=([^;]+)/.exec(request.headers.get("cookie") ?? "");
+  const v = m ? decodeURIComponent(m[1]) : null;
+  return v && /^[a-z0-9_.-]{1,64}$/.test(v) ? v : null;
 }

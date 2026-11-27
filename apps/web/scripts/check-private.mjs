@@ -11,6 +11,7 @@
  *   PRIVATE_LIST=… PRIVATE_TITLE=… PRIVATE_SNIPPET=… PUBLIC_LIST=… \
  *   OWNER=… MEMBER=… OTHER=… node scripts/check-private.mjs http://localhost:5173
  */
+import "./check-header.mjs";
 const env = process.env;
 const BASE = process.argv[2] ?? "http://localhost:5173";
 const PRIVATE = env.PRIVATE_LIST ?? "lst_tasks"; // mock: private task list, owner demo@, member heron@

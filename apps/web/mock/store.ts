@@ -14,6 +14,8 @@ export interface UserRow {
   email: string;
   handle: string;
   updates_opt_in: boolean;
+  /** SPEC 23: where the person first came from, set when the account was made (verify's src). */
+  signup_src?: string | null;
   /** SPEC 12.2 */
   bio?: string;
   country?: string | null;
@@ -151,6 +153,8 @@ export interface Store {
   feedback: Array<{ id: string; kind: string; text: string; expected: string | null; about: string | null; list: string | null; created_at: Timestamp; item_id?: string | null }>;
   claims: ClaimRow[];
   skills: SkillRow[];
+  /** SPEC 23: page views (route pattern, referring host, tag, signed in). */
+  visits: Array<{ at: Timestamp; path: string; ref_host: string; tag: string | null; signed_in: boolean }>;
 }
 
 let counter = 0;
@@ -189,6 +193,7 @@ export function emptyStore(): Store {
     feedback_list: null,
     claims: [],
     skills: [],
+    visits: [],
   };
 }
 

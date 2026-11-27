@@ -507,7 +507,8 @@ route("POST", "/auth/verify", ({ body }) => {
   let user = store.users.find((u) => u.email === email);
   const created = !user;
   if (!user) {
-    user = { id: newId("usr"), email, handle: newHandle(), updates_opt_in: body.updates_opt_in === true, created_at: nowIso() };
+    const src = typeof body.src === "string" && /^[a-z0-9_.-]{1,64}$/.test(body.src) ? body.src : null;
+    user = { id: newId("usr"), email, handle: newHandle(), updates_opt_in: body.updates_opt_in === true, created_at: nowIso(), signup_src: src };
     store.users.push(user);
   }
   const token = "mock_sess_" + randomToken(32);
@@ -652,6 +653,58 @@ route("GET", "/me/activity", ({ caller, url }) => {
   const start = cursor ? rows.findIndex((r) => r.id === cursor) + 1 : 0;
   const data = rows.slice(start, start + limit);
   return { data, next_cursor: start + limit < rows.length ? data.at(-1)!.id : null };
+});
+
+// SPEC 23: page views from the web Worker (with the proxy secret on the real server), and the owner's traffic report.
+const VISIT_PATHS = new Set(["/", "/connect", "/login", "/for", "/for/:slug", "/themes", "/themes/:slug", "/start", "/l/:id", "/l/:id/settings", "/claim", "/claim/:token", "/invite/:token", "/feedback", "/feedback/:id", "/unsubscribe/:token", "/report", "/privacy", "/terms", "/skills", "/search", "/authorize", "/app", "/app/new", "/app/activity", "/app/skills", "/app/account", "/app/traffic", "/app/lists/:id/settings", "/llms.txt", "/agents.txt", "/skill.md"]);
+route("POST", "/internal/visit", ({ body }) => {
+  const path = String(body.path ?? "");
+  if (!VISIT_PATHS.has(path)) throw invalid("path is not a known page");
+  const host = typeof body.ref_host === "string" ? body.ref_host.toLowerCase().replace(/^www\./, "") : "direct";
+  // The page counts; our own host is never a source (the server's OWN; localhost in development).
+  const own = host === "wantmcp.com" || host === "localhost";
+  const tag = typeof body.tag === "string" && /^[a-z0-9_-]{1,32}$/.test(body.tag) ? body.tag : null;
+  store.visits.push({ at: nowIso(), path, ref_host: own ? "" : host || "direct", tag, signed_in: body.signed_in === true });
+  return new Response(null, { status: 204 });
+});
+/** Who may read the traffic report (on the server, a configured list; here the demo owner). */
+const TRAFFIC_READERS = new Set(["usr_demo"]);
+route("GET", "/me/traffic", ({ caller, url }) => {
+  const c = requireSession(caller);
+  if (!TRAFFIC_READERS.has(c.user.id)) throw notFound("Not found");
+  const days = Math.min(30, Math.max(1, parseInt(url.searchParams.get("days") ?? "30", 10) || 30));
+  const since = new Date(Date.now() - (days - 1) * 86_400_000);
+  since.setUTCHours(0, 0, 0, 0);
+  const visits = store.visits.filter((v) => Date.parse(v.at) >= since.getTime());
+  const signUps = store.users.filter((u) => u.signup_src !== undefined && Date.parse(u.created_at) >= since.getTime());
+  const day = (iso: string) => iso.slice(0, 10);
+  const per_day = Array.from({ length: days }, (_, i) => {
+    const date = new Date(since.getTime() + i * 86_400_000).toISOString().slice(0, 10);
+    const vs = visits.filter((v) => day(v.at) === date);
+    const si = vs.filter((v) => v.signed_in).length;
+    return { date, visits: vs.length, signed_in: si, signed_out: vs.length - si, sign_ups: signUps.filter((u) => day(u.created_at) === date).length };
+  });
+  const top = (key: (v: (typeof visits)[number]) => string | null) => {
+    const m = new Map<string, number>();
+    for (const v of visits) {
+      const k = key(v);
+      if (k) m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return [...m].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([name, n]) => ({ name, visits: n }));
+  };
+  const bySrc = new Map<string, number>();
+  for (const u of signUps) bySrc.set(u.signup_src ?? "unknown", (bySrc.get(u.signup_src ?? "unknown") ?? 0) + 1);
+  const signedIn = visits.filter((v) => v.signed_in).length;
+  return {
+    days,
+    since: since.toISOString(),
+    per_day,
+    totals: { visits: visits.length, signed_in: signedIn, signed_out: visits.length - signedIn, sign_ups: signUps.length },
+    sources: top((v) => v.ref_host || null),
+    tags: top((v) => v.tag),
+    paths: top((v) => v.path),
+    sign_ups_by_source: [...bySrc].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([name, n]) => ({ name, sign_ups: n })),
+  };
 });
 
 // SPEC 13.6: account keys (ak_) agents made for themselves; the person can see and remove them.

@@ -730,3 +730,16 @@ export interface ActivityEvent {
     status_note?: string;
   };
 }
+
+/** GET /me/traffic?days=1..30 (SPEC 23): where visitors come from. Only for accounts the server allows; 404 for others. */
+export interface TrafficReport {
+  days: number;
+  since: string;
+  per_day: Array<{ date: string; visits: number; signed_in: number; signed_out: number; sign_ups: number }>;
+  totals: { visits: number; signed_in: number; signed_out: number; sign_ups: number };
+  /** Top 25 each: a referring host ("direct" too), a ?ref= tag, a route pattern, a sign-up source. */
+  sources: Array<{ name: string; visits: number }>;
+  tags: Array<{ name: string; visits: number }>;
+  paths: Array<{ name: string; visits: number }>;
+  sign_ups_by_source: Array<{ name: string; sign_ups: number }>;
+}

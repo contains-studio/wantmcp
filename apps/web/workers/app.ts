@@ -2,6 +2,7 @@ import { createRequestHandler } from "react-router";
 import { canonicalRedirect } from "../app/lib/canonical";
 import { errorLine, newRef } from "../app/lib/telemetry";
 import { requestTrace } from "../app/lib/trace.server";
+import { recordVisit, sourceCookie, visitFor } from "../app/lib/visits.server";
 
 const requestHandler = createRequestHandler(() => import("virtual:react-router/server-build"), import.meta.env.MODE);
 
@@ -106,6 +107,17 @@ export default {
     // Lets an open tab notice it is running an older build than the server (app/lib/build.ts).
     res.headers.set("X-Build-Id", __BUILD_ID__);
     applyCachePolicy(request, url, res);
+    // SPEC 23: count the page view after the response has gone; the first visit from outside notes its source for
+    // sign-up (a response that sets it is never stored by a shared cache).
+    const visit = visitFor(request, url, res);
+    if (visit) {
+      ctx.waitUntil(recordVisit(visit));
+      const cookie = sourceCookie(request, url);
+      if (cookie) {
+        res.headers.append("set-cookie", cookie);
+        res.headers.set("cache-control", "private, no-store");
+      }
+    }
     return res;
   },
 } satisfies ExportedHandler<Env>;
