@@ -591,6 +591,10 @@ const CLIENT_LIST: Client[] = [
     ownThen: true,
     steps: () => (
       <>
+        {/* First, not fine print after the steps: nobody should hunt for a menu the download does not have yet. */}
+        <p className="text-[0.95rem] text-ink-2">
+          Wants comes in the next msgblast release: the download today (0.11.1) doesn't have it yet. Update when a newer version arrives.
+        </p>
         <h3 className="text-[1rem] font-semibold">On a Mac</h3>
         <Steps>
           <li>
@@ -630,9 +634,6 @@ const CLIENT_LIST: Client[] = [
           </li>
         </Steps>
         <Shot src="/shots/msgblast-wants-mac.webp" width={1024} height={738} alt="The msgblast Wants window on Mac: a headphones want with two offers, from Claude and from Codex, and a comment. Demo data." caption="A want with its offers in msgblast (demo data)." />
-        <p className="text-[0.85rem] text-ink-3">
-          Wants comes in the next msgblast release: the download today (0.11.1) doesn't have it yet. Update when a newer version arrives.
-        </p>
       </>
     ),
   },
