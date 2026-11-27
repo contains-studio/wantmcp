@@ -4,7 +4,7 @@ import { refHost, skipVisit, sourceOf, visitPath, visitTag } from "./visits";
 
 const SESSION_COOKIE = /(?:^|;\s*)wm_session=/;
 const SRC_COOKIE = /(?:^|;\s*)wm_src=/;
-const TEXT_PAGES = new Set(["/llms.txt", "/agents.txt", "/skill.md"]);
+const TEXT_PAGES = new Set(["/llms.txt", "/agents.txt", "/skill.md", "/developers.md"]);
 
 /** The visit to record for this request and response, or null when it isn't a page view we count. */
 export function visitFor(request: Request, url: URL, res: Response): Record<string, unknown> | null {

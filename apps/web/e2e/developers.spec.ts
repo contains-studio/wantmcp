@@ -29,6 +29,14 @@ test("/developers: three ways in as cards, contents, code with a copy button and
   expect(md).toContain(copied);
 });
 
+test("from 900px every fold is open", async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await page.goto("/developers");
+  const folds = page.locator("details[data-fold]");
+  expect(await folds.count()).toBeGreaterThan(1);
+  await expect.poll(() => folds.evaluateAll((ds) => ds.every((d) => (d as HTMLDetailsElement).open))).toBe(true);
+});
+
 test("/developers.md is the same guide as Markdown, without the server's own check notes", async ({ request }) => {
   const res = await request.get("/developers.md");
   expect(res.headers()["content-type"]).toBe("text/markdown; charset=utf-8");
@@ -62,6 +70,25 @@ test.describe("without JavaScript", () => {
 
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test("the long parts fold behind Show; the first example stays open; Back to contents opens the contents", async ({ page }) => {
+    await page.goto("/developers");
+    const rest = page.locator("details[data-fold]", { has: page.getByText("/v1/me/events") }).first();
+    await expect(rest).not.toHaveAttribute("open");
+    await rest.getByText(/^Show the table \(\d+ rows\)$/).click();
+    await expect(rest.getByText("GET /v1/whoami")).toBeVisible();
+    await expect(rest.getByText(/^Hide the table/)).toBeVisible();
+    // The first no-account example is open; the sign-in samples are folded.
+    await expect(page.locator("[id='code-no-account-first-curl'] pre")).toBeVisible();
+    const signIn = page.locator("section[aria-labelledby='code-sign-in'] [role=tabpanel]:visible details[data-fold]");
+    await expect(signIn).not.toHaveAttribute("open");
+    await signIn.getByText(/^Show the code \(\d+ lines\)$/).click();
+    await expect(signIn.locator("pre")).toBeVisible();
+    // Back to the contents, opened.
+    await page.locator("section[aria-labelledby='testing']").getByRole("link", { name: "Back to contents" }).click();
+    await expect(page.locator("#contents")).toHaveAttribute("open", "");
+    await expect(page.locator("#contents").getByRole("link", { name: "Testing" })).toBeInViewport();
+  });
+
   test("no sideways scroll; contents in a fold with 44px links", async ({ page }) => {
     await page.goto("/developers");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);

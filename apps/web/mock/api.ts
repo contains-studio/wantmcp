@@ -657,7 +657,7 @@ route("GET", "/me/activity", ({ caller, url }) => {
 });
 
 // SPEC 23: page views from the web Worker (with the proxy secret on the real server), and the owner's traffic report.
-const VISIT_PATHS = new Set(["/", "/connect", "/login", "/for", "/for/:slug", "/themes", "/themes/:slug", "/start", "/l/:id", "/l/:id/settings", "/claim", "/claim/:token", "/invite/:token", "/feedback", "/feedback/:id", "/unsubscribe/:token", "/report", "/privacy", "/terms", "/skills", "/search", "/authorize", "/app", "/app/new", "/app/activity", "/app/skills", "/app/account", "/app/traffic", "/app/lists/:id/settings", "/llms.txt", "/agents.txt", "/skill.md"]);
+const VISIT_PATHS = new Set(["/", "/connect", "/login", "/for", "/for/:slug", "/themes", "/themes/:slug", "/start", "/l/:id", "/l/:id/settings", "/claim", "/claim/:token", "/invite/:token", "/feedback", "/feedback/:id", "/unsubscribe/:token", "/report", "/privacy", "/terms", "/skills", "/search", "/authorize", "/app", "/app/new", "/app/activity", "/app/skills", "/app/account", "/app/traffic", "/app/lists/:id/settings", "/llms.txt", "/agents.txt", "/skill.md", "/developers", "/developers.md", "/connect/key"]);
 route("POST", "/internal/visit", ({ body }) => {
   const path = String(body.path ?? "");
   if (!VISIT_PATHS.has(path)) throw invalid("path is not a known page");

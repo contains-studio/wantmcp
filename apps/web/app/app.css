@@ -1198,3 +1198,16 @@ button.check-toggle::before { content: ""; position: absolute; top: 50%; left: 5
   .dev-table td:first-child { font-weight: 600; }
   .dev-table td[data-label]::before { content: attr(data-label) ": "; color: var(--ink-3); }
 }
+/* /developers on a phone: long reference parts fold behind a clear Show (open from 900px, set after load). */
+.dev-fold > summary { list-style: none; }
+.dev-fold > summary::-webkit-details-marker { display: none; }
+.dev-fold-btn { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 2.75rem; padding: 0 1rem; color: var(--ink); font-size: 0.9rem; font-weight: 500; cursor: pointer; }
+.dev-fold-btn::before { content: ""; width: 0.45rem; height: 0.45rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.dev-fold[open] > .dev-fold-btn::before { transform: rotate(45deg); }
+.dev-fold-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dev-fold-hide, .dev-fold[open] > summary .dev-fold-show { display: none; }
+.dev-fold[open] > summary .dev-fold-hide { display: inline; }
+.dev-table > .dev-fold > .dev-fold-btn, .dev-fold:not(.dev-code .dev-fold) > .dev-fold-btn { padding: 0; }
+.dev-code .dev-fold:not([open]) > .dev-fold-btn { width: 100%; }
+.dev-back { display: inline-flex; align-items: center; min-height: 2.75rem; }
+@media (min-width: 1024px) { .dev-back { display: none; } }

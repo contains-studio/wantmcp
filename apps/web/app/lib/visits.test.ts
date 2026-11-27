@@ -10,6 +10,10 @@ test("pages are counted as their route pattern, never a real id", () => {
   assert.equal(visitPath("/claim"), "/claim");
   assert.equal(visitPath("/claim/clm_1"), "/claim/:token");
   assert.equal(visitPath("/connect/"), "/connect");
+  // SPEC 24 pages (server 19266f5).
+  assert.equal(visitPath("/connect/key"), "/connect/key");
+  assert.equal(visitPath("/developers"), "/developers");
+  assert.equal(visitPath("/developers.md"), "/developers.md");
   assert.equal(visitPath("/l/lst_x.data"), "/l/:id"); // never reached: data requests aren't HTML
   assert.equal(visitPath("/assets/app.js"), null);
   assert.equal(visitPath("/og/l/lst_x.png"), null);

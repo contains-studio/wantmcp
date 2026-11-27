@@ -42,6 +42,14 @@ export default function Developers({ loaderData }: Route.ComponentProps) {
   const [lead, ...restIntro] = guide.intro;
   const contents = [...guide.sections.map((s) => s.heading), ...(guide.code ? [guide.code.heading] : [])];
   const mdUrl = `${loaderData.origin}/developers.md`;
+  // The long reference parts start folded on a phone; from 900px they open (owner, 27 Nov 2026). Folded in the HTML,
+  // so a phone never jumps; on a wide screen they open after load, below the fold, and a #section link is re-found.
+  useEffect(() => {
+    if (!window.matchMedia("(min-width: 900px)").matches) return;
+    for (const d of document.querySelectorAll<HTMLDetailsElement>("details[data-fold]")) d.open = true;
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (id) document.getElementById(id)?.scrollIntoView();
+  }, []);
   return (
     <div className="wrap grid gap-10 py-10 sm:py-14">
       <header className="grid max-w-3xl gap-5">
@@ -86,7 +94,7 @@ export default function Developers({ loaderData }: Route.ComponentProps) {
       <div className="dev-layout">
         <nav aria-label="On this page" className="dev-toc">
           {/* A fold on a phone, a list beside the text from 1024px. */}
-          <details className="dev-toc-fold">
+          <details className="dev-toc-fold" id="contents">
             <summary className="add-link">On this page</summary>
             <Contents items={contents} />
           </details>
@@ -102,6 +110,7 @@ export default function Developers({ loaderData }: Route.ComponentProps) {
                 <Text s={s.heading.text} />
               </h2>
               <Blocks blocks={s.blocks} />
+              <BackToContents />
             </section>
           ))}
           {guide.code && <CodeSection heading={guide.code.heading} groups={guide.code.groups} />}
@@ -115,6 +124,35 @@ export default function Developers({ loaderData }: Route.ComponentProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** On a phone, where the contents aren't beside the text: back to them, opened. */
+function BackToContents() {
+  return (
+    <a
+      href="#contents"
+      className="dev-back link w-fit text-[0.88rem] text-ink-3"
+      onClick={() => {
+        const fold = document.getElementById("contents");
+        if (fold instanceof HTMLDetailsElement) fold.open = true;
+      }}
+    >
+      Back to contents
+    </a>
+  );
+}
+
+/** A long part, folded on a phone (open from 900px): a clear Show, and Hide once open. */
+function Fold({ what, children }: { what: string; children: ReactNode }) {
+  return (
+    <details className="dev-fold" data-fold>
+      <summary className="dev-fold-btn">
+        <span className="dev-fold-show">Show {what}</span>
+        <span className="dev-fold-hide">Hide {what}</span>
+      </summary>
+      {children}
+    </details>
   );
 }
 
@@ -142,7 +180,7 @@ function CodeSection({ heading, groups }: { heading: { id: string; text: string 
       <h2 id={heading.id} className="dev-h2">
         {heading.text}
       </h2>
-      {groups.map((g) => {
+      {groups.map((g, gi) => {
         const on = g.variants.find((v) => v.lang === lang) ?? g.variants[0];
         return (
           <section key={g.id} aria-labelledby={g.id} className="grid min-w-0 gap-3">
@@ -192,27 +230,32 @@ function CodeSection({ heading, groups }: { heading: { id: string; text: string 
                     {UNRUN.has(v.lang) && <span className="chip chip-warn">Not yet run by us</span>}
                   </p>
                 )}
-                <Blocks blocks={v.blocks} />
+                {/* The first example stays open; the rest fold on a phone. */}
+                <Blocks blocks={v.blocks} fold={gi > 0} />
               </div>
             ))}
           </section>
         );
       })}
+      <BackToContents />
     </section>
   );
 }
 
-function Blocks({ blocks }: { blocks: Block[] }) {
+function Blocks({ blocks, fold = false }: { blocks: Block[]; fold?: boolean }) {
   return (
     <>
       {blocks.map((b, i) => (
-        <BlockView key={i} b={b} />
+        <BlockView key={i} b={b} fold={fold} />
       ))}
     </>
   );
 }
 
-function BlockView({ b }: { b: Block }) {
+/** Tables longer than this fold on a phone (the REST calls). */
+const LONG_TABLE = 8;
+
+function BlockView({ b, fold }: { b: Block; fold: boolean }) {
   switch (b.kind) {
     case "heading":
       return b.level === 3 ? (
@@ -238,8 +281,8 @@ function BlockView({ b }: { b: Block }) {
       ));
       return b.ordered ? <ol className="dev-list list-decimal">{items}</ol> : <ul className="dev-list list-disc">{items}</ul>;
     }
-    case "table":
-      return (
+    case "table": {
+      const table = (
         <div className="dev-table">
           <table>
             <thead>
@@ -266,23 +309,30 @@ function BlockView({ b }: { b: Block }) {
           </table>
         </div>
       );
+      return b.rows.length > LONG_TABLE ? <Fold what={`the table (${b.rows.length} rows)`}>{table}</Fold> : table;
+    }
     case "code":
-      return <Code lang={b.lang} text={b.text} />;
+      return <Code lang={b.lang} text={b.text} fold={fold} />;
   }
 }
 
 const LANG_NAME: Record<string, string> = { bash: "Shell", ts: "TypeScript", swift: "Swift", json: "JSON", "": "HTTP" };
 
-function Code({ lang, text }: { lang: string; text: string }) {
+function Code({ lang, text, fold }: { lang: string; text: string; fold: boolean }) {
+  const pre = (
+    <pre tabIndex={0}>
+      <code>{text}</code>
+    </pre>
+  );
+  const lines = text.split("\n").length;
   return (
     <figure className="dev-code">
       <figcaption className="dev-code-bar">
         <span>{LANG_NAME[lang] ?? lang}</span>
         <CopyButton text={text} label="Copy" ariaLabel={`Copy this ${LANG_NAME[lang] ?? lang}`} className="btn btn-ghost btn-xs" />
       </figcaption>
-      <pre tabIndex={0}>
-        <code>{text}</code>
-      </pre>
+      {/* Copy works folded or not. */}
+      {fold ? <Fold what={`the code (${lines} lines)`}>{pre}</Fold> : pre}
     </figure>
   );
 }

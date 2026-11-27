@@ -7,6 +7,9 @@
 const PATTERNS: Array<[RegExp, string]> = [
   [/^\/$/, "/"],
   [/^\/connect$/, "/connect"],
+  [/^\/connect\/key$/, "/connect/key"],
+  [/^\/developers$/, "/developers"],
+  [/^\/developers\.md$/, "/developers.md"],
   [/^\/login$/, "/login"],
   [/^\/for$/, "/for"],
   [/^\/for\/[^/]+$/, "/for/:slug"],
