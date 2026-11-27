@@ -182,7 +182,7 @@ export function EntrySheet({
                       ),
                       e.buy_url && (
                         <ExtLink key="buy" href={e.buy_url} className="link">
-                          Buy ↗<span className="sr-only"> {e.title} (new tab)</span>
+                          Buy<span className="sr-only"> {e.title} (new tab)</span>
                         </ExtLink>
                       ),
                     ]}

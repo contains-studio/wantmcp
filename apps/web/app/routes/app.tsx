@@ -228,13 +228,13 @@ function QuestionCard({ q, onAnswered }: { q: WaitingQuestion; onAnswered: (mess
   // The action's result arrives while the page revalidates, before this card leaves it.
   const ok = !!fetcher.data?.ok;
   useEffect(() => {
-    if (ok) onAnswered(`Answered “${q.item.text}”. ${q.asked_by.kind === "agent" ? q.asked_by.name : "The agent"} can carry on.`);
+    if (ok) onAnswered(`Answered “${q.item.text}”.`);
   }, [ok]);
   const qid = `q-${q.id}`;
   if (answered) {
     return (
       <li role="status" className="card px-5 py-4 text-[0.95rem] text-deal">
-        Answered. {q.asked_by.kind === "agent" ? q.asked_by.name : "The agent"} can carry on.
+        Answered.
       </li>
     );
   }

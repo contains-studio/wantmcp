@@ -483,8 +483,7 @@ export function OwnerQuestion({ question, history = [], compact = false }: { que
       {/* Just answered: say so on the item until the agent moves on (no open question, the latest answer within a day). */}
       {!question && !compact && lastAnswer && (
         <p className="text-[0.92rem] text-ink-2">
-          {cap(label(lastAnswer.answer!.answered_by))} answered: “{lastAnswer.answer!.text}”.{" "}
-          {lastAnswer.asked_by.kind === "agent" ? `${lastAnswer.asked_by.name} can carry on.` : ""}
+          {cap(label(lastAnswer.answer!.answered_by))} answered: “{lastAnswer.answer!.text}”.
         </p>
       )}
       {!compact && answered.length > 0 && (

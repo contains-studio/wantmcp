@@ -6,7 +6,7 @@ import { signIn } from "./helpers";
 test("Privacy and Terms say what is true", async ({ page }) => {
   await page.goto("/privacy");
   const main = page.locator("main");
-  await expect(main).toContainText("it starts ticked, except for visitors from the EU, the EEA, the UK and Switzerland");
+  await expect(main).toContainText("Feature emails are off for new accounts.");
   await expect(main).toContainText("Every new list starts private.");
   await expect(main).not.toContainText("unticked unless you tick it");
   await expect(main).not.toContainText("Shopping lists start public");

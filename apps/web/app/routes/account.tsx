@@ -36,8 +36,12 @@ export async function action({ request }: Route.ActionArgs) {
   const form = await request.formData();
   const intent = String(form.get("intent"));
   try {
+    if (intent === "feature-emails") {
+      await api(request, "/me", { method: "PATCH", body: { updates_opt_in: form.get("updates_opt_in") === "on" } });
+      return { ok: true, intent };
+    }
     if (intent === "profile") {
-      // One Save for the handle and what agents should know. The feature-email choice is made once, at sign-up.
+      // One Save for the handle and what agents should know.
       await api(request, "/me", {
         method: "PATCH",
         body: {
@@ -148,6 +152,23 @@ export default function Account({ loaderData }: Route.ComponentProps) {
           <button className="btn btn-want w-fit" disabled={nav.state !== "idle"}>
             Save
           </button>
+        </Form>
+      </section>
+
+      <section aria-labelledby="emails-h" className="card grid gap-4 p-5 sm:p-6">
+        <h2 id="emails-h" className="text-xl font-semibold">Email preferences</h2>
+        <Form method="post" className="grid gap-3">
+          <input type="hidden" name="intent" value="feature-emails" />
+          <label className="check">
+            <input type="checkbox" name="updates_opt_in" defaultChecked={user.updates_opt_in} />
+            <span>Email me about new features</span>
+          </label>
+          <div aria-live="polite">
+            {result?.intent === "feature-emails" && (result.error
+              ? <p className="form-error">{result.error}</p>
+              : <p className="form-ok">Saved.</p>)}
+          </div>
+          <button className="btn w-fit" disabled={nav.state !== "idle"}>Save email preference</button>
         </Form>
       </section>
 

@@ -253,7 +253,12 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
           </p>
         )}
         {/* Full page loads, not client-side route changes: after a deploy the open tab may hold an old build. */}
-        {status === 404 ? (
+        {status === 404 && !signedIn && here.startsWith("/l/") ? (
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a href={`/login?next=${encodeURIComponent(here)}`} className="btn btn-want">Sign in</a>
+            <a href="/login?next=/app/new" className="btn">Start a list</a>
+          </div>
+        ) : status === 404 ? (
           <div className="mt-8 flex flex-wrap gap-3">
             <a href={signedIn ? "/app/new" : "/login?next=/app/new"} className="btn btn-want">
               Start a list

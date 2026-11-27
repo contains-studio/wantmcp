@@ -64,14 +64,6 @@ test("the list header says who can write a shared list", async ({ page }) => {
   await expect(pop.getByText("Claude · your agent")).toBeVisible();
 });
 
-test("the account page has no feature-email box; it's offered at sign-up only", async ({ page }) => {
-  await signIn(page, freshEmail("acct"));
-  await page.goto("/app/account");
-  await expect(page.getByText("Email me about new features")).toHaveCount(0);
-  await page.goto("/privacy");
-  await expect(page.getByText(/unsubscribe link/)).toBeVisible();
-});
-
 test("share links: public lists carry ?ref=share, visitors' button goes home with it", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/l/lst_desk2026");

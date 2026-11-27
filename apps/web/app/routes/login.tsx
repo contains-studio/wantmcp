@@ -3,8 +3,6 @@ import type { Route } from "./+types/login";
 import { api, ApiError, friendlyError } from "~/lib/api.server";
 import { getUser } from "~/lib/auth.server";
 import { assertSameOrigin, attemptCookie, clearAttemptCookie, getAttemptId, sessionCookie } from "~/lib/session.server";
-import { apiBaseUrl } from "~/lib/config.server";
-import { updatesOptInDefault } from "~/lib/consent";
 import { cleanRef, RefField } from "~/lib/ref";
 import { safeNext } from "~/lib/url";
 import type { VerifyResult } from "~/lib/types";
@@ -22,8 +20,7 @@ export function meta() {
 export async function loader({ request }: Route.LoaderArgs) {
   const next = safeNext(new URL(request.url).searchParams.get("next"));
   if (await getUser(request)) throw redirect(next);
-  // Computed here, so the box renders in its right state with or without JavaScript (lib/consent explains the list).
-  return { optInDefault: updatesOptInDefault(visitorCountry(request)), occasion: occasionName(next) };
+  return { occasion: occasionName(next) };
 }
 
 /** Starting an occasion's list (/start?occasion=black-friday): the occasion's own name, so the title can say it. */
@@ -35,34 +32,23 @@ function occasionName(next: string): string | null {
   return OCCASIONS.find((o) => o.slug === slug)?.name ?? null;
 }
 
-/**
- * Cloudflare's country for this visitor. Local dev supplies a stand-in request.cf, so with the mock API (local dev and
- * the tests) a cf-ipcountry header wins, letting tests pretend to be in Germany; production reads request.cf first.
- */
-function visitorCountry(request: Request): string | null {
-  const cf = (request as unknown as { cf?: { country?: string } }).cf?.country ?? null;
-  const header = request.headers.get("cf-ipcountry");
-  return apiBaseUrl() === "mock" ? (header ?? cf) : (cf ?? header);
-}
-
 /** The API's own message is user-facing; for email delivery problems it says what went wrong. */
 /** The same plain messages every form uses (api.server friendlyError). */
 function loginError(err: ApiError): string {
   return friendlyError(err);
 }
 
-type ActionResult = { step: "code"; email: string; optIn: boolean; error?: string; devCode?: string } | { step: "email"; email?: string; optIn: boolean; error: string };
+type ActionResult = { step: "code"; email: string; error?: string; devCode?: string } | { step: "email"; email?: string; error: string };
 
 export async function action({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
   const form = await request.formData();
   const email = String(form.get("email") ?? "").trim();
-  const optIn = form.get("updates_opt_in") === "on";
   const next = safeNext(String(form.get("next") ?? ""));
 
   if (form.get("intent") === "verify") {
     const code = String(form.get("code") ?? "").replace(/\s+/g, "");
-    if (!/^\d{6}$/.test(code)) return data<ActionResult>({ step: "code", email, optIn, error: "Enter the 6-digit code." }, 400);
+    if (!/^\d{6}$/.test(code)) return data<ActionResult>({ step: "code", email, error: "Enter the 6-digit code." }, 400);
     const attempt = getAttemptId(request);
     try {
       // The API applies the choice only when this call creates the account; an existing account's stored choice is
@@ -70,7 +56,7 @@ export async function action({ request }: Route.ActionArgs) {
       const res = await api<VerifyResult>(request, "/auth/verify", {
         method: "POST",
         anonymous: true,
-        body: { email, code, updates_opt_in: optIn, ...(attempt ? { attempt_id: attempt } : {}) },
+        body: { email, code, updates_opt_in: false, ...(attempt ? { attempt_id: attempt } : {}) },
         ref: cleanRef(form.get("ref")),
       });
       const headers = new Headers();
@@ -78,13 +64,13 @@ export async function action({ request }: Route.ActionArgs) {
       headers.append("set-cookie", clearAttemptCookie(request));
       return redirect(next, { headers });
     } catch (err) {
-      if (err instanceof ApiError) return data<ActionResult>({ step: "code", email, optIn, error: loginError(err) }, err.status);
-      if (err instanceof TypeError) return data<ActionResult>({ step: "code", email, optIn, error: "Can't reach the server. Check your connection and try again." }, 503);
+      if (err instanceof ApiError) return data<ActionResult>({ step: "code", email, error: loginError(err) }, err.status);
+      if (err instanceof TypeError) return data<ActionResult>({ step: "code", email, error: "Can't reach the server. Check your connection and try again." }, 503);
       throw err;
     }
   }
 
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, optIn, error: "Enter a valid email." }, 400);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return data<ActionResult>({ step: "email", email, error: "Enter a valid email." }, 400);
   let devCode: string | undefined;
   let attemptId: string | null = null;
   try {
@@ -100,18 +86,16 @@ export async function action({ request }: Route.ActionArgs) {
     });
     attemptId = typeof res?.attempt_id === "string" ? res.attempt_id : null;
   } catch (err) {
-    if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, optIn, error: loginError(err) }, err.status);
-    if (err instanceof TypeError) return data<ActionResult>({ step: "email", email, optIn, error: "Can't reach the server. Check your connection and try again." }, 503);
+    if (err instanceof ApiError) return data<ActionResult>({ step: "email", email, error: loginError(err) }, err.status);
+    if (err instanceof TypeError) return data<ActionResult>({ step: "email", email, error: "Can't reach the server. Check your connection and try again." }, 503);
     throw err;
   }
-  const result: ActionResult = { step: "code", email, optIn, devCode };
+  const result: ActionResult = { step: "code", email, devCode };
   return attemptId ? data(result, { headers: { "set-cookie": attemptCookie(request, attemptId) } }) : result;
 }
 
 export default function Login({ loaderData }: Route.ComponentProps) {
   const result = useActionData<typeof action>() as ActionResult | undefined;
-  // Re-shown after an error: the person's own choice; first time: the default for where they are.
-  const optInChecked = result ? result.optIn : (loaderData?.optInDefault ?? true);
   const nav = useNavigation();
   const [params] = useSearchParams();
   const next = safeNext(params.get("next"));
@@ -126,7 +110,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
   return (
     <div className="wrap grid place-items-center py-12">
       <div className="card w-full max-w-md p-6 sm:p-8">
-        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : starting ? (loaderData?.occasion ? `Start your ${loaderData.occasion} list` : "Start your list") : "Sign in"}</h1>
+        <h1 className="serif text-[2rem]">{onCode ? "Check your email" : claiming ? "Keep your list" : starting ? (loaderData?.occasion ? `Start your ${loaderData.occasion} list` : "Start your list") : next.startsWith("/l/") ? "Open your list" : "Sign in"}</h1>
 
         {onCode ? (
           <Form method="post" action={action} className="mt-6 grid gap-4" key="code">
@@ -142,7 +126,6 @@ export default function Login({ loaderData }: Route.ComponentProps) {
             <RefField />
             <input type="hidden" name="email" value={result.email} />
             <input type="hidden" name="next" value={next} />
-            {result.optIn && <input type="hidden" name="updates_opt_in" value="on" />}
             <label className="field">
               <span className="label">Code</span>
               <input
@@ -191,10 +174,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
                 className="input"
               />
             </label>
-            <label className="check">
-              <input type="checkbox" name="updates_opt_in" defaultChecked={optInChecked} />
-              <span>Email me about new features</span>
-            </label>
+
             {result?.error && (
               <p id="email-error" className="form-error" role="alert">
                 {result.error}
