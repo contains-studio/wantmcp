@@ -157,7 +157,13 @@ export async function skillVersion(files: SkillFile[], origin: string) {
     name: fm.name ?? SKILL_NAME,
     version: fm["metadata.version"] ?? "",
     updated: fm["metadata.updated"] ?? "",
+    // The folder hash the `skills` installer records in skills-lock.json (vercel-labs/skills, "Lock File Content
+    // Hash"): over every file below, not any one of them. zip_sha256 and skill_md_sha256 are plain hashes of what is
+    // served at `zip` and `skill_md`, for anyone checking a download with `shasum -a 256`.
     sha256: await skillHash(files),
+    sha256_of: "the skill folder, as the skills installer hashes it for skills-lock.json",
+    zip_sha256: await sha256Hex(skillZip(SKILL_NAME, files)),
+    skill_md_sha256: skill ? await sha256Hex(enc.encode(skill.text)) : "",
     files: files.map((f) => f.path).sort(),
     install: SKILL_INSTALL,
     skill_md: `${origin}/skill.md`,

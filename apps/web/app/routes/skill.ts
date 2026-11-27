@@ -6,6 +6,7 @@ import { siteOrigin } from "~/lib/config.server";
  * The installable skill, served from the files checked in at skills/list-want-mcp (bundled at build time, so the site and
  * the repo the installer reads can't differ):
  *   /skill.md and /SKILL.md            SKILL.md alone, for agents that fetch one file
+ *   /reference/<name>.md               the files SKILL.md links to, where its relative links point
  *   /skills/list-want-mcp.zip          the folder, for upload in the Claude apps (Customize › Skills)
  *   /skill.json                        version, hash and the install command, to tell whether a copy is current
  */
@@ -26,6 +27,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   if (path.endsWith(".json")) {
     return Response.json(await skillVersion(SKILL_FILES, siteOrigin(request)), { headers: { "cache-control": CACHE, "access-control-allow-origin": "*" } });
+  }
+  // The files SKILL.md links to (reference/<name>.md), at the same relative place next to /skill.md.
+  if (path.startsWith("/reference/")) {
+    const file = SKILL_FILES.find((f) => f.path.toLowerCase() === path.slice(1));
+    if (!file) throw new Response("Not found", { status: 404 });
+    return new Response(file.text, { headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": CACHE, "access-control-allow-origin": "*" } });
   }
   const skill = SKILL_FILES.find((f) => f.path === "SKILL.md")!;
   return new Response(skill.text, { headers: { "content-type": "text/markdown; charset=utf-8", "cache-control": CACHE, "access-control-allow-origin": "*" } });

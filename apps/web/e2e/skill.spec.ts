@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { createHash } from "node:crypto";
 
 const INSTALL = "npx skills add contains-studio/wantmcp --skill list-want-mcp -g";
 const MEMORY = "When I talk about things I want, my wish list or gift ideas, use The Want MCP.";
@@ -64,4 +65,22 @@ test("/connect with the remember step has no accessibility violations @phone", a
     const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
     expect(result.violations.map((v) => `${v.id}: ${v.help}`), app).toEqual([]);
   }
+});
+
+test("every file skill.md links to is served where its link points, and skill.json's hashes check out", async ({ request }) => {
+  const md = await (await request.get("/skill.md")).text();
+  const links = [...md.matchAll(/\]\((reference\/[^)]+\.md)\)/g)].map((m) => m[1]);
+  expect(links.length).toBeGreaterThanOrEqual(3);
+  for (const link of links) {
+    const res = await request.get(new URL(link, "http://x/skill.md").pathname); // resolved as a browser or agent would
+    expect(res.status(), link).toBe(200);
+    expect(res.headers()["content-type"]).toContain("text/markdown");
+  }
+  expect((await request.get("/reference/nope.md")).status()).toBe(404);
+
+  const sha = async (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
+  const v = await (await request.get("/skill.json")).json();
+  expect(v.zip_sha256).toBe(await sha(await (await request.get("/skills/list-want-mcp.zip")).body()));
+  expect(v.skill_md_sha256).toBe(await sha(await (await request.get("/skill.md")).body()));
+  expect(v.sha256_of).toMatch(/skills-lock\.json/);
 });

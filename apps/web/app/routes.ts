@@ -38,6 +38,7 @@ export default [
   route("skill.md", "routes/skill.ts", { id: "skill-md" }),
   route("skill.json", "routes/skill.ts", { id: "skill-json" }),
   route("skills/list-want-mcp.zip", "routes/skill.ts", { id: "skill-zip" }),
+  route("reference/:file", "routes/skill.ts", { id: "skill-reference" }),
   route("account", "routes/redirects.ts", { id: "redirect-account" }),
   route("settings", "routes/redirects.ts", { id: "redirect-settings" }),
   route("*", "routes/not-found.tsx"),
