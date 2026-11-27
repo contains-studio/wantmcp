@@ -22,7 +22,7 @@ import "./app.css";
 import { Wordmark } from "./components/Logo";
 import { STYLESHEET_GUARD, useNonce } from "./lib/nonce";
 import { feedbackAbout } from "./lib/feedback";
-import { frameAppearance } from "./lib/compare";
+import { frameAppearance } from "./lib/exhibits";
 import { getUser } from "./lib/auth.server";
 import { mcpUrl, siteOrigin, sourceUrl, webAnalyticsToken } from "./lib/config.server";
 import { BUILD_ID, forgetTarget, installBuildGuard, isHydrated, markHydrated, rememberTarget, takeLastErrorRef } from "./lib/build";
@@ -42,7 +42,7 @@ export const links: Route.LinksFunction = () => [
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await getUser(request);
   const t = readCookie(request, "wm_theme");
-  // A /themes/compare frame is shown in the appearance the compare page asks for; null on every other page.
+  // An exhibit frame of an exploration is shown in the appearance its essay asks for; null on every other page.
   const theme = frameAppearance(new URL(request.url)) ?? (t === "light" || t === "dark" ? t : "system");
   // The cookie names a session the API no longer knows: drop it.
   const headers = !user && getSessionToken(request) ? { "set-cookie": clearSessionCookie(request) } : undefined;
@@ -172,6 +172,10 @@ function Footer() {
         {/* SPEC 24.3: for people building on The Want MCP, with the source link rather than among the five. */}
         <Link to="/developers" className="link">
           Build with The Want MCP
+        </Link>
+        .{" "}
+        <Link to="/explorations" className="link">
+          Explorations
         </Link>
         .{" "}
         Logos are their owners' trademarks; The Want MCP isn't affiliated with them.

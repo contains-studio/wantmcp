@@ -29,3 +29,9 @@
   background: var(--occ-art) no-repeat right center / auto 100%;
 }
 .themed.tpl-heat.has-occ .ix-bars::before { content: ""; display: block; height: var(--occ-strip-h); background: var(--occ-strip); }
+
+/* November 2026, kept as it was. One fix nobody sees on the page: Heat is always dark, so agents' marks and colours
+   are the ones made for dark surfaces, also when the page around it is light. */
+.themed.tpl-heat .brand-logo-light { display: none; }
+.themed.tpl-heat .brand-logo-dark { display: block; }
+.themed.tpl-heat { --agent-0: #b79cff; --agent-1: #5fd0e6; --agent-2: #ff9a62; --agent-3: #6ee391; --agent-4: #ff7fb8; --agent-5: #8fb0ff; --agent-6: #f0c25a; --agent-7: #b5e05a; }

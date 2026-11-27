@@ -22,9 +22,12 @@ export default [
   route("developers", "routes/developers.tsx"),
   route("developers.md", "routes/developers-md.ts"),
   route("themes", "routes/themes.tsx"),
-  // The looks beside a redesign of each (branch looks-impeccable): not linked from anywhere, not indexed.
-  route("themes/compare", "routes/themes-compare.tsx"),
-  route("themes/compare/frame/:version/:slug", "routes/themes-compare-frame.tsx"),
+  // Explorations: interactive essays about how the product is made. An essay's exhibits are pages of their own, framed.
+  route("explorations", "routes/explorations.tsx"),
+  route("explorations/redesigning-the-looks", "routes/explorations-looks.tsx"),
+  route("explorations/redesigning-the-looks/frame/:version/:slug", "routes/explorations-looks-frame.tsx"),
+  // The comparison's first address, from before it was an essay.
+  route("themes/compare/*", "routes/redirects.ts", { id: "redirect-compare" }),
   route("themes/:slug", "routes/theme-preview.tsx"),
   route("for", "routes/for.tsx"),
   route("start", "routes/start.tsx"),

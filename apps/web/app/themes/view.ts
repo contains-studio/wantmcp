@@ -54,6 +54,12 @@ const ACCENT_KEYS: Array<[keyof Accents, string]> = [
   ["barInk", "bar-ink"],
 ];
 
+/** An sRGB mix of two hex colours, as CSS color-mix(in srgb, a, b t%) draws it (for contrast pairs over a tint). */
+export const mix = (a: string, b: string, t: number) => {
+  const h = (s: string, i: number) => parseInt(s.slice(1 + i * 2, 3 + i * 2), 16);
+  return `#${[0, 1, 2].map((i) => Math.round(h(a, i) * (1 - t) + h(b, i) * t).toString(16).padStart(2, "0")).join("")}`;
+};
+
 export const HEAT_HOT = "#c4122f";
 export const HEAT_COOL = "#3a3fc4";
 
@@ -107,7 +113,11 @@ export function lookView(template: Theme, occasion: Theme | null, slug: string):
   const scheme = template.scheme === "dark" || occasion?.scheme === "dark" ? "dark" : (template.scheme ?? occasion?.scheme ?? null);
   const light = lookColors(template, occasion, "light").palette;
   const dark = lookColors(template, occasion, "dark").palette;
-  const stylesheets = [template, occasion].filter((t): t is Theme => !!t?.stylesheet).map((t) => `/theme-css/${t.slug}.css`);
+  // The shared rules first (for the layouts that take them), then the layout's own, then the occasion's.
+  const stylesheets = [
+    ...(traits.includes("common") ? ["/theme-css/common.css"] : []),
+    ...[template, occasion].filter((t): t is Theme => !!t?.stylesheet).map((t) => `/theme-css/${t.slug}.css`),
+  ];
   return {
     slug,
     name: occasion ? `${template.name} · ${occasion.name}` : template.name,

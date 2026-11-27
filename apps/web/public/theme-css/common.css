@@ -1,0 +1,67 @@
+/* Shared by six layouts (Sheet, Checklist, Board, Sections, Tracker, Gallery). Loaded only where one of them is used, before the layout's
+   own stylesheet. Every rule sits under .themed.t-common, which Doc and Heat do not carry. */
+
+/* One fixed type scale in rem (no fluid sizes): the list title, then what is in the list. */
+.themed.t-common .list-hero { border-bottom: 0; background: none; }
+.themed.t-common .list-hero > .wrap { padding-block: 1.5rem 0.5rem; }
+.themed.t-common .list-title { margin: 0; font-size: 1.75rem; line-height: 1.15; font-weight: 650; letter-spacing: -0.02em; text-wrap: balance; }
+@media (min-width: 640px) { .themed.t-common .list-title { font-size: 2rem; } }
+.themed.t-common .list-meta { margin-top: 0.375rem; font-size: 0.875rem; }
+.themed.t-common .list-desc { margin-top: 0.5rem; max-width: 40rem; font-size: 0.9375rem; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.themed.t-common > .wrap { padding-block: 1rem 3rem; gap: 1.5rem; }
+
+/* The order says the number; a drawn counter beside every title says nothing more. */
+.themed.t-common .item-number { display: none; }
+.themed.t-common .item-title { text-wrap: pretty; }
+
+/* Numbers line up wherever they are compared. */
+.themed.t-common .price, .themed.t-common .ix-count, .themed.t-common .gal-price, .themed.t-common time { font-variant-numeric: tabular-nums; }
+
+/* The parts of the page the browser draws take the look's colours too. */
+.themed.t-common { caret-color: var(--want); accent-color: var(--want); }
+.themed.t-common ::selection { background: color-mix(in srgb, var(--want) 26%, transparent); }
+
+/* Finished items: one quiet heading, a hairline, no dotted rule. */
+.themed.t-common .bought-group { gap: 0.25rem; }
+.themed.t-common .bought-divider h2 { font-size: 0.875rem; font-weight: 600; letter-spacing: 0; color: var(--ink-3); }
+.themed.t-common .bought-divider .divider-dots { height: 1px; background: var(--line); }
+
+/* The opened item (index looks): the same panel everywhere, its title one size. */
+.themed.t-common .ix-panel .item-title { font-size: 1.25rem; font-weight: 650; line-height: 1.25; letter-spacing: -0.01em; }
+
+/* Occasions, the same way in every look: the drawing in its own band above the title (never behind words or
+   controls), and the occasion's strip as a thin rule under the header. */
+.themed.t-common.has-occ .list-hero > .wrap::before {
+  content: ""; display: block; height: 2.5rem; margin-bottom: 0.5rem; pointer-events: none;
+  background: var(--occ-art) no-repeat right center / auto 100%;
+  /* First and full width in every look's header, whatever that header is built from (a grid, a column). */
+  grid-column: 1 / -1; order: -1;
+}
+.themed.t-common.has-occ .list-hero::after { content: ""; display: block; height: min(var(--occ-strip-h), 6px); background: var(--occ-strip); }
+
+/* A product card's store name: in full, in sentence case, breaking between words only. In capitals with wide tracking
+   a long word outgrew a narrow card and was cut in the middle ("HARBOR ELECTRON/ICS"). */
+.themed.t-common .entry-card .uppercase { text-transform: none; letter-spacing: 0; font-size: 0.8125rem; font-weight: 550; color: var(--ink-2); overflow-wrap: normal; word-break: normal; }
+
+/* A look that is always dark shows the marks made for dark surfaces, whatever the page around it does. */
+.themed.t-common.scheme-dark .brand-logo-light { display: none; }
+.themed.t-common.scheme-dark .brand-logo-dark { display: block; }
+
+/* The "Lowest" and "Bought" tags beside a product's name: never under 11px. */
+.themed.t-common .sheet-title :is(.lowest, .stamp) { font-size: 0.6875rem; }
+
+/* Initials on an avatar read on every hue: the look's card colour (white on the dark hues of light mode, near-black
+   on the bright hues of dark mode). */
+.themed.t-common .ix-avatar { color: var(--card); }
+
+/* Agent hues are chosen for the page's mode. A look that is always dark (or always light) sits on its own surface, so
+   it takes the hues made for that surface, whatever the page around it does. */
+.themed.t-common.scheme-dark { --agent-0: #b79cff; --agent-1: #5fd0e6; --agent-2: #ff9a62; --agent-3: #6ee391; --agent-4: #ff7fb8; --agent-5: #8fb0ff; --agent-6: #f0c25a; --agent-7: #b5e05a; }
+.themed.t-common.scheme-light { --agent-0: #7c3aed; --agent-1: #0e7490; --agent-2: #c2410c; --agent-3: #15803d; --agent-4: #be185d; --agent-5: #1d4ed8; --agent-6: #a16207; --agent-7: #4d7c0f; }
+.themed.t-common.scheme-light .brand-logo-light { display: block; }
+.themed.t-common.scheme-light .brand-logo-dark { display: none; }
+
+/* A product card's last row holds its actions. With none to show (a visitor), the empty row and its rule go. */
+.themed.t-common .entry-card .mt-auto.border-t:not(:has(a, button)) { display: none; }
+/* A product's note (for example what a coupon does) is part of the price: shown in every look. */
+.themed.t-common .entry-desc { display: -webkit-box; }

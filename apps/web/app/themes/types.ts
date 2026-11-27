@@ -64,8 +64,11 @@ export type FontKey = keyof typeof FONTS;
  */
 export type Layout = "grid" | "list" | "rows" | "board" | "sheet" | "sections" | "heat" | "gallery";
 
-/** Generic style switches defined once in app.css (`.t-<trait>`). */
-export type Trait = "serif-display" | "upper-display" | "italic-display" | "soft" | "mono-meta" | "dense" | "roomy" | "checklist";
+/**
+ * Generic style switches defined once in app.css (`.t-<trait>`). `common` is the exception: the rules six layouts share
+ * (Sheet, Checklist, Board, Sections, Tracker, Gallery) live in /theme-css/common.css, loaded only where one is used.
+ */
+export type Trait = "serif-display" | "upper-display" | "italic-display" | "soft" | "mono-meta" | "dense" | "roomy" | "checklist" | "common";
 
 /** An extra contrast pair the theme's stylesheet relies on (text over a gradient, a backdrop…). */
 export interface ContrastPair {

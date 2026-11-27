@@ -15,7 +15,7 @@ export function contentSecurityPolicy(nonce: string, secure: boolean, frameAnces
     "font-src 'self' data:", // Vite inlines small font subsets as data: URIs
     "connect-src 'self' https://cloudflareinsights.com",
     "form-action 'self'",
-    // No page may be framed. The one exception is a /themes/compare frame, which this site alone may frame (lib/compare.ts).
+    // No page may be framed. The one exception is an exhibit frame of an exploration, which this site alone may frame (lib/exhibits.ts).
     `frame-ancestors ${frameAncestors}`,
     "base-uri 'none'",
     "object-src 'none'",

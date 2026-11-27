@@ -1,0 +1,34 @@
+/* An exhibit of /explorations/redesigning-the-looks: this look as it was before November 2026. Never loaded by the app.
+   Doc: a white page on a grey desk, a book serif and numbered sections. */
+.themed.was-doc { --desk: color-mix(in srgb, var(--paper) 90%, var(--ink)); background: var(--desk); counter-reset: doc-item; }
+.themed.was-doc .list-hero { background: transparent; border: 0; padding-top: 1.25rem; }
+.themed.was-doc .list-hero > .wrap, .themed.was-doc > .wrap { max-width: 50rem; background: var(--card); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 12px 40px -20px rgb(0 0 0 / 0.25); }
+.themed.was-doc .list-hero > .wrap { border-radius: 4px 4px 0 0; padding: 2.25rem clamp(1.25rem, 5vw, 3.5rem) 0.75rem; }
+.themed.was-doc > .wrap { border-radius: 0 0 4px 4px; padding: 0.75rem clamp(1.25rem, 5vw, 3.5rem) 3rem; margin-bottom: 2rem; gap: 1.75rem; }
+.themed.was-doc .list-title { font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 600; line-height: 1.15; }
+.themed.was-doc .list-hero .eyebrow { font-family: var(--font-sans); text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+.themed.was-doc .list-hero .list-desc { font-size: 1.02rem; line-height: 1.5; font-style: italic; }
+.themed.was-doc .list-hero > .wrap > div { border-top: 1px solid var(--line); padding-top: 1rem; font-family: var(--font-sans); font-size: 0.82rem; }
+.themed.was-doc .item-section { counter-increment: doc-item; gap: 1rem; }
+.themed.was-doc .item-number { display: none; }
+.themed.was-doc .item-title { font-size: clamp(1.35rem, 2.6vw, 1.7rem) !important; font-weight: 600; }
+.themed.was-doc .item-title::before { content: counter(doc-item) ".\2002"; color: var(--ink-3); font-weight: 400; }
+.themed.was-doc .is-bought .item-title::before { content: "✓\2002"; color: var(--deal); }
+.themed.was-doc .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
+.themed.was-doc .item-meta { font-family: var(--font-sans); }
+.themed.was-doc .text-entry, .themed.was-doc .entry-card { border: 0; border-left: 3px solid var(--line-strong); border-radius: 0; box-shadow: none; background: transparent; padding-left: 1.25rem; }
+.themed.was-doc .text-entry h3 { font-family: var(--font-display); font-size: 1.15rem; }
+.themed.was-doc .accepted-answer, .themed.was-doc .ring-deal { border-left-color: var(--deal) !important; }
+/* The add box sits on the page itself (a panel behind it left the button hanging over its edge). */
+.themed.was-doc aside.card { background: var(--sunk); border: 0; box-shadow: none; }
+.themed.was-doc .bought-divider h2 { font-size: 1.3rem; }
+.themed.was-doc .bought-divider .divider-dots { background: var(--line); height: 1px; }
+
+/* Occasions: the strip along the top edge of the page, the art as a silhouette in the page's
+   top corner, in the accent colour. */
+.themed.was-doc.has-occ .list-hero > .wrap { position: relative; border-top: var(--occ-strip-h) solid transparent; background: var(--occ-strip) top / auto var(--occ-strip-h) repeat-x border-box, var(--card) padding-box; background-origin: border-box; }
+/* The art has its own band above the title: it never sits behind text or controls. */
+.themed.was-doc.has-occ .list-hero > .wrap::before {
+  content: ""; display: block; height: 2.75rem; margin-bottom: 0.75rem; opacity: 0.5; pointer-events: none;
+  background: var(--want); -webkit-mask: var(--occ-art) right center / auto 100% no-repeat; mask: var(--occ-art) right center / auto 100% no-repeat;
+}

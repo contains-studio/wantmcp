@@ -1,0 +1,45 @@
+/* An exhibit of /explorations/redesigning-the-looks: this look as it was before November 2026. Never loaded by the app.
+   Sheet: a spreadsheet. Gridlines on the page, dense tables, tabular numbers, row numbers down the side. */
+.themed.was-sheet { --grid: color-mix(in srgb, var(--line) 30%, transparent); --bar: var(--occ-band); background:
+  linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 2rem,
+  linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 7.5rem 100%,
+  var(--paper); }
+.themed.was-sheet .list-hero { background: var(--card); border-bottom: 1px solid var(--line); }
+.themed.was-sheet .list-hero::before { content: ""; display: block; height: 0.4rem; background: var(--bar); }
+.themed.was-sheet .list-hero > .wrap { padding-block: 0.9rem 0; display: grid; gap: 0.4rem; }
+.themed.was-sheet .list-hero .eyebrow { font-family: var(--font-mono); font-size: 0.72rem; }
+.themed.was-sheet .list-title { margin: 0; font-family: var(--font-sans); font-size: clamp(1.3rem, 2.6vw, 1.7rem); font-weight: 650; letter-spacing: -0.01em; }
+.themed.was-sheet .list-title-mark { display: none; }
+.themed.was-sheet .list-hero .list-desc { font-size: 0.9rem; }
+.themed.was-sheet .list-hero > .wrap > div { font-family: var(--font-mono); font-size: 0.78rem; }
+.themed.was-sheet .list-hero > .wrap { padding-bottom: 1rem; }
+.themed.was-sheet > .wrap { gap: 2rem; }
+/* One card per want, one surface: the want first, then the best thing found and its price, then the rest. Every part
+   starts at the same left edge (owner review, 25 Nov: "its visual hierarchy is off"). */
+.themed.was-sheet .item-section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: clip; padding: 0.9rem 1rem 0.5rem; gap: 0.6rem; }
+.themed.was-sheet .item-section > header { padding: 0; gap: 0.35rem; }
+.themed.was-sheet .item-section > :not(header) { padding: 0; }
+/* The row number repeated nothing the order doesn't say, and put a fourth left edge on every card. */
+.themed.was-sheet .item-number { display: none; }
+.themed.was-sheet .item-title { font-family: var(--font-sans); font-size: 1.15rem !important; font-weight: 650; line-height: 1.3; text-wrap: pretty; }
+/* Balanced wrapping (the heading default) left a want's title in 60% of a phone card: it takes the width instead. */
+.themed.was-sheet .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
+.themed.was-sheet .item-section .card { border-radius: 8px; box-shadow: none; border: 1px solid var(--line); }
+/* Who added it and what they noted read as one quiet unit under the want. */
+.themed.was-sheet .item-meta { font-size: 0.8rem; }
+.themed.was-sheet .item-details-wrap { margin-top: -0.2rem; }
+.themed.was-sheet .item-details { font-size: 0.85rem; color: var(--ink-3); line-height: 1.45; }
+/* Wide screens: one product doesn't stretch across 1,600px; the price stays near its title. */
+@media (min-width: 1100px) { .themed.was-sheet .wrap { max-width: 64rem; } }
+/* Prices in the system face with tabular figures, everywhere; monospace is for codes only. */
+.themed.was-sheet .bought-divider h2 { font-family: var(--font-sans); font-size: 1rem; }
+
+/* Occasions: the bar along the top of the header widens into a band carrying the art. */
+.themed.was-sheet.has-occ .list-hero::before { height: 3.25rem; background: var(--occ-art) no-repeat right 1.25rem center / auto 85%, var(--occ-pattern, none), var(--occ-band); }
+.themed.was-sheet.has-occ .list-hero::after { content: ""; display: block; height: var(--occ-strip-h); background: var(--occ-strip); }
+
+/* Dark: the grid reads as texture, not lines (owner review, 25 Nov). */
+.themed.was-sheet.is-dark, [data-theme="dark"] .themed.was-sheet { --grid: color-mix(in srgb, var(--line) 25%, transparent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .themed.was-sheet { --grid: color-mix(in srgb, var(--line) 25%, transparent); } }
+/* Phones: no grid at all, just the paper (owner review, 25 Nov). */
+@media (max-width: 639px) { .themed.was-sheet { background-image: none; } }

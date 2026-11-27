@@ -1,5 +1,5 @@
 import { contentSecurityPolicy } from "./lib/csp";
-import { frameAncestors } from "./lib/compare";
+import { frameAncestors } from "./lib/exhibits";
 import type { EntryContext, RouterContextProvider } from "react-router";
 import { NonceContext } from "./lib/nonce";
 import { ServerRouter } from "react-router";
