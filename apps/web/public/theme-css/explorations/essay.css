@@ -1,0 +1,122 @@
+/* /explorations (interactive essays) and their exhibit frames. Loaded only by those pages. */
+
+/* ---- An exhibit frame: the look alone, without the site's header, footer or skip link. ---- */
+body:has(.ex-frame) > header, body:has(.ex-frame) > footer, body:has(.ex-frame) > .skip-link { display: none; }
+body:has(.ex-frame) { min-height: 100dvh; }
+.ex-frame, .ex-frame > .themed { min-height: 100dvh; }
+/* Checklist is shown as its owner sees it, so its ticks tick; the box for adding a task is left out (nothing is saved). */
+.ex-frame .add-item { display: none; }
+/* The row of headers shows the top of each page only: nothing scrolls inside it. */
+html:has(.ex-frame.is-head) { overflow: hidden; }
+
+/* ---- The essay ---- */
+.essay { padding-bottom: 5rem; }
+.essay-top { padding-top: 2.5rem; padding-bottom: 1.5rem; }
+.essay-kicker { font-size: 0.875rem; color: var(--ink-3); }
+.essay-h1 { margin: 0.5rem 0 0; font-size: 2.25rem; font-weight: 650; line-height: 1.08; letter-spacing: -0.025em; text-wrap: balance; }
+@media (min-width: 640px) { .essay-h1 { font-size: 3rem; } }
+.essay-standfirst { margin-top: 0.875rem; max-width: 40rem; font-size: 1.125rem; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.essay-credit { margin-top: 0.875rem; max-width: 40rem; line-height: 1.55; color: var(--ink-2); }
+.essay-body { display: grid; gap: 3.5rem; padding-top: 2.5rem; }
+.essay-section { display: grid; gap: 1rem; scroll-margin-top: 8rem; }
+.essay-section > p, .essay-section > ul, .essay-look-words { max-width: 40rem; }
+.essay-section p, .essay-list { line-height: 1.6; color: var(--ink-2); }
+.essay-section strong { color: var(--ink); font-weight: 650; }
+.essay-h2 { margin: 0; font-size: 1.5rem; font-weight: 650; line-height: 1.2; letter-spacing: -0.02em; color: var(--ink); text-wrap: balance; }
+.essay-list { display: grid; gap: 0.625rem; margin: 0; padding: 0; list-style: none; }
+.essay-list > li { position: relative; padding-left: 1.125rem; }
+.essay-list > li::before { content: ""; position: absolute; left: 0.125rem; top: 0.7em; width: 0.3125rem; height: 0.3125rem; border-radius: 50%; background: var(--line-strong); }
+.essay-tag { display: inline-flex; align-items: center; gap: 0.375rem; margin-left: 0.5rem; font-size: 0.875rem; font-weight: 600; letter-spacing: 0; vertical-align: middle; white-space: nowrap; color: var(--ink-2); }
+.essay-tag::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--ink-2); }
+.essay-tag.is-adopted { color: var(--deal); }
+.essay-tag.is-adopted::before { background: var(--deal); box-shadow: none; }
+.essay-try { padding: 0.75rem 1rem; border-radius: 12px; background: var(--sunk); }
+.essay-section .essay-try { color: var(--ink); }
+.essay-end { font-size: 0.9375rem; }
+/* Words beside their example on a wide screen, over it on a narrow one. */
+.essay-look { display: grid; gap: 1.5rem; }
+.essay-look-words { display: grid; gap: 1rem; align-content: start; }
+@media (min-width: 1000px) {
+  .essay-look { grid-template-columns: minmax(0, 21rem) minmax(0, 1fr); gap: 3rem; align-items: start; }
+  .essay-look-words { position: sticky; top: 9.5rem; }
+}
+.essay-table-wrap { max-width: 40rem; }
+.essay-table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+.essay-table caption { padding-bottom: 0.5rem; text-align: left; font-size: 0.8125rem; font-weight: 600; color: var(--ink-3); }
+.essay-table th, .essay-table td { padding: 0.5rem 1rem 0.5rem 0; border-top: 1px solid var(--line); text-align: left; }
+.essay-table thead th { border-top: 0; font-size: 0.8125rem; font-weight: 600; color: var(--ink-3); }
+.essay-table tbody th { font-weight: 600; color: var(--ink); }
+.essay-table td { color: var(--ink-2); }
+
+/* ---- The bar that travels with the reader ---- */
+.vb { position: sticky; top: 4rem; z-index: 20; border-block: 1px solid var(--line); background: var(--paper); }
+.vb-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem 1.5rem; padding-block: 0.75rem; }
+.vb-wide { display: none; }
+@media (min-width: 900px) { .vb-small { display: none; } .vb-wide { display: flex; } }
+.vb-summary { display: flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; font-size: 0.875rem; cursor: pointer; }
+.vb-summary::-webkit-details-marker { display: none; }
+.vb-summary-label { color: var(--ink-3); }
+.vb-summary-values { min-width: 0; flex: 1; font-weight: 600; color: var(--ink); }
+.vb-summary-change { color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.vb-small[open] .vb-summary-change { visibility: hidden; }
+.vb-small[open] .vb-row { padding-top: 0.25rem; max-height: calc(100dvh - 8rem); overflow-y: auto; }
+.vb-group { display: grid; gap: 0.25rem; min-width: 0; }
+.vb-label { font-size: 0.75rem; font-weight: 600; color: var(--ink-3); }
+.vb-choices { display: inline-flex; flex-wrap: wrap; gap: 0.125rem; padding: 0.125rem; border-radius: 1.5rem; background: var(--sunk); }
+.vb-choice { display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 0.75rem; border-radius: 999px; color: var(--ink-2); font-size: 0.875rem; font-weight: 550; text-decoration: none; white-space: nowrap; }
+.vb-choice:hover { color: var(--ink); }
+.vb-choice.is-on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent); }
+@media (pointer: coarse) { .vb-choice { min-height: 2.75rem; } }
+.vb-occasion { display: inline-flex; align-items: center; gap: 0.5rem; }
+.vb-select { width: auto; min-width: 9rem; }
+
+/* ---- An exhibit ---- */
+.ex { display: grid; gap: 0.75rem; min-width: 0; }
+.ex.is-phone { --w: 390px; --h: 620px; --ratio: 390 / 620; }
+.ex.is-desktop { --w: 1280px; --h: 800px; --ratio: 1280 / 800; }
+.ex.is-grid { --w: 390px; --h: 232px; --ratio: 390 / 232; }
+/* The switch: radio buttons the eye does not see, drawn by their labels. The chosen side is the one shown. */
+.ex-radio { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ex-switch { display: inline-flex; justify-self: start; gap: 0.125rem; padding: 0.125rem; border-radius: 999px; background: var(--sunk); }
+.ex-switch-label { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1rem; border-radius: 999px; font-size: 0.9375rem; font-weight: 600; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.ex-r0:checked ~ .ex-switch > :nth-child(1), .ex-r1:checked ~ .ex-switch > :nth-child(2), .ex-r2:checked ~ .ex-switch > :nth-child(3) { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent); }
+.ex-r0:focus-visible ~ .ex-switch > :nth-child(1), .ex-r1:focus-visible ~ .ex-switch > :nth-child(2), .ex-r2:focus-visible ~ .ex-switch > :nth-child(3) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.ex-r0:not(:checked) ~ .ex-stage > .ex-s0, .ex-r1:not(:checked) ~ .ex-stage > .ex-s1, .ex-r2:not(:checked) ~ .ex-stage > .ex-s2 { display: none; }
+.ex-stage { display: grid; gap: 1.5rem; min-width: 0; }
+.ex-side { display: grid; gap: 0.375rem; min-width: 0; }
+/* The switch already says which side is showing; a side is named only when two stand beside each other. */
+.ex-side-name { display: none; font-size: 0.9375rem; font-weight: 650; color: var(--ink); }
+.ex-open { display: inline-flex; align-items: center; min-height: 2.75rem; padding-inline: 0.125rem; color: var(--ink-2); }
+.ex.is-phone .ex-single { width: 100%; max-width: 390px; }
+.ex-figure { margin: 0; min-width: 0; }
+/* A real page at the chosen width (390 or 1280 CSS pixels), scaled down when the space is narrower, so its layout is
+   the one a phone or a laptop gets. tan(atan2()) turns two lengths into a plain number. */
+.ex-device { container-type: inline-size; width: 100%; aspect-ratio: var(--ratio); overflow: hidden; border-radius: 1.25rem; background: var(--sunk); box-shadow: 0 0 0 1px var(--line); }
+.ex.is-desktop .ex-device { border-radius: 0.75rem; }
+.ex.is-grid .ex-device { border-radius: 0.5rem; }
+.ex-iframe { display: block; width: var(--w); height: var(--h); border: 0; transform-origin: 0 0; scale: min(1, tan(atan2(100cqw, var(--w)))); }
+.ex-note { font-size: 0.8125rem; color: var(--ink-3); }
+/* A wide screen has room for both sides of a phone-width pair: no switch, the two beside each other. */
+@media (min-width: 1240px) {
+  .ex.is-pair.is-phone .ex-switch { display: none; }
+  .ex.is-pair.is-phone .ex-stage { grid-template-columns: repeat(2, minmax(0, 390px)); }
+  .ex.is-pair.is-phone .ex-stage > .ex-side { display: grid; }
+  .ex.is-pair.is-phone .ex-side-name { display: block; }
+}
+/* The eight tops, all in view at once (that is the test): two across on a phone, four on a wide screen, each a real
+   page scaled down. Nothing in them moves or takes a tap. */
+.ex-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+@media (min-width: 760px) { .ex-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.ex-grid .ex-figure { display: grid; gap: 0.25rem; }
+.ex-grid .ex-iframe { pointer-events: none; }
+.ex-caption { font-size: 0.8125rem; font-weight: 600; color: var(--ink); }
+
+/* ---- The index ---- */
+.expl { padding-block: 2.5rem 5rem; }
+.expl-h1 { margin: 0; font-size: 2.25rem; font-weight: 650; line-height: 1.1; letter-spacing: -0.025em; }
+.expl-lede { margin-top: 0.875rem; max-width: 40rem; font-size: 1.0625rem; line-height: 1.55; color: var(--ink-2); }
+.expl-list { display: grid; gap: 0; margin: 2.5rem 0 0; padding: 0; max-width: 40rem; list-style: none; border-top: 1px solid var(--line); }
+.expl-entry { display: grid; gap: 0.5rem; padding-block: 1.5rem; border-bottom: 1px solid var(--line); }
+.expl-meta { font-size: 0.875rem; color: var(--ink-3); }
+.expl-title { margin: 0; font-size: 1.375rem; font-weight: 650; letter-spacing: -0.015em; }
+.expl-entry p { line-height: 1.55; color: var(--ink-2); }

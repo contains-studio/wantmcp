@@ -1,44 +1,64 @@
-/* Sheet: a spreadsheet. Gridlines on the page, dense tables, tabular numbers, row numbers down the side. */
-.themed.tpl-sheet { --grid: color-mix(in srgb, var(--line) 30%, transparent); --bar: var(--occ-band); background:
-  linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 2rem,
-  linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 7.5rem 100%,
-  var(--paper); }
-.themed.tpl-sheet .list-hero { background: var(--card); border-bottom: 1px solid var(--line); }
-.themed.tpl-sheet .list-hero::before { content: ""; display: block; height: 0.4rem; background: var(--bar); }
-.themed.tpl-sheet .list-hero > .wrap { padding-block: 0.9rem 0; display: grid; gap: 0.4rem; }
-.themed.tpl-sheet .list-hero .eyebrow { font-family: var(--font-mono); font-size: 0.72rem; }
-.themed.tpl-sheet .list-title { margin: 0; font-family: var(--font-sans); font-size: clamp(1.3rem, 2.6vw, 1.7rem); font-weight: 650; letter-spacing: -0.01em; }
-.themed.tpl-sheet .list-title-mark { display: none; }
-.themed.tpl-sheet .list-hero .list-desc { font-size: 0.9rem; }
-.themed.tpl-sheet .list-hero > .wrap > div { font-family: var(--font-mono); font-size: 0.78rem; }
-.themed.tpl-sheet .list-hero > .wrap { padding-bottom: 1rem; }
-.themed.tpl-sheet > .wrap { gap: 2rem; }
-/* One card per want, one surface: the want first, then the best thing found and its price, then the rest. Every part
-   starts at the same left edge (owner review, 25 Nov: "its visual hierarchy is off"). */
-.themed.tpl-sheet .item-section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: clip; padding: 0.9rem 1rem 0.5rem; gap: 0.6rem; }
-.themed.tpl-sheet .item-section > header { padding: 0; gap: 0.35rem; }
-.themed.tpl-sheet .item-section > :not(header) { padding: 0; }
-/* The row number repeated nothing the order doesn't say, and put a fourth left edge on every card. */
-.themed.tpl-sheet .item-number { display: none; }
-.themed.tpl-sheet .item-title { font-family: var(--font-sans); font-size: 1.15rem !important; font-weight: 650; line-height: 1.3; text-wrap: pretty; }
-/* Balanced wrapping (the heading default) left a want's title in 60% of a phone card: it takes the width instead. */
+/* Sheet: a comparison table. One card per want on a quiet ground; products in rows; every price in the
+   same column, so the eye runs down it. No page grid, no bar, no monospace. */
+.themed.tpl-sheet { background: var(--sunk); background: light-dark(var(--sunk), var(--paper)); }
+.themed.tpl-sheet > .wrap, .themed.tpl-sheet .list-hero > .wrap { max-width: 58rem; }
+.themed.tpl-sheet .items-region { gap: 0.75rem; }
+
+.themed.tpl-sheet .item-section { background: var(--card); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 1rem 1rem 0.25rem; gap: 0.5rem; }
+@media (min-width: 640px) { .themed.tpl-sheet .item-section { padding: 1.25rem 1.5rem 0.5rem; } }
+.themed.tpl-sheet .item-section > header { gap: 0.25rem; }
+.themed.tpl-sheet .item-title { font-size: 1.125rem; line-height: 1.3; font-weight: 650; letter-spacing: -0.01em; }
+@media (min-width: 640px) { .themed.tpl-sheet .item-title { font-size: 1.25rem; } }
 .themed.tpl-sheet .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
-.themed.tpl-sheet .item-section .card { border-radius: 8px; box-shadow: none; border: 1px solid var(--line); }
-/* Who added it and what they noted read as one quiet unit under the want. */
-.themed.tpl-sheet .item-meta { font-size: 0.8rem; }
-.themed.tpl-sheet .item-details-wrap { margin-top: -0.2rem; }
-.themed.tpl-sheet .item-details { font-size: 0.85rem; color: var(--ink-3); line-height: 1.45; }
-/* Wide screens: one product doesn't stretch across 1,600px; the price stays near its title. */
-@media (min-width: 1100px) { .themed.tpl-sheet .wrap { max-width: 64rem; } }
-/* Prices in the system face with tabular figures, everywhere; monospace is for codes only. */
-.themed.tpl-sheet .bought-divider h2 { font-family: var(--font-sans); font-size: 1rem; }
+.themed.tpl-sheet .item-meta { font-size: 0.8125rem; }
+.themed.tpl-sheet .item-details { font-size: 0.875rem; line-height: 1.45; color: var(--ink-3); }
 
-/* Occasions: the bar along the top of the header widens into a band carrying the art. */
-.themed.tpl-sheet.has-occ .list-hero::before { height: 3.25rem; background: var(--occ-art) no-repeat right 1.25rem center / auto 85%, var(--occ-pattern, none), var(--occ-band); }
-.themed.tpl-sheet.has-occ .list-hero::after { content: ""; display: block; height: var(--occ-strip-h); background: var(--occ-strip); }
+/* Rows: the product, then its price at the right; a hairline between rows and none after the last. */
+.themed.tpl-sheet .sheet-rows { border-top: 1px solid var(--line); }
+.themed.tpl-sheet .sheet-group:last-child { border-bottom: 0; }
+/* A phone row stays within about four lines (owner, 25 Nov 2026): 110px with a two-line name. */
+.themed.tpl-sheet .sheet-row { padding: 0.625rem 0; }
+.themed.tpl-sheet .sheet-title { font-size: 0.9375rem; font-weight: 600; line-height: 1.35; }
+.themed.tpl-sheet .sheet-price .price { font-size: 0.9375rem; font-weight: 700; line-height: 1.35; }
+.themed.tpl-sheet .sheet-price-sub { font-size: 0.8125rem; }
+.themed.tpl-sheet .sheet-meta { font-size: 0.8125rem; line-height: 1.5; }
+/* Prices end at the same edge in every card, so they line up down the whole page; the store is never cut. */
+@media (min-width: 640px) {
+  .themed.tpl-sheet .sheet-row, .themed.tpl-sheet .sheet-row.has-photo { column-gap: 1rem; padding: 0.75rem 0; }
+  .themed.tpl-sheet .sheet-retailer { max-width: none; overflow: visible; }
+}
+/* A phone: who found it, when and where runs the card's full width under the row: two lines, not four. */
+@media (max-width: 639.98px) {
+  .themed.tpl-sheet .sheet-row.has-photo .sheet-thumb { grid-row: 1; }
+  .themed.tpl-sheet .sheet-row.has-photo .sheet-meta { grid-column: 1 / -1; margin-top: 0.125rem; }
+}
+/* An opened product: its details sit in the row's own card, without a second frame. */
+.themed.tpl-sheet .sheet-detail .entry-card { border: 0; box-shadow: none; background: var(--sunk); border-radius: 12px; }
 
-/* Dark: the grid reads as texture, not lines (owner review, 25 Nov). */
-.themed.tpl-sheet.is-dark, [data-theme="dark"] .themed.tpl-sheet { --grid: color-mix(in srgb, var(--line) 25%, transparent); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .themed.tpl-sheet { --grid: color-mix(in srgb, var(--line) 25%, transparent); } }
-/* Phones: no grid at all, just the paper (owner review, 25 Nov). */
-@media (max-width: 639px) { .themed.tpl-sheet { background-image: none; } }
+/* Other kinds of list (tasks, research): the same cards; an update is a ruled row like a product, never a card in a card. */
+.themed.tpl-sheet .item-entries { gap: 0 !important; border-top: 1px solid var(--line); }
+.themed.tpl-sheet .text-entry { gap: 0.375rem; padding: 0.75rem 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
+.themed.tpl-sheet .item-entries > .text-entry:last-child { border-bottom: 0; }
+.themed.tpl-sheet .text-entry h3 { font-size: 0.9375rem; }
+.themed.tpl-sheet .text-entry .entry-body { font-size: 0.9375rem; line-height: 1.5; }
+.themed.tpl-sheet .item-section > .entries-empty { padding-bottom: 0.75rem; }
+
+/* Finished: plain rows on the ground under the cards. */
+.themed.tpl-sheet .bought-group { padding-inline: 1rem; }
+@media (min-width: 640px) { .themed.tpl-sheet .bought-group { padding-inline: 1.5rem; } }
+.themed.tpl-sheet .done-row .item-section { box-shadow: none; background: none; padding: 0; }
+
+/* The head of the sheet: a band of the sheet's own surface from edge to edge, closed by a rule, with the counts set
+   out as ruled cells in tabular figures (the first row of the table, in effect). */
+.themed.tpl-sheet .list-hero { background: var(--card); border-bottom: 1px solid var(--line-strong); }
+.themed.tpl-sheet .list-hero > .wrap { display: flex; flex-direction: column; padding-block: 1.25rem 0; }
+.themed.tpl-sheet .list-title { font-size: 1.5rem; font-weight: 650; letter-spacing: -0.015em; }
+@media (min-width: 640px) { .themed.tpl-sheet .list-title { font-size: 1.625rem; } }
+.themed.tpl-sheet .list-hero .list-desc { order: 1; margin-top: 0.375rem; font-size: 0.875rem; color: var(--ink-3); }
+.themed.tpl-sheet .list-hero .list-meta { order: 2; margin-top: 0.875rem; border-top: 1px solid var(--line); font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.themed.tpl-sheet .list-hero .list-meta > * { margin: 0; padding: 0; overflow: visible; }
+.themed.tpl-sheet .list-hero .list-meta .meta-row { margin-left: 0; row-gap: 0; }
+.themed.tpl-sheet .list-hero .list-meta .meta-item { margin-left: 0; padding: 0.5rem 0.75rem; border-left: 1px solid var(--line); }
+.themed.tpl-sheet .list-hero .list-meta .meta-item:first-child { padding-left: 0; border-left: 0; }
+.themed.tpl-sheet .list-hero .list-meta .meta-item::before { content: none; }
+.themed.tpl-sheet > .wrap { padding-top: 1.25rem; }

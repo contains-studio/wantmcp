@@ -13,6 +13,8 @@ const FROM: Record<string, string> = {
   search: "from a search result, not the store's page",
 };
 
+const DOT = "\u00a0· ";
+
 /** "seen 3 h ago by Claude · from search · in stock" (SPEC 12.5). Stale prices say so in words. */
 export function Provenance({ price, author, className = "" }: { price: PriceObservation | null; author?: ActorRef; className?: string }) {
   const now = useNow();
@@ -29,10 +31,11 @@ export function Provenance({ price, author, className = "" }: { price: PriceObse
       {price.source === "user" ? "entered" : "seen"}{" "}
       <time dateTime={at}>{timeAgo(at, now)}</time>
       {by && <> by {by}</>}
-      {price.source && FROM[price.source] && <> · {FROM[price.source]}</>}
-      {!fresh && <> · not checked today</>}
-      {price.in_stock === true && <> · in stock</>}
-      {price.in_stock === false && <> · out of stock</>}
+      {/* Each dot is tied to the words before it (a no-break space), so a wrapped line never starts with one. */}
+      {price.source && FROM[price.source] && <>{DOT}{FROM[price.source]}</>}
+      {!fresh && <>{DOT}not checked today</>}
+      {price.in_stock === true && <>{DOT}in stock</>}
+      {price.in_stock === false && <>{DOT}out of stock</>}
     </p>
   );
 }

@@ -252,18 +252,21 @@ function ListCard({ list }: { list: ListDetail }) {
 }
 
 /** A /for page: its group and heading, in the home card's type. */
-function PersonaCard({ eyebrow, title }: { eyebrow: string; title: string }) {
+function PersonaCard({ eyebrow, title, foot = "Sample lists to buy, to do and to find out" }: { eyebrow: string; title: string; foot?: string }) {
   const size = title.length > 44 ? 64 : 76;
   return (
     <Frame>
       <div style={{ display: "flex", marginTop: 56, fontSize: 26, color: C.ink3, fontWeight: 500 }}>{eyebrow}</div>
       <div style={{ display: "flex", marginTop: 14, fontSize: size, fontWeight: 600, lineHeight: 1.06, letterSpacing: -2.2, maxWidth: 1040 }}>{title}</div>
-      <div style={{ display: "flex", marginTop: "auto", fontSize: 24, color: C.ink3, fontWeight: 500 }}>Sample lists to buy, to do and to find out</div>
+      <div style={{ display: "flex", marginTop: "auto", fontSize: 24, color: C.ink3, fontWeight: 500 }}>{foot}</div>
     </Frame>
   );
 }
 
-const PATH = /^\/og\/(home|l\/([A-Za-z0-9_-]{1,64})|for\/([a-z0-9-]{1,64}))\.png$/;
+const PATH = /^\/og\/(home|l\/([A-Za-z0-9_-]{1,64})|for\/([a-z0-9-]{1,64})|explorations\/([a-z0-9-]{1,64}))\.png$/;
+
+/** Explorations (interactive essays): the card says what it is and its title. */
+const EXPLORATION_CARDS: Record<string, string> = { "redesigning-the-looks": "Redesigning the looks" };
 
 export function isOgPath(pathname: string) {
   return PATH.test(pathname);
@@ -286,6 +289,10 @@ export async function handleOg(request: Request, ctx: ExecutionContext): Promise
     let element: React.ReactElement;
     if (m[1] === "home") {
       element = <HomeCard />;
+    } else if (m[4]) {
+      const title = EXPLORATION_CARDS[m[4]];
+      if (!title) throw new Error("no such page");
+      element = <PersonaCard eyebrow="An interactive essay" title={title} foot="Explorations: how The Want MCP is made" />;
     } else if (m[3]) {
       const persona = personaBySlug(m[3]);
       if (!persona) throw new Error("no such page");

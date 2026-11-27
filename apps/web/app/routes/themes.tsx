@@ -172,6 +172,14 @@ export default function Themes({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
       </section>
+
+      {/* How the layouts came to look as they do: an interactive essay with every one of them before and after. */}
+      <p className="text-[0.92rem] text-ink-2">
+        <Link to="/explorations/redesigning-the-looks" className="link">
+          How these looks were redrawn
+        </Link>
+        , an interactive essay.
+      </p>
     </div>
   );
 }

@@ -14,6 +14,8 @@ export async function loader({ request }: Route.LoaderArgs) {
     `<url><loc>${origin}/developers</loc></url>`,
     `<url><loc>${origin}/themes</loc></url>`,
     `<url><loc>${origin}/for</loc></url>`,
+    `<url><loc>${origin}/explorations</loc></url>`,
+    `<url><loc>${origin}/explorations/redesigning-the-looks</loc></url>`,
     // Persona pages marked noindex stay out until the owner confirms them.
     ...PERSONAS.filter((p) => p.index).map((p) => `<url><loc>${esc(`${origin}/for/${p.slug}`)}</loc></url>`),
     ...lists.map((l) => `<url><loc>${esc(`${origin}/l/${encodeURIComponent(l.id)}`)}</loc><lastmod>${esc(l.updated_at)}</lastmod></url>`),
