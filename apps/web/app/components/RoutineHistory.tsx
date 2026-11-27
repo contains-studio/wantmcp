@@ -7,22 +7,10 @@
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { Time } from "./Time";
-import { actorName } from "~/lib/routines";
-import type { Page, RoutineRun, RoutineRunState } from "~/lib/types";
+import { actorName, runOutcome } from "~/lib/routines";
+import type { Page, RoutineRun } from "~/lib/types";
 
-const STATE: Record<RoutineRunState, string> = {
-  queued: "Waiting to run",
-  running: "Running",
-  ok: "Done",
-  partial: "Partly done; it will try the rest again",
-  skipped: "Nothing to do",
-  blocked: "Stopped",
-  failed: "Didn't finish",
-};
-
-const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
-
-export function RoutineHistory({ routineId, name }: { routineId: string; name: string }) {
+export function RoutineHistory({ routineId, name, latest }: { routineId: string; name: string; /** The newest run's id: History reloads when it changes. */ latest?: string | null }) {
   const first = useFetcher<Page<RoutineRun>>({ key: `history-${routineId}` });
   const more = useFetcher<Page<RoutineRun>>({ key: `history-more-${routineId}` });
   const [open, setOpen] = useState(false);
@@ -33,6 +21,13 @@ export function RoutineHistory({ routineId, name }: { routineId: string; name: s
   useEffect(() => {
     if (open && first.state === "idle" && !first.data) first.load(href);
   }, [open, first, href]);
+  // A run just ended (the card's live line): the first rows are current without a reload.
+  const [seen, setSeen] = useState(latest);
+  useEffect(() => {
+    if (latest === seen) return;
+    setSeen(latest);
+    if (open) first.load(href);
+  }, [latest, seen, open, first, href]);
   useEffect(() => {
     if (first.data) {
       setRuns(first.data.data);
@@ -64,12 +59,7 @@ export function RoutineHistory({ routineId, name }: { routineId: string; name: s
                   </span>
                   <span className="text-ink-3">{r.trigger === "run_now" ? `Run now${r.run_by ? ` by ${actorName(r.run_by)}` : ""}` : "On schedule"}</span>
                 </p>
-                <p className={r.state === "failed" || r.state === "blocked" ? "text-warn" : "text-ink-2"}>
-                  {STATE[r.state]}
-                  {(r.state === "ok" || r.state === "partial") && (
-                    <>: searched {n(r.wants_searched, "want")}, {n(r.suggestions_posted, "suggestion")}, {n(r.searches_used, "search", "searches")} used</>
-                  )}
-                </p>
+                <p className={r.state === "failed" || r.state === "blocked" ? "text-warn" : "text-ink-2"}>{runOutcome(r, true)}</p>
                 {r.note && <p className="text-ink-3">{r.note}</p>}
               </li>
             ))}

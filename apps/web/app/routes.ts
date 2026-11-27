@@ -13,6 +13,7 @@ export default [
   route("app/traffic", "routes/app-traffic.tsx"),
   route("app/routines", "routes/app-routines.tsx"),
   route("app/routines/:id/runs", "routes/app-routine-runs.tsx"),
+  route("app/routines/:id/runs/:runId", "routes/app-routine-run.ts"),
   route("routine-asks/:token", "routes/routine-ask.tsx"),
   route("app/lists/:id/settings", "routes/settings.tsx"),
   route("invite/:token", "routes/invite.tsx"),

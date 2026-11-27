@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { RemoveInTwoSteps } from "./AccessRow";
 import { RoutineHistory } from "./RoutineHistory";
+import { LiveRunLine } from "./LiveRunLine";
 import type { RoutineResult } from "~/lib/routines.server";
 import {
   MOVES_TO_YOUR_KEY,
@@ -33,6 +34,8 @@ const KEY_BLOCKS = new Set(["key_missing", "key_refused", "out_of_credit"]);
 export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { routine: Routine; sw: RoutinesSwitch; keyOk: boolean; inSettings?: boolean }) {
   const f = useFetcher<RoutineResult>({ key: `routine-${r.id}` });
   const result = f.data?.routineId === r.id ? f.data : undefined;
+  // The run to follow: the one just started here, or one already queued or running.
+  const liveId = (result?.intent === "routine-run" ? result.runId : undefined) ?? r.live_run?.id ?? null;
   const stopped = pausedForEveryone(sw, r);
   const by = namedBy(r);
   const key = whoseKey(r);
@@ -56,13 +59,23 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
           {r.schedule_text}
           {key && <> · {key}</>}
         </p>
-        <p className="text-[0.88rem] text-ink-3">{r.status_text}</p>
+        {liveId ? (
+          // SPEC 20.14 item 10: a live line in place of the status line while a run is on, and its outcome after.
+          <LiveRunLine key={liveId} routineId={r.id} listId={r.list_id} runId={liveId} initial={r.live_run?.id === liveId ? r.live_run : null} />
+        ) : (
+          // The server's sentence can carry three parts (last found · last check · next): one short line each on a phone.
+          <p className="grid gap-0.5 text-[0.88rem] text-ink-3">
+            {r.status_text.split(" · ").map((part, i) => (
+              <span key={i}>{part}</span>
+            ))}
+          </p>
+        )}
         {stopped && <p className="text-[0.88rem] font-medium text-warn">{PAUSED_FOR_EVERYONE}</p>}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {/* Run now: on the viewer's key (20.2), at most a few a day. */}
-        {runs && !stopped && (
+        {runs && !stopped && !r.live_run && (
           <KeyedSubmit
             f={f}
             routine={r}
@@ -98,7 +111,7 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1">
-        <RoutineHistory routineId={r.id} name={r.name} />
+        <RoutineHistory routineId={r.id} name={r.name} latest={r.last_run?.id ?? null} />
         <Rename f={f} routine={r} />
         <ChangeSchedule f={f} routine={r} keyOk={keyOk} />
         {inSettings && (

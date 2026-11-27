@@ -19,6 +19,7 @@ import type {
   ScheduleInput,
   ServiceKey,
   Timestamp,
+  UserSelf,
   Weekday,
 } from "../app/lib/types.ts";
 
@@ -80,10 +81,10 @@ export const emptyRoutineStore = (): RoutineStore => ({ routines: [], runs: [], 
 
 // ---------- the launch switch (mock rule)
 
-export function routinesFor(email: string): { visible: boolean; running: boolean; kinds: { exa_search: boolean } } | undefined {
+export function routinesFor(email: string): UserSelf["routines"] | undefined {
   if (!email.includes("routines")) return undefined;
   const running = !email.includes("paused");
-  return { visible: true, running, kinds: { exa_search: running } };
+  return { visible: true, running, kinds: { exa_search: running }, about: { exa_search: { cost_per_search_usd: { shopping: 0.017, tasks: 0.012, research: 0.012 }, key_check_usd: 0.007 } } };
 }
 
 // ---------- stand-in wording (the server's in real life)
@@ -232,6 +233,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   const today = () => new Date().toISOString().slice(0, 10);
 
   function out(r: RoutineRow, c: any): Routine {
+    const live = liveRun(r.id);
     const holder = r.key_user_id ? h.userById(r.key_user_id) : null;
     const mine = !!holder && c && holder.id === c.user.id;
     const left = r.run_now_day === today() ? Math.max(0, RUN_NOW_PER_DAY - r.run_now_count) : RUN_NOW_PER_DAY;
@@ -251,6 +253,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       blocked: r.blocked,
       next_run_at: r.paused || r.blocked ? null : r.next_run_at,
       last_run: lastRun(r.id),
+      live_run: live ? strip(live) : null,
       status_text: statusText(r, lastRun(r.id), mine, holder?.handle ?? null),
       key_holder: holder ? { handle: holder.handle } : null,
       created: r.created,
@@ -299,30 +302,80 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   };
   const snapshot = (r: RoutineRow): RoutineRow => structuredClone(r);
 
-  // A mock run: searches each open want with nothing undecided from this routine and posts one stand-in result.
+  /**
+   * A mock run that takes time, like a real one (SPEC 20.14 item 10): queued for QUEUED_MS, then one want every WANT_MS,
+   * then done. Its state is worked out from the clock whenever it is read (advance), and its suggestions are posted
+   * once, when it ends. Each want with nothing undecided from this routine is searched.
+   */
   function runOnce(r: RoutineRow, c: any | null, trigger: "schedule" | "run_now"): RunRow {
     const at = h.nowIso();
     const items = h.items().filter((i: any) => i.list_id === r.list_id && !i.pending_review && (i.status ?? "open") === "open" && !i.purchase && !r.stopped_items.includes(i.id));
+    const wants = items
+      .filter((it: any) => !h.entries().some((e: any) => e.item_id === it.id && e.status === "suggested" && e.author?.routine?.id === r.id))
+      .slice(0, 25)
+      .map((it: any) => ({ item_id: it.id, text: it.text }));
+    const run: RunRow = {
+      id: h.newId("run"),
+      routine_id: r.id,
+      trigger,
+      run_by: c ? h.actorRef(c) : null,
+      state: "queued",
+      attempts: 1,
+      queued_at: at,
+      started_at: null,
+      finished_at: null,
+      wants_searched: 0,
+      suggestions_posted: 0,
+      searches_used: 0,
+      note: null,
+      wants_total: null,
+      current: null,
+    };
+    plans.set(run.id, { wants, t0: Date.now() });
+    rs().runs.push(run);
+    return run;
+  }
+  const plans = new Map<string, { wants: Array<{ item_id: string; text: string }>; t0: number }>();
+  const QUEUED_MS = 800;
+  const WANT_MS = 900;
+
+  /** Bring a mock run up to now; posts its suggestions once, when it ends. */
+  function advance(run: RunRow): RunRow {
+    const plan = plans.get(run.id);
+    if (!plan || run.finished_at) return run;
+    const t = Date.now() - plan.t0;
+    if (t < QUEUED_MS) return run;
+    const total = plan.wants.length;
+    run.started_at ??= new Date(plan.t0 + QUEUED_MS).toISOString().replace(/\.\d{3}Z$/, "Z");
+    run.wants_total = total;
+    const done = Math.min(total, Math.floor((t - QUEUED_MS) / WANT_MS));
+    run.wants_searched = done;
+    run.searches_used = done;
+    if (done < total) {
+      run.state = "running";
+      run.current = plan.wants[done];
+      return run;
+    }
+    // Finished: post one stand-in result per want searched.
+    const r = rs().routines.find((x) => x.id === run.routine_id);
+    const holder = r?.key_user_id ? h.userById(r.key_user_id) : null;
+    const key = keyOf(r?.key_user_id ?? null);
+    const list = r ? h.getList(r.list_id) : null;
+    const shopping = (list?.format ?? "shopping") === "shopping";
+    const at = h.nowIso();
     let posted = 0;
-    let searched = 0;
-    const holder = r.key_user_id ? h.userById(r.key_user_id) : null;
-    const key = keyOf(r.key_user_id);
-    for (const it of items.slice(0, 25)) {
-      const undecided = h.entries().some((e: any) => e.item_id === it.id && e.status === "suggested" && e.author?.routine?.id === r.id);
-      if (undecided) continue;
-      searched++;
+    for (const w of plan.wants) {
+      if (!r || posted >= 10) break;
       if (key) key.used++;
       const n = h.entries().filter((e: any) => e.author?.routine?.id === r.id).length + 1;
-      const list = h.getList(r.list_id);
-      const shopping = (list.format ?? "shopping") === "shopping";
       h.entries().push({
         id: h.newId("ent"),
-        item_id: it.id,
+        item_id: w.item_id,
         list_id: r.list_id,
         status: "suggested",
         author: { kind: "outside", name: r.name, routine: { id: r.id, kind: r.kind, key_holder: holder?.handle ?? "" } },
-        title: `${it.text}: a search result ${n}`,
-        description: shopping ? "From a search result, not checked on the store's page." : `A page about ${it.text}.`,
+        title: `${w.text}: a search result ${n}`,
+        description: shopping ? "From a search result, not checked on the store's page." : `A page about ${w.text}.`,
         product_url: shopping ? `https://shop.example.com/p/result-${n}` : null,
         links: shopping ? undefined : [`https://example.org/read/result-${n}`],
         kind: shopping ? undefined : "update",
@@ -338,26 +391,20 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
         promoted_at: null,
       });
       posted++;
-      if (posted >= 10) break;
     }
-    const run: RunRow = {
-      id: h.newId("run"),
-      routine_id: r.id,
-      trigger,
-      run_by: c ? h.actorRef(c) : null,
-      state: searched ? "ok" : "skipped",
-      attempts: 1,
-      queued_at: at,
-      started_at: at,
-      finished_at: at,
-      wants_searched: searched,
-      suggestions_posted: posted,
-      searches_used: searched,
-      note: searched ? null : "Nothing to search: every want has suggestions waiting for you to decide.",
-    };
-    rs().runs.push(run);
+    run.state = total ? "ok" : "skipped";
+    run.current = null;
+    run.suggestions_posted = posted;
+    run.finished_at = at;
+    run.note = total ? null : "Nothing to search: every want has suggestions waiting for you to decide.";
+    plans.delete(run.id);
     return run;
   }
+  /** The run that is queued or running now, brought up to now. */
+  const liveRun = (id: string) => {
+    for (const run of rs().runs.filter((x) => x.routine_id === id && !x.finished_at)) advance(run);
+    return rs().runs.find((x) => x.routine_id === id && !x.finished_at) ?? null;
+  };
 
   route("GET", "/lists/{id}/routines", ({ caller, params }) => {
     visibleFor(caller);
@@ -466,6 +513,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const sw = routinesFor(userOf(c).email);
     if (!sw?.running) throw h.conflict("Routines are paused for everyone for now");
     if (r.paused || r.blocked) throw h.conflict("It's paused or stopped: resume it first.");
+    if (liveRun(r.id)) throw h.conflict("It's running now; its results will be in its history shortly.");
     if (r.run_now_day !== today()) {
       r.run_now_day = today();
       r.run_now_count = 0;
@@ -480,9 +528,18 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     return { queued: true, run_id: run.id };
   });
 
+  route("GET", "/routines/{id}/runs/{run_id}", ({ caller, params }) => {
+    const r = live(params[0]);
+    writerOf(caller, r);
+    const run = rs().runs.find((x) => x.id === params[1] && x.routine_id === r.id);
+    if (!run) throw h.notFound("Run not found");
+    return strip(advance(run));
+  });
+
   route("GET", "/routines/{id}/runs", ({ caller, params, url }) => {
     const r = live(params[0]);
     writerOf(caller, r);
+    liveRun(r.id);
     const all = rs().runs.filter((x) => x.routine_id === r.id).sort((a, b) => b.queued_at.localeCompare(a.queued_at));
     const from = Number(url.searchParams.get("cursor") ?? 0) || 0;
     const page = all.slice(from, from + 10);

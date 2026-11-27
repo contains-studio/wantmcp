@@ -37,7 +37,10 @@ test.describe.serial("on: the Routines tab and cards", () => {
     await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Kitchen", "Garden jobs", "Ana's birthday"]);
     const kitchen = page.locator("#routine-rtn_kitchen");
     await expect(kitchen).toContainText("Every Friday at 9:00 · your Exa key");
-    await expect(kitchen).toContainText(/Last ran .*: searched 3 wants, 2 suggestions · Next: /);
+    // The server's sentence, one line per part (split on " · ").
+    const parts = kitchen.locator("p.grid > span");
+    await expect(parts.nth(0)).toHaveText(/^Last ran .*: searched 3 wants, 2 suggestions$/);
+    await expect(parts.nth(1)).toHaveText(/^Next: /);
     // An agent's name is shown as a name, marked.
     const garden = page.locator("#routine-rtn_garden");
     await expect(garden.getByRole("heading")).toHaveText("“Look for hedge trimming help nearby”");
@@ -49,9 +52,30 @@ test.describe.serial("on: the Routines tab and cards", () => {
     await signIn(page, RT);
     await page.goto("/app/routines");
     const card = page.locator("#routine-rtn_kitchen");
+    // Live (SPEC 20.14 item 10): waiting, each want in turn, then the outcome; never backwards, each state readable.
+    const seen: string[] = [];
+    const line = card.locator("[data-run-state] [role=status]");
     await card.getByRole("button", { name: /^Run now/ }).click();
-    await expect(card.getByRole("status")).toHaveText("Running now. Its results will be in its history shortly.");
+    await expect(line).toBeVisible();
+    const deadline = Date.now() + 15_000;
+    while (Date.now() < deadline) {
+      const t = (await line.textContent().catch(() => null)) ?? "";
+      if (t && seen.at(-1) !== t) seen.push(t);
+      if (t.startsWith("Done")) break;
+      await page.waitForTimeout(80);
+    }
+    expect(seen[0]).toBe("Waiting to start…");
+    // Asked every 1.5 s, a quick want can be passed over; what shows is always in order.
+    const searching = seen.filter((t) => t.startsWith("Searching "));
+    expect(searching.length).toBeGreaterThan(0);
+    expect(searching.every((t) => /^Searching [12] of 2 wants, including “(Noise-cancelling headphones for the train|A cast-iron pan, 10 inch)”$/.test(t))).toBe(true);
+    expect(searching.map((t) => Number(t.split(" ")[1]))).toEqual([...searching.map((t) => Number(t.split(" ")[1]))].sort());
+    expect(seen.at(-1)).toBe("Done: searched 2 wants, 2 suggestions");
+    await expect(card.getByRole("link", { name: "See them on the list" })).toHaveAttribute("href", "/l/lst_rt_kitchen#sugg-h");
+    // Current without a reload: Run now is back with one fewer left today, and History's first row is this run.
     await expect(card).toContainText("2 left today");
+    await card.locator("summary", { hasText: /^History/ }).click();
+    await expect(card.locator("li").first()).toContainText("Run now by @bright-wren-2207");
     await card.getByRole("button", { name: /^Pause/ }).click();
     await expect(card).toContainText(/Paused by @bright-wren-2207 on/);
     await card.getByRole("button", { name: /^Resume/ }).click();
@@ -84,7 +108,7 @@ test.describe.serial("on: the Routines tab and cards", () => {
     const sugg = page.getByRole("listitem", { name: "Suggestion: Stagg EKG electric pour-over kettle" });
     await expect(sugg).toContainText("Suggested by “");
     await expect(sugg).toContainText("(your routine) · from a search result, not checked on the store's page");
-    await expect(page.getByRole("heading", { name: /^2 suggestions$/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^\d+ suggestions$/ })).toBeVisible();
     const knife = page.locator("section#itm_rt_knife");
     await expect(knife).toContainText("This routine stopped looking for this: you rejected its last two rounds.");
     await knife.getByRole("button", { name: /^Search again/ }).click();
@@ -147,6 +171,22 @@ test.describe("without JavaScript", () => {
     await expect(page).toHaveURL(/\/app\/lists\/lst_rt_ana\/settings$/);
     // The section is folded again after the redirect (no JavaScript): read the name from the DOM.
     await expect(page.locator("#routine-rtn_ana h3")).toHaveText("Find bird books");
+  });
+});
+
+test.describe("without JavaScript, the live line", () => {
+  test.use({ javaScriptEnabled: false });
+  test("Run now says “Running now.” with Check again, which shows how it went", async ({ page }) => {
+    await signIn(page, RT);
+    await page.goto("/app/routines");
+    const card = () => page.locator("#routine-rtn_kitchen");
+    // Paused by "Pause this routine" above: resume first (it runs on this person's own key).
+    if (await card().getByRole("button", { name: /^Resume/ }).count()) await card().getByRole("button", { name: /^Resume/ }).click();
+    await card().getByRole("button", { name: /^Run now/ }).click();
+    await expect(card()).toContainText("Running now. Check again");
+    await page.waitForTimeout(3500);
+    await card().getByRole("link", { name: "Check again" }).click();
+    await expect(card()).toContainText(/Last ran .*: searched \d+ wants?/);
   });
 });
 

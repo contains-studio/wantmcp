@@ -4,7 +4,7 @@
  * here rebuilds them. A routine's name may be an agent's words (`name_by: "agent"`): it is shown as a name, in quotes
  * where it sits in a sentence, never as the site's own words.
  */
-import type { ActorRef, Routine, UserSelf } from "./types";
+import type { ActorRef, Routine, RoutineRun, RoutineRunState, UserSelf } from "./types";
 
 export type RoutinesSwitch = NonNullable<UserSelf["routines"]>;
 
@@ -82,4 +82,32 @@ export function zoneCity(tz: string): string {
 /** Whether to show a name as an agent's words (in quotes, "named by …"). "server" is the kind's default name. */
 export function agentWroteName(r: { name_by: string }): boolean {
   return r.name_by === "agent";
+}
+
+/** A run's state in plain words: History and the card's live line say the same. */
+export const RUN_STATE: Record<RoutineRunState, string> = {
+  queued: "Waiting to run",
+  running: "Running",
+  ok: "Done",
+  partial: "Partly done; it will try the rest again",
+  skipped: "Nothing to do",
+  blocked: "Stopped",
+  failed: "Didn't finish",
+};
+
+const count = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
+
+/** "Done: searched 3 wants, 9 suggestions" (and ", 3 searches used" in History). */
+export function runOutcome(r: RoutineRun, withSearches = false): string {
+  const head = RUN_STATE[r.state];
+  if (r.state !== "ok" && r.state !== "partial") return head;
+  return `${head}: searched ${count(r.wants_searched, "want")}, ${count(r.suggestions_posted, "suggestion")}${withSearches ? `, ${count(r.searches_used, "search", "searches")} used` : ""}`;
+}
+
+export const runEnded = (r: Pick<RoutineRun, "state">) => r.state !== "queued" && r.state !== "running";
+
+/** The key check's cost, from the server (routines.about), as "$0.007"; null when the server doesn't say. */
+export function keyCheckCost(sw: Pick<RoutinesSwitch, "about"> | null): string | null {
+  const usd = sw?.about?.exa_search?.key_check_usd;
+  return typeof usd === "number" ? `$${usd < 0.01 ? usd.toFixed(3) : usd.toFixed(2)}` : null;
 }

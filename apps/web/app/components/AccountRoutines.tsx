@@ -10,7 +10,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { RemoveInTwoSteps } from "./AccessRow";
 import { Time } from "./Time";
-import { browserTimeZone } from "~/lib/routines";
+import { browserTimeZone, keyCheckCost, routinesOn } from "~/lib/routines";
+import { useRootData } from "~/lib/hooks";
 import type { AccountRoutineResult } from "~/lib/routines.server";
 import type { EmailPrefs, ServiceKey } from "~/lib/types";
 
@@ -35,6 +36,8 @@ const STATUS: Record<ServiceKey["status"], string> = {
 };
 
 export function ExaKeySection({ exaKey }: { exaKey: ServiceKey | null }) {
+  // What a key check costs, as the server says (routines.about); nothing typed here.
+  const checkCost = keyCheckCost(routinesOn(useRootData().user));
   const f = useFetcher<AccountRoutineResult>({ key: "exa-key" });
   const busy = f.state !== "idle";
   // A fresh form after every save: the field never keeps what was typed.
@@ -73,7 +76,7 @@ export function ExaKeySection({ exaKey }: { exaKey: ServiceKey | null }) {
               <button className="btn btn-sm btn-want" disabled={busy}>
                 {busy && f.formData?.get("intent") === "key-check" ? "Checking…" : "Check again"}
               </button>
-              <span className="text-[0.85rem] text-ink-3">One search: about $0.007 of your Exa credit.</span>
+              <span className="text-[0.85rem] text-ink-3">{checkCost ? `One search: about ${checkCost} of your Exa credit.` : "One search on your Exa account."}</span>
             </f.Form>
           )}
           <Result f={f} intent="key-check" />
@@ -135,6 +138,7 @@ export function ExaKeySection({ exaKey }: { exaKey: ServiceKey | null }) {
 
 /** The key field: password-style, never filled in, never echoed. Saving checks it once with Exa (it costs a little). */
 function KeyForm({ f, busy, replacing = false }: { f: ReturnType<typeof useFetcher<AccountRoutineResult>>; busy: boolean; replacing?: boolean }) {
+  const checkCost = keyCheckCost(routinesOn(useRootData().user));
   return (
     <f.Form method="post" className="grid gap-3" autoComplete="off">
       <input type="hidden" name="intent" value="key-save" />
@@ -155,7 +159,8 @@ function KeyForm({ f, busy, replacing = false }: { f: ReturnType<typeof useFetch
           aria-describedby={`exa-key-hint${replacing ? "-new" : ""}`}
         />
         <p id={`exa-key-hint${replacing ? "-new" : ""}`} className="hint">
-          Saving checks it with one search, about $0.007 of your Exa credit. Afterwards only its last 4 characters show.{" "}
+          {checkCost ? `Saving checks it with one search, about ${checkCost} of your Exa credit.` : "Saving checks it with one search on your Exa account."} Afterwards only its last 4
+          characters show.{" "}
           <a href="https://exa.ai/" className="link" target="_blank" rel="noopener noreferrer">
             Get a key from Exa<span className="sr-only"> (opens in a new tab)</span>
           </a>

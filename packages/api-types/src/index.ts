@@ -41,7 +41,13 @@ export interface UserSelf {
    * SPEC 20.14: whether routines exist yet (`visible`, the launch switch), whether they run (`running`, the operator's
    * pause) and each kind's switch. Absent or `visible: false`: show nothing about routines anywhere.
    */
-  routines?: { visible: boolean; running: boolean; kinds: { exa_search: boolean } };
+  routines?: {
+    visible: boolean;
+    running: boolean;
+    kinds: { exa_search: boolean };
+    /** What each kind costs on the person's own key (server d8d8575); print from here, never a number in the web. */
+    about?: { exa_search?: { cost_per_search_usd: Record<"shopping" | "tasks" | "research", number>; key_check_usd: number } };
+  };
   /** SPEC 12.2. The person's standing preferences, 0..600 plain text. Only ever returned to its person (and as context to their own agents). */
   bio: string;
   /** ISO 3166-1 alpha-2, e.g. "GB". */
@@ -817,6 +823,10 @@ export interface RoutineRun {
   searches_used: number;
   /** One line in our words. */
   note: string | null;
+  /** SPEC 20.14 item 10: how many wants this run set out to search; null while queued. Absent from older API builds. */
+  wants_total?: number | null;
+  /** The want being searched now, or null. Absent from older API builds. */
+  current?: { item_id: string; text: string } | null;
 }
 
 /** A routine as one reader sees it (SPEC 20.10). */
@@ -854,6 +864,8 @@ export interface Routine {
    * filled for an agent.
    */
   reported_words?: string | null;
+  /** SPEC 20.14 item 10: the run that is queued or running now, or null. Absent from older API builds. */
+  live_run?: RoutineRun | null;
 }
 
 /** ListSummary.routines entries (writers only). */

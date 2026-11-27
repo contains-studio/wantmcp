@@ -21,7 +21,7 @@ export const ROUTINE_INTENTS = new Set([
   "routine-item-resume",
 ]);
 
-export type RoutineResult = { ok?: boolean; intent: string; routineId?: string; message?: string; error?: string };
+export type RoutineResult = { ok?: boolean; intent: string; routineId?: string; message?: string; error?: string; runId?: string };
 
 const DAYS: Weekday[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 
@@ -70,9 +70,11 @@ export async function routineAction(request: Request, form: FormData): Promise<R
       case "routine-delete":
         await api(request, `/routines/${r}`, { method: "DELETE" });
         return done("Deleted.");
-      case "routine-run":
-        await api(request, `/routines/${r}/run`, { method: "POST" });
-        return done("Running now. Its results will be in its history shortly.");
+      case "routine-run": {
+        // The card follows the run live from here (SPEC 20.14 item 10); no sentence of its own.
+        const started = await api<{ queued: boolean; run_id: string }>(request, `/routines/${r}/run`, { method: "POST" });
+        return data<RoutineResult>({ ok: true, intent, routineId: id, runId: started.run_id });
+      }
       case "routine-pending": {
         const res = await api<{ rejected: number }>(request, `/routines/${r}/pending`, { method: "DELETE" });
         return done(res.rejected ? `Removed ${res.rejected} pending suggestion${res.rejected === 1 ? "" : "s"}.` : "Nothing was pending.");

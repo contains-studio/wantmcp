@@ -45,6 +45,9 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     { id: "itm_rt_kettle", list_id: "lst_rt_kitchen", text: "A good kettle", created_by: me, created_at: at(10 * DAY), purchase: null },
     { id: "itm_rt_boots", list_id: "lst_rt_kitchen", text: "Kids' winter boots, size 13", created_by: sam, created_at: at(9 * DAY), purchase: null },
     { id: "itm_rt_knife", list_id: "lst_rt_kitchen", text: "A bread knife", created_by: me, created_at: at(8 * DAY), purchase: null },
+    // Two wants with nothing found yet, so Run now has something to search (and the live line something to show).
+    { id: "itm_rt_headphones", list_id: "lst_rt_kitchen", text: "Noise-cancelling headphones for the train", created_by: me, created_at: at(2 * DAY), purchase: null },
+    { id: "itm_rt_pan", list_id: "lst_rt_kitchen", text: "A cast-iron pan, 10 inch", created_by: sam, created_at: at(DAY), purchase: null },
     { id: "itm_rt_hedge", list_id: "lst_rt_garden", text: "Trim the hedge before the frost", created_by: me, created_at: at(7 * DAY), purchase: null, status: "open" },
   );
 
