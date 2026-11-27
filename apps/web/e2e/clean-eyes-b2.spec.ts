@@ -79,11 +79,11 @@ test.describe("phone", () => {
   test("small controls have 44px to tap", async ({ page }) => {
     await signIn(page, "tesla@example.com");
     await page.goto("/l/lst_tesla");
-    const toggle = page.locator("#ent_ty_m1 summary.row-toggle-btn");
-    const hit = await toggle.evaluate((el) => {
-      const a = getComputedStyle(el, "::after");
-      return [parseFloat(a.width), parseFloat(a.height)];
-    });
-    expect(Math.min(...hit)).toBeGreaterThanOrEqual(44);
+    const row = page.locator("#ent_ty_m1");
+    for (const control of [row.locator(".sheet-title > a"), row.locator("summary.row-toggle-btn")]) {
+      const { width, height } = await control.evaluate((el) => el.getBoundingClientRect().toJSON());
+      expect(width).toBeGreaterThanOrEqual(44);
+      expect(height).toBeGreaterThanOrEqual(44);
+    }
   });
 });
