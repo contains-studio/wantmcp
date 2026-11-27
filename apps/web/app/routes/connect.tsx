@@ -82,6 +82,8 @@ type Client = {
   sources: Array<[string, string]>;
   steps: (ctx: Ctx) => React.ReactNode;
   more?: (ctx: Ctx) => React.ReactNode;
+  /** The steps end with their own "Then" (an app where you act rather than say something): no "Then say" box. */
+  ownThen?: boolean;
   /** "So it remembers next time": our skill's install command (coding agents), its ZIP (Claude apps), or a line for the app's memory (chat apps). */
   remember?: "command" | "zip" | "memory";
 };
@@ -213,6 +215,16 @@ function Steps({ children }: { children: React.ReactNode }) {
   return <ol className="grid list-decimal gap-1.5 pl-5 marker:text-ink-3">{children}</ol>;
 }
 
+/** A screenshot in a step: its own frame, lazy, with a short caption. */
+function Shot({ src, width, height, alt, caption, narrow = false }: { src: string; width: number; height: number; alt: string; caption: string; narrow?: boolean }) {
+  return (
+    <figure className={`grid gap-1.5 ${narrow ? "max-w-[18rem]" : "max-w-[32rem]"}`}>
+      <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" className="block h-auto w-full rounded-xl border border-line" />
+      <figcaption className="text-[0.85rem] text-ink-2">{caption}</figcaption>
+    </figure>
+  );
+}
+
 const b64 = (s: string) => (typeof btoa === "function" ? btoa(s) : Buffer.from(s).toString("base64"));
 
 type Ctx = { mcp: string; origin: string; signedIn: boolean; lists: MyList[]; selected: string | null };
@@ -273,7 +285,7 @@ const CLIENT_LIST: Client[] = [
     remember: "memory",
     sources: [
       ["OpenAI: custom MCP servers", "https://developers.openai.com/api/docs/guides/custom-mcp-server"],
-      ["OpenAI Help Center", "https://help.openai.com/en/articles/12584461"],
+      ["OpenAI Help Center", "https://help.openai.com/en/articles/12584461-connecting-custom-mcp-servers-in-chatgpt"],
     ],
     steps: (c) => (
       <>
@@ -305,7 +317,7 @@ const CLIENT_LIST: Client[] = [
     name: "Claude",
     status: "confirmed",
     remember: "zip",
-    sources: [["Claude Help Center: custom connectors", "https://support.claude.com/en/articles/11175166-getting-started-with-custom-connectors-using-remote-mcp"]],
+    sources: [["Claude Help Center: custom connectors", "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp"]],
     steps: (c) => (
       <Steps>
         <li>
@@ -476,8 +488,8 @@ const CLIENT_LIST: Client[] = [
     status: "confirmed",
     remember: "command",
     sources: [
-      ["Cursor docs: MCP", "https://cursor.com/docs/context/mcp"],
-      ["Cursor docs: install links", "https://cursor.com/docs/context/mcp/install-links"],
+      ["Cursor docs: MCP", "https://cursor.com/docs/mcp"],
+      ["Cursor docs: install links", "https://cursor.com/docs/mcp/install-links"],
     ],
     steps: (c) => (
       <Steps>
@@ -573,10 +585,56 @@ const CLIENT_LIST: Client[] = [
   {
     id: "msgblast",
     name: "msgblast",
-    // Not released yet (brands.ts comingSoon): no steps until it ships.
-    status: "soon",
-    sources: [],
-    steps: () => <p className="text-ink-2">Not available yet.</p>,
+    // From msgblast's docs/wants.md and its app code (27 Nov 2026); nobody here has run them in a released build yet.
+    status: "unchecked",
+    sources: [["msgblast: Wants (docs/wants.md)", "https://github.com/contains-studio/msgblast/blob/main/docs/wants.md"]],
+    ownThen: true,
+    steps: () => (
+      <>
+        <h3 className="text-[1rem] font-semibold">On a Mac</h3>
+        <Steps>
+          <li>
+            Open <strong>View › Show Wants</strong> (⌘3).
+          </li>
+          <li>
+            Choose <strong>Sign In…</strong> and pick your lists in the browser.
+          </li>
+          <li>
+            Or connect one list with a key: on wantmcp.com open the list's settings, <strong>Agents › Add another agent</strong>. In msgblast click{" "}
+            <strong>Use a Write Key</strong>, paste the key and click <strong>Add</strong>.
+          </li>
+        </Steps>
+        <Shot src="/shots/msgblast-signin-mac.webp" width={760} height={320} alt="msgblast's Want MCP sign-in on Mac, with a Sign In… button and a field for a write key." caption="Sign in to pick your lists, or use one list's key." />
+        <h3 className="text-[1rem] font-semibold">On an iPhone</h3>
+        <Steps>
+          <li>
+            Open <strong>Wants</strong> from the inbox (on an iPhone that isn't paired: <strong>Open Wants</strong>).
+          </li>
+          <li>
+            On wantmcp.com, open the list's settings, <strong>Agents</strong>, choose <strong>Other</strong> and name it msgblast. Create the key and open{" "}
+            <strong>Show all</strong> to copy it.
+          </li>
+          <li>
+            In msgblast paste it into <strong>List write key</strong> and tap <strong>Connect list</strong>.
+          </li>
+        </Steps>
+        <Shot src="/shots/msgblast-open-wants-iphone.webp" width={600} height={498} narrow alt="msgblast on iPhone, with Open Wants above Pair Your Mac." caption="Wants, on the iPhone's first screen." />
+        <h3 className="text-[1rem] font-semibold">Then</h3>
+        <Steps>
+          <li>Add a want in the field under your lists.</li>
+          <li>
+            Open it and choose <strong>Find Offers</strong> (shopping) or <strong>Ask Agents</strong> (a task or a question). Replies show under the item.
+          </li>
+          <li>
+            Answer what's under <strong>Waiting on you</strong>. If you like, turn on <strong>Forward Activity</strong> so new comments reach the agents you asked.
+          </li>
+        </Steps>
+        <Shot src="/shots/msgblast-wants-mac.webp" width={1024} height={738} alt="The msgblast Wants window on Mac: a headphones want with two offers, from Claude and from Codex, and a comment. Demo data." caption="A want with its offers in msgblast (demo data)." />
+        <p className="text-[0.85rem] text-ink-3">
+          Wants comes in the next msgblast release: the download today (0.11.1) doesn't have it yet. Update when a newer version arrives.
+        </p>
+      </>
+    ),
   },
   {
     id: "other",
@@ -643,6 +701,51 @@ function RemembersNextTime({ kind, app }: { kind: "command" | "zip" | "memory"; 
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Each app's own pages (owner, 27 Nov 2026: "all our connect documentation needs to link to the sites/pages"): its site
+ * or download, and where it explains adding a connector or MCP server. Every link was opened and checked on LINKS_CHECKED;
+ * `none` says how it's done when the app has no such page.
+ */
+const LINKS_CHECKED = "27 Nov 2026";
+const LINKS: Record<string, { links: Array<[string, string]>; none?: string }> = {
+  chatgpt: { links: [["ChatGPT download", "https://chatgpt.com/download/"], ["OpenAI: custom MCP servers in ChatGPT", "https://help.openai.com/en/articles/12584461-connecting-custom-mcp-servers-in-chatgpt"]] },
+  codex: { links: [["Codex", "https://openai.com/codex/"], ["Codex: MCP", "https://learn.chatgpt.com/docs/extend/mcp"]] },
+  claude: { links: [["Claude download", "https://claude.com/download"], ["Claude: custom connectors", "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp"]] },
+  "claude-code": { links: [["Claude Code", "https://claude.com/product/claude-code"], ["Claude Code docs: MCP", "https://code.claude.com/docs/en/mcp"]] },
+  "grok-bot": { links: [["Grok Bot download", "https://x.ai/bot"], ["xAI: Grok Bot apps and connectors", "https://docs.x.ai/grok-bot/computer-and-apps"]] },
+  muse: { links: [["Muse download", "https://ai.meta.com/muse/download/"], ["Meta: how Muse works with connectors", "https://www.meta.com/help/superintelligence/1687253048996149/"]] },
+  openclaw: { links: [["OpenClaw", "https://openclaw.ai/"], ["OpenClaw docs: MCP", "https://docs.openclaw.ai/tools/mcp"]] },
+  cursor: { links: [["Cursor download", "https://cursor.com/download"], ["Cursor docs: MCP", "https://cursor.com/docs/mcp"]] },
+  grok: { links: [["Grok", "https://grok.com/"], ["xAI: Grok connectors", "https://docs.x.ai/grok/connectors"]] },
+  gemini: { links: [["Gemini CLI", "https://geminicli.com/"], ["Gemini CLI: MCP servers", "https://geminicli.com/docs/tools/mcp-server/"]] },
+  hermes: { links: [["Hermes Agent", "https://hermes-agent.nousresearch.com/"], ["Hermes docs: MCP", "https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp"]] },
+  hark: { links: [["Hark", "https://hark.com/"]], none: "Hark has no setup page: you set it up in a chat." },
+  instinct: { links: [["Instinct", "https://instinct.com/"]], none: "Instinct has no setup page: you set it up by texting it." },
+  msgblast: { links: [["msgblast.app", "https://msgblast.app/"], ["Download", "https://msgblast.app/download/"], ["msgblast: Wants", "https://github.com/contains-studio/msgblast/blob/main/docs/wants.md"]] },
+  other: { links: [["MCP: connect to remote servers", "https://modelcontextprotocol.io/docs/develop/connect-remote-servers"]] },
+};
+
+/** The app's own pages, after the steps: quiet links in a new tab, with the date they were checked. */
+function AppLinks({ id }: { id: string }) {
+  const l = LINKS[id];
+  if (!l) return null;
+  return (
+    <p className="app-links text-[0.85rem] text-ink-3">
+      {l.links.map(([label, url], i) => (
+        <span key={url}>
+          {i > 0 && " · "}
+          <a href={url} className="link text-ink-2" target="_blank" rel="noopener noreferrer">
+            {label}
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </span>
+      ))}
+      {l.none && <> · {l.none}</>}
+      <span className="block text-[0.78rem]">Links checked {LINKS_CHECKED}.</span>
+    </p>
   );
 }
 
@@ -845,13 +948,14 @@ function AppPicker({ app, ctx, listParam }: { app: string; ctx: Ctx; listParam: 
         </div>
         <div className="grid min-w-0 max-w-3xl gap-4 text-[0.97rem] [&_code]:rounded-[3px] [&_code]:bg-sunk [&_code]:px-1 [&_code]:text-[0.85em]">
           {c.steps(ctx)}
-          {c.status !== "soon" && (
+          {c.status !== "soon" && !c.ownThen && (
             <p className="rounded-md bg-sunk px-4 py-3">
               <span className="font-semibold">Then say:</span> “{thenSay}”{" "}
               <CopyButton text={thenSay} label="Copy" ariaLabel="Copy what to say" className="btn btn-ghost btn-xs" />
             </p>
           )}
           {c.remember && <RemembersNextTime kind={c.remember} app={c.id === "other" ? "your agent" : c.name} />}
+          <AppLinks id={c.id} />
           {(c.more || c.sources.length > 0) && (
             <details className="group">
               <SummaryArrow>Details and troubleshooting</SummaryArrow>

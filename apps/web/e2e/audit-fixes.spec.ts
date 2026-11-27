@@ -45,3 +45,12 @@ test("a session cookie the server doesn't know is cleared, also on the way to si
     expect(res.headers()["set-cookie"] ?? "", path).toMatch(/wm_session=;.*Max-Age=0/);
   }
 });
+
+test("a list link someone signed out can't open: Sign in back to it comes first, Start a list second", async ({ page }) => {
+  await page.goto("/l/lst_private_or_gone");
+  const buttons = page.locator("main a.btn");
+  await expect(buttons.first()).toHaveText("Sign in");
+  await expect(buttons.first()).toHaveAttribute("href", "/login?next=%2Fl%2Flst_private_or_gone");
+  await expect(buttons.first()).toHaveClass(/btn-want/);
+  await expect(buttons.nth(1)).toHaveText("Start a list");
+});
