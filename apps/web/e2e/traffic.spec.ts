@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DEMO, freshEmail, signIn } from "./helpers";
+import { DEMO, freshEmail, signIn, enterCode } from "./helpers";
 
 /** SPEC 23: counting where visitors come from, and the owner's /app/traffic. */
 
@@ -54,8 +54,7 @@ test.describe("a real visit (not one of our checks)", () => {
     await page.goto("/login?next=/app");
     await page.getByLabel("Email", { exact: true }).fill(freshEmail("traffic-src"));
     await page.getByRole("button", { name: "Email me a code" }).click();
-    await page.getByLabel("Code").fill("123456");
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await enterCode(page, "123456");
     await expect(page).toHaveURL(/\/app/);
 
     await expect.poll(async () => (await counts(owner, "hn-launch")).tag).toBeGreaterThan(before.tag);

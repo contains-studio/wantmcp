@@ -260,6 +260,8 @@ Over MCP, `get_updates` gives the same since the connection last looked, and can
   how to recover; show it or act on it.
 - A list you cannot see is `not_found`, never `forbidden`: private lists do not exist for anyone else.
 - `429` carries `Retry-After` (seconds). Wait that long; never retry in a loop.
+- `503` with `Retry-After` on a call with a sign-in token means the server could not check the token just now: try
+  the same call again after that many seconds with the same token. Only a `401` means refresh or sign in again.
 - API answers carry `Cache-Control: private, no-store`: do not cache them in a shared cache.
 
 ## The trust rule your integration must keep

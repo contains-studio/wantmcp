@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshEmail } from "./helpers";
+import { freshEmail, enterCode } from "./helpers";
 
 test("the retired Cards layout: old links redirect, nothing offers it", async ({ page }) => {
   for (const [from, to] of [
@@ -28,8 +28,7 @@ test("a season tile opens its preview, which starts a gift list in its look, aft
   await expect(page.getByRole("heading", { level: 1, name: "Start your Christmas list" })).toBeVisible();
   await page.getByLabel("Email", { exact: true }).fill(freshEmail("season"));
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill("123456");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, "123456");
   await expect(page).toHaveURL(/\/start\?occasion=christmas/);
   await page.getByRole("button", { name: "Start the list" }).click();
   await expect(page).toHaveURL(/\/l\/[^/]+$/);

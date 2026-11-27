@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DEMO, freshEmail, MOCK_CODE, signIn } from "./helpers";
+import { DEMO, freshEmail, MOCK_CODE, signIn, enterCode } from "./helpers";
 
 // The mock makes a fresh list for each clm_e2e_<state>_<id> token (mock/api.ts, e2eClaim), so every test and every
 // retry has its own claim link.
@@ -27,8 +27,7 @@ test("a list an agent started: keep it by signing up, then land on it as its own
   await expect(page.getByRole("heading", { name: "Keep your list" })).toBeVisible();
   await page.getByLabel("Email", { exact: true }).fill(freshEmail("claim"));
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill(MOCK_CODE);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, MOCK_CODE);
 
   await expect(page).toHaveURL(/\/l\/lst_[a-z0-9]+$/);
   const listUrl = page.url();

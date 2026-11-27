@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { createList, DEMO, freshEmail, signIn } from "./helpers";
+import { createList, DEMO, freshEmail, signIn, enterCode } from "./helpers";
 
 test("addresses typed by hand: /account and /settings", async ({ page }) => {
   await signIn(page, freshEmail("typed"));
@@ -32,8 +32,7 @@ test("a new person who pressed Start a list lands on a new list form, ready to t
   await page.goto("/login?next=/app/new?format=tasks");
   await page.getByLabel("Email", { exact: true }).fill(freshEmail("starter"));
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill("123456");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, "123456");
   await expect(page).toHaveURL(/\/app\/new\?format=tasks$/);
   await expect(page.getByRole("radio", { name: /^Tasks/ })).toBeChecked();
 });

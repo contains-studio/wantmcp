@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshEmail, MOCK_CODE } from "./helpers";
+import { freshEmail, MOCK_CODE, enterCode } from "./helpers";
 
 /** Bug audit, 27 Nov 2026: without JavaScript a change must not be repeated by a reload or by back/forward. */
 test.use({ javaScriptEnabled: false });
@@ -8,8 +8,7 @@ test("without JavaScript, adding an item then reloading and going back and forwa
   await page.goto("/login?next=/app/new");
   await page.getByLabel("Email", { exact: true }).fill(freshEmail("nojs"));
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill(MOCK_CODE);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, MOCK_CODE);
   await expect(page).toHaveURL(/\/app\/new/);
   const form = page.locator("main form");
   await form.getByRole("radio", { name: /^Research/ }).check();
@@ -36,8 +35,7 @@ test("without JavaScript, ticking an item off redirects too, and a reload doesn'
   await page.goto("/login?next=/app/new");
   await page.getByLabel("Email", { exact: true }).fill(freshEmail("nojs-tick"));
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill(MOCK_CODE);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, MOCK_CODE);
   await page.locator("main form").getByRole("radio", { name: /^Tasks/ }).check();
   await page.locator('main form input[name="title"]').fill("No script ticks");
   await page.locator("main form").getByRole("button", { name: /^Create .* list$/ }).click();

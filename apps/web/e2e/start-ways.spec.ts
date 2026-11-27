@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { acceptDialogs, createList, freshEmail, MOCK_CODE, signIn } from "./helpers";
+import { acceptDialogs, createList, freshEmail, MOCK_CODE, signIn, enterCode } from "./helpers";
 
 test("home: one way in for people, the words for an agent, and a pointer for agents", async ({ page }) => {
   await page.goto("/");
@@ -39,8 +39,7 @@ test("after keeping a list, one line says who started it, once", async ({ page }
   await page.getByRole("button", { name: "Keep this list" }).click();
   await page.getByLabel("Email", { exact: true }).fill(freshEmail("kept"));
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill(MOCK_CODE);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, MOCK_CODE);
   await expect(page).toHaveURL(/\/l\/lst_[a-z0-9]+$/);
   await expect(page.getByText("This list was started by Claude. It is private.")).toBeVisible();
   await page.reload();

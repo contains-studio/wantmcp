@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshEmail, MOCK_CODE } from "./helpers";
+import { freshEmail, MOCK_CODE, enterCode } from "./helpers";
 
 test("too many codes says when to try again", async ({ page }) => {
   await page.goto("/login");
@@ -16,8 +16,7 @@ test("a sign-in attempt is carried in a cookie, never in the page", async ({ pag
   const attempt = (await context.cookies()).find((c) => c.name === "wm_attempt");
   expect(attempt?.httpOnly).toBe(true);
   expect(await page.content()).not.toContain(attempt!.value);
-  await page.getByLabel("Code").fill(MOCK_CODE);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, MOCK_CODE);
   await expect(page).toHaveURL(/\/app/);
   expect((await context.cookies()).some((c) => c.name === "wm_attempt")).toBe(false);
 });
@@ -27,8 +26,7 @@ for (const next of ["/\\evil.example", "//evil.example", "/%09/evil.example", "/
     await page.goto(`/login?next=${encodeURIComponent(next)}`);
     await page.getByLabel("Email", { exact: true }).fill(freshEmail("next"));
     await page.getByRole("button", { name: "Email me a code" }).click();
-    await page.getByLabel("Code").fill(MOCK_CODE);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await enterCode(page, MOCK_CODE);
     await expect(page).toHaveURL(/^http:\/\/localhost:\d+\/app$/);
   });
 }

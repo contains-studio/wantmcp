@@ -1,4 +1,5 @@
 import { INVALID_EMAIL } from "~/lib/errors";
+import { useEffect, useRef } from "react";
 import { data, Form, Link, redirect, useActionData, useNavigation, useSearchParams } from "react-router";
 import type { Route } from "./+types/login";
 import { api, ApiError, friendlyError } from "~/lib/api.server";
@@ -133,7 +134,10 @@ export default function Login({ loaderData }: Route.ComponentProps) {
         {onCode ? (
           <Form method="post" action={action} className="mt-6 grid gap-4" key="code">
             <p className="text-ink-2">
-              We sent a code to <strong className="break-all text-ink">{result.email}</strong>. It expires in 10 minutes.
+              {/* SPEC 25: said before the field, so the page moving on by itself is expected (WCAG 3.2.2). The same words
+                  as the app sign-in pages. */}
+              We sent a code to <strong className="break-all text-ink">{result.email}</strong>. It works for 10 minutes. It's sent when you've typed all six
+              digits.
             </p>
             {result.devCode && (
               <p className="chip chip-warn w-fit">
@@ -145,22 +149,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
             <input type="hidden" name="email" value={result.email} />
             <input type="hidden" name="next" value={next} />
             {result.optIn && <input type="hidden" name="updates_opt_in" value="on" />}
-            <label className="field">
-              <span className="label">Code</span>
-              <input
-                name="code"
-                required
-                autoFocus
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                pattern="\s*(\d\s*){6}"
-                maxLength={9}
-                placeholder="123456"
-                aria-invalid={result.error ? true : undefined}
-                aria-describedby={result.error ? "code-error" : undefined}
-                className="input text-center font-mono text-2xl tracking-[0.4em]"
-              />
-            </label>
+            <CodeField result={result} busy={busy} />
             {result.error && (
               <p id="code-error" className="form-error" role="alert">
                 {result.error}
@@ -221,4 +210,59 @@ function signupSource(request: Request): string | null {
   const m = /(?:^|;\s*)wm_src=([^;]+)/.exec(request.headers.get("cookie") ?? "");
   const v = m ? decodeURIComponent(m[1]) : null;
   return v && /^[a-z0-9_.-]{1,64}$/.test(v) ? v : null;
+}
+
+/**
+ * The code field (SPEC 25): six digits, spaces ignored, send the form by themselves, whether typed, pasted or filled in
+ * by the phone from the email. Only the person's own input does it (trusted input events): never on load, a value
+ * the browser restored, or going back. Sent once: read-only and "Checking…" while it is on its way. A wrong code comes
+ * back with the error, an empty field and the cursor in it, and six new digits send again. The button stays, and
+ * without JavaScript it is the way, as before.
+ */
+function CodeField({ result, busy }: { result: { error?: string }; busy: boolean }) {
+  const input = useRef<HTMLInputElement>(null);
+  const sent = useRef(false);
+  // Each answer from the server (a new result) is a fresh try: after a wrong code, empty the field and focus it.
+  useEffect(() => {
+    sent.current = false;
+    if (result.error && input.current) {
+      input.current.value = "";
+      input.current.focus();
+    }
+  }, [result]);
+  // Back to this page from the back-forward cache: not on its way any more.
+  useEffect(() => {
+    const reset = (e: PageTransitionEvent) => {
+      if (e.persisted) sent.current = false;
+    };
+    window.addEventListener("pageshow", reset);
+    return () => window.removeEventListener("pageshow", reset);
+  }, []);
+  return (
+    <label className="field">
+      <span className="label">Code</span>
+      <input
+        ref={input}
+        name="code"
+        required
+        autoFocus
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="\s*(\d\s*){6}"
+        maxLength={9}
+        placeholder="123456"
+        readOnly={busy}
+        aria-invalid={result.error ? true : undefined}
+        aria-describedby={result.error ? "code-error" : undefined}
+        className="input text-center font-mono text-2xl tracking-[0.4em]"
+        onInput={(e) => {
+          if (!e.nativeEvent.isTrusted || sent.current || busy) return;
+          const el = e.currentTarget;
+          if (!/^\d{6}$/.test(el.value.replace(/\s+/g, ""))) return;
+          sent.current = true;
+          el.form?.requestSubmit();
+        }}
+      />
+    </label>
+  );
 }

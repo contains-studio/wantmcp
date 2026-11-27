@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DEMO, freshEmail, MOCK_CODE } from "./helpers";
+import { DEMO, freshEmail, MOCK_CODE, enterCode } from "./helpers";
 
 /**
  * "Email me about new features" starts ticked wherever an account is made (owner, 25 Nov 2026), except for visitors
@@ -17,8 +17,7 @@ async function finish(page: Page, email: string, untick = false) {
   await page.getByLabel("Email", { exact: true }).fill(email);
   if (untick) await box(page).uncheck();
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill(MOCK_CODE);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, MOCK_CODE);
   await expect(page).not.toHaveURL(/\/login/);
 }
 
@@ -66,11 +65,9 @@ test("unticked stays unticked when the code was wrong", async ({ page }) => {
   await page.getByLabel("Email", { exact: true }).fill(freshEmail("optin-wrong"));
   await box(page).uncheck();
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill("000000");
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, "000000");
   await expect(page.getByRole("alert")).toBeVisible();
-  await page.getByLabel("Code").fill(MOCK_CODE);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, MOCK_CODE);
   await expect(page).toHaveURL(/\/app/);
   expect(await storedOptIn(page)).toBe(false);
 });
@@ -83,8 +80,7 @@ for (const country of ["DE", "GB"]) {
     await expect(box(page)).not.toBeChecked();
     await page.getByLabel("Email", { exact: true }).fill(freshEmail(`optin-${country}`));
     await page.getByRole("button", { name: "Email me a code" }).click();
-    await page.getByLabel("Code").fill(MOCK_CODE);
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await enterCode(page, MOCK_CODE);
     await expect(page).toHaveURL(/\/app/);
     expect(await storedOptIn(page)).toBe(false);
     await ctx.close();

@@ -11,9 +11,20 @@ export async function signIn(page: Page, email: string) {
   await page.goto("/login?next=/app");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByRole("button", { name: "Email me a code" }).click();
-  await page.getByLabel("Code").fill(MOCK_CODE);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await enterCode(page, MOCK_CODE);
   await expect(page).toHaveURL(/\/app/);
+}
+
+/**
+ * Type the sign-in code. With JavaScript it sends itself at six digits (SPEC 25), so wait for the page to be live first
+ * and don't click; without JavaScript, click Sign in as before.
+ */
+export async function enterCode(page: Page, code: string) {
+  const field = page.getByLabel("Code");
+  const js = await page.evaluate(() => "__reactRouterContext" in window);
+  if (js) await expect.poll(() => field.evaluate((el) => Object.keys(el).some((k) => k.startsWith("__reactProps")))).toBe(true);
+  await field.fill(code);
+  if (!js) await page.getByRole("button", { name: "Sign in" }).click();
 }
 
 /** Confirm every confirm() dialog (removing, revoking, making public). */
