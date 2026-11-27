@@ -15,6 +15,8 @@ export interface LookNote {
   slug: string;
   /** One or two sentences: what changed and why. */
   caption: string;
+  /** One line: what its header is made of, the thing that says which look this is in the first 200px. */
+  head: string;
   better: Better;
   /** One line for the summary table. */
   reason: string;
@@ -29,6 +31,7 @@ export interface LookNote {
 export const LOOK_NOTES: LookNote[] = [
   {
     slug: "sheet",
+    head: "A band of the sheet's own surface with the counts in ruled cells: the top row of the table.",
     caption:
       "The page grid, the accent bar and the monospace counts are gone; each want is a plain white card on a quiet ground. On a phone, who found a price, when and where runs the card's full width, so it takes two lines instead of three or four.",
     better: "next",
@@ -47,6 +50,7 @@ export const LOOK_NOTES: LookNote[] = [
   },
   {
     slug: "today",
+    head: "The title beside a pie that fills as tasks get done.",
     caption:
       "Round ticks, one hairline between tasks, and what an agent posted sits under its task without a box. Due dates are plain words (only an overdue one is coloured), and the mark by the title is a pie that fills as tasks get done.",
     better: "next",
@@ -65,15 +69,16 @@ export const LOOK_NOTES: LookNote[] = [
   },
   {
     slug: "doc",
+    head: "A title page: a large serif title, an italic line of counts and the note, on the sheet.",
     caption:
       "A page to read: its own sheet (white, or dark grey at night), everything in the book serif, questions large and light, answers set in under them at reading size. The numbered headings, the grey bar beside every answer and the page-on-a-desk are gone.",
     better: "next",
-    reason: "Calmer and easier to read, but by the smallest margin: the current Doc is the more recognisable of the two.",
-    score: [15, 17],
+    reason: "Reads as a document by type alone, where the current one adds numbers, a rule and a bar. The closest call of the eight.",
+    score: [14, 16],
     critique: [
-      "This pair changed sides. In the first blind round the current Doc won narrowly (17 to 16): in the redesign, questions and answers were both bold serif of nearly one size. After that was fixed, the second round preferred the redesign (17 to 15).",
+      "This pair changed sides once. In the first blind round the current Doc won narrowly (17 to 16): in the redesign, questions and answers were both bold serif of nearly one size. After that was fixed the redesign won the second round (17 to 15) and the third, in WebKit (16 to 14, \"by a moderate margin\").",
       "Current: section numbers, a rule under the title, a side bar on every answer (which also wraps product cards, which are not quotes), and a seam with cramped spacing under the header at 1280.",
-      "Redesigned: the second round still called the current one \"the more unmistakable look\". The sheet colour, the single face and the ruled product entries were added after that and have not had a blind review.",
+      "Redesigned: the second round still called the current one \"the more unmistakable look\", so it got its own sheet colour, one face throughout and ruled product entries. The third round judged it not mistakable for Checklist or Tracker. Still open: a visitor's status line is quiet italic text.",
     ],
     questions: [
       "Question 1: current fails (numbers, title rule, italics); redesigned passes.",
@@ -83,8 +88,9 @@ export const LOOK_NOTES: LookNote[] = [
   },
   {
     slug: "board",
+    head: "One solid navy band across the page (an occasion's own colour when dressed), with the columns under it.",
     caption:
-      "The blue-to-purple backdrop is gone: columns are quiet wells on the page, cards are white, and a small mark before each column's name draws its status (ring, half, filled). Store names on product cards are in sentence case and break only between words.",
+      "The blue-to-purple backdrop is gone. The header keeps one solid navy band; under it the columns are quiet wells on the page, cards are white, and a small mark before each column's name draws its status (ring, half, filled). Store names on product cards are in sentence case and break only between words.",
     better: "next",
     reason: "The saturated gradient was the opposite of calm; the columns alone say Board.",
     score: [14, 17],
@@ -101,6 +107,7 @@ export const LOOK_NOTES: LookNote[] = [
   },
   {
     slug: "sections",
+    head: "The title with the counts at its right, over a rule that fills as items move to Done.",
     caption:
       "The header is the title and one quiet line again: the blue icon tile and the boxed counts in their own band are gone. The table keeps its folding groups and loses the Status column, which only repeated each group's name; the group's name carries the status mark instead.",
     better: "next",
@@ -109,7 +116,7 @@ export const LOOK_NOTES: LookNote[] = [
     critique: [
       "Current: \"3 open · 1 done · by sample-owner\" sits in a bordered box in its own band (a third header row), beside an icon tile that names nothing; uppercase column heads, column rules and an amber pill.",
       "Redesigned: the highest score of the sixteen (18 of 24) and no cognitive-load failures.",
-      "Both repeated the group's status on every row; the redesign has since dropped that column.",
+      "Both repeated the group's status on every row; the redesign dropped that column. Doing so first broke it on a phone (the wide table's columns reached the narrow layout and left each title about 50px). That is fixed, and a test in Chrome and WebKit now holds every look's titles to at least 60% of their row.",
     ],
     questions: [
       "Question 1: current fails (tile, boxed counts); redesigned failed on the repeated status, now removed.",
@@ -119,6 +126,7 @@ export const LOOK_NOTES: LookNote[] = [
   },
   {
     slug: "heat",
+    head: "A heavy title over the hot-to-cool scale itself, the key to every bar's colour.",
     caption:
       "Each bar gives the task's words the full width, with its state under them, so a title takes two lines on a phone instead of four. The bars still run hot to cool and touch as one scale. It now follows the device: light by day, dark at night.",
     better: "next",
@@ -137,6 +145,7 @@ export const LOOK_NOTES: LookNote[] = [
   },
   {
     slug: "tracker",
+    head: "A compact title bar on the panel's own surface, the counts at its right, then rows led by status lights.",
     caption:
       "The made-up issue numbers (\"WNT-1\"), the blue square and the monospace are gone. One dense panel of rows, each led by a status light, with its due date and who has it on one line; under it, the activity runs down a rail, each update led by who posted it and when.",
     better: "next",
@@ -145,7 +154,7 @@ export const LOOK_NOTES: LookNote[] = [
     critique: [
       "Current: \"WNT-1\" to \"WNT-3\" are numbers nobody assigned; monospace on dates, prices and names (\"$649 . 99\" with a gap); bordered update boxes inside a bordered panel, which the detector reports as nested cards.",
       "Current: the ChatGPT mark is black on the dark panel at 1280 in light mode, nearly invisible. The redesign shows the marks made for dark surfaces.",
-      "Redesigned: 879px against 1,051px on a phone; one cognitive-load failure against three. The first round said it was \"Checklist in a grey panel\"; the rail and the compact status line came after that.",
+      "Redesigned: 879px against 1,051px on a phone; one cognitive-load failure against three. The first round said it was \"Checklist in a grey panel\"; the rail and the compact status line came after that, and the third round judged the two not mistakable.",
     ],
     questions: [
       "Question 1: current fails (decorative text, the square). Redesigned had one nit, the status pill reading as a repeat of the update's byline; the pill now sits on the due line.",
@@ -155,6 +164,7 @@ export const LOOK_NOTES: LookNote[] = [
   },
   {
     slug: "gallery",
+    head: "A small centred title, as on an album, so the photos start high on the page.",
     caption:
       "The same masonry of photos. Under each, the price has its own line and the store the next one, in full, instead of \"at Harbor / Electronics\" broken across two; the status tag lines up with the title and shows on word cards.",
     better: "next",
@@ -175,14 +185,14 @@ export const LOOK_NOTES: LookNote[] = [
 
 export const SUMMARY = {
   recommendation:
-    "Adopt seven, and decide Doc yourself. Board, Sections, Tracker, Checklist, Heat and Sheet are clear gains: each drops something the current look only wears (a gradient, a toolbar band, invented issue numbers, a flag on every date, a page grid) or fixes something broken on a phone (store names cut mid-word, titles on four lines). Gallery is a small, safe gain. Doc reads better but is less recognisable.",
-  /** The one risk to the set as a whole. */
+    "Adopt all eight. Board, Sections, Tracker, Checklist, Heat and Sheet are clear gains: each drops something the current look only wears (a gradient, a toolbar band, invented issue numbers, a flag on every date, a page grid) or fixes something broken on a phone (store names cut mid-word, titles on four lines). Gallery is a small, safe gain. Doc is the closest call and the one pair that changed sides between reviews: look at it on a research list of your own first.",
+  /** How sure this is, and what has not been checked the same way. */
   caveat:
-    "Before adopting Checklist, Doc and Tracker, look at the three together on your phone. Reviewed blind, the current three were judged further apart than the first redesign of them. They were pushed apart after that, and that last step has not had a blind review.",
+    "Reviewed blind three times, the last in WebKit. The redesigned Checklist, Doc and Tracker were judged not mistakable for one another (the current Checklist and Tracker were), and the eight redesigned headers had one pair that could be swapped, Board and Sections, against four in the current set. Board's band was made navy after that round to separate that pair; that one change has not had a blind review.",
   ship: [
     "Make the redesigned set the default: move the eight stylesheets and definitions into place of the current ones and drop the `nx` indirection. About a day, most of it re-recording the existing look tests (Sheet, Checklist and Gallery have their own specs), which were not run against the redesign.",
     "Look at the places that draw looks small: the home page's \"Pick a look\" row, the gallery at /themes and list settings. They were not checked with the redesign.",
-    "Heat would no longer be always dark. If always dark is the point of Heat, that is one line to put back.",
+    "Two calls for the owner: Heat would no longer be always dark (one line to put back), and Board keeps a navy band where every other look takes the site's neutrals.",
     "Fix in the shared components, for both sets: Gallery's bought card showing the cheapest offer instead of what was paid; \"2 h\" in the status beside \"2 hr. ago\" in the byline; a provenance line that can start with \"·\"; white initials on bright avatars in dark mode (1.7:1) in the current looks.",
     "Remove this page, its frames and their two narrow exceptions (framing and forced appearance, both for frame addresses only), or keep them unlinked.",
   ],

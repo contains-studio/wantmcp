@@ -58,6 +58,8 @@ body:has(.cmp-frame) { min-height: 100dvh; }
 @media (min-width: 1024px) { .cmp-pair { scroll-margin-top: 11rem; } }
 .cmp-pair-head { display: grid; gap: 0.5rem; }
 .cmp-caption { max-width: 46rem; line-height: 1.5; color: var(--ink-2); }
+.cmp-head { max-width: 46rem; font-size: 0.9375rem; line-height: 1.5; color: var(--ink-2); }
+.cmp-head-label { margin-right: 0.375rem; font-weight: 650; color: var(--ink); }
 .cmp-frames { display: grid; gap: 1.5rem; justify-content: center; grid-template-columns: minmax(0, 1fr); }
 .cmp-frames.is-phone { --w: 390px; --h: 720px; --ratio: 390 / 720; }
 .cmp-frames.is-desktop { --w: 1280px; --h: 800px; --ratio: 1280 / 800; }

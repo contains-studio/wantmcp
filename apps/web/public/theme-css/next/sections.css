@@ -21,8 +21,12 @@
 .themed.nx-sections .ix-avatar-name { font-size: 0.8125rem; }
 /* The group already says the status, so the table has no Status column: name, agent, due. The group's name carries
    the mark instead (a ring while open, half filled in progress, filled when done). */
-.themed.nx-sections :is(.ix-table-head, .ix-row) { grid-template-columns: 2.75rem minmax(0, 1fr) 11rem 10rem; }
-.themed.nx-sections.themed .ix-sections.is-readonly :is(.ix-table-head, .ix-row) { grid-template-columns: minmax(0, 1fr) 11rem 10rem; padding-left: 0.75rem; }
+/* Column widths belong to the wide table only: in a narrow container the base rules stack each row (title, then its
+   agent and due date on a line under it), and these must not reach it. */
+@container (min-width: 721px) {
+  .themed.nx-sections :is(.ix-table-head, .ix-row) { grid-template-columns: 2.75rem minmax(0, 1fr) 11rem 10rem; }
+  .themed.nx-sections.themed .ix-sections.is-readonly :is(.ix-table-head, .ix-row) { grid-template-columns: minmax(0, 1fr) 11rem 10rem; padding-left: 0.75rem; }
+}
 .themed.nx-sections .ix-table-head > :nth-child(4), .themed.nx-sections .ix-cell.ix-status { display: none; }
 .themed.nx-sections .ix-group-head > span:nth-child(2)::before { content: ""; display: inline-block; width: 0.625rem; height: 0.625rem; margin-right: 0.4rem; border: 1.5px solid var(--ink-3); border-radius: 50%; }
 .themed.nx-sections .is-working .ix-group-head > span:nth-child(2)::before { border-color: var(--want); background: conic-gradient(var(--want) 50%, transparent 0); }
@@ -40,3 +44,17 @@
 .themed.nx-sections .ix-row .check-toggle { width: 1.375rem; height: 1.375rem; border-width: 1.5px; border-color: var(--line-strong); background: transparent; font-size: 0.75rem; }
 .themed.nx-sections .ix-add { padding-left: 0.75rem; border-radius: 0; font-size: 0.875rem; font-weight: 500; color: var(--ink-3); }
 .themed.nx-sections .ix-empty { padding: 1rem 0.75rem; }
+
+/* The head of an outline: the title with the counts at its right, over a rule that fills as items move to Done. */
+.themed.nx-sections .list-hero > .wrap { padding-bottom: 0.25rem; }
+.themed.nx-sections .list-title { font-size: 1.5rem; }
+@media (min-width: 640px) {
+  .themed.nx-sections .list-hero > .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: 1.5rem; }
+  .themed.nx-sections .list-hero .list-meta { grid-column: 2; margin-top: 0; }
+  .themed.nx-sections .list-hero .list-desc { grid-column: 1 / -1; }
+  .themed.nx-sections .list-title { font-size: 1.75rem; }
+}
+.themed.nx-sections .list-hero > .wrap::after {
+  content: ""; display: block; grid-column: 1 / -1; height: 4px; margin-top: 1rem; border-radius: 2px;
+  background: linear-gradient(to right, var(--deal) calc(var(--list-progress, 0) * 100%), var(--line) 0);
+}

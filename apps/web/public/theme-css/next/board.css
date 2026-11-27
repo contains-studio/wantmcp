@@ -33,3 +33,13 @@
 .themed.nx-board.layout-board .entry-card .price { font-size: 1.25rem !important; }
 .themed.nx-board .ix-panel .items-region .item-section, .themed.nx-board .items-region.ix-panel .item-section { padding: 0; border: 0; background: none; }
 .themed.nx-board .ix-panel:has(:target) { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr) !important; overflow-x: hidden; scroll-snap-type: none; padding-bottom: 3rem; }
+
+/* The head of a board: one solid band across the page, the board's name on it, the columns under it. Deep navy with
+   no occasion; an occasion's own band colour when dressed. One colour, no gradient. */
+.themed.nx-board .list-hero { background: var(--occ-band); color: var(--occ-band-ink); }
+.themed.nx-board .list-hero > .wrap { padding-block: 1.25rem; }
+.themed.nx-board .list-hero :is(h1, p, span, strong, time, a:not(.btn), button.textlink-btn, .btn-tool):not([popover] *) { color: var(--occ-band-ink); }
+.themed.nx-board .list-hero .meta-item::before { color: var(--occ-band-ink); }
+.themed.nx-board .list-hero :focus-visible:not([popover] *) { outline-color: var(--occ-band-ink); }
+.themed.nx-board .list-hero .chip:not([popover] *) { background: color-mix(in srgb, var(--occ-band-ink) 16%, transparent); color: var(--occ-band-ink); }
+.themed.nx-board > .wrap { padding-top: 1.25rem; }

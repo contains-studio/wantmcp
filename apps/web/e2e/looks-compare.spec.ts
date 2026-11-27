@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, webkit, type Page } from "@playwright/test";
 import { addItem, createList, freshEmail, signIn } from "./helpers";
 
 /**
@@ -206,4 +206,66 @@ test("?look=next shows a real list in the redesigned set; the redesigned Checkli
   await expect(page).toHaveURL(/look=next/);
   await done.click();
   await expect(page.getByRole("checkbox", { name: "Mark “One” done" })).toHaveAttribute("aria-checked", "false");
+});
+
+/**
+ * A title must keep most of its row. (The redesigned Sections once kept the wide table's columns on a phone, which left
+ * each title about 50px, one word or part of a word per line.) For every redesigned look and kind of list at 390px: each
+ * item's title, in whichever shape the look gives an item (a row, a card, a bar, a section), is at least 60% as wide as
+ * that item.
+ */
+const KINDS = ["shopping", "tasks", "research"];
+function narrowTitles() {
+  const SHAPES: Array<[title: string, item: string]> = [
+    [".ix-row .ix-title", ".ix-row"],
+    [".ix-card .ix-title", ".ix-card"],
+    [".ix-bar .ix-title", ".ix-bar"],
+    [".gal-card .gal-title", ".gal-card"],
+    [".item-section .item-title", ".item-section"],
+  ];
+  const narrow: string[] = [];
+  let seen = 0;
+  for (const [title, item] of SHAPES)
+    for (const el of document.querySelectorAll(`.themed ${title}`)) {
+      const t = el.getBoundingClientRect();
+      const row = el.closest(item)?.getBoundingClientRect();
+      // Not drawn (an item waiting in the closed panel) or kept only for screen readers (an opened done row).
+      if (!row || t.width <= 1 || row.width <= 1) continue;
+      seen++;
+      const share = t.width / row.width;
+      if (share < 0.6) narrow.push(`${title} “${(el.textContent ?? "").slice(0, 30)}” ${Math.round(t.width)}px of ${Math.round(row.width)}px`);
+    }
+  return { seen, narrow };
+}
+async function expectTitlesWide(page: Page, base = "") {
+  for (const [slug, name] of LOOKS)
+    for (const kind of KINDS) {
+      await page.goto(`${base}/themes/compare/frame/next/${slug}?format=${kind}&mode=dark`);
+      await expect(page.locator(".themed h1")).toBeVisible();
+      const { seen, narrow } = await page.evaluate(narrowTitles);
+      expect(seen, `${name}, ${kind}: titles found`).toBeGreaterThan(0);
+      expect(narrow, `${name}, ${kind}: titles squeezed`).toEqual([]);
+      expect(await sideways(page), `${name}, ${kind}: sideways scroll`).toBeLessThanOrEqual(0);
+    }
+}
+
+test("every redesigned look gives a title at least 60% of its row at 390px", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, colorScheme: "dark", reducedMotion: "reduce" });
+  await expectTitlesWide(await ctx.newPage(), test.info().project.use.baseURL);
+  await ctx.close();
+});
+
+test("the same in WebKit, as on an iPhone (dark, touch, Reduce Motion)", async ({}, info) => {
+  test.setTimeout(180_000);
+  // CI installs Chromium only. Where WebKit is installed (pnpm exec playwright install webkit) this runs; elsewhere it says so.
+  // (The project runs installed Chrome through `channel`; WebKit has no channels, so it is cleared here.)
+  let why = "";
+  const engine = await webkit.launch({ channel: "" }).catch((e: Error) => ((why = e.message.split("\n")[0]), null));
+  // Only a missing browser is a reason to skip; any other failure to start is a failure.
+  if (!engine && !/Executable doesn't exist|playwright install/i.test(why)) throw new Error(`WebKit did not start: ${why}`);
+  test.skip(!engine, "Playwright's WebKit is not installed here");
+  const ctx = await engine!.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, colorScheme: "dark", reducedMotion: "reduce", extraHTTPHeaders: { "x-wantmcp-check": "1" } });
+  await expectTitlesWide(await ctx.newPage(), info.project.use.baseURL);
+  await engine!.close();
 });

@@ -2,8 +2,12 @@
    words at full width and its state under them; finished ones cool to grey. Light or dark with the device. */
 .themed.nx-heat { --hot: var(--occ-hot); --cool: var(--occ-cool); background: var(--paper); }
 .themed.nx-heat > .wrap, .themed.nx-heat .list-hero > .wrap { max-width: 50rem; }
-.themed.nx-heat .list-title { font-size: 2rem; font-weight: 750; letter-spacing: -0.03em; line-height: 1.05; }
-@media (min-width: 640px) { .themed.nx-heat .list-title { font-size: 2.5rem; } }
+/* The head of Heat: a heavy title over the scale itself, hot at one end and cool at the other, which is the key to
+   the colour of every bar under it. */
+.themed.nx-heat .list-title { font-size: 2.25rem; font-weight: 750; letter-spacing: -0.03em; line-height: 1.05; }
+@media (min-width: 640px) { .themed.nx-heat .list-title { font-size: 2.75rem; } }
+.themed.nx-heat .list-hero > .wrap { padding-bottom: 0.25rem; }
+.themed.nx-heat .list-hero > .wrap::after { content: ""; display: block; height: 6px; margin-top: 1rem; border-radius: 3px; background: linear-gradient(to right, var(--hot), var(--cool)); }
 
 /* One scale, not a stack of cards: the bars touch, a hairline of the page between them, and only the ends are round. */
 .themed.nx-heat .ix-bars { gap: 1px; }

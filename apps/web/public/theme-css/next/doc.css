@@ -31,6 +31,8 @@
 .themed.nx-doc .item-status { font-size: 0.9375rem; }
 /* (A writer's status is a control and keeps its pill and its touch target.) */
 .themed.nx-doc .item-status .chip:not(.chip-btn), .themed.nx-doc .item-meta .chip { min-height: 0; padding: 0; border: 0; background: none; font-size: 0.9375rem; font-style: italic; font-weight: 400; color: var(--ink-3); }
+/* Who is working on it is not small print: one step darker than the due date. */
+.themed.nx-doc .item-status .chip:not(.chip-btn) { color: var(--ink-2); }
 .themed.nx-doc .item-meta .chip-warn { color: var(--warn); }
 .themed.nx-doc .entry-meta { font-size: 0.9375rem; }
 

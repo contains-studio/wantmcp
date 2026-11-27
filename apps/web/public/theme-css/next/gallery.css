@@ -19,3 +19,14 @@
 .themed.nx-gallery .gal-card.is-text .gal-body { padding: 0; }
 .themed.nx-gallery .gal-card.is-text .gal-title { font-size: 1rem; font-weight: 600; line-height: 1.35; }
 .themed.nx-gallery .gal-card.is-done .gal-img { opacity: 0.5; }
+
+/* The head of a gallery: a small centred title, as on an album, the counts under it without dots, so the photos
+   start high on the page. */
+.themed.nx-gallery .list-hero > .wrap { padding-block: 1.5rem 0.25rem; text-align: center; }
+.themed.nx-gallery .list-title { font-size: 1.375rem; font-weight: 650; letter-spacing: -0.015em; text-align: center; }
+@media (min-width: 640px) { .themed.nx-gallery .list-title { font-size: 1.5rem; } }
+.themed.nx-gallery .list-hero .list-meta > * { margin: 0; padding: 0; overflow: visible; }
+.themed.nx-gallery .list-hero .list-meta .meta-row { justify-content: center; gap: 0.125rem 1rem; margin-left: 0; }
+.themed.nx-gallery .list-hero .list-meta .meta-item { margin-left: 0; }
+.themed.nx-gallery .list-hero .list-meta .meta-item::before { content: none; }
+.themed.nx-gallery .list-hero .list-desc { margin-inline: auto; font-size: 0.875rem; color: var(--ink-3); }

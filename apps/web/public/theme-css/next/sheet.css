@@ -46,3 +46,18 @@
 .themed.nx-sheet .bought-group { padding-inline: 1rem; }
 @media (min-width: 640px) { .themed.nx-sheet .bought-group { padding-inline: 1.5rem; } }
 .themed.nx-sheet .done-row .item-section { box-shadow: none; background: none; padding: 0; }
+
+/* The head of the sheet: a band of the sheet's own surface from edge to edge, closed by a rule, with the counts set
+   out as ruled cells in tabular figures (the first row of the table, in effect). */
+.themed.nx-sheet .list-hero { background: var(--card); border-bottom: 1px solid var(--line-strong); }
+.themed.nx-sheet .list-hero > .wrap { display: flex; flex-direction: column; padding-block: 1.25rem 0; }
+.themed.nx-sheet .list-title { font-size: 1.5rem; font-weight: 650; letter-spacing: -0.015em; }
+@media (min-width: 640px) { .themed.nx-sheet .list-title { font-size: 1.625rem; } }
+.themed.nx-sheet .list-hero .list-desc { order: 1; margin-top: 0.375rem; font-size: 0.875rem; color: var(--ink-3); }
+.themed.nx-sheet .list-hero .list-meta { order: 2; margin-top: 0.875rem; border-top: 1px solid var(--line); font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.themed.nx-sheet .list-hero .list-meta > * { margin: 0; padding: 0; overflow: visible; }
+.themed.nx-sheet .list-hero .list-meta .meta-row { margin-left: 0; row-gap: 0; }
+.themed.nx-sheet .list-hero .list-meta .meta-item { margin-left: 0; padding: 0.5rem 0.75rem; border-left: 1px solid var(--line); }
+.themed.nx-sheet .list-hero .list-meta .meta-item:first-child { padding-left: 0; border-left: 0; }
+.themed.nx-sheet .list-hero .list-meta .meta-item::before { content: none; }
+.themed.nx-sheet > .wrap { padding-top: 1.25rem; }

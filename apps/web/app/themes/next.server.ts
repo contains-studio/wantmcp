@@ -54,7 +54,16 @@ export const NEXT_TEMPLATES: Theme[] = [
     idea: "Kanban on a calm ground: columns with counts, white cards, the status drawn before each column's name.",
     radius: { card: "14px", image: "8px" },
     card: "flat",
-    // Column and card text sits on the recessed ground and on cards; both pairs are in the standard checks.
+    // The header is one solid band of deep navy (the current Board's blue, without the gradient or the purple), so it
+    // is a band in dark mode too, where a neutral one read as plain grey. An occasion brings its own band colour.
+    accents: {
+      light: { band: "#17365d", bandAlt: "#17365d", bandInk: "#ffffff" },
+      dark: { band: "#1d3557", bandAlt: "#1d3557", bandInk: "#f5f5f7" },
+    },
+    contrast: (_p, a): ContrastPair[] => [
+      { label: "header text on the band", fg: a.bandInk, bg: a.band },
+      { label: "header chip text on the band", fg: a.bandInk, bg: mix(a.band, a.bandInk, 0.16) },
+    ],
   }),
   redesign(sections, {
     caption: "Collapsible sections",

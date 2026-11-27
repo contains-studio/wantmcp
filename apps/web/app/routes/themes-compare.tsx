@@ -166,6 +166,11 @@ export default function Compare({ loaderData }: Route.ComponentProps) {
                   {l.name}
                 </h2>
                 {n && <p className="cmp-caption">{n.caption}</p>}
+                {n && (
+                  <p className="cmp-head">
+                    <span className="cmp-head-label">Its header</span> {n.head}
+                  </p>
+                )}
               </header>
               <div className={`cmp-frames is-${width}`}>
                 {(["current", "next"] as const).map((version) => {
