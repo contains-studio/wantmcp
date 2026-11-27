@@ -12,7 +12,7 @@ import { assertSameOrigin, flashCookie } from "~/lib/session.server";
 import type { ActorRef, AgentInfo, HandoverResult, ListAccess, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { LookFrame } from "~/components/LookFrame";
 import { AccessRow, AgentMark, Email, PersonMark, RemoveInTwoSteps } from "~/components/AccessRow";
-import { AgentPromptDone, ShareWithAgent } from "~/components/ShareWithAgent";
+import { KeyDone, ShareWithAgent } from "~/components/ShareWithAgent";
 import { AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
@@ -439,7 +439,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         {err("revoke-agent")}
         {result?.intent === "create-key" && result.key && result.agent ? (
           // Without JavaScript the step posts here: the same done state.
-          <AgentPromptDone prompt={fillPrompt(AGENT_PROMPT_WITH_KEY, { mcpUrl: rootMcp, listUrl: list.url, key: result.key })} who={result.agent.name} listId={list.id} copied={false} />
+          <KeyDone who={result.agent.name} keyText={result.key} prompt={fillPrompt(AGENT_PROMPT_WITH_KEY, { mcpUrl: rootMcp, listUrl: list.url, key: result.key })} listId={list.id} copied={false} />
         ) : (
           // One element either way, so making the first agent doesn't remount the step (its done state stays put):
           // with agents it is "Add another agent", folded; with none it is open and its summary hidden.

@@ -69,7 +69,7 @@ test("Other opens the rest of the apps and a name field; the key limit shows the
   await page.locator("summary", { hasText: /^Other$/ }).first().click();
   await expect(page.getByRole("radio", { name: "Codex" })).toBeAttached();
   await page.getByLabel("Or its name").fill("mock: limit");
-  await page.getByRole("button", { name: "Create key and copy prompt" }).click();
+  await page.getByRole("button", { name: "Create key and copy it" }).click();
   await expect(page.getByRole("alert")).toHaveText("You have too many active agents; revoke some first");
 });
 

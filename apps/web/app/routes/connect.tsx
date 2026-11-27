@@ -10,7 +10,7 @@ import type { Route } from "./+types/connect";
 import { CopyButton } from "~/components/CopyButton";
 import { apiBaseUrl, mcpUrl, siteOrigin } from "~/lib/config.server";
 import { signinUrl, useRootData } from "~/lib/hooks";
-import { BRANDS, type Brand } from "~/lib/brands";
+import { BRANDS, MSGBLAST_WANTS_RELEASED, msgblastNote, type Brand } from "~/lib/brands";
 import { BrandLogo } from "~/components/BrandLogo";
 import { AgentLine } from "~/components/AgentLine";
 import { SKILL_CLAUDE_CODE_DIR, SKILL_INSTALL, SKILL_MEMORY_LINE, SKILL_NAME } from "~/lib/skill";
@@ -591,11 +591,11 @@ const CLIENT_LIST: Client[] = [
     ownThen: true,
     steps: () => (
       <>
-        {/* First, not fine print after the steps: nobody should hunt for a menu the download does not have yet. */}
-        <p className="text-[0.95rem] text-ink-2">
-          Wants comes in the next msgblast release: the download today (0.11.1) doesn't have it yet. Update when a newer version arrives.
-        </p>
-        <h3 className="text-[1rem] font-semibold">On a Mac</h3>
+        {/* First, not fine print after the steps: nobody should hunt for a menu the download does not have yet. Gone
+            the day MSGBLAST_WANTS_RELEASED is true. */}
+        {msgblastNote(MSGBLAST_WANTS_RELEASED) && <p className="text-[0.95rem] text-ink-2">{msgblastNote(MSGBLAST_WANTS_RELEASED)}</p>}
+        {/* SPEC 24.2: sign-in first (the short way, on a Mac); a key from /connect/key where sign-in isn't there yet. */}
+        <h3 className="text-[1rem] font-semibold">On a Mac: sign in</h3>
         <Steps>
           <li>
             Open <strong>View › Show Wants</strong> (⌘3).
@@ -603,20 +603,22 @@ const CLIENT_LIST: Client[] = [
           <li>
             Choose <strong>Sign In…</strong> and pick your lists in the browser.
           </li>
-          <li>
-            Or connect one list with a key: on wantmcp.com open the list's settings, <strong>Agents › Add another agent</strong>. In msgblast click{" "}
-            <strong>Use a Write Key</strong>, paste the key and click <strong>Add</strong>.
-          </li>
         </Steps>
         <Shot src="/shots/msgblast-signin-mac.webp" width={760} height={320} alt="msgblast's Want MCP sign-in on Mac, with a Sign In… button and a field for a write key." caption="Sign in to pick your lists, or use one list's key." />
-        <h3 className="text-[1rem] font-semibold">On an iPhone</h3>
+        <p className="text-[0.9rem] text-ink-2">
+          Or connect just one list: <Link to="/connect/key?app=msgblast" className="link">make a key for msgblast</Link>, then click <strong>Use a Write Key</strong>, paste it and click{" "}
+          <strong>Add</strong>.
+        </p>
+        <h3 className="text-[1rem] font-semibold">On an iPhone: a key</h3>
         <Steps>
           <li>
             Open <strong>Wants</strong> from the inbox (on an iPhone that isn't paired: <strong>Open Wants</strong>).
           </li>
           <li>
-            On wantmcp.com, open the list's settings, <strong>Agents</strong>, choose <strong>Other</strong> and name it msgblast. Create the key and open{" "}
-            <strong>Show all</strong> to copy it.
+            <Link to="/connect/key?app=msgblast" className="link">
+              Make a key for msgblast
+            </Link>
+            : pick the list, choose <strong>Create key</strong>, then <strong>Copy key</strong>.
           </li>
           <li>
             In msgblast paste it into <strong>List write key</strong> and tap <strong>Connect list</strong>.
@@ -822,6 +824,15 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
           .
         </p>
       </section>
+
+      {/* SPEC 24.3: one line for people building an app, not people connecting one. */}
+      <p className="-mt-8 text-[0.95rem] text-ink-2">
+        Building an app?{" "}
+        <Link to="/developers" className="link">
+          Build with The Want MCP
+        </Link>
+        : three ways in, the endpoints and code.
+      </p>
     </div>
   );
 }

@@ -11,6 +11,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const urls = [
     `<url><loc>${origin}/</loc><changefreq>hourly</changefreq></url>`,
     `<url><loc>${origin}/connect</loc></url>`,
+    `<url><loc>${origin}/developers</loc></url>`,
     `<url><loc>${origin}/themes</loc></url>`,
     `<url><loc>${origin}/for</loc></url>`,
     // Persona pages marked noindex stay out until the owner confirms them.

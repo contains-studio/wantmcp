@@ -167,6 +167,11 @@ function Footer() {
             (MIT).{" "}
           </>
         )}
+        {/* SPEC 24.3: for people building on The Want MCP, with the source link rather than among the five. */}
+        <Link to="/developers" className="link">
+          Build with The Want MCP
+        </Link>
+        .{" "}
         Logos are their owners' trademarks; The Want MCP isn't affiliated with them.
       </p>
     </footer>

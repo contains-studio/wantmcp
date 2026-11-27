@@ -13,6 +13,13 @@ export interface Brand {
   name: string;
   /** Not released yet: "Coming soon" on /connect with no steps, and left out of every logo row. */
   comingSoon?: boolean;
+  /**
+   * SPEC 24.2: a chat agent (the default) reads a prompt; an app or tool takes a plain key, so its done state leads
+   * with the key and says where to paste it.
+   */
+  kind?: "chat" | "app";
+  /** For an app: where its person pastes the key, as the sentence's end ("msgblast › Wants › Connect list"). */
+  pasteInto?: string;
   /** Official mark for light backgrounds, and one for dark if the vendor provides it. */
   logo?: {
     light: string;
@@ -27,6 +34,16 @@ export interface Brand {
     tile?: boolean;
   };
 }
+
+/**
+ * msgblast's Wants arrive in its 0.12.0 release (owner, 27 Nov 2026). Set this to true the day 0.12.0 can be downloaded
+ * with Wants in it: /connect drops the note above msgblast's steps, and the home page's row links to msgblast. Its
+ * "Not yet checked" chip on /connect is separate: it stays until someone has run the steps in the released build.
+ */
+export const MSGBLAST_WANTS_RELEASED = false;
+
+/** The line first in msgblast's steps until then; null once released. */
+export const msgblastNote = (released: boolean) => (released ? null : "Wants arrives in msgblast 0.12.0. The download today (0.11.1) doesn't have it yet.");
 
 /** In the order the owner chose: ChatGPT, Claude, Grok Bot, Muse, OpenClaw, the rest (Hermes, Hark and Instinct added 25 Nov 2026), and Codex last. */
 export const BRANDS: Brand[] = [
@@ -47,12 +64,13 @@ export const BRANDS: Brand[] = [
   { id: "instinct", name: "Instinct", logo: { light: "/brands/instinct-icon.svg", width: 100, height: 100, nameBeside: true, optical: 1.5, tile: true } },
   // Codex goes last (owner, 25 Nov 2026): two OpenAI products side by side read as a repeat.
   { id: "codex", name: "Codex", logo: { light: "/brands/openai-blossom-on-light.svg", dark: "/brands/openai-blossom-on-dark.svg", width: 716, height: 716, nameBeside: true, optical: 1.6 } },
-  // Not shipped yet (its pull requests are drafts).
-  { id: "msgblast", name: "msgblast", comingSoon: true, logo: { light: "/brands/msgblast.png", width: 206, height: 206, nameBeside: true, optical: 1.4 } },
+  // Left out of the home page's row until its Wants release is out (MSGBLAST_WANTS_RELEASED).
+  { id: "msgblast", name: "msgblast", kind: "app", pasteInto: "msgblast › Wants › Connect list", logo: { light: "/brands/msgblast.png", width: 206, height: 206, nameBeside: true, optical: 1.4 } },
 ];
 
-/** Clients people can use today: every logo row shows only these. */
-export const LIVE_BRANDS = BRANDS.filter((b) => !b.comingSoon);
+/** Clients people can use today: every logo row shows only these. msgblast joins when its Wants release is out. */
+export const liveBrands = (msgblastReleased: boolean) => BRANDS.filter((b) => !b.comingSoon && (b.id !== "msgblast" || msgblastReleased));
+export const LIVE_BRANDS = liveBrands(MSGBLAST_WANTS_RELEASED);
 
 /**
  * Square marks for agents we know by name, used in place of a letter tile wherever an agent is named (ActorTag). The
@@ -80,6 +98,7 @@ export const AGENT_MARKS: Record<string, AgentMarkArt> = {
   "hermes agent": { light: "/brands/hermes-agent-on-light.webp", dark: "/brands/hermes-agent-on-dark.webp" },
   hark: { light: "/brands/hark-on-light.svg", dark: "/brands/hark-on-dark.svg" },
   instinct: { light: "/brands/instinct-icon.svg" },
+  msgblast: { light: "/brands/msgblast.png" },
 };
 
 export function agentMark(name: string): AgentMarkArt | null {
@@ -89,4 +108,17 @@ export function agentMark(name: string): AgentMarkArt | null {
 /** The style for a mark's img: its optical scale, if it has one. */
 export function markStyle(mark: AgentMarkArt): CSSProperties | undefined {
   return mark.scale ? { transform: `scale(${mark.scale})` } : undefined;
+}
+
+/**
+ * How a client named by its person takes its key (SPEC 24.2): a known chat agent gets the prompt first; a known app,
+ * or any name typed under "Other", gets the plain key first. `pasteInto` is where it goes, when we know.
+ */
+export function clientKind(name: string): { kind: "chat" | "app"; pasteInto?: string } {
+  const n = name.trim().toLowerCase();
+  const b = BRANDS.find((x) => x.name.toLowerCase() === n);
+  if (b) return { kind: b.kind ?? "chat", pasteInto: b.pasteInto };
+  // Claude Code and Hermes Agent are the same chat agents by their longer names.
+  if (n in AGENT_MARKS) return { kind: "chat" };
+  return { kind: "app" };
 }

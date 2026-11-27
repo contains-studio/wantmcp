@@ -412,7 +412,7 @@ function Looks({ looks, origin }: { looks: { sample: ThemeSample; layouts: Theme
 
 function BrandLink({ brand }: { brand: Brand }) {
   return (
-    <Link to={`/connect#${brand.id}`} className="brand-tile" aria-label={`Connect ${brand.name}`} title={`Connect ${brand.name}`}>
+    <Link to={`/connect?app=${brand.id}`} className="brand-tile" aria-label={`Connect ${brand.name}`} title={`Connect ${brand.name}`}>
       <BrandLogo brand={brand} />
     </Link>
   );

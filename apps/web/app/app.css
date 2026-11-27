@@ -1036,6 +1036,16 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 .agent-chip-mark { display: inline-grid; width: 1rem; height: 1rem; flex: none; }
 .agent-chip-mark img { width: 1rem; height: 1rem; object-fit: contain; grid-area: 1 / 1; }
 
+/* /connect/key (SPEC 24.2): the app's mark by its name, one row per list to pick (44px), and the key on one line. */
+.ck-mark { display: inline-grid; width: 1.75rem; height: 1.75rem; flex: none; border-radius: 7px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
+.ck-mark img { width: 100%; height: 100%; object-fit: contain; grid-area: 1 / 1; }
+.ck-list { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; padding: 0.5rem 0.85rem; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--card); cursor: pointer; }
+.ck-list.is-on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-weight: 600; }
+.ck-list:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ck-radio { flex: none; width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--ink); }
+.ck-radio:focus-visible { outline: none; }
+.key-field { text-overflow: ellipsis; letter-spacing: 0; }
+
 /* Who can work on a list: people and agents in the same row (settings › Sharing and › Agents). */
 .access-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: 12px; }
 .access-mark { display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; flex: none; border-radius: 10px; background: var(--sunk); color: var(--ink-3); overflow: hidden; }
@@ -1145,3 +1155,46 @@ button.check-toggle::before { content: ""; position: absolute; top: 50%; left: 5
 .traffic-axis > span:last-child { text-align: right; direction: rtl; }
 .traffic-rank { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 7%, transparent); }
 .traffic-rank > div { height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--want) 70%, transparent); }
+
+/* /developers (SPEC 24.3): the guide laid out. Cards for the three ways in, contents beside the text from 1024px (a
+   fold above it on a phone), code that wraps rather than scrolls inside a frame, tables that stack on a phone. */
+.dev-ways { display: grid; gap: 0.75rem; }
+@media (min-width: 768px) { .dev-ways { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.dev-way-n { display: inline-grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; background: var(--sunk); color: var(--ink-2); font-size: 0.85rem; font-weight: 600; }
+.dev-layout { display: grid; gap: 1.5rem; }
+.dev-toc-side { display: none; }
+.dev-toc-fold { border: 1px solid var(--line); border-radius: 12px; padding: 0 1rem; background: var(--card); }
+.dev-toc-fold[open] { padding-bottom: 0.75rem; }
+.dev-toc-fold > summary { display: flex; align-items: center; min-height: 2.75rem; font-weight: 500; }
+.dev-toc-link { display: flex; align-items: center; min-height: 2.75rem; color: var(--ink-2); text-decoration: none; }
+.dev-toc-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 1024px) {
+  .dev-layout { grid-template-columns: 14rem minmax(0, 1fr); gap: 3rem; }
+  .dev-toc { position: sticky; top: 5.5rem; align-self: start; }
+  .dev-toc-fold { display: none; }
+  .dev-toc-side { display: block; }
+  .dev-toc-link { min-height: 2rem; }
+}
+.dev-body { max-width: 50rem; }
+.dev-body section[aria-labelledby] { scroll-margin-top: 5.5rem; }
+.dev-h2 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; scroll-margin-top: 5.5rem; }
+.dev-h3 { font-size: 1.1rem; font-weight: 600; margin-top: 0.5rem; scroll-margin-top: 5.5rem; }
+.dev-p, .dev-list { color: var(--ink-2); line-height: 1.65; overflow-wrap: anywhere; }
+.dev-list { display: grid; gap: 0.4rem; padding-left: 1.25rem; }
+.dev-ic, .dev-code pre { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+.dev-ic { font-family: var(--font-mono); font-size: 0.86em; padding: 0.05em 0.3em; border-radius: 4px; background: var(--sunk); color: var(--ink); overflow-wrap: anywhere; }
+.dev-code { min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--sunk); overflow: hidden; }
+.dev-code-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.2rem 0.4rem 0.2rem 0.9rem; border-bottom: 1px solid var(--line); font-size: 0.78rem; color: var(--ink-3); }
+.dev-code pre { margin: 0; padding: 0.85rem 1rem; font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.6; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.dev-table { min-width: 0; }
+.dev-table table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.dev-table th { text-align: left; font-weight: 600; color: var(--ink-2); padding: 0.5rem 0.75rem 0.5rem 0; border-bottom: 1px solid var(--line-strong); }
+.dev-table td { vertical-align: top; padding: 0.55rem 0.75rem 0.55rem 0; border-bottom: 1px solid var(--line); color: var(--ink-2); overflow-wrap: anywhere; }
+.dev-table td:first-child { color: var(--ink); }
+@media (max-width: 639px) {
+  .dev-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .dev-table tr { display: grid; gap: 0.2rem; padding: 0.65rem 0; border-bottom: 1px solid var(--line); }
+  .dev-table td { display: block; padding: 0; border: 0; }
+  .dev-table td:first-child { font-weight: 600; }
+  .dev-table td[data-label]::before { content: attr(data-label) ": "; color: var(--ink-3); }
+}

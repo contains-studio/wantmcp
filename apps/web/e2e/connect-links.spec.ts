@@ -10,7 +10,17 @@ test("msgblast: Mac and iPhone steps, demo screenshots, the honest fine print an
   await expect(steps).toContainText("Find Offers");
   await expect(steps).not.toContainText("Not available yet");
   await expect(steps.getByText("Not yet checked")).toBeVisible();
-  await expect(steps).toContainText("doesn't have it yet");
+  // Until msgblast 0.12.0 is out (MSGBLAST_WANTS_RELEASED), the note is the first thing in its steps.
+  const note = steps.getByText("Wants arrives in msgblast 0.12.0. The download today (0.11.1) doesn't have it yet.");
+  await expect(note).toBeVisible();
+  const firstHeading = steps.getByRole("heading", { name: "On a Mac: sign in" });
+  expect((await note.boundingBox())!.y).toBeLessThan((await firstHeading.boundingBox())!.y);
+  // The short way is sign-in; the key way goes to /connect/key for msgblast.
+  await expect(steps.getByRole("link", { name: /make a key for msgblast/i }).first()).toHaveAttribute("href", "/connect/key?app=msgblast");
+  // And the home page's row leaves msgblast out until then.
+  await page.goto("/");
+  await expect(page.getByRole("navigation", { name: "Works with" }).getByRole("link", { name: "Connect msgblast" })).toHaveCount(0);
+  await page.goto("/connect?app=msgblast");
   await expect(steps.locator("figure img")).toHaveCount(3);
   for (const alt of await steps.locator("figure img").evaluateAll((els) => els.map((e) => e.getAttribute("alt") ?? ""))) expect(alt.length).toBeGreaterThan(20);
   const links = steps.locator(".app-links a");

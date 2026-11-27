@@ -8,9 +8,10 @@ test("settings › Agents: make a key with the Share step, then remove the agent
   const sec = page.locator('details[data-section="keys-h"]');
   await sec.locator("details.choice-other > summary").click();
   await sec.getByLabel("Or its name").fill("E2E bot");
-  await sec.getByRole("button", { name: "Create key and copy prompt" }).click();
+  // A name typed under Other is taken as an app (SPEC 24.2): the plain key first.
+  await sec.getByRole("button", { name: "Create key and copy it" }).click();
   await expect(sec.getByText("The key is shown this once.")).toBeVisible();
-  await expect(sec.locator(".prompt-facts")).toContainText(/Bearer wk_[A-Za-z0-9]{8,}/);
+  await expect(sec.getByLabel("Key for E2E bot")).toHaveValue(/^wk_[A-Za-z0-9]{8,}$/);
   const row = sec.locator(".access-row", { hasText: "E2E bot" });
   await expect(row).toContainText("With a key · never used yet");
   await row.locator("summary", { hasText: "Remove" }).click();
