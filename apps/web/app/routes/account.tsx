@@ -10,6 +10,9 @@ import type { AgentInfo } from "~/lib/types";
 import { Time } from "~/components/Time";
 import { requireUser } from "~/lib/auth.server";
 import { assertSameOrigin, clearSessionCookie } from "~/lib/session.server";
+import { ExaKeySection, HowIHear, TimeZoneSection } from "~/components/AccountRoutines";
+import { routinesOn } from "~/lib/routines";
+import { ACCOUNT_ROUTINE_INTENTS, accountRoutineAction, myEmailPrefs, myExaKey } from "~/lib/routines.server";
 
 export function meta() {
   return [{ title: "Account · The Want MCP" }, { name: "robots", content: "noindex" }];
@@ -29,13 +32,21 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   // SPEC 13.6: account keys agents made with their own sign-up. Older API builds don't have the route: none.
   const agentKeys = (await apiOptional<AgentInfo[]>(request, "/me/agent-keys").catch(() => null)) ?? [];
-  return data({ user, agentKeys }, { headers: { "Cache-Control": "private, no-store" } });
+  // SPEC 20: keys, how I hear and time zone, only once routines are launched for this person (20.14).
+  const routines = routinesOn(me)
+    ? await Promise.all([myExaKey(request, me), myEmailPrefs(request)]).then(([exaKey, prefs]) => ({ exaKey, prefs: prefs ?? { kinds: { routine_key: false, routine_unattended: true } } }))
+    : null;
+  return data({ user, agentKeys, routines }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 async function act({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
   const form = await request.formData();
   const intent = String(form.get("intent"));
+  if (ACCOUNT_ROUTINE_INTENTS.has(intent)) {
+    if (!routinesOn(await requireUser(request))) return data({ error: "Unknown action", intent }, 400);
+    return accountRoutineAction(request, form);
+  }
   try {
     if (intent === "profile") {
       // One Save for the handle and what agents should know. The feature-email choice is made once, at sign-up.
@@ -80,7 +91,7 @@ async function act({ request }: Route.ActionArgs) {
 }
 
 export default function Account({ loaderData }: Route.ComponentProps) {
-  const { user, agentKeys } = loaderData;
+  const { user, agentKeys, routines } = loaderData;
   const result = useActionData<typeof action>() as { ok?: boolean; error?: string; intent?: string } | undefined;
   const nav = useNavigation();
   return (
@@ -151,6 +162,14 @@ export default function Account({ loaderData }: Route.ComponentProps) {
           </button>
         </Form>
       </section>
+
+      {routines && (
+        <>
+          <ExaKeySection exaKey={routines.exaKey} />
+          <HowIHear prefs={routines.prefs} />
+          <TimeZoneSection saved={user.time_zone ?? null} />
+        </>
+      )}
 
       {agentKeys.length > 0 && <AgentKeys keys={agentKeys} />}
 

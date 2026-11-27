@@ -69,7 +69,7 @@ async function audit(path, { session, viewport, scheme }) {
 
 const session = await signIn("demo@example.com");
 // SPEC 20: routines show only to people they are launched for; the mock's routines@example.com has them (seed-routines.ts).
-const ROUTINES_PAGES = ["/app/routines", "/app/lists/lst_rt_kitchen/settings#routines", "/l/lst_rt_kitchen"];
+const ROUTINES_PAGES = ["/app/routines", "/app/lists/lst_rt_kitchen/settings#routines", "/l/lst_rt_kitchen", "/app", "/app/account"];
 const routinesSession = await signIn("routines@example.com");
 const ONLY = process.argv.find((a) => a.startsWith("--only="))?.slice(7);
 const runs = [];

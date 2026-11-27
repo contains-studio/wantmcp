@@ -23,9 +23,11 @@ import { formatMoney, plural } from "~/lib/format";
 import { FORMATS } from "~/lib/formats";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { routinesOn } from "~/lib/routines";
+import { myExaKey, routineAction, ROUTINE_INTENTS } from "~/lib/routines.server";
+import { ForYou, hasForYou, type ForYouData } from "~/components/ForYou";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin, clearFlashCookie, readFlash } from "~/lib/session.server";
-import type { AgentInfo, ListSummary, PendingInvite } from "~/lib/types";
+import type { AgentInfo, ListSummary, PendingInvite, RoutineChangeRecord } from "~/lib/types";
 import { waitingQuestions, type WaitingQuestion } from "~/lib/waiting.server";
 
 export function meta() {
@@ -58,6 +60,14 @@ export async function loader({ request }: Route.LoaderArgs) {
   );
   const q = (url.searchParams.get("q") ?? "").trim();
   const flash = readFlash(request);
+  // SPEC 20.3 "For you", once routines are launched for this person.
+  const forYou = routinesOn(user)
+    ? await Promise.all([
+        api<{ data: RoutineChangeRecord[] }>(request, "/me/routine-changes").then((r) => r.data).catch(() => [] as RoutineChangeRecord[]),
+        api<{ data: ForYouData["blocked"] }>(request, "/me/routines").then((r) => r.data).catch(() => [] as ForYouData["blocked"]),
+        myExaKey(request, user),
+      ]).then(([changes, mine, key]) => ({ changes, blocked: mine.filter((r) => r.blocked && ["key_refused", "out_of_credit", "key_missing", "unattended"].includes(r.blocked.reason)), keyOk: key?.status === "ok" }))
+    : null;
   return data(
     {
       bio: user.bio ?? null,
@@ -78,6 +88,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       ),
       listsError,
       flash,
+      forYou,
     },
     { headers: { "Cache-Control": "private, no-store", ...(flash ? { "Set-Cookie": clearFlashCookie(request) } : {}) } },
   );
@@ -86,6 +97,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 async function act({ request }: Route.ActionArgs) {
   assertSameOrigin(request);
   const form = await request.formData();
+  // SPEC 20.3: "For you" (Undo, Resume).
+  if (ROUTINE_INTENTS.has(String(form.get("intent")))) return routineAction(request, form);
   if (form.get("intent") === "accept-invite") {
     const id = String(form.get("list_id") ?? "");
     try {
@@ -132,6 +145,7 @@ export default function AppHome({ loaderData }: Route.ComponentProps) {
           {announce}
         </p>
         {invites.length > 0 && <PendingInvites invites={invites} />}
+        {hasForYou(loaderData.forYou) && <ForYou data={loaderData.forYou} />}
         {waiting.length > 0 && (
           <WaitingOnYou waiting={showAllQuestions ? waiting : waiting.slice(0, FIRST_QUESTIONS)} total={waitingTotal} onAnswered={setAnnounce} />
         )}

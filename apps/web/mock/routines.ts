@@ -611,6 +611,8 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const row: KeyRow = { user_id: c.user.id, last4: key.slice(-4), status, status_at: h.nowIso(), monthly_cap: old?.monthly_cap ?? 100, used: old?.used ?? 0 };
     rs().keys = rs().keys.filter((k) => k.user_id !== c.user.id).concat(row);
     if (status === "ok") lift(c.user.id);
+    // No credit: every routine on this key stops until a check passes (20.5).
+    else for (const r of rs().routines) if (r.key_user_id === c.user.id && !r.deleted_at && !r.blocked) r.blocked = { reason: "out_of_credit", at: h.nowIso() };
     return keyOut(row, c.user.id);
   });
   route("PATCH", "/me/service-keys/exa", ({ caller, body }) => {

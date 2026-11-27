@@ -5,7 +5,7 @@
  */
 import { data } from "react-router";
 import { api, apiOptional, formError } from "./api.server";
-import type { Routine, ScheduleInput, ServiceKey, UserSelf, Weekday } from "./types";
+import type { EmailPrefs, Routine, ScheduleInput, ServiceKey, UserSelf, Weekday } from "./types";
 import { routinesOn } from "./routines";
 
 export const ROUTINE_INTENTS = new Set([
@@ -96,4 +96,60 @@ export async function myExaKey(request: Request, user: UserSelf | null): Promise
   if (!routinesOn(user)) return null;
   const res = await apiOptional<{ data: ServiceKey[] }>(request, "/me/service-keys").catch(() => null);
   return res?.data.find((k) => k.service === "exa") ?? null;
+}
+
+// ---------- the account page (SPEC 20.5, 20.8, 20.14 item 6): keys, how I hear, time zone. Web only.
+
+export const ACCOUNT_ROUTINE_INTENTS = new Set(["key-save", "key-cap", "key-check", "key-remove", "email-prefs", "time-zone"]);
+
+export type AccountRoutineResult = { ok?: boolean; intent: string; message?: string; error?: string };
+
+/**
+ * The key is read from the form and passed to the API once; it is never put in an answer, an address or a log. With
+ * "Email me if my Exa key stops working" ticked beside it, that choice is saved too.
+ */
+export async function accountRoutineAction(request: Request, form: FormData) {
+  const intent = String(form.get("intent"));
+  const done = (message: string) => data<AccountRoutineResult>({ ok: true, intent, message });
+  try {
+    switch (intent) {
+      case "key-save": {
+        const key = String(form.get("key") ?? "").trim();
+        if (!key) return data<AccountRoutineResult>({ intent, error: "Paste your Exa key first." }, 400);
+        const saved = await api<ServiceKey>(request, "/me/service-keys/exa", { method: "PUT", body: { key } });
+        if (form.get("email_routine_key") === "on") await api(request, "/me/email-prefs", { method: "PATCH", body: { kinds: { routine_key: true } } });
+        return done(saved.status === "ok" ? `Saved. Exa accepted the key ending in ${saved.last4}.` : `Saved the key ending in ${saved.last4}, but Exa says the account has no credit left.`);
+      }
+      case "key-cap": {
+        const cap = Number(form.get("monthly_cap"));
+        const saved = await api<ServiceKey>(request, "/me/service-keys/exa", { method: "PATCH", body: { monthly_cap: cap } });
+        return done(`Saved. Up to ${saved.monthly_cap} searches a month.`);
+      }
+      case "key-check": {
+        const saved = await api<ServiceKey>(request, "/me/service-keys/exa/check", { method: "POST" });
+        return done(saved.status === "ok" ? "Exa accepted it: your stopped routines start again." : "Still no credit on that Exa account.");
+      }
+      case "key-remove":
+        await api(request, "/me/service-keys/exa", { method: "DELETE" });
+        return done("Removed. The routines that used it are stopped until someone resumes them with their own key.");
+      case "email-prefs": {
+        const kinds = { routine_key: form.get("routine_key") === "on", routine_unattended: form.get("routine_unattended") === "on" };
+        await api<EmailPrefs>(request, "/me/email-prefs", { method: "PATCH", body: { kinds } });
+        return done("Saved.");
+      }
+      case "time-zone": {
+        const tz = String(form.get("time_zone") ?? "");
+        await api(request, "/me", { method: "PATCH", body: { time_zone: tz } });
+        return done("Saved. New routines use it; the ones you have keep their own.");
+      }
+      default:
+        return data<AccountRoutineResult>({ intent, error: "Unknown action" }, 400);
+    }
+  } catch (err) {
+    return data<AccountRoutineResult>({ intent, ...formError(err) }, 400);
+  }
+}
+
+export async function myEmailPrefs(request: Request): Promise<EmailPrefs | null> {
+  return apiOptional<EmailPrefs>(request, "/me/email-prefs").catch(() => null);
 }

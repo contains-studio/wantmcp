@@ -95,12 +95,14 @@ test.describe.serial("on: the Routines tab and cards", () => {
     await expect(page.locator("#routine-rtn_kitchen")).toContainText(/Paused by @bright-wren-2207/);
   });
 
-  test("Delete asks once", async ({ page }) => {
+  test("For you: what your agent changed, in its words, with Undo", async ({ page }) => {
     await signIn(page, RT);
+    const forYou = page.getByRole("region", { name: "For you" });
+    const line = forYou.getByRole("listitem").filter({ hasText: "Claude made “Look for hedge trimming help nearby” on Garden jobs" });
+    await expect(line).toContainText("Claude reported you said: “look for someone to trim the hedge every other Monday”");
+    await line.getByRole("button", { name: /^Undo/ }).click();
+    await expect(line).toContainText("Undone.");
     await page.goto("/app/routines");
-    const card = page.locator("#routine-rtn_garden");
-    await card.locator("summary", { hasText: /^Delete/ }).click();
-    await card.getByRole("button", { name: "Yes, delete" }).click();
     await expect(page.locator("#routine-rtn_garden")).toHaveCount(0);
   });
 });
@@ -137,4 +139,14 @@ test.describe("without JavaScript", () => {
     // The section is folded again after the redirect (no JavaScript): read the name from the DOM.
     await expect(page.locator("#routine-rtn_ana h3")).toHaveText("Find bird books");
   });
+});
+
+// Last: it deletes a fixture the tests above use.
+test("Delete asks once", async ({ page }) => {
+  await signIn(page, RT);
+  await page.goto("/app/routines");
+  const card = page.locator("#routine-rtn_kitchen");
+  await card.locator("summary", { hasText: /^Delete/ }).click();
+  await card.getByRole("button", { name: "Yes, delete" }).click();
+  await expect(page.locator("#routine-rtn_kitchen")).toHaveCount(0);
 });
