@@ -22,6 +22,9 @@ export default [
   route("developers", "routes/developers.tsx"),
   route("developers.md", "routes/developers-md.ts"),
   route("themes", "routes/themes.tsx"),
+  // The looks beside a redesign of each (branch looks-impeccable): not linked from anywhere, not indexed.
+  route("themes/compare", "routes/themes-compare.tsx"),
+  route("themes/compare/frame/:version/:slug", "routes/themes-compare-frame.tsx"),
   route("themes/:slug", "routes/theme-preview.tsx"),
   route("for", "routes/for.tsx"),
   route("start", "routes/start.tsx"),

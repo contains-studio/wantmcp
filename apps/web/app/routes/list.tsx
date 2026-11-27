@@ -11,6 +11,7 @@ import { routineAction, ROUTINE_INTENTS } from "~/lib/routines.server";
 import { assertSameOrigin, clearKeptCookie, dismissedHandoffs, dismissHandoffCookie, getSessionToken, readKept } from "~/lib/session.server";
 import type { AgentInfo, Comment, ListAccess, Entry, Item, ListDetail, ListPrices, Page, PriceObservation } from "~/lib/types";
 import { getThemeView } from "~/themes/catalogue.server";
+import { getNextThemeView, wantsNextLook } from "~/themes/next.server";
 import { formatInfo, formatOf, visibilityOf } from "~/lib/formats";
 
 /** Comments for the whole list, a few pages deep. */
@@ -120,7 +121,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       // Only this list's theme is sent to the page: custom properties and motif, no theme code.
       // No theme picked: the format's default (Checklist for tasks, Doc for research).
       // A stored `default` (the retired Cards), an occasion alone or anything unknown resolves to the format's layout.
-      theme: getThemeView(summary.theme ?? formatInfo(summary).defaultTheme, formatOf(summary)),
+      // ?look=next (branch looks-impeccable): the same list in the redesigned set of looks. Without it, nothing changes.
+      theme: (wantsNextLook(request) ? getNextThemeView : getThemeView)(summary.theme ?? formatInfo(summary).defaultTheme, formatOf(summary)),
     },
     {
       headers: {

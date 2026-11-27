@@ -8,6 +8,7 @@
  * text over a gradient or a full-bleed band; gradients are sampled at several points.
  */
 import { OCCASIONS, TEMPLATES } from "../app/themes/catalogue.server.ts";
+import { NEXT_TEMPLATES } from "../app/themes/next.server.ts";
 import { lookColors } from "../app/themes/view.ts";
 import type { Palette } from "../app/themes/types.ts";
 
@@ -42,10 +43,11 @@ const CHECKS: Array<[string, keyof Palette, keyof Palette, number]> = [
 let failures = 0;
 let checked = 0;
 const rows: string[] = [];
-// Every template alone and with every occasion, in each scheme the combination supports.
-for (const template of TEMPLATES) {
+// Every template alone and with every occasion, in each scheme the combination supports. Then the redesigned set
+// (app/themes/next.server.ts, branch looks-impeccable), the same way, named `next:<slug>`.
+for (const [set, template] of [...TEMPLATES.map((t) => ["", t] as const), ...NEXT_TEMPLATES.map((t) => ["next:", t] as const)]) {
   for (const occasion of [null, ...OCCASIONS]) {
-    const name = occasion ? `${template.slug}--${occasion.slug}` : template.slug;
+    const name = set + (occasion ? `${template.slug}--${occasion.slug}` : template.slug);
     const fixedDark = template.scheme === "dark" || occasion?.scheme === "dark";
     for (const mode of fixedDark ? (["dark"] as const) : (["light", "dark"] as const)) {
       checked++;
@@ -73,7 +75,7 @@ for (const template of TEMPLATES) {
           rows.push(`FAIL ${name} ${mode}: ${x.label} ${r.toFixed(2)} < ${need}`);
         }
       }
-      if (!occasion) rows.push(`${name.padEnd(13)} ${mode.padEnd(5)}  price ${ratio(p.ink, p.card).toFixed(1).padStart(5)}:1   lowest text pair ${min.toFixed(2)}:1 (${minName})`);
+      if (!occasion) rows.push(`${name.padEnd(18)} ${mode.padEnd(5)}  price ${ratio(p.ink, p.card).toFixed(1).padStart(5)}:1   lowest text pair ${min.toFixed(2)}:1 (${minName})`);
     }
   }
 }
@@ -81,6 +83,6 @@ console.log(rows.join("\n"));
 console.log(
   failures
     ? `\n${failures} failure(s)`
-    : `\nAll ${TEMPLATES.length} templates x ${OCCASIONS.length + 1} occasions (incl. none) pass in every scheme they support (${checked} checks of palettes): text pairs >= 4.5:1, accent outlines >= 3:1, bands and Heat bars in each occasion's colours.`,
+    : `\nAll ${TEMPLATES.length} templates and ${NEXT_TEMPLATES.length} redesigned ones x ${OCCASIONS.length + 1} occasions (incl. none) pass in every scheme they support (${checked} checks of palettes): text pairs >= 4.5:1, accent outlines >= 3:1, bands and Heat bars in each occasion's colours.`,
 );
 process.exit(failures ? 1 : 0);

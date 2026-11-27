@@ -22,6 +22,7 @@ import "./app.css";
 import { Wordmark } from "./components/Logo";
 import { STYLESHEET_GUARD, useNonce } from "./lib/nonce";
 import { feedbackAbout } from "./lib/feedback";
+import { frameAppearance } from "./lib/compare";
 import { getUser } from "./lib/auth.server";
 import { mcpUrl, siteOrigin, sourceUrl, webAnalyticsToken } from "./lib/config.server";
 import { BUILD_ID, forgetTarget, installBuildGuard, isHydrated, markHydrated, rememberTarget, takeLastErrorRef } from "./lib/build";
@@ -41,7 +42,8 @@ export const links: Route.LinksFunction = () => [
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await getUser(request);
   const t = readCookie(request, "wm_theme");
-  const theme = t === "light" || t === "dark" ? t : "system";
+  // A /themes/compare frame is shown in the appearance the compare page asks for; null on every other page.
+  const theme = frameAppearance(new URL(request.url)) ?? (t === "light" || t === "dark" ? t : "system");
   // The cookie names a session the API no longer knows: drop it.
   const headers = !user && getSessionToken(request) ? { "set-cookie": clearSessionCookie(request) } : undefined;
   // ref: this request's reference, shown if the page turns out to be an error page.
