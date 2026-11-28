@@ -36,7 +36,7 @@ export const CHAPTERS: LookChapter[] = [
     decision: "adopted",
     lead: "Checklist is the calm to-do list, and the default for tasks. This example is the owner's view (without the box for adding a task), so the ticks work: tick a task and it moves to Done, tick it there and it comes back.",
     paras: [
-      "Before, every due date carried an amber flag, so the colour told nothing apart, and each update sat in its own filled card.",
+      "Before, every due date carried an amber flag, so the color told nothing apart, and each update sat in its own filled card.",
       "After, a date is plain words unless it is overdue, a hairline separates tasks, and what an agent did sits under its task without a box.",
     ],
     tryView: { format: "shopping", width: "phone" },
@@ -104,7 +104,7 @@ export const CHAPTERS: LookChapter[] = [
     decision: "kept",
     lead: "Heat orders a list from hot to cool: do the red one first. Tap a bar to open it.",
     paras: [
-      "The proposal made Heat follow the device, light by day, put the scale under its title and gave each bar's words the full width. Reviewed blind it scored a little higher than the old one. Both scored lowest of the eight, because the order is carried by colour and position alone.",
+      "The proposal made Heat follow the device, light by day, put the scale under its title and gave each bar's words the full width. Reviewed blind it scored a little higher than the old one. Both scored lowest of the eight, because the order is carried by color and position alone.",
       "The owner preferred Heat as it is: always dark, its blocks, its header. It stays. One thing changed that you cannot see here: in an opened item, agents' marks are the ones made for dark surfaces.",
       "One fault stays with it. On a phone a long title is squeezed beside its count and breaks over four lines. The fix is easy to see, so it is not ours to make without asking.",
     ],

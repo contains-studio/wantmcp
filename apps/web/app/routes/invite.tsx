@@ -40,7 +40,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       if (err.status === 401) return redirect(`/login?next=${encodeURIComponent(`/invite/${params.token}`)}`);
       const message =
         err.status === 404
-          ? "This invite has expired or was cancelled. Ask the list owner for a new one."
+          ? "This invite has expired or was canceled. Ask the list owner for a new one."
           : err.code === "conflict"
             ? "Someone has already used this invite. Ask the list owner for a new one."
             : friendlyError(err);
@@ -63,7 +63,7 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
   const result = useActionData<typeof action>();
   const nav = useNavigation();
   const listTitle = invite?.list.title;
-  // Checked before anything else: an unknown, used or cancelled link never says "you're invited".
+  // Checked before anything else: an unknown, used or canceled link never says "you're invited".
   const usable = !!invite && invite.status === "invited";
 
   if (unavailable) return <Unavailable reference={unavailable} what="this invite" />;
@@ -72,7 +72,7 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
       <div className="wrap grid place-items-center py-12">
         <div className="card grid w-full max-w-md justify-items-center gap-3 p-6 text-center sm:p-8">
           <h1 className="text-[1.6rem] leading-tight font-semibold">This invite link doesn't work</h1>
-          <p className="text-ink-2">It may have expired, been cancelled or already used. Ask the person who sent it for a new one.</p>
+          <p className="text-ink-2">It may have expired, been canceled or already used. Ask the person who sent it for a new one.</p>
           <Link to={user ? "/app/new" : "/login?next=/app/new"} className="btn btn-want mt-2">
             Start a list
           </Link>
@@ -99,7 +99,7 @@ export default function Invite({ loaderData, params }: Route.ComponentProps) {
           <div className="mt-6 grid gap-3">
             <p className="form-error">
               {invite?.status === "revoked"
-                ? "This invite was cancelled. Ask the list owner for a new one."
+                ? "This invite was canceled. Ask the list owner for a new one."
                 : "This invite has already been used. Ask the list owner for a new one."}
             </p>
             <Link to={user ? "/app/new" : "/login?next=/app/new"} className="btn btn-want">
