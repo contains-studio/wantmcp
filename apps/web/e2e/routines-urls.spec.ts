@@ -31,6 +31,8 @@ test.describe.serial("URLs", () => {
     await page.goto("/app/account#urls");
     const urls = page.getByRole("region", { name: "URLs" });
     await urls.locator("summary", { hasText: "Add a URL" }).click();
+    // Open, it reads as the form's heading, not as a button above it.
+    await expect(urls.locator("summary", { hasText: "Add a URL" })).not.toHaveClass(/\bbtn\b/);
     await urls.getByRole("textbox", { name: /^Name/ }).fill("Team hook");
     await urls.getByRole("textbox", { name: /^URL/ }).fill("https://10.0.0.1/hook");
     await urls.getByRole("button", { name: "Add and check it" }).click();

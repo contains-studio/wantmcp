@@ -7,7 +7,7 @@
  * - one want on Kitchen the routine stopped looking for.
  */
 import type { ActorRef, RoutineKind } from "../app/lib/types.ts";
-import type { RoutineStore } from "./routines.ts";
+import type { RoutineRow, RoutineStore } from "./routines.ts";
 import { nextRun } from "./routines.ts";
 import type { Store } from "./store.ts";
 
@@ -375,6 +375,41 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     key_user_id: "usr_rt", next_run_at: null, created: { by: me, at: at(8 * DAY) }, changed: { by: me, at: at(8 * DAY) },
     run_now_day: "", run_now_count: 0, deleted_at: null, stopped_items: [],
   });
+  // One routine of each other kind with a finished run, as the server writes them (SPEC 26.2 item 8: counts by name,
+  // the search fields 0, and one line in our words), so each kind's History can be checked.
+  const plain = (id: string, list_id: string | null, kind: RoutineKind, name: string, extra: Partial<RoutineRow> = {}): RoutineRow => ({
+    id, list_id, kind, item_id: null, settings: {}, start: "schedule", name, name_by: "server", schedule: null, paused: null, blocked: null,
+    key_user_id: null, next_run_at: null, created: { by: me, at: at(5 * DAY) }, changed: { by: me, at: at(5 * DAY) }, run_now_day: "", run_now_count: 0,
+    deleted_at: null, stopped_items: [], ...extra,
+  });
+  rs.routines.push(
+    plain("rtn_seed_price", "lst_rt_kitchen", "target_price", "Tell me when “Noise-cancelling headphones for the train” is at my price", {
+      item_id: "itm_rt_headphones", start: "event", settings: { target: "199", currency: "USD", unverified: true },
+    }),
+    plain("rtn_ana_countdown", "lst_rt_ana", "countdown", "Countdown to Christmas", { start: "date", settings: { date: "2026-12-25", occasion: "christmas", occasion_label: "Christmas", milestones: [14, 7, 1] } }),
+    plain("rtn_seed_weekly", null, "weekly_summary", "A weekly summary of my lists", {
+      user_id: "usr_rt", settings: { lists: "all" },
+      schedule: { every: "week", interval: 1, days: ["sun"], time: "08:00", time_zone: "America/New_York", anchor: at(5 * DAY).slice(0, 10) },
+    }),
+    plain("rtn_seed_check", "lst_rt_kitchen", "agent_check", "Ask Claude to check every Friday", {
+      settings: { agent_id: "agt_rt_claude", prices_older_than_days: 3, stuck_after_days: 7 },
+      schedule: { every: "week", interval: 1, days: ["fri"], time: "09:00", time_zone: "America/New_York", anchor: at(5 * DAY).slice(0, 10) },
+    }),
+  );
+  for (const id of ["rtn_seed_price", "rtn_ana_countdown", "rtn_seed_weekly", "rtn_seed_check"]) rs.follows.set(id, new Map([["usr_rt", { routine_id: id, email: false, at_once: false }]]));
+  const ran = (id: string, routine_id: string, trigger: "schedule" | "event", counts: Record<string, number>, note: string, ago: number) => ({
+    id, routine_id, trigger, run_by: null, state: "ok" as const, attempts: 1, queued_at: at(ago), started_at: at(ago), finished_at: at(ago - 1000),
+    wants_searched: 0, suggestions_posted: 0, searches_used: 0, note, wants_total: null, current: null, counts,
+  });
+  rs.runs.push(
+    ran("run_seed_price", "rtn_seed_price", "event", { notices: 1 }, "At your price: $189 at Best Buy (checked on the store's page)", 2 * HOUR),
+    ran("run_seed_due", "rtn_garden_due", "schedule", { notices: 1 }, "Due in 7 days: “Trim the hedge before the frost”", 3 * HOUR),
+    ran("run_seed_countdown", "rtn_ana_countdown", "schedule", { notices: 1 }, "28 days to Christmas: 1 want has nothing yet", 5 * HOUR),
+    ran("run_seed_beans", "rtn_beans", "event", { proposed: 1 }, "Brought back “Whole coffee beans, 1kg” for you to confirm", 6 * HOUR),
+    ran("run_seed_weekly", "rtn_seed_weekly", "schedule", { notices: 1, lists: 2 }, "Summarised 2 lists", DAY),
+    ran("run_seed_check", "rtn_seed_check", "schedule", { prices: 2, stuck: 1 }, "Left Claude a note: 2 prices to re-check, 1 stuck want", 2 * DAY),
+    ran("run_seed_url", "rtn_kitchen_url", "event", { changes: 1, ms: 41 }, "Sent 1 change, answered in 41 ms.", 2 * DAY + HOUR),
+  );
   rs.asks.set("ask_seed_kitchen", { routine_id: "rtn_kitchen", used: null });
   rs.asks.set("ask_seed_garden", { routine_id: "rtn_garden", used: null });
 }

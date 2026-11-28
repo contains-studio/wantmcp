@@ -358,6 +358,7 @@ export function UrlsSection({ urls }: { urls: RoutineEndpoint[] }) {
   const result = f.data ?? (page?.intent?.startsWith("url-") ? page : undefined);
   const busy = f.state !== "idle";
   const max = 5;
+  const [adding, setAdding] = useState(urls.length === 0 || (result?.intent === "url-add" && !!result.error));
   return (
     <section aria-labelledby="urls-h" id="urls" className="card grid scroll-mt-24 gap-4 p-5 sm:p-6">
       <div className="grid gap-1">
@@ -452,8 +453,13 @@ export function UrlsSection({ urls }: { urls: RoutineEndpoint[] }) {
       )}
 
       {urls.length < max ? (
-        <details className="rt-fold" open={urls.length === 0 || (result?.intent === "url-add" && !!result.error) || undefined}>
-          <summary className="btn btn-sm w-fit">Add a URL</summary>
+        <details
+          className="rt-fold"
+          open={adding || undefined}
+          onToggle={(e) => setAdding(e.currentTarget.open)}
+        >
+          {/* Closed, a button; open, the form's heading (still the way to fold it away). */}
+          <summary className={adding ? "w-fit cursor-pointer list-none text-[1.05rem] font-semibold [&::-webkit-details-marker]:hidden" : "btn btn-sm w-fit"}>Add a URL</summary>
           <f.Form method="post" className="rt-fold-body grid gap-3" key={urls.length}>
             <input type="hidden" name="intent" value="url-add" />
             <label className="field">

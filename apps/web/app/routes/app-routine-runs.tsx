@@ -7,8 +7,8 @@ import { data, Link } from "react-router";
 import type { Route } from "./+types/app-routine-runs";
 import { api, toRouteError } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
-import { actorName, routinesOn } from "~/lib/routines";
-import type { Page, RoutineRun } from "~/lib/types";
+import { routinesOn, runOutcome, runTrigger } from "~/lib/routines";
+import type { Page, Routine, RoutineRun } from "~/lib/types";
 import { Time } from "~/components/Time";
 
 export function meta() {
@@ -20,12 +20,18 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!routinesOn(user)) throw new Response("Not found", { status: 404 });
   const cursor = new URL(request.url).searchParams.get("cursor");
   let page: Page<RoutineRun>;
+  let mine: { data: Routine[] };
   try {
-    page = await api<Page<RoutineRun>>(request, `/routines/${encodeURIComponent(params.id)}/runs`, { query: cursor ? { cursor } : {} });
+    // The routine's kind decides what a run says (searching is exa_search's alone); the server has no single-routine read.
+    [page, mine] = await Promise.all([
+      api<Page<RoutineRun>>(request, `/routines/${encodeURIComponent(params.id)}/runs`, { query: cursor ? { cursor } : {} }),
+      api<{ data: Routine[] }>(request, "/me/routines"),
+    ]);
   } catch (err) {
     toRouteError(err);
   }
-  return data(page, { headers: { "Cache-Control": "private, no-store" } });
+  const routine = mine.data.find((r) => r.id === params.id);
+  return data({ ...page, kind: routine?.kind ?? null, name: routine?.name ?? null }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export default function RoutineRuns({ loaderData, params }: Route.ComponentProps) {
@@ -36,16 +42,15 @@ export default function RoutineRuns({ loaderData, params }: Route.ComponentProps
           ← Routines
         </Link>
         <h1 className="text-[1.75rem] font-semibold tracking-[-0.02em]">History</h1>
+        {loaderData.name && <p className="-mt-2 text-ink-2">{loaderData.name}</p>}
         <ol className="card grid gap-0 px-5 py-2">
           {loaderData.data.map((r) => (
             <li key={r.id} className="grid gap-0.5 border-t border-line py-3 text-[0.92rem] first:border-t-0">
               <p>
-                <Time ts={r.finished_at ?? r.started_at ?? r.queued_at} /> ·{" "}
-                {r.trigger === "run_now" ? `Run now${r.run_by ? ` by ${actorName(r.run_by)}` : ""}` : "On schedule"} · {r.state}
+                <Time ts={r.finished_at ?? r.started_at ?? r.queued_at} />
+                {runTrigger(r) && <> · {runTrigger(r)}</>}
               </p>
-              <p className="text-ink-2">
-                Searched {r.wants_searched}, {r.suggestions_posted} suggestions, {r.searches_used} searches used
-              </p>
+              <p className={r.state === "failed" || r.state === "blocked" ? "text-warn" : "text-ink-2"}>{runOutcome(r, true, loaderData.kind ?? "")}</p>
               {r.note && <p className="text-ink-3">{r.note}</p>}
             </li>
           ))}

@@ -7,10 +7,22 @@
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { Time } from "./Time";
-import { actorName, runOutcome } from "~/lib/routines";
+import { runOutcome, runTrigger } from "~/lib/routines";
 import type { Page, RoutineRun } from "~/lib/types";
 
-export function RoutineHistory({ routineId, name, latest }: { routineId: string; name: string; /** The newest run's id: History reloads when it changes. */ latest?: string | null }) {
+export function RoutineHistory({
+  routineId,
+  name,
+  kind,
+  latest,
+}: {
+  routineId: string;
+  name: string;
+  /** Searching is exa_search's alone: other kinds' runs say their state and the server's note. */
+  kind: string;
+  /** The newest run's id: History reloads when it changes. */
+  latest?: string | null;
+}) {
   const first = useFetcher<Page<RoutineRun>>({ key: `history-${routineId}` });
   const more = useFetcher<Page<RoutineRun>>({ key: `history-more-${routineId}` });
   const [open, setOpen] = useState(false);
@@ -57,9 +69,9 @@ export function RoutineHistory({ routineId, name, latest }: { routineId: string;
                   <span className="font-medium text-ink">
                     <Time ts={r.finished_at ?? r.started_at ?? r.queued_at} />
                   </span>
-                  <span className="text-ink-3">{r.trigger === "run_now" ? `Run now${r.run_by ? ` by ${actorName(r.run_by)}` : ""}` : "On schedule"}</span>
+                  {runTrigger(r) && <span className="text-ink-3">{runTrigger(r)}</span>}
                 </p>
-                <p className={r.state === "failed" || r.state === "blocked" ? "text-warn" : "text-ink-2"}>{runOutcome(r, true)}</p>
+                <p className={r.state === "failed" || r.state === "blocked" ? "text-warn" : "text-ink-2"}>{runOutcome(r, true, kind)}</p>
                 {r.note && <p className="text-ink-3">{r.note}</p>}
               </li>
             ))}

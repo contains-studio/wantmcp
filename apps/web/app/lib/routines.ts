@@ -97,11 +97,22 @@ export const RUN_STATE: Record<RoutineRunState, string> = {
 
 const count = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
 
-/** "Done: searched 3 wants, 9 suggestions" (and ", 3 searches used" in History). */
-export function runOutcome(r: RoutineRun, withSearches = false): string {
-  const head = RUN_STATE[r.state];
-  if (r.state !== "ok" && r.state !== "partial") return head;
+/**
+ * "Done: searched 3 wants, 9 suggestions" (and ", 3 searches used" in History) for a web search. Searching is
+ * exa_search's alone: any other kind's run is just its state, and the server's note says what it did.
+ */
+export function runOutcome(r: RoutineRun, withSearches = false, kind: string = "exa_search"): string {
+  const head = RUN_STATE[r.state] ?? "";
+  if (kind !== "exa_search" || (r.state !== "ok" && r.state !== "partial")) return head;
   return `${head}: searched ${count(r.wants_searched, "want")}, ${count(r.suggestions_posted, "suggestion")}${withSearches ? `, ${count(r.searches_used, "search", "searches")} used` : ""}`;
+}
+
+/** What started a run, in plain words; an unknown trigger says nothing rather than something wrong. */
+export function runTrigger(r: Pick<RoutineRun, "trigger" | "run_by">): string {
+  if (r.trigger === "run_now") return `Run now${r.run_by ? ` by ${actorName(r.run_by)}` : ""}`;
+  if (r.trigger === "schedule") return "On schedule";
+  if (r.trigger === "event") return "After a change";
+  return "";
 }
 
 export const runEnded = (r: Pick<RoutineRun, "state">) => r.state !== "queued" && r.state !== "running";

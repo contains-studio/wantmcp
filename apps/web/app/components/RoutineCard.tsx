@@ -179,7 +179,7 @@ export function RoutineCard({
 
       {known && (
       <div className="flex flex-wrap gap-x-4 gap-y-1">
-        <RoutineHistory routineId={r.id} name={r.name} latest={r.last_run?.id ?? null} />
+        <RoutineHistory routineId={r.id} name={r.name} kind={r.kind} latest={r.last_run?.id ?? null} />
         <Rename f={f} routine={r} />
         {r.schedule && <ChangeSchedule f={f} routine={r} keyOk={keyOk} schedule={r.schedule} />}
         {inSettings && exa && (
