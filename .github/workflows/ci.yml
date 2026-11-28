@@ -29,7 +29,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30 # the suite passed 350 tests on two screens and hit 15 minutes (cancelled, not failed) on 28 Nov 2026
     defaults:
       run:
         working-directory: apps/web
