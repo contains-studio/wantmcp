@@ -17,7 +17,8 @@ import type { ThemeSample } from "~/components/ThemeThumb";
 import type { ThemeView } from "~/themes/view";
 import { occasionViews, templateViews } from "~/themes/catalogue.server";
 import { PERSONAS } from "~/lib/personas.server";
-import { SEASON, seasonActive } from "~/lib/season";
+import { SEASON, seasonTiles } from "~/lib/season";
+import { requestNow } from "~/lib/clock.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const cursor = new URL(request.url).searchParams.get("cursor");
@@ -29,7 +30,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     .then((p) => ({ ...p, data: p.data.filter((r) => (r.entry.kind ?? "product") === "product" && r.entry.author.kind === "agent") }))
     .catch(() => ({ data: [] as FeedEntry[], next_cursor: null }));
   const accountDeleted = new URL(request.url).searchParams.get("account") === "deleted";
-  const now = Date.now();
+  const now = requestNow(request);
   // The three kinds of want, shown as real rendered lists rather than described.
   const kinds = [
     {
@@ -58,7 +59,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   const sample = sampleList(now, "shopping");
   // Layouts only below; the season's occasions get their own band under the hero (app/lib/season.ts).
   const looks = { sample, layouts: templateViews() };
-  const season = seasonActive(SEASON, now) ? { heading: SEASON.heading, sample, occasions: occasionViews("sheet", SEASON.occasions) } : null;
+  // Only occasions still to come; none left, no band (and no heading over an empty row).
+  const tiles = seasonTiles(SEASON, now);
+  const season = tiles.length ? { heading: SEASON.heading, sample, occasions: occasionViews("sheet", tiles) } : null;
   // A few of the /for pages, and the way to the rest.
   const jobs = PERSONAS.filter((p) => p.index).slice(0, 8).map(({ slug, label }) => ({ slug, label }));
   // One kind shown at a time (?kind=, real links): shopping first.

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { DEMO, signIn } from "./helpers";
+import { BLACK_FRIDAY_2026, DEMO, signIn } from "./helpers";
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
@@ -37,7 +37,8 @@ test("/app has no accessibility violations", async ({ page }) => {
 // A miniature of a list holds links of its own. Wrapped in a link, the HTML parser splits the outer link and
 // leaves it empty, so the tile cannot be clicked. Check the server's HTML as the browser parses it, without scripts.
 test("look tiles stay whole links in the server HTML", async ({ browser }) => {
-  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  // On Black Friday 2026, when the season band has all five occasions (helpers.ts: atTime).
+  const ctx = await browser.newContext({ javaScriptEnabled: false, extraHTTPHeaders: { "x-wantmcp-check": "1", "x-wantmcp-now": BLACK_FRIDAY_2026 } });
   const page = await ctx.newPage();
   for (const path of ["/", "/themes"]) {
     await page.goto(path);

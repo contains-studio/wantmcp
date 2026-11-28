@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { addItem, createList, freshEmail, signIn } from "./helpers";
+import { addItem, atTime, createList, freshEmail, signIn } from "./helpers";
 
 /** Clean-eyes review, batch 2 (25 Nov 2026): looks, the holiday tiles and the /for pages. */
 
 test("a holiday tile opens its preview, whose one button starts that occasion's list @phone", async ({ page }) => {
+  await atTime(page);
   await page.goto("/");
   await page.locator("section[aria-labelledby=season-h]").getByRole("link", { name: "Black Friday", exact: true }).click();
   await expect(page).toHaveURL(/\/themes\/sheet--black-friday$/);

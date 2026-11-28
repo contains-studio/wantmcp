@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshEmail, enterCode } from "./helpers";
+import { atTime, enterCode, freshEmail } from "./helpers";
 
 test("the retired Cards layout: old links redirect, nothing offers it", async ({ page }) => {
   for (const [from, to] of [
@@ -16,6 +16,7 @@ test("the retired Cards layout: old links redirect, nothing offers it", async ({
 });
 
 test("a season tile opens its preview, which starts a gift list in its look, after sign-in", async ({ page }) => {
+  await atTime(page);
   await page.goto("/");
   const band = page.locator("section[aria-labelledby=season-h]");
   await expect(band.getByRole("heading", { name: "Have your agents help you get the right gifts this season." })).toBeVisible();

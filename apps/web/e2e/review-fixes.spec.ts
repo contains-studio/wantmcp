@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createList, DEMO, freshEmail, signIn } from "./helpers";
+import { atTime, createList, DEMO, freshEmail, signIn } from "./helpers";
 
 // Each test signs in as a fresh person and works on its own lists; seeded lists are only read.
 
@@ -133,6 +133,7 @@ test("people see 'you', not their own handle", async ({ page }) => {
 });
 
 test("a gift list from the home page is private", async ({ page }) => {
+  await atTime(page);
   await signIn(page, freshEmail("giftprivate"));
   await page.goto("/");
   await page.locator("section[aria-labelledby=season-h]").getByRole("link", { name: "Christmas", exact: true }).click();

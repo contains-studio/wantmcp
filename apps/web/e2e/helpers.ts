@@ -53,3 +53,12 @@ export async function addItem(page: Page, text: string) {
   const skip = add.getByRole("button", { name: "Skip" });
   if (await skip.isVisible()) await skip.click();
 }
+
+/**
+ * The time the app answers at, for tests that depend on the date (the home page's season band): an `x-wantmcp-now`
+ * header, honoured only against the mock (app/lib/clock.server.ts). Black Friday 2026, midday Pacific, by default.
+ */
+export const BLACK_FRIDAY_2026 = "2026-11-27T12:00:00-08:00";
+export async function atTime(page: Page, iso = BLACK_FRIDAY_2026) {
+  await page.setExtraHTTPHeaders({ "x-wantmcp-now": iso });
+}
