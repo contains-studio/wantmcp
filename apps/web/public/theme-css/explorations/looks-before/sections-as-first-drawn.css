@@ -1,0 +1,5 @@
+/* Sections as it was first redrawn, kept as an exhibit of /explorations/redesigning-the-looks (never loaded by the app).
+   These column widths were meant for the wide table only. Written without the container query that scopes them, they
+   also reached the narrow layout, where each row stacks, and left a title about 50px on a phone. */
+.themed.tpl-sections :is(.ix-table-head, .ix-row) { grid-template-columns: 2.75rem minmax(0, 1fr) 11rem 10rem; }
+.themed.tpl-sections.themed .ix-sections.is-readonly :is(.ix-table-head, .ix-row) { grid-template-columns: minmax(0, 1fr) 11rem 10rem; padding-left: 0.75rem; }

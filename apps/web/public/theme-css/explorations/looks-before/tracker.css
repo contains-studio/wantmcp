@@ -1,0 +1,40 @@
+/* An exhibit of /explorations/redesigning-the-looks: this look as it was before November 2026. Never loaded by the app.
+   Tracker: an issue tracker built for the dark. Issue numbers, status lights, dense rows. */
+.themed.was-tracker { background: var(--paper); counter-reset: issue; }
+.themed.was-tracker .list-hero { background: var(--paper); border-bottom: 1px solid var(--line); }
+.themed.was-tracker .list-hero > .wrap { padding-block: 1.25rem 1rem; display: grid; gap: 0.3rem; }
+.themed.was-tracker .list-title { display: flex; align-items: center; gap: 0.6rem; margin: 0; font-size: 1.35rem; font-weight: 600; letter-spacing: -0.01em; }
+.themed.was-tracker .list-title-mark { display: inline-block; width: 1.1rem; height: 1.1rem; border-radius: 4px; background: var(--want); box-shadow: 0 0 0 3px var(--want-soft); }
+.themed.was-tracker .list-hero .eyebrow { order: -1; font-size: 0.7rem; }
+.themed.was-tracker .list-hero .list-desc { font-size: 0.88rem; margin-top: 0.15rem; }
+.themed.was-tracker .list-hero > .wrap > div { margin-top: 0.35rem; font-size: 0.78rem; font-family: var(--font-mono); }
+.themed.was-tracker > .wrap { gap: 0.25rem; padding-top: 1rem; }
+.themed.was-tracker .items-region { gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+.themed.was-tracker .item-section { counter-increment: issue; gap: 0.6rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--line); }
+.themed.was-tracker .item-section:last-child { border-bottom: 0; }
+.themed.was-tracker .bought-group { gap: 0; }
+.themed.was-tracker .bought-divider { padding: 0.5rem 1rem; background: var(--sunk); border-bottom: 1px solid var(--line); }
+.themed.was-tracker .bought-divider h2 { font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); }
+.themed.was-tracker .bought-divider .divider-dots { display: none; }
+/* Issue number in place of the round counter; a status light before the title. */
+.themed.was-tracker .item-number { width: auto; height: auto; background: none; border-radius: 0; color: var(--ink-3); font: 500 0.78rem var(--font-mono); font-size: 0; margin-top: 0.35rem; }
+.themed.was-tracker .item-number::after { content: "WNT-" counter(issue); font-size: 0.78rem; }
+.themed.was-tracker .item-title { font-family: var(--font-sans); font-size: 1rem !important; font-weight: 550; display: flex; align-items: baseline; gap: 0.6rem; }
+.themed.was-tracker .item-title::before { content: ""; flex: none; width: 0.75rem; height: 0.75rem; border-radius: 999px; border: 2px solid var(--ink-3); transform: translateY(0.05rem); }
+.themed.was-tracker [data-status="in_progress"] .item-title::before { border-color: #f5c76a; background: conic-gradient(#f5c76a 50%, transparent 0); }
+.themed.was-tracker .is-bought .item-title::before { border-color: var(--deal); background: var(--deal); }
+.themed.was-tracker .item-indent { padding-left: 0 !important; margin-left: 0 !important; }
+.themed.was-tracker .item-entries { gap: 0.35rem !important; }
+.themed.was-tracker .entry-card, .themed.was-tracker .text-entry { background: var(--sunk); border-color: var(--line); box-shadow: none; }
+.themed.was-tracker .text-entry { padding: 0.65rem 0.8rem; }
+.themed.was-tracker .add-item { margin-bottom: 1rem; }
+
+/* Occasions: the title mark becomes the occasion's glyph, the art sits small at the right of the
+   header, and the strip runs along the top of the issue list. */
+.themed.was-tracker.has-occ .list-title-mark { width: 1.35rem; height: 1.35rem; border-radius: 0; box-shadow: none; -webkit-mask: var(--occ-mark) center / contain no-repeat; mask: var(--occ-mark) center / contain no-repeat; }
+.themed.was-tracker.has-occ .list-hero > .wrap::before {
+  content: ""; display: block; height: 3rem; margin-bottom: 0.5rem; pointer-events: none;
+  background: var(--occ-art) no-repeat right center / auto 100%;
+  order: -2;
+}
+.themed.was-tracker.has-occ .items-region::before { content: ""; display: block; height: min(var(--occ-strip-h), 8px); background: var(--occ-strip); }

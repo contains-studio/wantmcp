@@ -1,0 +1,32 @@
+/* An exhibit of /explorations/redesigning-the-looks: this look as it was before November 2026. Never loaded by the app.
+   Heat: bars graded from hot to cool. The colours come from the accents (an occasion can recolour them). */
+.themed.was-heat { --hot: var(--occ-hot); --cool: var(--occ-cool); background: var(--paper); }
+.themed.was-heat .list-hero { background: var(--paper); border-bottom: 0; }
+.themed.was-heat .list-hero > .wrap, .themed.was-heat > .wrap { max-width: 56rem; }
+.themed.was-heat .list-hero > .wrap { padding-block: 1.5rem 1rem; }
+.themed.was-heat .list-title { font-size: clamp(1.8rem, 4.5vw, 2.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.themed.was-heat .eyebrow { color: var(--ink-3); }
+.themed.was-heat > .wrap { padding-top: 0.5rem; gap: 2rem; }
+.themed.was-heat .ix-bars { border-radius: 14px; overflow: hidden; }
+.themed.was-heat .ix-bar .ix-link {
+  background: color-mix(in srgb, var(--hot) calc(100% - var(--i) / var(--n) * 100%), var(--cool));
+  color: var(--occ-bar-ink); min-height: 4.5rem; padding: 0.9rem 1.25rem; border-bottom: 1px solid rgb(0 0 0 / 0.18);
+}
+.themed.was-heat .ix-bar .ix-link:hover { filter: brightness(1.08); }
+.themed.was-heat .ix-bar .ix-link:focus-visible { outline-offset: -4px; outline-color: var(--occ-bar-ink); }
+.themed.was-heat .ix-bar .ix-title { font-size: clamp(1.15rem, 2.6vw, 1.5rem); font-weight: 800; letter-spacing: -0.015em; line-height: 1.2; }
+.themed.was-heat .ix-bar .ix-sub { color: var(--occ-bar-ink); font-weight: 600; }
+.themed.was-heat .ix-bar .ix-pill { background: color-mix(in srgb, var(--occ-bar-ink) 18%, transparent); color: var(--occ-bar-ink); }
+.themed.was-heat .ix-bar.is-done .ix-link { background: var(--card); color: var(--ink-3); }
+.themed.was-heat .ix-bar.is-done .ix-title { text-decoration: line-through; text-decoration-thickness: 2px; font-weight: 700; color: var(--ink-3); }
+.themed.was-heat .ix-bar.is-done .ix-sub { color: var(--ink-3); }
+.themed.was-heat .ix-panel:has(:target) { background: var(--card); border-color: var(--line); }
+.themed.was-heat .ix-panel .item-title { font-size: 1.6rem; font-weight: 800; }
+.themed.was-heat .add-item { background: var(--card); }
+
+/* Occasions: the art at the right of the header, the strip under it. */
+.themed.was-heat.has-occ .list-hero > .wrap::before {
+  content: ""; display: block; height: 3rem; margin-bottom: 0.5rem; pointer-events: none;
+  background: var(--occ-art) no-repeat right center / auto 100%;
+}
+.themed.was-heat.has-occ .ix-bars::before { content: ""; display: block; height: var(--occ-strip-h); background: var(--occ-strip); }

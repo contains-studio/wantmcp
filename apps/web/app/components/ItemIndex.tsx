@@ -309,7 +309,10 @@ function GalleryCard({
     if (el && el.complete && el.currentSrc && el.naturalWidth === 0) setTried((n) => n + 1);
   }, [photo]);
   const n = item.entries.length;
-  const p = best?.current_price;
+  // A bought want says what was paid and where, as every other look does; an open one, its best offer.
+  const paid = item.purchase ?? null;
+  const p = paid?.price ? { price: paid.price, currency: paid.currency ?? "USD" } : paid ? null : best?.current_price;
+  const store = paid ? paid.retailer : best?.retailer;
   return (
     <li className={`gal-card ${failed ? "is-text" : ""} ${status === "done" ? "is-done" : ""}`}>
       <a href={`#${item.id}`} className="gal-link">
@@ -336,7 +339,7 @@ function GalleryCard({
           {p && (
             <span className="gal-price">
               <strong>{formatMoney(p.price, p.currency)}</strong>
-              {best?.retailer && <span className="gal-store"> at {best.retailer}</span>}
+              {store && <span className="gal-store"> at {store}</span>}
             </span>
           )}
           <span className="gal-meta">{n ? plural(n, fi.entry) : `No ${fi.entries} yet`}</span>

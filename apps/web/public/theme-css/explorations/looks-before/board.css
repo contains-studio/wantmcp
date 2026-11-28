@@ -1,0 +1,47 @@
+/* An exhibit of /explorations/redesigning-the-looks: this look as it was before November 2026. Never loaded by the app.
+   Board: kanban on a saturated backdrop. Only loaded on lists that use it. */
+.themed.was-board { --col: var(--paper); --col-ink: var(--ink); background: var(--occ-pattern, none), linear-gradient(135deg, var(--occ-band), var(--occ-band-alt)); }
+
+.themed.was-board > .wrap, .themed.was-board .list-hero > .wrap { max-width: 110rem; }
+.themed.was-board .list-hero { background: rgb(0 0 0 / 0.16); border-bottom: 0; color: var(--occ-band-ink); }
+.themed.was-board .list-hero > .wrap { padding-block: 1rem 1.1rem; display: grid; gap: 0.25rem; }
+.themed.was-board .list-hero :is(p, span, strong, h1, a:not(.btn), time, button.textlink-btn) { color: var(--occ-band-ink); }
+.themed.was-board .list-hero .eyebrow { margin: 0; font-family: var(--font-sans); letter-spacing: 0.02em; text-transform: none; font-size: 0.8rem; font-weight: 600; }
+.themed.was-board .list-hero h1 { margin-top: 0.15rem; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 750; letter-spacing: -0.01em; }
+.themed.was-board .list-hero .list-desc { margin-top: 0.25rem; font-size: 0.95rem; max-width: 48rem; }
+.themed.was-board .list-hero > .wrap > div { margin-top: 0.5rem; }
+.themed.was-board .list-hero .btn-ghost { color: var(--occ-band-ink); border-color: color-mix(in srgb, var(--occ-band-ink) 70%, transparent); background: color-mix(in srgb, var(--occ-band-ink) 12%, transparent); }
+.themed.was-board .list-hero .chip-live { background: #fff; color: #172b4d; border-color: #fff; }
+.themed.was-board .list-hero .rounded-full { color: var(--ink); }
+.themed.was-board .list-hero .rounded-full * { color: var(--ink); }
+
+/* Text that sits straight on the backdrop. */
+.themed.was-board > .wrap > p, .themed.was-board .bought-divider h2 { color: var(--occ-band-ink); }
+.themed.was-board .bought-divider .divider-dots { display: none; }
+
+/* Status columns (tasks, research). */
+.themed.was-board .ix-column { background: var(--col); color: var(--col-ink); box-shadow: 0 1px 1px rgb(9 30 66 / 0.25); }
+.themed.was-board .ix-column-head { color: var(--ink); font-size: 0.9rem; }
+.themed.was-board .ix-count { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink-2); border-radius: 999px; padding: 0 0.5rem; min-width: 1.5rem; text-align: center; }
+.themed.was-board .ix-card .ix-link { box-shadow: 0 1px 1px rgb(9 30 66 / 0.25), 0 0 1px rgb(9 30 66 / 0.31); border-radius: 8px; }
+.themed.was-board .ix-card .ix-link:hover { box-shadow: 0 0 0 2px var(--want); }
+.themed.was-board .ix-title { font-weight: 500; font-size: 0.95rem; line-height: 1.35; }
+.themed.was-board .ix-add { color: var(--ink-2); }
+.themed.was-board .ix-panel:has(:target) { background: var(--col); }
+/* The opened item is one full-width column: the board's sideways columns (.layout-board .items-region)
+   and its card frame do not apply inside the panel. */
+.themed.was-board .ix-panel:has(:target) { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: minmax(0, 1fr) !important; overflow-x: hidden; scroll-snap-type: none; padding-bottom: 3rem; }
+.themed.was-board .items-region.ix-panel .item-section { background: none; border: 0; box-shadow: none; padding: 0; }
+
+/* Shopping boards: one grey column per item. */
+.themed.was-board.layout-board .item-section { background: var(--col); border: 0; box-shadow: 0 1px 1px rgb(9 30 66 / 0.25); }
+.themed.was-board.layout-board .entry-card { border: 0; box-shadow: 0 1px 1px rgb(9 30 66 / 0.25), 0 0 1px rgb(9 30 66 / 0.31); }
+.themed.was-board.layout-board .item-section .item-title { font-family: var(--font-sans); font-size: 0.98rem; font-weight: 650; }
+.themed.was-board .add-item { box-shadow: 0 1px 1px rgb(9 30 66 / 0.25); }
+
+/* Occasions: the art sits on the backdrop at the right of the header, the strip runs under it. */
+.themed.was-board.has-occ .list-hero > .wrap::before {
+  content: ""; display: block; height: 3rem; margin-bottom: 0.5rem; pointer-events: none;
+  background: var(--occ-art) no-repeat right center / auto 100%;
+}
+.themed.was-board.has-occ .list-hero::after { content: ""; display: block; height: var(--occ-strip-h); background: var(--occ-strip); }

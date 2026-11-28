@@ -68,9 +68,10 @@ export function claimAge(iso: string | null | undefined, now: number): string | 
   if (!iso) return null;
   const ms = Math.max(0, now - Date.parse(iso));
   const min = Math.round(ms / 60_000);
-  if (min < 60) return `${Math.max(1, min)} min`;
+  // The same short words as the time on the line under it ("2 hr. ago"): one way of writing a duration on a page.
+  if (min < 60) return `${Math.max(1, min)} min.`;
   const h = Math.round(min / 60);
-  if (h < 24) return `${h} h`;
+  if (h < 24) return `${h} hr.`;
   const d = Math.round(h / 24);
   return d === 1 ? "1 day" : `${d} days`;
 }

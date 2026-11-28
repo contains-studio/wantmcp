@@ -1,4 +1,5 @@
 import { contentSecurityPolicy } from "./lib/csp";
+import { frameAncestors } from "./lib/exhibits";
 import type { EntryContext, RouterContextProvider } from "react-router";
 import { NonceContext } from "./lib/nonce";
 import { ServerRouter } from "react-router";
@@ -25,7 +26,7 @@ export default async function handleRequest(
   if (request.method.toUpperCase() === "HEAD") {
     // Same headers as GET. No body means no scripts, so the nonce is never used.
     if (!import.meta.env.DEV) {
-      responseHeaders.set("Content-Security-Policy", contentSecurityPolicy(makeNonce(), new URL(request.url).protocol === "https:"));
+      responseHeaders.set("Content-Security-Policy", contentSecurityPolicy(makeNonce(), new URL(request.url).protocol === "https:", frameAncestors(new URL(request.url).pathname)));
     }
     responseHeaders.set("Content-Type", "text/html; charset=utf-8");
     return new Response(null, {
@@ -65,7 +66,7 @@ export default async function handleRequest(
   // The Vite dev server injects un-nonced inline scripts for hot reload, so the policy
   // is only enforced on production builds.
   if (!import.meta.env.DEV) {
-    responseHeaders.set("Content-Security-Policy", contentSecurityPolicy(nonce, new URL(request.url).protocol === "https:"));
+    responseHeaders.set("Content-Security-Policy", contentSecurityPolicy(nonce, new URL(request.url).protocol === "https:", frameAncestors(new URL(request.url).pathname)));
   }
   return new Response(body, {
     headers: responseHeaders,
