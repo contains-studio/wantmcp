@@ -145,7 +145,7 @@ export default function Privacy({ loaderData }: Route.ComponentProps) {
             <strong>Your URLs.</strong>
           </p>
           <ul>
-            <li>If you save a URL, we keep it, and its signing secret encrypted.</li>
+            <li>If you save a URL, we keep it and its signing secret encrypted.</li>
             <li>A routine sends it only which things changed on the list: ids and times, never their text.</li>
             <li>We keep a record of each call for 30 days: when it was and whether the URL answered, not the address or what was sent.</li>
             <li>Removing a URL erases it and its secret.</li>
@@ -163,14 +163,14 @@ export default function Privacy({ loaderData }: Route.ComponentProps) {
               Exa's terms.
             </li>
             <li>
-              Encryption protects your key if our database is copied, not if our hosting account is taken over. A deleted key can stay in
-              encrypted backups for up to 30 days.
+              Encryption protects your key if our database is copied, not if our hosting account is taken over.
             </li>
             <li>
               You can remove the key at any time, on your <Link to="/app/account#keys" className="link">account page</Link>.
             </li>
           </ul>
           <p className="mt-5">Everyone on a list can see its routines, whose key a search runs on and whose URL its changes go to, but never the URL itself.</p>
+          <p>What you remove or we erase (a key, a URL, an address) can stay in our database backups for up to 30 days.</p>
         </>
       )}
 

@@ -157,6 +157,10 @@ test("privacy, once routines are visible: email, other people's addresses, URLs 
   await expect(main).toContainText("(a hash, not the address) for 90 days");
   await expect(main).toContainText("We keep a record of each call for 30 days");
   await expect(main).toContainText("Encryption protects your key if our database is copied, not if our hosting account is taken over.");
+  await expect(main).toContainText("If you save a URL, we keep it and its signing secret encrypted.");
+  // Backups, once, for everything removed or erased (not only the key).
+  await expect(main).toContainText("What you remove or we erase (a key, a URL, an address) can stay in our database backups for up to 30 days.");
+  await expect(main).not.toContainText("A deleted key can stay in encrypted backups");
   // The account page's "How we keep it" lands on the Exa part.
   await expect(page.locator("#routines-exa")).toContainText("Your Exa key.");
   // Step 1's sentence is gone: routines email more than the two things that need you.
