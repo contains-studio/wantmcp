@@ -133,11 +133,86 @@ test("email for a routine: chosen when making it, changed on its card and in Not
   await expect(card).toContainText("You see these in the app");
 });
 
+test("ask my agent to check: one of my own agents, what to check, and whether it is listening, with /connect's instruction", async ({ page }) => {
+  await signIn(page, RT);
+  await page.goto("/app/lists/lst_rt_garden/settings#routines");
+  await page.locator("summary", { hasText: "New routine" }).click();
+  await page.getByRole("radio", { name: /Ask my agent to check/ }).check();
+  const agent = page.getByLabel("Which agent");
+  // Both of my agents on this list; nothing chosen while there are two.
+  await expect(agent.locator("option:not([disabled])")).toHaveText(["Claude", "Hermes"]);
+  await expect(agent).toHaveValue("");
+  await agent.selectOption({ label: "Claude" });
+  await expect(page.getByRole("checkbox", { name: /Prices last checked more than/ })).toBeChecked();
+  await expect(page.getByRole("spinbutton", { name: /Prices last checked more than, days/ })).toHaveValue("3");
+  await expect(page.getByRole("spinbutton", { name: /Wants with nothing new for, days/ })).toHaveValue("7");
+  await page.getByRole("checkbox", { name: /Wants with nothing new for/ }).uncheck();
+  await page.getByRole("radio", { name: "In the app, under For you" }).check();
+  await page.getByRole("button", { name: "Make this routine" }).click();
+  const card = page.locator("article").filter({ hasText: "Ask Claude to check every Friday" });
+  await expect(card).toContainText("Claude sees this the next time it looks (last seen");
+  await expect(card.getByRole("region", { name: "Instruction for a scheduled run" })).toHaveText(
+    "Every morning, call get_updates on my Want MCP lists, re-check the prices you posted, and answer what is new.",
+  );
+  await expect(card.getByRole("button", { name: "Copy" })).toBeVisible();
+  await card.locator("summary", { hasText: "Apps that can run on a schedule" }).click();
+  await expect(card.getByRole("link", { name: "Automations" })).toHaveAttribute("href", "https://cursor.com/docs/cloud-agent/automations");
+
+  // Claude has one now: only Hermes is left, chosen for me, and Hermes listens.
+  await page.reload();
+  await page.locator("summary", { hasText: "New routine" }).click();
+  await page.getByRole("radio", { name: /Ask my agent to check/ }).check();
+  await expect(page.getByLabel("Which agent")).toHaveValue("agt_rt_hermes");
+  await page.getByRole("radio", { name: "In the app, under For you" }).check();
+  await page.getByRole("button", { name: "Make this routine" }).click();
+  const hermes = page.locator("article").filter({ hasText: "Ask Hermes to check every Friday" });
+  await expect(hermes).toContainText("Hermes is listening: it is told the moment this is due.");
+  await expect(hermes.getByRole("region", { name: "Instruction for a scheduled run" })).toHaveCount(0);
+});
+
+test("ask my agent to check: not offered without an agent of my own on the list", async ({ page }) => {
+  await signIn(page, RT);
+  // Ana's birthday is Sam's list; none of my agents writes it.
+  await page.goto("/app/lists/lst_rt_ana/settings#routines");
+  await page.locator("summary", { hasText: "New routine" }).click();
+  await expect(page.getByRole("radio", { name: /Ask my agent to check/ })).toHaveCount(0);
+});
+
+test("a weekly summary: made on the Routines tab, never on a list; which lists, its day and hour, and where I see it", async ({ page }) => {
+  await signIn(page, freshEmail("routines-weekly"));
+  const id = await createList(page, { format: "Shopping", title: "Birthday" });
+  await page.goto(`/app/lists/${id}/settings#routines`);
+  await page.locator("summary", { hasText: "New routine" }).click();
+  await expect(page.getByText(/weekly summary/i)).toHaveCount(0);
+
+  await page.goto("/app/routines");
+  const own = page.getByRole("region", { name: "Just for you" });
+  await own.locator("summary", { hasText: "New weekly summary" }).click();
+  await expect(own.getByRole("radio", { name: "All the lists I write, now and later" })).toBeChecked();
+  await expect(own.getByRole("checkbox", { name: "Birthday" })).toHaveCount(0);
+  await own.getByRole("radio", { name: "Only these" }).check();
+  await own.getByRole("checkbox", { name: "Birthday" }).check();
+  await expect(own.getByRole("combobox", { name: "Every", exact: true })).toHaveValue("sun");
+  // The person's email hour, as the default.
+  await expect(own.getByRole("combobox", { name: "At", exact: true })).toHaveValue("8");
+  await expect(own.getByRole("radio", { name: "In the app, under For you" })).not.toBeChecked();
+  await expect(own.getByRole("radio", { name: /^In the app and by email/ })).not.toBeChecked();
+  await own.getByRole("radio", { name: /^In the app and by email/ }).check();
+  await own.getByRole("button", { name: "Make this routine" }).click();
+  const card = own.locator("article").filter({ hasText: "A weekly summary of my lists" });
+  await expect(card).toContainText("Sunday");
+  await expect(card).toContainText("You get these in the app and by email");
+  // One each: not offered again.
+  await page.reload();
+  await expect(own.locator("summary", { hasText: "New weekly summary" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "No routines on your lists yet" })).toBeVisible();
+});
+
 test("a kind this page doesn't know: its name and status, Pause and Delete only", async ({ page }) => {
   await signIn(page, RT);
   await page.goto("/app/routines");
-  const card = page.locator("#routine-rtn_weekly");
-  await expect(card.getByRole("heading")).toHaveText("A weekly summary");
+  const card = page.locator("#routine-rtn_future");
+  await expect(card.getByRole("heading")).toHaveText("Call my URL when something changes");
   await expect(card.getByRole("button", { name: /^Pause/ })).toBeVisible();
   await expect(card.locator("summary", { hasText: /^Delete/ })).toBeVisible();
   await expect(card.getByRole("button", { name: /Run now|Check now/ })).toHaveCount(0);

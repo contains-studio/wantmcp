@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AWAY_PROMPT, SCHEDULERS } from "~/lib/schedulers";
 import { data, Link, useFetcher } from "react-router";
 import { AGENT_PROMPT_WITH_KEY, fillPrompt, promptFacts } from "~/lib/agent-prompt";
 import { agentsText } from "~/lib/agents-text";
@@ -836,18 +837,6 @@ export default function Connect({ loaderData }: Route.ComponentProps) {
     </div>
   );
 }
-
-const AWAY_PROMPT = "Every morning, call get_updates on my Want MCP lists, re-check the prices you posted, and answer what is new.";
-
-/** Clients whose own docs confirm scheduled runs that can use MCP tools (checked 26 Nov 2026). */
-const SCHEDULERS: Array<[name: string, feature: string, href: string]> = [
-  ["ChatGPT", "Scheduled tasks", "https://learn.chatgpt.com/docs/automations"],
-  ["Claude", "Scheduled tasks", "https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork"],
-  ["Claude Code", "Scheduled tasks", "https://code.claude.com/docs/en/routines"],
-  ["Codex", "Scheduled tasks in the desktop app", "https://learn.chatgpt.com/docs/automations"],
-  ["Cursor", "Automations", "https://cursor.com/docs/cloud-agent/automations"],
-  ["Grok Bot", "Routines", "https://docs.x.ai/grok-bot/skills-routines-and-automations"],
-];
 
 function AwaySection() {
   return (

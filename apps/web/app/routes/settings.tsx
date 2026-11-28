@@ -498,6 +498,9 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           listId={list.id}
           format={formatOf(list)}
           {...loaderData.routines}
+          myAgents={listAgents
+            .filter((a) => a.owner_handle === user?.handle && !loaderData.routines!.list.some((r) => r.kind === "agent_check" && r.settings.agent_id === a.id))
+            .map((a) => ({ id: a.id, name: a.name }))}
           preset={{ kind: (searchParams.get("new") as RoutineKind | null) ?? null, item: searchParams.get("item") }}
           open={!!result?.intent?.startsWith("routine-") || !!searchParams.get("new")}
         />
@@ -871,6 +874,7 @@ function RoutinesSection({
   occasions,
   wants,
   restockWants,
+  myAgents,
   preset,
   open,
 }: {
@@ -885,6 +889,7 @@ function RoutinesSection({
   occasions: Occasion[];
   wants: Array<{ id: string; text: string }>;
   restockWants: Array<{ id: string; text: string }>;
+  myAgents: Array<{ id: string; name: string }>;
   preset: { kind: RoutineKind | null; item: string | null };
   open: boolean;
 }) {
@@ -908,6 +913,7 @@ function RoutinesSection({
         restockWants={restockWants}
         occasions={occasions}
         taken={taken}
+        myAgents={myAgents}
         preset={preset}
       />
     </Section>

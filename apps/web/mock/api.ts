@@ -1908,6 +1908,7 @@ const routineApi = registerRoutineRoutes({
     requireSession,
     requireWriter,
     canWrite,
+    agents: () => store.agents,
     actorRef: actorRef as never,
     getList,
     userById,

@@ -67,6 +67,7 @@ export async function routineAction(request: Request, form: FormData): Promise<R
         if (kind !== "exa_search") {
           // SPEC 26: the kind's own settings, the want for target_price, and the follow choice (required on the web).
           const listId = String(form.get("list_id") ?? "");
+          const tz = String(form.get("time_zone") ?? "");
           const follow = String(form.get("follow") ?? "");
           // Restock tells nobody anything (it brings the want back), so it has no follow choice (26.10).
           if (kind !== "restock" && follow !== "app" && follow !== "email") return data<RoutineResult>({ intent, error: "Choose where you'll see it." }, 400);
@@ -74,6 +75,16 @@ export async function routineAction(request: Request, form: FormData): Promise<R
           const atOnce = kind === "target_price" && follow === "email" && form.get("at_once") === "on";
           const body: Record<string, unknown> = { kind, settings: kindSettings(kind, form), ...(kind !== "restock" ? { follow: { email: follow === "email", ...(kind === "target_price" ? { at_once: atOnce } : {}) } } : {}) };
           if (kind === "target_price" || kind === "restock") body.item_id = String(form.get(kind === "restock" ? "restock_item_id" : "item_id") ?? "");
+          // agent_check runs on a schedule: the one the form shows (with JavaScript), else the server's default.
+          if (kind === "agent_check" && form.get("ac_schedule")) body.schedule = { ...scheduleFromForm(form), ...(tz ? { time_zone: tz } : {}) };
+          // SPEC 26.12: the weekly summary is the person's own, on no list (POST /me/routines), on its day at its hour.
+          if (kind === "weekly_summary") {
+            const day = String(form.get("ws_day") ?? "sun") as Weekday;
+            const hour = Number(form.get("ws_hour"));
+            body.schedule = { every: "week", days: [day], ...(Number.isInteger(hour) ? { time: `${String(hour).padStart(2, "0")}:00` } : {}) };
+            const made = await api<Routine>(request, "/me/routines", { method: "POST", body });
+            return done(`Made “${made.name}”. ${made.schedule_text}.`, made.id);
+          }
           const made = await api<Routine>(request, `/lists/${encodeURIComponent(listId)}/routines`, { method: "POST", body });
           return done(`Made “${made.name}”. ${made.schedule_text}.`, made.id);
         }
@@ -133,7 +144,7 @@ export async function myExaKey(request: Request, user: UserSelf | null): Promise
   return res?.data.find((k) => k.service === "exa") ?? null;
 }
 
-// ---------- the account page (SPEC 20.5, 20.8, 20.14 item 6): keys, how I hear, time zone. Web only.
+// ---------- the account page (SPEC 20.5, 20.8, 20.14 item 6): keys, notifications, time zone. Web only.
 
 export const ACCOUNT_ROUTINE_INTENTS = new Set(["key-save", "key-cap", "key-check", "key-remove", "email-prefs", "email-stop-all", "time-zone"]);
 
@@ -224,6 +235,15 @@ export function kindSettings(kind: string, form: FormData): Record<string, unkno
   if (kind === "restock") {
     const unit = form.get("after_unit") === "month" ? "month" : "week";
     return { after: { unit, count: Number(form.get("after_count") ?? 4) || 4 } };
+  }
+  if (kind === "agent_check") {
+    // Each check is on only with its tick; its days otherwise null (SPEC 26.9).
+    const days = (on: string, n: string) => (form.get(on) === "on" ? Number(form.get(n)) : null);
+    return { agent_id: String(form.get("agent_id") ?? ""), prices_older_than_days: days("check_prices", "prices_days"), stuck_after_days: days("check_stuck", "stuck_days") };
+  }
+  if (kind === "weekly_summary") {
+    const chosen = form.getAll("ws_lists").map(String).filter(Boolean);
+    return { lists: form.get("ws_which") === "some" ? chosen : "all" };
   }
   if (kind === "due_reminders") {
     const overdue = String(form.get("overdue") ?? "once");

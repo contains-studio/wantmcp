@@ -1260,7 +1260,7 @@ button.check-toggle::before { content: ""; position: absolute; top: 50%; left: 5
 .rt-confirm[open], .rt-fold[open] { flex-basis: 100%; }
 .rt-confirm-body, .rt-fold-body { padding-top: 0.5rem; }
 .rt-day { min-height: 2.75rem; padding: 0.25rem 0.8rem; }
-/* A checkbox with a line under its label (How I hear): the box sits with the first line, not the middle. */
+/* A checkbox with a line under its label (Notifications): the box sits with the first line, not the middle. */
 .check.rt-check { align-items: flex-start; }
 .check.rt-check input { margin-top: 0.1rem; }
 /* A suggestion from the person's own search routine (SPEC 20.14 item 11): picture left, title and where from, then

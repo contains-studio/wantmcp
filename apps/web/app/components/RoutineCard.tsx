@@ -12,6 +12,9 @@ import { Link, useFetcher } from "react-router";
 import { RemoveInTwoSteps } from "./AccessRow";
 import { RoutineHistory } from "./RoutineHistory";
 import { LiveRunLine } from "./LiveRunLine";
+import { CopyButton } from "./CopyButton";
+import { Time } from "./Time";
+import { AWAY_PROMPT, SCHEDULERS } from "~/lib/schedulers";
 import type { RoutineResult } from "~/lib/routines.server";
 import {
   MOVES_TO_YOUR_KEY,
@@ -28,7 +31,7 @@ import {
 import type { Routine, Schedule } from "~/lib/types";
 
 /** The kinds this page knows how to show in full; any other is shown with its name and status (SPEC 26.2). */
-export const KNOWN_KINDS = new Set(["exa_search", "target_price", "countdown", "due_reminders", "restock"]);
+export const KNOWN_KINDS = new Set(["exa_search", "target_price", "countdown", "due_reminders", "restock", "weekly_summary", "agent_check"]);
 
 /** Blocks a person can lift by resuming (20.10); key blocks lift when the key holder fixes their key. */
 const RESUMABLE = new Set(["key_holder_left", "all_rejected", "unattended"]);
@@ -78,6 +81,8 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
         )}
         {stopped && <p className="text-[0.88rem] font-medium text-warn">{PAUSED_FOR_EVERYONE}</p>}
       </div>
+
+      {r.kind === "agent_check" && r.agent_reach && <AgentReach reach={r.agent_reach} />}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {/* Run now: on the viewer's key (20.2), at most a few a day. */}
@@ -140,7 +145,7 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
         />
       </div>
 
-      {/* Kinds that tell people things (26.3, 26.4): who hears it, and this person's own choice. */}
+      {/* Kinds that tell people things (26.3, 26.4): who sees it, and this person's own choice. */}
       {known && !exa && r.kind !== "restock" && <Follow f={f} routine={r} />}
 
       {known && (
@@ -174,6 +179,47 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
 }
 
 type F = ReturnType<typeof useFetcher<RoutineResult>>;
+
+/**
+ * SPEC 26.20 item 5: whether the agent an "Ask my agent to check" leaves notes for can be told at once. Most agents
+ * can't be woken by anyone: they see the note the next time they look, so the card gives /connect's instruction for a
+ * scheduled run, and the apps that have one. The agent's name is its person's or app's words, shown as plain text.
+ */
+function AgentReach({ reach }: { reach: NonNullable<Routine["agent_reach"]> }) {
+  const name = reach.agent.name;
+  if (reach.listening) return <p className="text-[0.9rem] text-ink-2">{name} is listening: it is told the moment this is due.</p>;
+  return (
+    <div className="grid gap-2 rounded-[10px] bg-sunk p-3 text-[0.9rem]">
+      <p className="text-ink-2">
+        {name} sees this the next time it looks
+        {reach.last_seen_at ? (
+          <>
+            {" "}
+            (last seen <Time ts={reach.last_seen_at} />)
+          </>
+        ) : null}
+        . To make it look on a schedule, set up a scheduled run in its app with this instruction:
+      </p>
+      <pre className="codeblock text-[0.85rem]" tabIndex={0} role="region" aria-label="Instruction for a scheduled run">
+        {AWAY_PROMPT}
+      </pre>
+      <CopyButton text={AWAY_PROMPT} label="Copy" className="btn btn-sm w-fit" />
+      <details className="text-[0.88rem]">
+        <summary className="textlink-btn w-fit">Apps that can run on a schedule</summary>
+        <ul className="mt-2 grid gap-1">
+          {SCHEDULERS.map(([app, feature, href]) => (
+            <li key={app} className="flex flex-wrap justify-between gap-x-3">
+              <span>{app}</span>
+              <a href={href} className="link text-ink-2" rel="noopener noreferrer">
+                {feature}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </div>
+  );
+}
 
 /**
  * A button for a change that runs the routine on the viewer's key. When it already does, one press. When it would

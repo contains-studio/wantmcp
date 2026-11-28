@@ -4,8 +4,8 @@
  * own two or three settings. Only kinds the server says are launched for this person (routines.kinds_visible) and
  * that this page knows are offered; one already on the list (or on a want) isn't offered again.
  *
- * Kinds that tell people things need the maker to say how they'll hear before it can be made: "In the app" (the only
- * channel today) or "Email" (shown, coming soon). Nothing is preselected.
+ * Kinds that tell people things need the maker to say where they'll see it before it can be made: "In the app" or "In
+ * the app and by email". Nothing is preselected.
  *
  * One form: without JavaScript every kind's settings show, each under its name, and the server uses the chosen kind's.
  */
@@ -24,6 +24,7 @@ const KINDS: Array<{ kind: RoutineKind; name: string; line: string; lists?: List
   { kind: "countdown", name: "Countdown and order-by dates", line: "Counts down to a date, and tells you the last day to order each thing so it arrives." },
   { kind: "due_reminders", name: "Remind me before things are due", line: "Tells you a few days before a want's due date, and when it's overdue." },
   { kind: "restock", name: "Bring it back after I buy it", line: "When a want is bought, puts it back on the list after a while, for you to confirm.", lists: ["shopping", "tasks"] },
+  { kind: "agent_check", name: "Ask my agent to check", line: "On a schedule, leaves one of your agents a note to re-check old prices and wants that are stuck." },
 ];
 
 /** "about 2 cents a search", from the server's figure for this list's format. */
@@ -46,6 +47,7 @@ export function NewRoutine({
   restockWants,
   occasions,
   taken,
+  myAgents,
   preset,
 }: {
   listId: string;
@@ -62,6 +64,8 @@ export function NewRoutine({
   occasions: Occasion[];
   /** Kinds already on this list that allow only one per list. */
   taken: RoutineKind[];
+  /** The person's own agents that write this list and have no "Ask my agent to check" here yet (one per agent). */
+  myAgents: Array<{ id: string; name: string }>;
   /** ?new=<kind>&item=<id>: opened from a want ("Tell me when it's at my price"). */
   preset: { kind: RoutineKind | null; item: string | null };
 }) {
@@ -70,7 +74,13 @@ export function NewRoutine({
     (k) =>
       kindFlag(sw.kinds_visible, k.kind) &&
       (!k.lists || k.lists.includes(format)) &&
-      !(k.kind === "target_price" ? wants.length === 0 : k.kind === "restock" ? restockWants.length === 0 : taken.includes(k.kind)),
+      !(k.kind === "target_price"
+        ? wants.length === 0
+        : k.kind === "restock"
+          ? restockWants.length === 0
+          : k.kind === "agent_check"
+            ? myAgents.length === 0
+            : taken.includes(k.kind)),
   );
   const [kind, setKind] = useState<RoutineKind | null>(preset.kind && offered.some((k) => k.kind === preset.kind) ? preset.kind : offered.length === 1 ? offered[0].kind : null);
   const [live, setLive] = useState(false);
@@ -195,6 +205,37 @@ export function NewRoutine({
             <p className="hint">It comes back as a want waiting for you: add it back, or not this time.</p>
           </KindPart>
     ),
+    agent_check: (
+      <KindPart>
+        <label className="field">
+          <span className="label">Which agent</span>
+          <select name="agent_id" className="input" defaultValue={myAgents.length === 1 ? myAgents[0].id : ""} required={kind === "agent_check"}>
+            <option value="" disabled>
+              Choose one of your agents
+            </option>
+            {myAgents.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset className="grid gap-2">
+          <legend className="label mb-1">What to check</legend>
+          <DaysCheck on="check_prices" days="prices_days" label="Prices last checked more than" initial={3} max={30} />
+          <DaysCheck on="check_stuck" days="stuck_days" label="Wants with nothing new for" initial={7} max={60} />
+        </fieldset>
+        {live ? (
+          <>
+            <input type="hidden" name="ac_schedule" value="1" />
+            <ScheduleFields initial={{ every: "week", interval: 1, days: ["fri"], time: "09:00" }} idPrefix={`new-ac-${listId}`} />
+          </>
+        ) : (
+          <p className="hint">Every Friday at 9:00. You can change it on its card.</p>
+        )}
+        <p className="hint">It never buys or changes anything. It leaves your agent a note, and its card shows whether your agent is listening.</p>
+      </KindPart>
+    ),
   };
   const needsKey = kind === "exa_search" && !keyOk;
   const paused = !sw.running || (kind !== null && !kindFlag(sw.kinds, kind));
@@ -241,11 +282,6 @@ export function NewRoutine({
               </Fragment>
             ))}
         </fieldset>
-
-
-
-
-
 
         {/* Where the maker sees it (26.4): required, nothing preselected. Restock tells nobody anything (it brings the
             want back), so it has no such choice. */}
@@ -295,6 +331,22 @@ export function NewRoutine({
         )}
       </f.Form>
     </details>
+  );
+}
+
+/** "Prices last checked more than [3] days ago": a tick, and its number of days. */
+function DaysCheck({ on, days, label, initial, max }: { on: string; days: string; label: string; initial: number; max: number }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <label className="check">
+        <input type="checkbox" name={on} defaultChecked />
+        <span>{label}</span>
+      </label>
+      <label className="flex items-center gap-2 pl-7 sm:pl-0">
+        <input type="number" name={days} className="input w-20" min={1} max={max} defaultValue={initial} inputMode="numeric" aria-label={`${label}, days`} />
+        <span>days</span>
+      </label>
+    </div>
   );
 }
 

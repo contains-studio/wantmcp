@@ -29,7 +29,10 @@ import type {
 
 export interface RoutineRow {
   id: string;
-  list_id: string;
+  /** null for a person's own routine (weekly_summary), which belongs to no list. */
+  list_id: string | null;
+  /** Its person, for a routine on no list. */
+  user_id?: string | null;
   kind: RoutineKind;
   /** target_price and restock: the one want (SPEC 26.2 item 4). */
   item_id?: string | null;
@@ -99,7 +102,7 @@ export function routinesFor(email: string): UserSelf["routines"] | undefined {
   const running = !email.includes("paused");
   // SPEC 26.14: kinds_visible says which kinds are launched (server c6278c7: these four for preview accounts).
   const all = ["exa_search", "due_reminders", "countdown", "target_price", "restock", "weekly_summary", "agent_check"] as const;
-  const built = new Set<string>(["exa_search", "target_price", "countdown", "due_reminders", "restock"]);
+  const built = new Set<string>(["exa_search", "target_price", "countdown", "due_reminders", "restock", "weekly_summary", "agent_check"]);
   const kinds = Object.fromEntries(all.map((k) => [k, running])) as Record<(typeof all)[number], boolean>;
   const kinds_visible = Object.fromEntries(all.map((k) => [k, built.has(k)])) as Record<(typeof all)[number], boolean>;
   return { visible: true, running, kinds, kinds_visible, about: { exa_search: { cost_per_search_usd: { shopping: 0.017, tasks: 0.012, research: 0.012 }, key_check_usd: 0.007 } } };
@@ -217,6 +220,8 @@ export interface RoutineCtx {
     requireSession: (c: any) => { kind: "user"; user: any };
     requireWriter: (c: any, listId: string) => any;
     canWrite: (c: any, listId: string) => boolean;
+    /** Every agent (id, name, kind, owner_id, list_ids, last_used_at). */
+    agents: () => any[];
     actorRef: (c: any) => ActorRef;
     getList: (id: string) => any;
     userById: (id: string) => any;
@@ -288,6 +293,12 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       uses_my_key: mine,
       run_now_left_today: left,
     };
+    // agent_check (26.20 item 5): what we can observe about reaching its agent. Mock rule: an account key (an agent that
+    // runs on its own) listens; any other sees the note the next time it looks.
+    if (r.kind === "agent_check") {
+      const a = h.agents().find((x: any) => x.id === (r.settings as any)?.agent_id);
+      if (a) routine.agent_reach = { agent: { id: a.id, name: a.name }, listening: a.kind === "account", last_seen_at: a.last_used_at ?? null };
+    }
     // The person's own agent's words, to that person on the web only.
     if (c?.kind === "user" && latest?.person_asked && latest.by_user_id === c.user.id) routine.reported_words = latest.person_asked;
     return routine;
@@ -317,6 +328,11 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     if (r.kind === "countdown") return `${told} · Next message: ${(st.milestones ?? [14])[0]} days before`;
     if (r.kind === "due_reminders") return `${told} · Next check: tomorrow at about 7:00`;
     if (r.kind === "restock") return "Not bought yet";
+    if (r.kind === "agent_check") {
+      const a = h.agents().find((x: any) => x.id === st.agent_id);
+      return last?.finished_at ? `Waiting for ${a?.name ?? "your agent"} to look (asked ${new Date(last.finished_at).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" })})` : "Nothing asked yet";
+    }
+    if (r.kind === "weekly_summary") return last?.finished_at ? `Last summary: ${last.note ?? "a quiet week"}` : "No summary yet";
     return told;
   }
   const strip = ({ routine_id: _r, ...run }: RunRow): RoutineRun => run;
@@ -327,6 +343,11 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   };
   const writerOf = (c: any, r: RoutineRow) => {
     visibleFor(c);
+    // A person's own routine (no list): theirs alone.
+    if (!r.list_id) {
+      if (c.user?.id !== r.user_id) throw h.notFound("Routine not found");
+      return c;
+    }
     h.requireWriter(c, r.list_id);
     return c;
   };
@@ -348,7 +369,8 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     r.changed = { by, at };
     rs().changes.push({ id: h.newId("rch"), routine_id: r.id, at, by, by_user_id: c.user.id, change, before, person_asked: personAsked });
     const holder = r.key_user_id ? h.userById(r.key_user_id) : null;
-    h.emit("routine.changed", r.list_id, by, `${h.webUrl}/app/lists/${r.list_id}/settings#routines`, {
+    // A routine on no list has no list to tell.
+    if (r.list_id) h.emit("routine.changed", r.list_id, by, `${h.webUrl}/app/lists/${r.list_id}/settings#routines`, {
       routine: { id: r.id, list_id: r.list_id, kind: r.kind, name: r.name, name_by: r.name_by, schedule: r.schedule, paused: !!r.paused, blocked_reason: r.blocked?.reason ?? null, key_holder_handle: holder?.handle ?? null },
       change,
       key_holder_changed: keyChanged,
@@ -400,7 +422,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const run: RunRow = {
       id: h.newId("run"), routine_id: r.id, trigger: "run_now", run_by: h.actorRef(c), state: "ok", attempts: 1,
       queued_at: at, started_at: at, finished_at: at, wants_searched: 0, suggestions_posted: 0, searches_used: 0,
-      note: r.kind === "target_price" ? "nothing at your price yet" : "nothing to tell today", wants_total: null, current: null, counts: { notices: 0 },
+      note: r.kind === "target_price" ? "nothing at your price yet" : r.kind === "agent_check" ? "1 price to re-check" : r.kind === "weekly_summary" ? "a quiet week" : "nothing to tell today", wants_total: null, current: null, counts: { notices: 0 },
     };
     rs().runs.push(run);
     return run;
@@ -427,7 +449,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const r = rs().routines.find((x) => x.id === run.routine_id);
     const holder = r?.key_user_id ? h.userById(r.key_user_id) : null;
     const key = keyOf(r?.key_user_id ?? null);
-    const list = r ? h.getList(r.list_id) : null;
+    const list = r?.list_id ? h.getList(r.list_id) : null;
     const shopping = (list?.format ?? "shopping") === "shopping";
     const at = h.nowIso();
     let posted = 0;
@@ -493,6 +515,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     let item_id: string | null = null;
     let name = NAMES[kind] ?? kind;
     let start: RoutineStart = "date";
+    let schedule: Schedule | null = null;
     if (kind === "restock") {
       item_id = String(body.item_id ?? "");
       const item = h.items().find((i: any) => i.id === item_id && i.list_id === listId);
@@ -516,6 +539,29 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       st.unverified = st.unverified !== false;
       name = `Tell me when “${item.text}” is at my price`;
       start = "event";
+    } else if (kind === "agent_check") {
+      // SPEC 26.9: one of the person's own agents that writes this list; one routine per agent per list.
+      const a = h.agents().find((x: any) => x.id === st.agent_id && x.owner_id === c.user.id && x.list_ids.includes(listId));
+      if (!a) throw h.invalid("settings.agent_id must be one of your own agents that writes this list");
+      const dup = rs().routines.find((r) => r.kind === kind && r.list_id === listId && !r.deleted_at && (r.settings as any)?.agent_id === a.id);
+      if (dup) throw h.conflict(`This list already has a routine asking this agent to check: "${dup.name}". Change that one instead.`, { routine: { id: dup.id, name: dup.name } });
+      const days = (k: string, max: number, dflt: number) => {
+        if (st[k] === null) return null;
+        const n = Number(st[k] ?? dflt);
+        if (!Number.isInteger(n) || n < 1 || n > max) throw h.invalid(`${k}: 1 to ${max} days, or null`);
+        return n;
+      };
+      st.prices_older_than_days = days("prices_older_than_days", 30, 3);
+      st.stuck_after_days = days("stuck_after_days", 60, 7);
+      if (st.prices_older_than_days === null && st.stuck_after_days === null) throw h.invalid("Choose what to check: old prices, stuck wants, or both");
+      const user = h.userById(c.user.id);
+      if (!user.time_zone && typeof body.schedule?.time_zone === "string") user.time_zone = body.schedule.time_zone;
+      const sched = normaliseSchedule(body.schedule ?? { every: "week", days: ["fri"], time: "09:00" }, user.time_zone ?? "UTC");
+      if (typeof sched === "string") throw h.invalid(sched);
+      schedule = sched;
+      start = "schedule";
+      const every = sched.every === "week" && sched.days?.length === 1 ? DAY_NAME[sched.days[0]] : sched.every === "day" ? "day" : "week";
+      name = `Ask ${a.name} to check every ${every}`.slice(0, 60);
     } else {
       const dup = rs().routines.find((r) => r.kind === kind && r.list_id === listId && !r.deleted_at);
       if (dup) throw h.conflict(`This list already has one: "${dup.name}"`, { routine: { id: dup.id, name: dup.name } });
@@ -538,11 +584,11 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       start,
       name,
       name_by: "server",
-      schedule: null,
+      schedule,
       paused: null,
       blocked: null,
       key_user_id: null,
-      next_run_at: null,
+      next_run_at: schedule ? nextRun(schedule) : null,
       created: { by, at },
       changed: { by, at },
       run_now_day: "",
@@ -589,7 +635,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   route("PUT", "/routines/{id}/follow", ({ caller, params, body }) => {
     const r = live(params[0]);
     const c = writerOf(caller, r);
-    if (c.kind !== "user") throw h.forbidden("Only a person, on the web, chooses how they hear");
+    if (c.kind !== "user") throw h.forbidden("Only a person, on the web, chooses where they see it");
     const f: RoutineFollow = { routine_id: r.id, email: !!body.email, at_once: !!body.at_once };
     const m = rs().follows.get(r.id) ?? new Map();
     m.set(c.user.id, f);
@@ -618,7 +664,8 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const sw = routinesFor(userOf(c).email);
     if (!(sw?.kinds_visible as Record<string, boolean> | undefined)?.[kind]) throw h.invalid(`kind must be one of ${Object.entries(sw?.kinds_visible ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ")}`);
     // SPEC 26.4: a person on the web follows what they make, and says how (restock tells nobody anything).
-    if (c.kind === "user" && kind !== "exa_search" && kind !== "restock" && (typeof body.follow !== "object" || body.follow === null)) throw h.invalid("Choose how you'll hear about it");
+    if (c.kind === "user" && kind !== "exa_search" && kind !== "restock" && (typeof body.follow !== "object" || body.follow === null)) throw h.invalid("Choose where you'll see it");
+    if (kind === "weekly_summary") throw h.invalid("A weekly summary belongs to no list: make it on the Routines tab");
     if (kind !== "exa_search") return h.created(out(makeKind(c, params[0], kind, body), c));
     const existing = rs().routines.find((r) => r.list_id === params[0] && r.kind === "exa_search" && !r.deleted_at && r.blocked?.reason !== "by_admin");
     if (existing) throw h.conflict(`This list already has a search routine: "${existing.name}"`, { routine: { id: existing.id, name: existing.name } });
@@ -780,7 +827,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     if (Date.parse(ch.at) < Date.now() - 7 * 86400_000) throw h.invalid("Changes older than 7 days can't be undone");
     const idx = rs().routines.findIndex((x) => x.id === params[0]);
     if (idx < 0) throw h.notFound("Routine not found");
-    h.requireWriter(c, rs().routines[idx].list_id);
+    writerOf(c, rs().routines[idx]);
     const current = rs().routines[idx];
     let r: RoutineRow;
     if (!ch.before) {
@@ -805,11 +852,44 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   route("GET", "/me/routines", ({ caller }) => {
     visibleFor(caller);
     const c = h.requireSession(caller);
+    // On lists they write (with the list), and their own (list null), theirs first.
+    const own = rs().routines.filter((r) => !r.deleted_at && !r.list_id && r.user_id === c.user.id);
+    const onLists = rs().routines.filter((r) => !r.deleted_at && r.list_id && h.canWrite(c, r.list_id));
     return {
-      data: rs()
-        .routines.filter((r) => !r.deleted_at && h.canWrite(c, r.list_id))
-        .map((r) => ({ ...out(r, c), list: { id: r.list_id, title: h.getList(r.list_id).title } })),
+      data: [...own.map((r) => ({ ...out(r, c), list: null })), ...onLists.map((r) => ({ ...out(r, c), list: { id: r.list_id!, title: h.getList(r.list_id!).title } }))],
     };
+  });
+
+  /** SPEC 26.12: a person's own routine, on no list (weekly_summary); a person on the web only (26.12 as settled). */
+  route("POST", "/me/routines", ({ caller, body }) => {
+    visibleFor(caller);
+    if (caller?.kind !== "user") throw h.invalid("A weekly summary is your person's own routine, on no list: they make it on the web (Routines), and choose there how they hear.");
+    const c = h.requireSession(caller);
+    const sw = routinesFor(userOf(c).email);
+    if (body.kind !== "weekly_summary" || !sw?.kinds_visible.weekly_summary) throw h.invalid("kind must be weekly_summary");
+    if (typeof body.follow !== "object" || body.follow === null) throw h.invalid("Choose where you'll see it");
+    const lists = body.settings?.lists ?? "all";
+    if (lists !== "all") {
+      if (!Array.isArray(lists) || lists.length === 0) throw h.invalid('settings.lists: "all", or the lists to cover');
+      for (const id of lists) if (!h.lists().some((l: any) => l.id === id) || !h.canWrite(c, id)) throw h.notFound("List not found");
+    }
+    const dup = rs().routines.find((r) => !r.deleted_at && !r.list_id && r.user_id === c.user.id && r.kind === "weekly_summary");
+    if (dup) throw h.conflict(`You already have this routine: "${dup.name}". Change that one instead.`, { routine_id: dup.id, name: dup.name });
+    const user = h.userById(c.user.id);
+    const hour = prefs(c.user.id).email_hour;
+    const sched = normaliseSchedule({ every: "week", days: ["sun"], time: `${String(hour).padStart(2, "0")}:00`, ...(body.schedule ?? {}) }, user.time_zone ?? "UTC");
+    if (typeof sched === "string") throw h.invalid(sched);
+    const at = h.nowIso();
+    const by = h.actorRef(c);
+    const r: RoutineRow = {
+      id: h.newId("rtn"), list_id: null, user_id: c.user.id, kind: "weekly_summary", item_id: null, settings: { lists }, start: "schedule",
+      name: "A weekly summary of my lists", name_by: "server", schedule: sched, paused: null, blocked: null, key_user_id: null,
+      next_run_at: nextRun(sched), created: { by, at }, changed: { by, at }, run_now_day: "", run_now_count: 0, deleted_at: null, stopped_items: [],
+    };
+    rs().routines.push(r);
+    rs().follows.set(r.id, new Map([[c.user.id, { routine_id: r.id, email: !!body.follow.email, at_once: false }]]));
+    record(c, r, "created", null, null, false);
+    return h.created(out(r, c));
   });
 
   route("GET", "/me/routine-changes", ({ caller }) => {
@@ -821,7 +901,8 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       .sort((a, b) => b.at.localeCompare(a.at))
       .flatMap((x) => {
         const r = rs().routines.find((y) => y.id === x.routine_id);
-        if (!r || !h.canWrite(c, r.list_id)) return [];
+        // Agents never touch a person's own routine (26.12), so every change here is on a list.
+        if (!r || !r.list_id || !h.canWrite(c, r.list_id)) return [];
         const newest = rs().changes.filter((y) => y.routine_id === r.id).sort((a, b) => b.at.localeCompare(a.at))[0];
         return [
           {
@@ -848,8 +929,8 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     monthly_cap: k.monthly_cap,
     used_this_month: k.used,
     routines: rs()
-      .routines.filter((r) => r.key_user_id === userId && !r.deleted_at)
-      .map((r) => ({ id: r.id, name: r.name, list: { id: r.list_id, title: h.getList(r.list_id).title } })),
+      .routines.filter((r) => r.key_user_id === userId && !r.deleted_at && r.list_id)
+      .map((r) => ({ id: r.id, name: r.name, list: { id: r.list_id!, title: h.getList(r.list_id!).title } })),
   });
   const keysCaller = (caller: any) => {
     visibleFor(caller);
@@ -906,7 +987,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     return h.noContent;
   });
 
-  // ---- how each person hears (20.8), web only
+  // ---- each person's email choices (20.8, 26.4), web only
   const prefs = (id: string) => ({ routine_key: false, routine_unattended: true, routine_digest: true, routine_at_once: true, email_hour: 8, ...(rs().emailPrefs.get(id) ?? {}) });
   /** SPEC 26.4: everything the person gets, and every routine they follow. */
   const prefsOut = (id: string): EmailPrefs => {
@@ -962,20 +1043,20 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   };
   route("GET", "/routine-asks/{token}", ({ params }) => {
     const { a, r } = ask(params[0]);
-    return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: !!a.used, answered: a.used };
+    return { routine: { name: r.name, list_title: r.list_id ? h.getList(r.list_id).title : "" }, done: !!a.used, answered: a.used };
   });
   route("POST", "/routine-asks/{token}", ({ params, body }) => {
     const { a, r } = ask(params[0]);
     if (body.action !== "keep" && body.action !== "pause") throw h.invalid("action must be keep or pause");
     // Used for this action already: nothing more to do. The other choice stays open (the page offers it afterwards).
-    if (a.used === body.action) return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: true, answered: a.used };
+    if (a.used === body.action) return { routine: { name: r.name, list_title: r.list_id ? h.getList(r.list_id).title : "" }, done: true, answered: a.used };
     if (body.action === "keep") r.paused = null;
     a.used = body.action;
     if (body.action === "pause") {
       const holder = r.key_user_id ? h.userById(r.key_user_id) : null;
       r.paused = { by: { kind: "user", handle: holder?.handle ?? "" }, at: h.nowIso() };
     }
-    return { routine: { name: r.name, list_title: h.getList(r.list_id).title }, done: true, answered: a.used };
+    return { routine: { name: r.name, list_title: r.list_id ? h.getList(r.list_id).title : "" }, done: true, answered: a.used };
   });
 
   return { out, runOnce };

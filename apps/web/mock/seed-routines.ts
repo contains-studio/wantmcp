@@ -6,7 +6,7 @@
  * - "Ana's birthday" (shopping): @sam's routine, on @sam's key, stopped because @sam's Exa account is out of credit;
  * - one want on Kitchen the routine stopped looking for.
  */
-import type { ActorRef } from "../app/lib/types.ts";
+import type { ActorRef, RoutineKind } from "../app/lib/types.ts";
 import type { RoutineStore } from "./routines.ts";
 import { nextRun } from "./routines.ts";
 import type { Store } from "./store.ts";
@@ -25,6 +25,8 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     { id: "usr_rt_sam", email: "routines-sam@example.com", handle: "sam", updates_opt_in: false, created_at: at(30 * DAY) },
   );
   s.agents.push({ id: "agt_rt_claude", name: "Claude", kind: "oauth", key: null, list_ids: ["lst_rt_kitchen", "lst_rt_garden"], owner_id: "usr_rt", created_at: at(10 * DAY), last_used_at: at(HOUR) });
+  // An agent that runs on its own (mock rule: an account key listens for events), for "Ask my agent to check" (26.20 item 5).
+  s.agents.push({ id: "agt_rt_hermes", name: "Hermes", kind: "account", key: "ak_mock_rt_hermes", list_ids: ["lst_rt_garden"], owner_id: "usr_rt", created_at: at(3 * DAY), last_used_at: at(HOUR) });
   s.lists.push(
     { id: "lst_rt_kitchen", title: "Kitchen", description: "", owner_id: "usr_rt", allow_outside_suggestions: false, format: "shopping", visibility: "private", created_at: at(20 * DAY), updated_at: at(2 * HOUR) },
     { id: "lst_rt_garden", title: "Garden jobs", description: "", owner_id: "usr_rt", allow_outside_suggestions: false, format: "tasks", visibility: "private", created_at: at(20 * DAY), updated_at: at(3 * HOUR) },
@@ -159,7 +161,7 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     {
       id: "ntc_countdown",
       user_id: "usr_rt",
-      routine: { id: "rtn_weekly", name: "Countdown to Christmas", name_by: "server", kind: "countdown" },
+      routine: { id: "rtn_ana_countdown", name: "Countdown to Christmas", name_by: "server", kind: "countdown" },
       list: { id: "lst_rt_ana", title: "Ana's birthday" },
       item: null,
       what: "countdown",
@@ -173,13 +175,14 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
 
   // A kind this web build doesn't know yet (26.2): its card shows its name and status, Pause and Delete only.
   rs.routines.push({
-    id: "rtn_weekly",
+    id: "rtn_future",
     list_id: "lst_rt_garden",
-    kind: "weekly_summary",
+    // Not a kind of today's contract: stands for one a later server adds.
+    kind: "call_url" as RoutineKind,
     item_id: null,
     settings: {},
     start: "schedule",
-    name: "A weekly summary",
+    name: "Call my URL when something changes",
     name_by: "server",
     schedule: { every: "week", interval: 1, days: ["sun"], time: "18:00", time_zone: "America/New_York", anchor: at(2 * DAY).slice(0, 10) },
     paused: null,

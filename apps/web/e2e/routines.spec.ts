@@ -34,7 +34,7 @@ test.describe.serial("on: the Routines tab and cards", () => {
     await signIn(page, RT);
     await page.getByRole("navigation", { name: "View" }).getByRole("link", { name: "Routines" }).click();
     await expect(page).toHaveURL(/\/app\/routines$/);
-    await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Kitchen", "Garden jobs", "Ana's birthday"]);
+    await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Just for you", "Kitchen", "Garden jobs", "Ana's birthday"]);
     const kitchen = page.locator("#routine-rtn_kitchen");
     await expect(kitchen).toContainText("Every Friday at 9:00 · your Exa key");
     // The server's sentence, one line per part (split on " · ").
@@ -159,7 +159,7 @@ test("paused for everyone: the page says so", async ({ page }) => {
   await signIn(page, freshEmail("routines-paused"));
   await page.goto("/app/routines");
   await expect(page.getByText("Routines are paused for everyone for now.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "No routines yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No routines on your lists yet" })).toBeVisible();
 });
 
 test.describe("without JavaScript", () => {
