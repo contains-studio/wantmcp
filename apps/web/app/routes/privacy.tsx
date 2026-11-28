@@ -145,7 +145,7 @@ export default function Privacy({ loaderData }: Route.ComponentProps) {
             <strong>Your URLs.</strong>
           </p>
           <ul>
-            <li>If you save a URL, we keep it and its signing secret encrypted.</li>
+            <li>If you save a URL, we keep it and its signing secret encrypted. Only its site name (such as example.com) stays readable, so your account page can show it to you.</li>
             <li>A routine sends it only which things changed on the list: ids and times, never their text.</li>
             <li>We keep a record of each call for 30 days: when it was and whether the URL answered, not the address or what was sent.</li>
             <li>Removing a URL erases it and its secret.</li>
