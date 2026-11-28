@@ -111,3 +111,11 @@ export function keyCheckCost(sw: Pick<RoutinesSwitch, "about"> | null): string |
   const usd = sw?.about?.exa_search?.key_check_usd;
   return typeof usd === "number" ? `$${usd < 0.01 ? usd.toFixed(3) : usd.toFixed(2)}` : null;
 }
+
+/** A shopping want's products, without its guides (SPEC 20.14 item 12): guides never count as products or prices. */
+export function productsOf<T extends { kind?: string }>(entries: T[]): T[] {
+  return entries.filter((e) => e.kind !== "guide");
+}
+export function guidesOf<T extends { kind?: string }>(entries: T[]): T[] {
+  return entries.filter((e) => e.kind === "guide");
+}

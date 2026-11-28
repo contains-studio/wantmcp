@@ -1,3 +1,4 @@
+import { productsOf } from "~/lib/routines";
 import { useContext, useEffect, useRef, useState } from "react";
 import { PreviewContext } from "~/components/preview";
 import { DueChip } from "~/components/ItemWork";
@@ -185,8 +186,8 @@ export function ItemIndex({
                   {/* Table cells on wide screens; on phones one line under the title, without the empty cells,
                       the bare count (the line above says it) or the status (the group says it). */}
                   <span className="ix-cells">
-                    <span className={`ix-cell ix-who ${shopping ? "is-count" : ""} ${(shopping ? item.entries.length : who) ? "" : "is-empty"}`}>
-                      {shopping ? item.entries.length || "–" : who ? <Avatars actors={[who]} named /> : "–"}
+                    <span className={`ix-cell ix-who ${shopping ? "is-count" : ""} ${(shopping ? productsOf(item.entries).length : who) ? "" : "is-empty"}`}>
+                      {shopping ? productsOf(item.entries).length || "–" : who ? <Avatars actors={[who]} named /> : "–"}
                     </span>
                     <span className={`ix-cell ix-due ${item.due_at ? "" : "is-empty"}`}>{item.due_at ? <DueChip due={item.due_at} done={st === "done"} /> : "–"}</span>
                     <span className="ix-cell ix-status">
@@ -210,11 +211,13 @@ export function ItemIndex({
 }
 
 function countLabel(item: ItemWithEntries, fi: FormatInfo) {
-  const n = item.entries.length;
+  // A shopping want's guides are not products: not counted, never "from $…" (SPEC 20.14 item 12).
+  const own = fi.format === "shopping" ? productsOf(item.entries) : item.entries;
+  const n = own.length;
   if (!n) return `No ${fi.entries} yet`;
   // Collapsed shopping rows: one "from $149.99" rather than a count.
   if (fi.format === "shopping") {
-    const priced = item.entries.map((e) => e.current_price).filter((p) => p != null);
+    const priced = own.map((e) => e.current_price).filter((p) => p != null);
     const cheapest = priced.sort((a, b) => Number(a.price) - Number(b.price))[0];
     if (cheapest) return `from ${formatMoney(cheapest.price, cheapest.currency)}`;
   }
@@ -267,7 +270,7 @@ function useEscapeCloses() {
 
 /** The photos a want can lead with, in order: its best product's (the cheapest with a price), then the newest first. */
 function galleryPick(item: ItemWithEntries) {
-  const listed = item.entries;
+  const listed = productsOf(item.entries);
   const priced = listed.filter((e) => e.current_price).sort((a, b) => Number(a.current_price!.price) - Number(b.current_price!.price));
   const best = priced[0] ?? null;
   const newest = [...listed].filter((e) => e.image_url).sort((a, b) => b.created_at.localeCompare(a.created_at));
