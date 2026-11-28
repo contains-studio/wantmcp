@@ -25,7 +25,7 @@ import { lowestEntryId, lowestLabel } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useHydrated, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, RoutineSummary, UserSelf } from "~/lib/types";
-import { agentWroteName, guidesOf, productsOf } from "~/lib/routines";
+import { agentWroteName, guidesOf, productsOf, routinesOn } from "~/lib/routines";
 import { RoutineSuggestion } from "~/components/RoutineSuggestion";
 import { GuideNotes } from "~/components/GuideNotes";
 import type { Layout } from "~/themes/types";
@@ -476,6 +476,8 @@ function ItemSection({
   const H3 = headingTag(base, 2);
   const now = useNow();
   // Guides are not products: never in the prices or the product rows, shown under them as guides (SPEC 20.14 item 12).
+  // Target price is offered on a want once that kind is launched for this person (routines.kinds_visible).
+  const targetPriceOn = !!routinesOn(useRootData().user)?.kinds_visible?.target_price;
   const entries = sortByPrice(productsOf(item.entries));
   const guides = guidesOf(item.entries);
   const textEntries = productsOf(item.entries);
@@ -577,6 +579,12 @@ function ItemSection({
                   <EditItem item={item} onDone={() => closeMenuOf(document.getElementById(headingId)?.closest("section")?.querySelector(":popover-open"))} label={`Edit ${fi.item}`} />
                 </MenuSub>
               )}
+              {/* SPEC 26.8: the most natural place to set a target price is the want itself. */}
+              {isWriter && shopping && !p && targetPriceOn && (
+                <Link to={`/app/lists/${encodeURIComponent(item.list_id)}/settings?new=target_price&item=${encodeURIComponent(item.id)}#routines`} className="menu-item">
+                  Tell me when it's at my price
+                </Link>
+              )}
               <ReportMenuItem type="item" id={item.id} author={item.created_by} />
               {canEditItem && (
                 <MenuRemove intent="delete-item" fields={{ item_id: item.id }} label="Remove" confirmText={`Remove “${item.text.slice(0, 80)}” and everything on it?`} />
@@ -589,7 +597,10 @@ function ItemSection({
           {/* Who added it, only when that tells the owner something: an agent or another person. Once a person rewrites an
               agent's want (text_by "person"), the words are theirs and the line goes. An outsider's item (SPEC 16.2, a
               feedback task) always says so, and while it is held, that readers can't see it yet and how to let them. */}
-          {outsider ? (
+          {isWriter && item.proposed_by ? (
+            // SPEC 26.10: a restock routine brought it back; held until a writer adds it back.
+            <RestockProposal itemId={item.id} itemText={item.text} proposal={item.proposed_by} />
+          ) : outsider ? (
             <OutsiderLine held={held && isWriter} itemId={item.id} itemText={item.text} headingId={headingId} />
           ) : !(item.created_by.kind === "user" && item.created_by.handle === ownerHandle) && !(item.text_by === "person" && item.created_by.kind === "agent") && (
             <span className="inline-flex items-center gap-1.5">
@@ -1556,3 +1567,30 @@ function RoutineStopped({ itemId, stop }: { itemId: string; stop: NonNullable<It
   );
 }
 
+
+/** "Add it back" (the existing accept) or "Not this time" (the held want deleted); two of those stop the routine. */
+function RestockProposal({ itemId, itemText, proposal }: { itemId: string; itemText: string; proposal: NonNullable<Item["proposed_by"]> }) {
+  const f = useFetcher<{ ok?: boolean; error?: string }>();
+  const pending = f.formData?.get("intent");
+  return (
+    <div className="grid w-full gap-1.5">
+      {/* The server's note ("Bought on … · brought back by your routine"): whole parts, never a line starting with a dot. */}
+      <MetaLine as="p" className="text-ink-2" items={proposal.note.split(" · ")} />
+      <f.Form method="post" className="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="item_id" value={itemId} />
+        <button name="intent" value="accept-item" className="btn btn-sm" disabled={f.state !== "idle"}>
+          {pending === "accept-item" ? "Adding…" : "Add it back"}
+          <span className="sr-only"> “{itemText.slice(0, 60)}”</span>
+        </button>
+        <button name="intent" value="delete-item" className="btn-quiet" disabled={f.state !== "idle"}>
+          {pending === "delete-item" ? "…" : "Not this time"}
+        </button>
+      </f.Form>
+      {f.data?.error && (
+        <p className="form-error" role="alert">
+          {f.data.error}
+        </p>
+      )}
+    </div>
+  );
+}

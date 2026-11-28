@@ -19,6 +19,8 @@ export const ROUTINE_INTENTS = new Set([
   "routine-pending",
   "routine-undo",
   "routine-item-resume",
+  "routine-follow",
+  "routine-unfollow",
 ]);
 
 export type RoutineResult = { ok?: boolean; intent: string; routineId?: string; message?: string; error?: string; runId?: string };
@@ -44,7 +46,25 @@ export async function routineAction(request: Request, form: FormData): Promise<R
   const done = (message: string | undefined, routineId = id) => data<RoutineResult>({ ok: true, intent, routineId, message });
   try {
     switch (intent) {
+      case "routine-follow":
+        await api(request, `/routines/${r}/follow`, { method: "PUT", body: { email: false } });
+        return done("You'll see these in the app, under For you.");
+      case "routine-unfollow":
+        await api(request, `/routines/${r}/follow`, { method: "DELETE" });
+        return done("You won't see these any more.");
       case "routine-create": {
+        const kind = String(form.get("kind") ?? "exa_search");
+        if (kind !== "exa_search") {
+          // SPEC 26: the kind's own settings, the want for target_price, and the follow choice (required on the web).
+          const listId = String(form.get("list_id") ?? "");
+          const follow = String(form.get("follow") ?? "");
+          // Restock tells nobody anything (it brings the want back), so it has no follow choice (26.10).
+          if (kind !== "restock" && follow !== "app") return data<RoutineResult>({ intent, error: "Choose how you'll hear about it." }, 400);
+          const body: Record<string, unknown> = { kind, settings: kindSettings(kind, form), ...(kind !== "restock" ? { follow: { email: false } } : {}) };
+          if (kind === "target_price" || kind === "restock") body.item_id = String(form.get(kind === "restock" ? "restock_item_id" : "item_id") ?? "");
+          const made = await api<Routine>(request, `/lists/${encodeURIComponent(listId)}/routines`, { method: "POST", body });
+          return done(`Made “${made.name}”. ${made.schedule_text}.`, made.id);
+        }
         const listId = String(form.get("list_id") ?? "");
         const schedule = form.get("every") ? scheduleFromForm(form) : undefined;
         // The first routine carries the browser's zone when the person has none saved (20.14 item 6).
@@ -71,9 +91,10 @@ export async function routineAction(request: Request, form: FormData): Promise<R
         await api(request, `/routines/${r}`, { method: "DELETE" });
         return done("Deleted.");
       case "routine-run": {
-        // The card follows the run live from here (SPEC 20.14 item 10); no sentence of its own.
+        // A search: the card follows the run live from here (SPEC 20.14 item 10). Other kinds answer at once; their card's
+        // status line, revalidated, says what it found.
         const started = await api<{ queued: boolean; run_id: string }>(request, `/routines/${r}/run`, { method: "POST" });
-        return data<RoutineResult>({ ok: true, intent, routineId: id, runId: started.run_id });
+        return data<RoutineResult>({ ok: true, intent, routineId: id, runId: started.run_id, message: form.get("answers_at_once") ? "Checked." : undefined });
       }
       case "routine-pending": {
         const res = await api<{ rejected: number }>(request, `/routines/${r}/pending`, { method: "DELETE" });
@@ -154,4 +175,34 @@ export async function accountRoutineAction(request: Request, form: FormData) {
 
 export async function myEmailPrefs(request: Request): Promise<EmailPrefs | null> {
   return apiOptional<EmailPrefs>(request, "/me/email-prefs").catch(() => null);
+}
+
+/** A kind's own settings from its form (SPEC 26.6-26.8); the server checks them and answers in its own words. */
+export function kindSettings(kind: string, form: FormData): Record<string, unknown> {
+  const nums = (k: string) => form.getAll(k).map(Number).filter((n) => Number.isFinite(n));
+  if (kind === "target_price") {
+    const currency = String(form.get("currency") ?? "").trim();
+    return { target: String(form.get("target") ?? "").trim(), ...(currency ? { currency } : {}), unverified: form.get("unverified") === "on" };
+  }
+  if (kind === "countdown") {
+    const occasion = String(form.get("occasion") ?? "");
+    const date = String(form.get("date") ?? "");
+    const date_end = String(form.get("date_end") ?? "");
+    return {
+      ...(occasion ? { occasion } : {}),
+      ...(date ? { date } : {}),
+      ...(date_end ? { date_end } : {}),
+      milestones: nums("milestones"),
+      order_by: { on: form.get("order_by") === "on", delivery_days: Number(form.get("delivery_days") ?? 5) || 5 },
+    };
+  }
+  if (kind === "restock") {
+    const unit = form.get("after_unit") === "month" ? "month" : "week";
+    return { after: { unit, count: Number(form.get("after_count") ?? 4) || 4 } };
+  }
+  if (kind === "due_reminders") {
+    const overdue = String(form.get("overdue") ?? "once");
+    return { lead_days: nums("lead_days"), overdue: ["off", "once", "daily"].includes(overdue) ? overdue : "once" };
+  }
+  return {};
 }

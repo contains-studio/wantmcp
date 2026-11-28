@@ -84,6 +84,8 @@ export interface ItemRow {
   text_by?: "person" | "agent" | "outsider";
   /** SPEC 16.2: an outsider's item (a feedback task) no writer has accepted yet. */
   pending_review?: boolean;
+  /** SPEC 26.10: brought back by a restock routine, held until a writer adds it back. */
+  proposed_by?: { routine_id: string; routine_name: string; name_by: "person" | "agent" | "server"; note: string } | null;
 }
 
 export interface EntryRow {

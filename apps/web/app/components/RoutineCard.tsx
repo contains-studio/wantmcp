@@ -27,6 +27,9 @@ import {
 } from "~/lib/routines";
 import type { Routine, Schedule } from "~/lib/types";
 
+/** The kinds this page knows how to show in full; any other is shown with its name and status (SPEC 26.2). */
+export const KNOWN_KINDS = new Set(["exa_search", "target_price", "countdown", "due_reminders", "restock"]);
+
 /** Blocks a person can lift by resuming (20.10); key blocks lift when the key holder fixes their key. */
 const RESUMABLE = new Set(["key_holder_left", "all_rejected", "unattended"]);
 const KEY_BLOCKS = new Set(["key_missing", "key_refused", "out_of_credit"]);
@@ -34,8 +37,11 @@ const KEY_BLOCKS = new Set(["key_missing", "key_refused", "out_of_credit"]);
 export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { routine: Routine; sw: RoutinesSwitch; keyOk: boolean; inSettings?: boolean }) {
   const f = useFetcher<RoutineResult>({ key: `routine-${r.id}` });
   const result = f.data?.routineId === r.id ? f.data : undefined;
-  // The run to follow: the one just started here, or one already queued or running.
-  const liveId = (result?.intent === "routine-run" ? result.runId : undefined) ?? r.live_run?.id ?? null;
+  // SPEC 26.2: kinds this page knows get their full card; any other shows its name and status, Pause and Delete only.
+  const known = KNOWN_KINDS.has(r.kind);
+  const exa = r.kind === "exa_search";
+  // The run to follow (a search works through wants; other kinds answer at once): just started, or already running.
+  const liveId = exa ? ((result?.intent === "routine-run" ? result.runId : undefined) ?? r.live_run?.id ?? null) : null;
   const stopped = pausedForEveryone(sw, r);
   const by = namedBy(r);
   const key = whoseKey(r);
@@ -75,7 +81,7 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {/* Run now: on the viewer's key (20.2), at most a few a day. */}
-        {runs && !stopped && !r.live_run && (
+        {known && exa && runs && !stopped && !r.live_run && (
           <KeyedSubmit
             f={f}
             routine={r}
@@ -86,6 +92,19 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
             disabled={r.run_now_left_today <= 0}
           />
         )}
+        {/* Kinds without a key: one press. "Check now" for those that start from a date or an event (26.2 item 7). */}
+        {known && !exa && runs && !stopped && (
+          <f.Form method="post" className="flex items-center gap-2">
+            <input type="hidden" name="intent" value="routine-run" />
+            <input type="hidden" name="routine_id" value={r.id} />
+            <input type="hidden" name="answers_at_once" value="1" />
+            <button className="btn btn-sm btn-ghost" disabled={f.state !== "idle" || r.run_now_left_today <= 0}>
+              {r.start === "schedule" ? "Run now" : "Check now"}
+              <span className="sr-only"> {r.name}</span>
+            </button>
+            <span className="text-[0.82rem] text-ink-3">{r.run_now_left_today > 0 ? `${r.run_now_left_today} left today` : "none left today"}</span>
+          </f.Form>
+        )}
         {runs && (
           <f.Form method="post">
             <input type="hidden" name="intent" value="routine-pause" />
@@ -95,14 +114,25 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
             </button>
           </f.Form>
         )}
-        {canResume && <KeyedSubmit f={f} routine={r} keyOk={keyOk} intent="routine-resume" label="Resume" primary />}
+        {canResume &&
+          (exa ? (
+            <KeyedSubmit f={f} routine={r} keyOk={keyOk} intent="routine-resume" label="Resume" primary />
+          ) : (
+            <f.Form method="post">
+              <input type="hidden" name="intent" value="routine-resume" />
+              <input type="hidden" name="routine_id" value={r.id} />
+              <button className="btn btn-sm btn-want" disabled={f.state !== "idle"}>
+                Resume<span className="sr-only"> {r.name}</span>
+              </button>
+            </f.Form>
+          ))}
         {fixMyKey && (
           <Link to="/app/account#keys" className="btn btn-sm btn-want">
             Change key
           </Link>
         )}
         <RemoveInTwoSteps
-          question={`Delete “${r.name}”? Its suggestions stay for you to decide.`}
+          question={exa ? `Delete “${r.name}”? Its suggestions stay for you to decide.` : `Delete “${r.name}”?`}
           label="Delete"
           confirm="Yes, delete"
           who={r.name}
@@ -110,11 +140,15 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
         />
       </div>
 
+      {/* Kinds that tell people things (26.3, 26.4): who hears it, and this person's own choice. */}
+      {known && !exa && r.kind !== "restock" && <Follow f={f} routine={r} />}
+
+      {known && (
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         <RoutineHistory routineId={r.id} name={r.name} latest={r.last_run?.id ?? null} />
         <Rename f={f} routine={r} />
-        <ChangeSchedule f={f} routine={r} keyOk={keyOk} />
-        {inSettings && (
+        {r.schedule && <ChangeSchedule f={f} routine={r} keyOk={keyOk} schedule={r.schedule} />}
+        {inSettings && exa && (
           <f.Form method="post">
             <input type="hidden" name="intent" value="routine-pending" />
             <input type="hidden" name="routine_id" value={r.id} />
@@ -122,6 +156,7 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
           </f.Form>
         )}
       </div>
+      )}
 
       {result?.error ? (
         <p className="form-error" role="alert">
@@ -215,7 +250,7 @@ function Rename({ f, routine: r }: { f: F; routine: Routine }) {
   );
 }
 
-function ChangeSchedule({ f, routine: r, keyOk }: { f: F; routine: Routine; keyOk: boolean }) {
+function ChangeSchedule({ f, routine: r, keyOk, schedule }: { f: F; routine: Routine; keyOk: boolean; schedule: Schedule }) {
   return (
     <details className="rt-fold">
       <summary className="textlink-btn text-[0.88rem]">
@@ -224,10 +259,10 @@ function ChangeSchedule({ f, routine: r, keyOk }: { f: F; routine: Routine; keyO
       <f.Form method="post" className="rt-fold-body grid gap-3">
         <input type="hidden" name="intent" value="routine-schedule" />
         <input type="hidden" name="routine_id" value={r.id} />
-        <ScheduleFields initial={r.schedule} idPrefix={r.id} moving={!r.uses_my_key ? (more) => (more ? (keyOk ? MOVES_TO_YOUR_KEY : "Running it more often would use your own Exa key, and you haven't saved one.") : null) : undefined} />
+        <ScheduleFields initial={schedule} idPrefix={r.id} moving={!r.uses_my_key ? (more) => (more ? (keyOk ? MOVES_TO_YOUR_KEY : "Running it more often would use your own Exa key, and you haven't saved one.") : null) : undefined} />
         <div className="flex items-center gap-3">
           <button className="btn btn-sm">Save schedule</button>
-          <span className="text-[0.82rem] text-ink-3">In {zoneCity(r.schedule.time_zone)}</span>
+          <span className="text-[0.82rem] text-ink-3">In {zoneCity(schedule.time_zone)}</span>
         </div>
       </f.Form>
     </details>
@@ -313,6 +348,40 @@ export function ScheduleFields({ initial, idPrefix, moving }: { initial?: Partia
         </label>
       )}
       {note && <p className="text-[0.88rem] text-ink-2">{note}</p>}
+    </div>
+  );
+}
+
+/**
+ * Who hears it (SPEC 26.3, 26.4): following is the app ("For you"); email comes later and is shown as coming. A routine
+ * nobody follows tells nobody, and says so.
+ */
+function Follow({ f, routine: r }: { f: F; routine: Routine }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.88rem]">
+      {r.my_follow ? (
+        <>
+          <span className="text-ink-2">You see these in the app</span>
+          <f.Form method="post">
+            <input type="hidden" name="intent" value="routine-unfollow" />
+            <input type="hidden" name="routine_id" value={r.id} />
+            <button className="textlink-btn text-[0.88rem]">
+              Stop<span className="sr-only"> following {r.name}</span>
+            </button>
+          </f.Form>
+        </>
+      ) : (
+        <>
+          <span className="text-ink-3">{r.followers === 0 ? "Nobody gets these yet" : `${r.followers} ${r.followers === 1 ? "person gets" : "people get"} these`}</span>
+          <f.Form method="post">
+            <input type="hidden" name="intent" value="routine-follow" />
+            <input type="hidden" name="routine_id" value={r.id} />
+            <button className="btn btn-sm btn-ghost">
+              Follow in the app<span className="sr-only"> {r.name}</span>
+            </button>
+          </f.Form>
+        </>
+      )}
     </div>
   );
 }

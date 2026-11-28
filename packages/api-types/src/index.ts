@@ -41,13 +41,9 @@ export interface UserSelf {
    * SPEC 20.14: whether routines exist yet (`visible`, the launch switch), whether they run (`running`, the operator's
    * pause) and each kind's switch. Absent or `visible: false`: show nothing about routines anywhere.
    */
-  routines?: {
-    visible: boolean;
-    running: boolean;
-    kinds: { exa_search: boolean };
-    /** What each kind costs on the person's own key (server d8d8575); print from here, never a number in the web. */
-    about?: { exa_search?: { cost_per_search_usd: Record<"shopping" | "tasks" | "research", number>; key_check_usd: number } };
-  };
+  /** SPEC 20.14, 26.14: whether routines exist yet, run, and which kinds are launched. Absent: show nothing. */
+  routines?: RoutineSwitches;
+
   /** SPEC 12.2. The person's standing preferences, 0..600 plain text. Only ever returned to its person (and as context to their own agents). */
   bio: string;
   /** ISO 3166-1 alpha-2, e.g. "GB". */
@@ -128,6 +124,8 @@ export interface Item {
   list_id: string;
   /** SPEC 20.14: routines that stopped looking for this want (writers only; omitted otherwise). */
   routine_stops?: RoutineStop[];
+  /** SPEC 26.10: a held want a restock routine brought back (writers only): "Add it back" or "Not this time". */
+  proposed_by?: { routine_id: string; routine_name: string; name_by: RoutineNameBy; note: string } | null;
   url: string; // https://wantmcp.com/l/{list_id}#itm_...
   text: string;
   /** Plain text, 0..2000, written by list writers. */
@@ -766,14 +764,25 @@ export interface TrafficReport {
 
 /** Who wrote a piece of text a person can set: the person, or their agent. */
 export type NoteAuthor = "person" | "agent";
-/** SPEC 20 (server e0eb1df): who wrote a routine's name; "server" for the kind's default name, whoever made it. */
-export type RoutineNameBy = "person" | "agent" | "server";
+
 
 // ---------- SPEC 20: routines ----------
 
-export type RoutineKind = "exa_search";
-/** Later steps add "date" | "event". */
-export type RoutineStart = "schedule";
+/**
+ * SPEC 20 and 26. A client that doesn't know a kind shows its name and status line and offers only Pause, Resume and
+ * Delete (26.2): new kinds arrive without breaking old clients.
+ */
+export type RoutineKind =
+  | "exa_search"
+  | "due_reminders"
+  | "countdown"
+  | "target_price"
+  | "restock"
+  | "weekly_summary"
+  | "agent_check"
+  | "chase_claims";
+/** schedule: on a clock; date: from a date (a want's due date, the routine's date); event: when something happens. */
+export type RoutineStart = "schedule" | "date" | "event";
 export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
 /** SPEC 20.4. `anchor` (a local date, YYYY-MM-DD) is set by the server when the schedule is saved. */
@@ -805,13 +814,24 @@ export interface ScheduleInput {
   time_zone?: string;
 }
 
-export type BlockReason = "key_missing" | "key_refused" | "out_of_credit" | "key_holder_left" | "all_rejected" | "unattended" | "by_admin";
+/**
+ * Who wrote a routine's name (SPEC 20.10): its person, an agent, or the server (the default name, "Search the web for
+ * these wants", is our own words: no quotes, no "named by" chip).
+ */
+export type RoutineNameBy = NoteAuthor | "server";
+
+/**
+ * SPEC 26.2 item 5 adds: `finished` (its job is over: its want bought, done or deleted, or its date passed; lifts
+ * itself when that is undone), `agent_gone` (the agent an agent_check leaves notes for no longer writes the list),
+ * `agent_not_looking` (that agent hasn't looked for 3 notes; lifts the next time it looks).
+ */
+export type BlockReason = "key_missing" | "key_refused" | "out_of_credit" | "key_holder_left" | "all_rejected" | "unattended" | "by_admin" | "finished" | "agent_gone" | "agent_not_looking";
 
 export type RoutineRunState = "queued" | "running" | "ok" | "partial" | "skipped" | "blocked" | "failed";
 
 export interface RoutineRun {
   id: string;
-  trigger: "schedule" | "run_now";
+  trigger: "schedule" | "run_now" | "event";
   /** Who pressed Run now; null for a scheduled run. */
   run_by: ActorRef | null;
   state: RoutineRunState;
@@ -819,38 +839,47 @@ export interface RoutineRun {
   queued_at: Timestamp;
   started_at: Timestamp | null;
   finished_at: Timestamp | null;
+  /** Updated as each want finishes, not only at the end (SPEC 20.14 item 10). */
   wants_searched: number;
   suggestions_posted: number;
   searches_used: number;
+  /** How many wants this run set out to search: known once it starts, null while queued (SPEC 20.14 item 10). */
+  wants_total: number | null;
+  /** The want being searched now, or null (queued, between wants, finished). Its text is the item's, one line. */
+  current: { item_id: string; text: string } | null;
+  /**
+   * SPEC 26.2 item 8: what a run of another kind did, by name ({ notices: 3 }, { wants_checked: 5 }); {} for
+   * exa_search, whose own fields above stay (and are 0 for other kinds).
+   */
+  counts: Record<string, number>;
   /** One line in our words. */
   note: string | null;
-  /** SPEC 20.14 item 10: how many wants this run set out to search; null while queued. Absent from older API builds. */
-  wants_total?: number | null;
-  /** The want being searched now, or null. Absent from older API builds. */
-  current?: { item_id: string; text: string } | null;
 }
 
 /** A routine as one reader sees it (SPEC 20.10). */
 export interface Routine {
   id: string;
   list_id: string;
-  /** Reserved (one want); always null in this step. */
-  item_id: null;
+  /** The one want a target_price or restock routine is about (SPEC 26.2 item 4); null for the others. */
+  item_id: string | null;
   kind: RoutineKind;
-  /** The kind's own choices; {} for exa_search. */
+  /** The kind's own choices, checked per kind (SPEC 26.6-26.12; target_price: TargetPriceSettings); {} for exa_search. */
   settings: Record<string, unknown>;
   start: RoutineStart;
   /** 1-60, one line. */
   name: string;
   /** Who wrote the name: agents' names are agents' text (text_by=agent in agent-facing text). */
   name_by: RoutineNameBy;
-  schedule: Schedule;
-  /** The schedule in plain words, made by the server ("Every Friday at 9:00"). */
+  /** null for `date` and `event` routines, which don't run on a clock (SPEC 26.2 item 3). */
+  schedule: Schedule | null;
+  /** What starts it, in plain words, made by the server ("Every Friday at 9:00", "Whenever a price is posted"). */
   schedule_text: string;
   paused: { by: ActorRef; at: Timestamp } | null;
   blocked: { reason: BlockReason; at: Timestamp } | null;
   next_run_at: Timestamp | null;
   last_run: RoutineRun | null;
+  /** The run that is queued or running now, or null (SPEC 20.14 item 10): the web asks for it until it ends. */
+  live_run: RoutineRun | null;
   /** "Last ran … · Next: …", or the reason it can't run. Same words on the web and for agents. */
   status_text: string;
   /** The person whose key it runs on; null for kinds that spend nothing. */
@@ -865,8 +894,88 @@ export interface Routine {
    * filled for an agent.
    */
   reported_words?: string | null;
-  /** SPEC 20.14 item 10: the run that is queued or running now, or null. Absent from older API builds. */
-  live_run?: RoutineRun | null;
+  /** SPEC 26.3 and 26.4: how many people follow it (nobody: it tells nobody), and this reader's own follow, or null. */
+  followers: number;
+  my_follow: RoutineFollow | null;
+}
+
+/** SPEC 26.8: what a target_price routine watches for. */
+export interface TargetPriceSettings {
+  /** A decimal amount in the currency's major unit, e.g. "380.00". */
+  target: string;
+  /** ISO 4217, e.g. "GBP". Prices in another currency are never counted (we don't convert). */
+  currency: string;
+  /** Count prices not checked on the store's page (labelled so in the notice). Default true. */
+  unverified: boolean;
+}
+
+/** SPEC 26.6: what a due_reminders routine tells, and when. */
+export interface DueRemindersSettings {
+  /** Days before the due date: any of 0 (on the day), 1, 3, 7, 14. Default [1, 7]. */
+  lead_days: number[];
+  /** Overdue wants: not at all, once, or every day for up to 7 days. Default "once". */
+  overdue: "off" | "once" | "daily";
+}
+
+/** SPEC 26.7: a countdown to a day (or a window of days), with order-by dates on shopping lists. */
+export interface CountdownSettings {
+  /** YYYY-MM-DD, the day (or the window's first day). Filled from `occasion` (or the list's theme) when left out. */
+  date: string;
+  date_end?: string;
+  /** Days before: any of 28, 14, 7, 3, 1. Default [14, 7, 1]. */
+  milestones: number[];
+  /** Shopping lists: tell the last day to order each want. Default { on: true, delivery_days: 5 } (1-30). */
+  order_by: { on: boolean; delivery_days: number };
+  /** An occasions slug ("christmas"), naming the day in its messages. */
+  occasion?: string;
+}
+
+/** SPEC 26.10: when a restock routine brings a bought want back (always asking first, in this step). */
+export interface RestockSettings {
+  /** 1-52 weeks or 1-12 months after it was bought. Default { unit: "week", count: 4 }. */
+  after: { unit: "week" | "month"; count: number };
+}
+
+/** SPEC 26.7: a day the admin keeps for countdowns to start from (GET/PUT /v1/admin/occasions). */
+export interface Occasion {
+  slug: string;
+  year: number;
+  /** YYYY-MM-DD */
+  date: string;
+  date_end: string | null;
+  label: string;
+}
+
+/**
+ * SPEC 26.4: one person's own choice for one routine. Following is the app (notices in "For you"); `email` and
+ * `at_once` (target_price only) are stored now and used once the email rules are built: until then nothing of step 2
+ * is ever emailed.
+ */
+export interface RoutineFollow {
+  routine_id: string;
+  email: boolean;
+  at_once: boolean;
+}
+
+export type RoutineNoticeWhat = "due_soon" | "overdue" | "countdown" | "order_by" | "at_price" | "summary" | "agent_looked" | "agent_not_looking" | "chase";
+
+/**
+ * SPEC 26.3: one thing a routine tells one person, in the app ("For you"). The text is ours, with only the list's own
+ * want texts and its writers' facts in it; never a stranger's words.
+ */
+export interface RoutineNotice {
+  id: string;
+  routine: { id: string; name: string; name_by: RoutineNameBy; kind: RoutineKind };
+  list: { id: string; title: string } | null;
+  item: { id: string; text: string } | null;
+  what: RoutineNoticeWhat;
+  text: string;
+  /** Where to act (a page on the web). */
+  link: string;
+  /** The local date it is about (YYYY-MM-DD), or null. */
+  due_on: string | null;
+  created_at: Timestamp;
+  seen: boolean;
 }
 
 /** ListSummary.routines entries (writers only). */
@@ -881,7 +990,50 @@ export interface RoutineSummary {
   key_holder: { handle: string } | null;
 }
 
-export type RoutineChange = "created" | "renamed" | "rescheduled" | "paused" | "resumed" | "deleted" | "restored" | "run_now";
+/** "settings" (SPEC 26.15): a change to the kind's own choices, with an Undo like any other. */
+export type RoutineChangeKind = "created" | "renamed" | "rescheduled" | "paused" | "resumed" | "deleted" | "restored" | "run_now" | "settings";
+
+/**
+ * SPEC 20.14 item 2: one change a person's agent made, for "For you" (GET /me/routine-changes, the person's own web
+ * session only). Deleted routines are included (Undo brings them back).
+ */
+export interface RoutineChange {
+  id: string;
+  routine: { id: string; name: string; name_by: RoutineNameBy; deleted: boolean; list: { id: string; title: string } };
+  change: RoutineChangeKind;
+  by: ActorRef;
+  at: Timestamp;
+  /** What the agent reported the person said; only ever in that person's own web session. */
+  reported_words: string | null;
+  /** Within 7 days, and the routine can still be restored to how it was. */
+  can_undo: boolean;
+}
+
+/**
+ * SPEC 20.14 item 1. visible: the launch switch (routine.visible); running: visible and routine.all.enabled; a kind:
+ * running and its own switch. Absent or visible false: show nothing about routines.
+ */
+export interface RoutineSwitches {
+  visible: boolean;
+  running: boolean;
+  /** Per kind: running for this reader (visible to them, and not paused by us). */
+  kinds: Record<RoutineKind, boolean>;
+  /**
+   * SPEC 26.14: per kind, whether it is launched for this reader (`routine.<kind>.visible`; preview accounts see every
+   * kind). A kind not visible is not offered under "New routine" and its routines don't run.
+   */
+  kinds_visible: Record<RoutineKind, boolean>;
+  /** What each kind is, for the web's wording (SPEC 20.14 item 12): the numbers are written once, on the server. */
+  about: { exa_search: RoutineKindAbout };
+}
+
+/** SPEC 20.14 item 12: roughly what a routine kind costs on the person's own key, in US dollars. */
+export interface RoutineKindAbout {
+  /** One search of one want, by the list's format (shopping pages are classified, which costs more). */
+  cost_per_search_usd: Record<ListFormat, number>;
+  /** Checking a key: one bare search. */
+  key_check_usd: number;
+}
 
 /** The routine.changed event's fixed fields (SPEC 20.10). */
 export interface RoutineChangedPayload {
@@ -891,12 +1043,13 @@ export interface RoutineChangedPayload {
     kind: RoutineKind;
     name: string;
     name_by: RoutineNameBy;
-    schedule: Schedule;
+    /** null for date and event routines (SPEC 26.2 item 9). */
+    schedule: Schedule | null;
     paused: boolean;
     blocked_reason: BlockReason | null;
     key_holder_handle: string | null;
   };
-  change: RoutineChange;
+  change: RoutineChangeKind;
   key_holder_changed: boolean;
 }
 
@@ -904,7 +1057,17 @@ export interface RoutineChangedPayload {
 export interface RoutineInput {
   kind: RoutineKind;
   name?: string;
+  /** Kinds that start by a schedule only. */
   schedule?: ScheduleInput;
+  /** target_price and restock: the want (SPEC 26.2 item 4). */
+  item_id?: string;
+  /** The kind's own choices, checked per kind; unknown keys are refused, naming the allowed ones. */
+  settings?: Record<string, unknown>;
+  /**
+   * SPEC 26.4: a person on the web follows what they make, and must say how (`email` and `at_once` stored, not yet
+   * sent). Agents never send it: their person follows in the app only.
+   */
+  follow?: { email: boolean; at_once?: boolean };
   person_asked?: string;
 }
 
@@ -912,6 +1075,8 @@ export interface RoutineInput {
 export interface RoutinePatch {
   name?: string;
   schedule?: ScheduleInput;
+  /** The kind's own choices (SPEC 26.15), checked per kind; a "settings" change with an Undo. */
+  settings?: Record<string, unknown>;
   /** true: the person's pause. */
   paused?: boolean;
   /** true: clear the person's pause and any block a person may clear, and become the key holder (20.2). */
@@ -931,10 +1096,31 @@ export interface RoutineWrite {
 /** SPEC 20.7: what a routine-ask link shows; no stranger's text. */
 export interface RoutineAskView {
   routine: { name: string; list_title: string };
-  /** True once the link was used (it is single-use). */
+  /** True once the link was used. */
   done: boolean;
-  /** Which choice was made, if any; each works once and the other stays available. */
+  /**
+   * Which choice was made last, or null before any (SPEC 20.14 item 7): afterwards the page offers the other choice,
+   * which works once. Answering the same choice again changes nothing.
+   */
   answered: "keep" | "pause" | null;
+}
+
+/**
+ * For get_updates' needs_you.target_price_reached (an agent of a person who follows a target_price routine, on a list
+ * that agent writes): the price that person was waiting for is reached. Only the list's own facts: the want's text,
+ * the price and where (a writer's or their agent's retailer name, else the page's host). Stays until the routine's
+ * next check finds the price above the target, the want is bought, or the routine is deleted.
+ */
+export interface TargetPriceReached {
+  list_id: string;
+  item: { id: string; text: string };
+  entry_id: string;
+  price: Decimal;
+  currency: string;
+  retailer: string;
+  /** Checked on the store's page. */
+  verified: boolean;
+  reached_at: Timestamp;
 }
 
 /** For get_updates' needs_you.routines_blocked: routines on the agent's person's key that their person can fix. */
@@ -960,7 +1146,7 @@ export interface ServiceKey {
 /** PUT /me/service-keys/exa. */
 export interface ServiceKeyInput {
   key: string;
-  /** Default true: one search for a fixed harmless query (about $0.007 of the person's credit). */
+  /** Default true: one bare search for a fixed harmless query (RoutineKindAbout.key_check_usd of the person's credit). */
   check?: boolean;
 }
 
@@ -974,17 +1160,8 @@ export interface EmailPrefsPatch {
   kinds: Partial<EmailPrefs["kinds"]>;
 }
 
-/** SPEC 20.14: GET /me/routine-changes, one change an agent of this person made (last 7 days, newest first). */
-export interface RoutineChangeRecord {
-  id: string;
-  routine: { id: string; name: string; name_by: RoutineNameBy; deleted: boolean; list: { id: string; title: string } };
-  change: RoutineChange;
-  by: ActorRef;
-  at: Timestamp;
-  /** What the agent reported its person said; only ever to that person, on the web. */
-  reported_words: string | null;
-  can_undo: boolean;
-}
+/** The web's name for the change record (the server calls it RoutineChange). */
+export type RoutineChangeRecord = RoutineChange;
 
 /** SPEC 20.14: a want a routine stopped looking for (Item.routine_stops, writers only). */
 export interface RoutineStop {

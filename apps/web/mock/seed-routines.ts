@@ -108,6 +108,61 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     deleted_at: null,
     stopped_items: [],
   });
+  // SPEC 26.10: a restock routine on the coffee beans, and the want it brought back, held for a writer.
+  s.items.push({
+    id: "itm_rt_beans",
+    list_id: "lst_rt_kitchen",
+    text: "Whole coffee beans, 1kg",
+    created_by: me,
+    created_at: at(HOUR),
+    purchase: null,
+    pending_review: true,
+    proposed_by: { routine_id: "rtn_beans", routine_name: "Bring back “Whole coffee beans, 1kg”", name_by: "server", note: "Bought on 1 Nov at Trader Joe's for $14.99 · brought back by your routine" },
+  });
+  rs.routines.push({
+    id: "rtn_beans",
+    list_id: "lst_rt_kitchen",
+    kind: "restock",
+    item_id: "itm_rt_beans",
+    settings: { after: { unit: "week", count: 4 } },
+    start: "event",
+    name: "Bring back “Whole coffee beans, 1kg”",
+    name_by: "server",
+    schedule: null,
+    paused: null,
+    blocked: null,
+    key_user_id: null,
+    next_run_at: null,
+    created: { by: me, at: at(30 * DAY) },
+    changed: { by: me, at: at(30 * DAY) },
+    run_now_day: "",
+    run_now_count: 0,
+    deleted_at: null,
+    stopped_items: [],
+  });
+
+  // A kind this web build doesn't know yet (26.2): its card shows its name and status, Pause and Delete only.
+  rs.routines.push({
+    id: "rtn_weekly",
+    list_id: "lst_rt_garden",
+    kind: "weekly_summary",
+    item_id: null,
+    settings: {},
+    start: "schedule",
+    name: "A weekly summary",
+    name_by: "server",
+    schedule: { every: "week", interval: 1, days: ["sun"], time: "18:00", time_zone: "America/New_York", anchor: at(2 * DAY).slice(0, 10) },
+    paused: null,
+    blocked: null,
+    key_user_id: null,
+    next_run_at: null,
+    created: { by: me, at: at(2 * DAY) },
+    changed: { by: me, at: at(2 * DAY) },
+    run_now_day: "",
+    run_now_count: 0,
+    deleted_at: null,
+    stopped_items: [],
+  });
   rs.runs.push({
     id: "run_kitchen_1",
     routine_id: "rtn_kitchen",
@@ -122,6 +177,9 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     suggestions_posted: 2,
     searches_used: 3,
     note: null,
+    wants_total: 3,
+    current: null,
+    counts: {},
   });
   const routineAuthor: ActorRef = { kind: "outside", name: "Search the web for these wants", routine: { id: "rtn_kitchen", kind: "exa_search", key_holder: me.handle, name_by: "server" } };
   // The real mix the owner saw (27 Nov 2026): some with a picture, most without, a long title, a guide, a product.

@@ -142,6 +142,7 @@ test("New routine: the Exa notice before confirming; without a key, the way to a
   const id = await createList(page, { format: "Shopping", title: "Hall cupboard" });
   await page.goto(`/app/lists/${id}/settings#routines`);
   await page.locator("#routines").locator("xpath=ancestor::details[1]").locator("summary", { hasText: "New routine" }).click();
+  await page.getByRole("radio", { name: /Search the web for these wants/ }).check();
   await expect(page.getByText("The text of every open want on this list, including other people's, goes to your Exa account each time it runs.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Make this routine" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Add your Exa key" })).toHaveAttribute("href", "/app/account#keys");

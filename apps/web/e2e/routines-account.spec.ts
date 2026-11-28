@@ -48,6 +48,7 @@ test("out of credit: its routines stop, For you says so with Change key, and Che
   const id = await createList(page, { format: "Shopping", title: "Camping" });
   await page.goto(`/app/lists/${id}/settings#routines`);
   await page.locator("summary", { hasText: "New routine" }).click();
+  await page.getByRole("radio", { name: /Search the web for these wants/ }).check();
   await page.getByRole("button", { name: "Make this routine" }).click();
   await expect(page.locator("article").filter({ hasText: "your Exa key" })).toBeVisible();
   const keys = await saveKey(page, "empty-credit-key-0000");
