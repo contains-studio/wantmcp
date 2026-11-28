@@ -501,8 +501,9 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
           myAgents={listAgents
             .filter((a) => a.owner_handle === user?.handle && !loaderData.routines!.list.some((r) => r.kind === "agent_check" && r.settings.agent_id === a.id))
             .map((a) => ({ id: a.id, name: a.name }))}
+          listPrivate={list.visibility === "private"}
           preset={{ kind: (searchParams.get("new") as RoutineKind | null) ?? null, item: searchParams.get("item") }}
-          open={!!result?.intent?.startsWith("routine-") || !!searchParams.get("new")}
+          open={!!result?.intent?.startsWith("routine-") || !!result?.intent?.startsWith("recipient-") || !!searchParams.get("new")}
         />
       )}
 
@@ -875,6 +876,7 @@ function RoutinesSection({
   wants,
   restockWants,
   myAgents,
+  listPrivate,
   preset,
   open,
 }: {
@@ -890,6 +892,7 @@ function RoutinesSection({
   wants: Array<{ id: string; text: string }>;
   restockWants: Array<{ id: string; text: string }>;
   myAgents: Array<{ id: string; name: string }>;
+  listPrivate: boolean;
   preset: { kind: RoutineKind | null; item: string | null };
   open: boolean;
 }) {
@@ -899,7 +902,7 @@ function RoutinesSection({
   return (
     <Section id="routines" title="Routines" desc={desc} open={open}>
       {routines.map((r) => (
-        <RoutineCard key={r.id} routine={r} sw={sw} keyOk={keyOk} inSettings />
+        <RoutineCard key={r.id} routine={r} sw={sw} keyOk={keyOk} inSettings listPrivate={listPrivate} />
       ))}
       <NewRoutine
         listId={listId}

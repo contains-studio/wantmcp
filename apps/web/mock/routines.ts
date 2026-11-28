@@ -18,6 +18,8 @@ import type {
   RoutineStart,
   RoutineChangeKind,
   RoutineChangeRecord,
+  RecipientAskView,
+  RoutineEmailStopView,
   RoutineRun,
   Schedule,
   ScheduleInput,
@@ -91,9 +93,43 @@ export interface RoutineStore {
   follows: Map<string, Map<string, RoutineFollow>>;
   /** SPEC 26.3: what routines tell each person (user_id on each). */
   notices: Array<RoutineNotice & { user_id: string }>;
+  /** SPEC 26.20 item 4: other addresses a follower asked to get a routine's email. */
+  recipients: RecipientRow[];
+  /** Addresses that said No or Stop these: nobody may ask them for 90 days (lower-cased address, in the mock). */
+  doNotAsk: Set<string>;
+  /** SPEC 26.4: "Stop emailing me about this routine" tokens -> the routine and the person. */
+  emailStops: Map<string, { routine_id: string; user_id: string }>;
 }
 
-export const emptyRoutineStore = (): RoutineStore => ({ routines: [], runs: [], changes: [], keys: [], emailPrefs: new Map(), views: new Map(), asks: new Map(), follows: new Map(), notices: [] });
+export interface RecipientRow {
+  id: string;
+  routine_id: string;
+  added_by: string;
+  /** Kept only while the ask or the yes is live. */
+  email: string | null;
+  /** What the do-not-ask list would hold (the address, lower-cased, in the mock). */
+  key: string;
+  show_list: boolean;
+  state: "asked" | "yes" | "no" | "stopped" | "removed";
+  since: Timestamp;
+  asked_on: string;
+  token: string;
+}
+
+export const emptyRoutineStore = (): RoutineStore => ({
+  routines: [],
+  runs: [],
+  changes: [],
+  keys: [],
+  emailPrefs: new Map(),
+  views: new Map(),
+  asks: new Map(),
+  follows: new Map(),
+  notices: [],
+  recipients: [],
+  doNotAsk: new Set(),
+  emailStops: new Map(),
+});
 
 // ---------- the launch switch (mock rule)
 
@@ -242,6 +278,14 @@ export interface RoutineCtx {
 }
 
 const RUN_NOW_PER_DAY = 3;
+/** SPEC 26.20 item 4: the kinds whose email another address may get. */
+const RECIPIENT_KINDS: RoutineKind[] = ["due_reminders", "countdown", "target_price", "weekly_summary"];
+const RECIPIENT_WHAT: Partial<Record<RoutineKind, string>> = {
+  due_reminders: "reminders before things on it are due",
+  countdown: "a countdown to a day, with the last day to order things",
+  target_price: "a message when a price someone is waiting for is reached",
+  weekly_summary: "a weekly summary of what changed",
+};
 /** SPEC 26.7: the occasions table (the admin's), as the server would answer GET /routine-occasions. */
 const OCCASIONS = [
   { slug: "chanukah", year: 2026, date: "2026-12-04", date_end: "2026-12-12", label: "Chanukah" },
@@ -299,6 +343,12 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     if (r.kind === "agent_check") {
       const a = h.agents().find((x: any) => x.id === (r.settings as any)?.agent_id);
       if (a) routine.agent_reach = { agent: { id: a.id, name: a.name }, listening: a.kind === "account", last_seen_at: a.last_used_at ?? null };
+    }
+    // SPEC 26.20 item 4: the addresses this reader added, on the web only.
+    if (c?.kind === "user" && RECIPIENT_KINDS.includes(r.kind)) {
+      routine.my_recipients = rs()
+        .recipients.filter((x) => x.routine_id === r.id && x.added_by === c.user.id && x.state !== "removed")
+        .map((x) => ({ id: x.id, email: x.email, state: x.state, since: x.since }));
     }
     // The person's own agent's words, to that person on the web only.
     if (c?.kind === "user" && latest?.person_asked && latest.by_user_id === c.user.id) routine.reported_words = latest.person_asked;
@@ -1058,6 +1108,88 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       r.paused = { by: { kind: "user", handle: holder?.handle ?? "" }, at: h.nowIso() };
     }
     return { routine: { name: r.name, list_title: r.list_id ? h.getList(r.list_id).title : "" }, done: true, answered: a.used };
+  });
+
+  // ---- other addresses (26.20 item 4): the follower's, on the web; and the address's own links
+  route("POST", "/routines/{id}/recipients", ({ caller, params, body }) => {
+    const r = live(params[0]);
+    const c = writerOf(caller, r);
+    if (c.kind !== "user") throw h.forbidden("Only a person, on the web, adds an address");
+    for (const k of Object.keys(body ?? {})) if (k !== "email" && k !== "show_list_name") throw h.invalid(`takes email and show_list_name; not ${k}`);
+    if (!RECIPIENT_KINDS.includes(r.kind)) throw h.invalid("This kind of routine sends no email to share.");
+    if (!rs().follows.get(r.id)?.get(c.user.id)) throw h.invalid("Follow this routine first; then you can add other addresses to its email.");
+    const email = String(body.email ?? "").trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw h.invalid("email must be an email address");
+    const key = email.toLowerCase();
+    if (rs().doNotAsk.has(key)) throw h.invalid("They've asked not to get these.");
+    const before = rs().recipients.find((x) => x.routine_id === r.id && x.key === key);
+    if (before) throw h.conflict(`Already asked on ${before.asked_on}.`);
+    const mine = rs().recipients.filter((x) => x.routine_id === r.id && x.added_by === c.user.id && (x.state === "asked" || x.state === "yes")).length;
+    if (mine >= 3) throw h.invalid("You've added 3 addresses to this routine, the most you may.");
+    const at = h.nowIso();
+    const row: RecipientRow = { id: h.newId("rcp"), routine_id: r.id, added_by: c.user.id, email, key, show_list: body.show_list_name === true, state: "asked", since: at, asked_on: at.slice(0, 10), token: h.randomToken(24) };
+    rs().recipients.push(row);
+    return h.created({ id: row.id, email: row.email, state: row.state, since: row.since });
+  });
+  route("DELETE", "/routines/{id}/recipients/{rid}", ({ caller, params }) => {
+    const r = live(params[0]);
+    const c = writerOf(caller, r);
+    const x = rs().recipients.find((y) => y.id === params[1] && y.routine_id === r.id && y.added_by === c.user.id && y.state !== "removed");
+    if (!x) throw h.notFound("Address not found");
+    x.state = "removed";
+    x.email = null;
+    x.since = h.nowIso();
+    return h.noContent;
+  });
+  const recipient = (token: string) => {
+    const x = rs().recipients.find((y) => y.token === token && y.state !== "removed");
+    const r = x ? rs().routines.find((y) => y.id === x.routine_id) : null;
+    if (!x || !r) throw h.notFound("Not found");
+    const list = r.list_id ? h.getList(r.list_id) : null;
+    const name = !list ? "their lists on The Want MCP" : list.visibility === "private" && !x.show_list ? "a list on The Want MCP" : `"${list.title.slice(0, 40)}"`;
+    const view = (): RecipientAskView => ({ from: `@${h.userById(x.added_by).handle} on The Want MCP`, list: name, what: RECIPIENT_WHAT[r.kind] ?? "routine emails", state: x.state as RecipientAskView["state"] });
+    return { x, view };
+  };
+  route("GET", "/recipient-asks/{token}", ({ params }) => recipient(params[0]).view());
+  route("POST", "/recipient-asks/{token}", ({ params, body }) => {
+    const { x, view } = recipient(params[0]);
+    if (body.answer !== "yes" && body.answer !== "no") throw h.invalid("answer must be yes or no");
+    if (x.state === "asked") {
+      x.state = body.answer;
+      x.since = h.nowIso();
+      if (body.answer === "no") {
+        x.email = null;
+        rs().doNotAsk.add(x.key);
+      }
+    }
+    return view();
+  });
+  route("GET", "/recipient-stops/{token}", ({ params }) => recipient(params[0]).view());
+  route("POST", "/recipient-stops/{token}", ({ params }) => {
+    const { x, view } = recipient(params[0]);
+    if (x.state === "asked" || x.state === "yes") {
+      x.state = "stopped";
+      x.since = h.nowIso();
+      x.email = null;
+    }
+    rs().doNotAsk.add(x.key);
+    return view();
+  });
+  // ---- "Stop emailing me about this routine" (26.4): GET never acts
+  const emailStop = (token: string) => {
+    const s = rs().emailStops.get(token);
+    const r = s ? rs().routines.find((y) => y.id === s.routine_id) : null;
+    if (!s || !r) throw h.notFound("Not found");
+    const f = () => rs().follows.get(r.id)?.get(s.user_id) ?? null;
+    const view = (): RoutineEmailStopView => ({ routine: { name: r.name, list_title: r.list_id ? h.getList(r.list_id).title : null }, done: !f()?.email });
+    return { f, view };
+  };
+  route("GET", "/routine-email-stops/{token}", ({ params }) => emailStop(params[0]).view());
+  route("POST", "/routine-email-stops/{token}", ({ params }) => {
+    const { f, view } = emailStop(params[0]);
+    const mine = f();
+    if (mine) (mine.email = false), (mine.at_once = false);
+    return view();
   });
 
   return { out, runOnce };

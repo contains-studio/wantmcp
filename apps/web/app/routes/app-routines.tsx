@@ -40,15 +40,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
   // A weekly summary can be made here while it's launched for this person and they have none (one each).
   const offerWeekly = kindFlag(sw.kinds_visible, "weekly_summary") && !own.some((r) => r.kind === "weekly_summary");
-  const [lists, prefs] = offerWeekly
-    ? await Promise.all([api<ListSummary[]>(request, "/me/lists").catch(() => [] as ListSummary[]), myEmailPrefs(request)])
-    : [[] as ListSummary[], null];
+  // The person's lists: for the weekly summary's choice, and which are private (adding an address says so).
+  const [lists, prefs] = await Promise.all([api<ListSummary[]>(request, "/me/lists").catch(() => [] as ListSummary[]), offerWeekly ? myEmailPrefs(request) : null]);
+  const privateLists = lists.filter((l) => l.visibility === "private").map((l) => l.id);
   return data(
     {
       sw,
       own,
       groups: [...groups.values()],
       keyOk: key?.status === "ok",
+      privateLists,
       weekly: offerWeekly ? { lists: lists.map((l) => ({ id: l.id, title: l.title })), emailHour: prefs?.email_hour ?? 8 } : null,
     },
     { headers: { "Cache-Control": "private, no-store" } },
@@ -65,7 +66,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Routines({ loaderData }: Route.ComponentProps) {
-  const { sw, own, groups, keyOk, weekly } = loaderData;
+  const { sw, own, groups, keyOk, weekly, privateLists } = loaderData;
   return (
     <div className="bg-sunk">
       <div className="mx-auto grid w-full max-w-[47.5rem] gap-6 px-4 pt-8 pb-16 sm:pt-10">
@@ -118,7 +119,7 @@ export default function Routines({ loaderData }: Route.ComponentProps) {
                 </Link>
               </div>
               {g.routines.map((r) => (
-                <RoutineCard key={r.id} routine={r} sw={sw} keyOk={keyOk} />
+                <RoutineCard key={r.id} routine={r} sw={sw} keyOk={keyOk} listPrivate={privateLists.includes(g.list.id)} />
               ))}
             </section>
           ))

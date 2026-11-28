@@ -21,6 +21,8 @@ export const ROUTINE_INTENTS = new Set([
   "routine-item-resume",
   "routine-follow",
   "routine-unfollow",
+  "recipient-add",
+  "recipient-remove",
   "notice-seen",
 ]);
 
@@ -59,6 +61,16 @@ export async function routineAction(request: Request, form: FormData): Promise<R
           body: { email: form.get("email") === "on", ...(form.get("at_once") === "on" && form.get("email") === "on" ? { at_once: true } : {}) },
         });
         return done("You'll see these in the app, under For you.");
+      case "recipient-add": {
+        // SPEC 26.20 item 4: one ask to the address; nothing else is sent until they say yes.
+        const email = String(form.get("email") ?? "").trim();
+        if (!email) return data<RoutineResult>({ intent, routineId: id, error: "Type their email address." }, 400);
+        await api(request, `/routines/${r}/recipients`, { method: "POST", body: { email, ...(form.get("show_list_name") === "on" ? { show_list_name: true } : {}) } });
+        return done("Asked. Nothing more goes to them unless they say yes.");
+      }
+      case "recipient-remove":
+        await api(request, `/routines/${r}/recipients/${encodeURIComponent(String(form.get("recipient_id") ?? ""))}`, { method: "DELETE" });
+        return done("Removed. They get nothing more from this routine.");
       case "routine-unfollow":
         await api(request, `/routines/${r}/follow`, { method: "DELETE" });
         return done("You won't see these any more.");

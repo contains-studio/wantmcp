@@ -37,7 +37,23 @@ export const KNOWN_KINDS = new Set(["exa_search", "target_price", "countdown", "
 const RESUMABLE = new Set(["key_holder_left", "all_rejected", "unattended"]);
 const KEY_BLOCKS = new Set(["key_missing", "key_refused", "out_of_credit"]);
 
-export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { routine: Routine; sw: RoutinesSwitch; keyOk: boolean; inSettings?: boolean }) {
+/** SPEC 26.20 item 4: the kinds whose email can also go to other addresses. */
+const RECIPIENT_KINDS = new Set(["due_reminders", "countdown", "target_price", "weekly_summary"]);
+
+export function RoutineCard({
+  routine: r,
+  sw,
+  keyOk,
+  inSettings = false,
+  listPrivate = false,
+}: {
+  routine: Routine;
+  sw: RoutinesSwitch;
+  keyOk: boolean;
+  inSettings?: boolean;
+  /** Its list is private: adding an address says what they'll see, and offers to name the list. */
+  listPrivate?: boolean;
+}) {
   const f = useFetcher<RoutineResult>({ key: `routine-${r.id}` });
   const result = f.data?.routineId === r.id ? f.data : undefined;
   // SPEC 26.2: kinds this page knows get their full card; any other shows its name and status, Pause and Delete only.
@@ -147,6 +163,7 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
 
       {/* Kinds that tell people things (26.3, 26.4): who sees it, and this person's own choice. */}
       {known && !exa && r.kind !== "restock" && <Follow f={f} routine={r} />}
+      {RECIPIENT_KINDS.has(r.kind) && r.my_follow && r.my_recipients && <Recipients f={f} routine={r} listPrivate={listPrivate} />}
 
       {known && (
       <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -179,6 +196,81 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
 }
 
 type F = ReturnType<typeof useFetcher<RoutineResult>>;
+
+const RECIPIENT_STATE: Record<NonNullable<Routine["my_recipients"]>[number]["state"], string> = {
+  asked: "Asked",
+  yes: "Said yes",
+  no: "Said no",
+  stopped: "Stopped these",
+  removed: "Removed",
+};
+
+/**
+ * SPEC 26.20 item 4: "Also send to…" up to 3 other addresses, each asked once and sent nothing until they say yes.
+ * Their states (asked, yes since, no, stopped), with Remove for the live ones. Only the person who added them sees
+ * them; an address is never shown after a No or a stop (the server keeps none).
+ */
+function Recipients({ f, routine: r, listPrivate }: { f: F; routine: Routine; listPrivate: boolean }) {
+  const all = (r.my_recipients ?? []).filter((x) => x.state !== "removed");
+  const live = all.filter((x) => x.state === "asked" || x.state === "yes");
+  const adding = f.state !== "idle" && f.formData?.get("intent") === "recipient-add";
+  // A fresh field after each address is asked.
+  const round = all.length;
+  return (
+    <details className="rt-fold text-[0.88rem]" open={all.length > 0 || undefined}>
+      <summary className="textlink-btn w-fit">
+        Also send to…<span className="sr-only"> other addresses, for {r.name}</span>
+      </summary>
+      <div className="grid gap-3 pt-2">
+        {all.length > 0 && (
+          <ul className="grid gap-1.5">
+            {all.map((x) => (
+              <li key={x.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="min-w-0 break-all">{x.email ?? "An address"}</span>
+                <span className="text-ink-3">
+                  {RECIPIENT_STATE[x.state]} <Time ts={x.since} />
+                </span>
+                {(x.state === "asked" || x.state === "yes") && (
+                  <f.Form method="post">
+                    <input type="hidden" name="intent" value="recipient-remove" />
+                    <input type="hidden" name="routine_id" value={r.id} />
+                    <input type="hidden" name="recipient_id" value={x.id} />
+                    <button className="textlink-btn text-[0.88rem]">
+                      Remove<span className="sr-only"> {x.email}</span>
+                    </button>
+                  </f.Form>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {live.length < 3 ? (
+          <f.Form method="post" className="grid gap-2" key={round}>
+            <input type="hidden" name="intent" value="recipient-add" />
+            <input type="hidden" name="routine_id" value={r.id} />
+            {(listPrivate || r.kind === "weekly_summary") && <p className="text-ink-2">They will see the names of the wants this is about.</p>}
+            <label className="field">
+              <span className="label">Their email address</span>
+              <input type="email" name="email" className="input" autoComplete="off" required maxLength={254} />
+            </label>
+            {listPrivate && r.kind !== "weekly_summary" && (
+              <label className="check">
+                <input type="checkbox" name="show_list_name" />
+                <span>Show the list's name in the ask</span>
+              </label>
+            )}
+            <p className="hint">We email them once to ask. Nothing else goes to them unless they say yes, and every email lets them stop.</p>
+            <button className="btn btn-sm w-fit" disabled={adding}>
+              {adding ? "Asking…" : "Ask them"}
+            </button>
+          </f.Form>
+        ) : (
+          <p className="text-ink-3">That's 3, the most for one routine.</p>
+        )}
+      </div>
+    </details>
+  );
+}
 
 /**
  * SPEC 26.20 item 5: whether the agent an "Ask my agent to check" leaves notes for can be told at once. Most agents

@@ -350,6 +350,19 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     { user_id: "usr_rt", last4: "7f3a", status: "ok", status_at: at(14 * DAY), monthly_cap: 100, used: 12 },
     { user_id: "usr_rt_sam", last4: "k29q", status: "out_of_credit", status_at: at(5 * HOUR), monthly_cap: 100, used: 40 },
   );
+  // SPEC 26.20 item 4: due-date reminders on Garden jobs, followed by email, with one address that said yes and one
+  // still asked; the ask's and the stop's links for the signed-out pages; and the routine email's "Stop emailing me".
+  rs.routines.push({
+    id: "rtn_garden_due", list_id: "lst_rt_garden", kind: "due_reminders", item_id: null, settings: { lead_days: [1, 7], overdue: "once" }, start: "date",
+    name: "Remind me before things are due", name_by: "server", schedule: null, paused: null, blocked: null, key_user_id: null, next_run_at: null,
+    created: { by: me, at: at(6 * DAY) }, changed: { by: me, at: at(6 * DAY) }, run_now_day: "", run_now_count: 0, deleted_at: null, stopped_items: [],
+  });
+  rs.follows.set("rtn_garden_due", new Map([["usr_rt", { routine_id: "rtn_garden_due", email: true, at_once: false }]]));
+  rs.recipients.push(
+    { id: "rcp_seed_mum", routine_id: "rtn_garden_due", added_by: "usr_rt", email: "mum@example.com", key: "mum@example.com", show_list: false, state: "yes", since: at(4 * DAY), asked_on: at(5 * DAY).slice(0, 10), token: "rcpmockyes0000000000000000" },
+    { id: "rcp_seed_neighbour", routine_id: "rtn_garden_due", added_by: "usr_rt", email: "neighbour@example.com", key: "neighbour@example.com", show_list: true, state: "asked", since: at(DAY), asked_on: at(DAY).slice(0, 10), token: "rcpmockasked00000000000000" },
+  );
+  rs.emailStops.set("resmockgarden0000000000000", { routine_id: "rtn_garden_due", user_id: "usr_rt" });
   rs.asks.set("ask_seed_kitchen", { routine_id: "rtn_kitchen", used: null });
   rs.asks.set("ask_seed_garden", { routine_id: "rtn_garden", used: null });
 }
