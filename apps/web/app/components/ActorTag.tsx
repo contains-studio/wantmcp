@@ -1,3 +1,4 @@
+import { ExaSearchTag } from "./RoutineSuggestion";
 import { useRootData } from "~/lib/hooks";
 import { agentHue } from "~/lib/format";
 import { agentMark, markStyle } from "~/lib/brands";
@@ -48,6 +49,8 @@ export function ActorTag({ actor, compact = false }: { actor: ActorRef; compact?
       </span>
     );
   }
+  // SPEC 20.14 item 11: the person's own search routine, where an agent's name and mark would be.
+  if (actor.routine) return <ExaSearchTag mine={me !== null && actor.routine.key_holder === me} keyHolder={actor.routine.key_holder} />;
   return (
     <span className="chip chip-warn" title="Outside agent. Name not verified.">
       {actor.name ? `“${actor.name}”` : "Outside agent"} · unverified

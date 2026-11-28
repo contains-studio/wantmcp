@@ -123,23 +123,35 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     searches_used: 3,
     note: null,
   });
-  const routineAuthor: ActorRef = { kind: "outside", name: "Search the web for these wants", routine: { id: "rtn_kitchen", kind: "exa_search", key_holder: me.handle } };
-  for (const [id, item, title, url] of [
-    ["ent_rt_1", "itm_rt_kettle", "Stagg EKG electric pour-over kettle", "https://shop.example.com/p/stagg-ekg"],
-    ["ent_rt_2", "itm_rt_boots", "Kids' waterproof snow boots", "https://shop.example.com/p/kids-snow-boots"],
-  ] as const) {
+  const routineAuthor: ActorRef = { kind: "outside", name: "Search the web for these wants", routine: { id: "rtn_kitchen", kind: "exa_search", key_holder: me.handle, name_by: "server" } };
+  // The real mix the owner saw (27 Nov 2026): some with a picture, most without, a long title, a guide, a product.
+  const found: Array<{ id: string; item: string; title: string; url: string; image: string | null; kind?: "guide" }> = [
+    { id: "ent_rt_1", item: "itm_rt_kettle", title: "Stagg EKG electric pour-over kettle", url: "https://www.amazon.com/dp/B077JBQZPX", image: "/mock-images/espresso.svg" },
+    { id: "ent_rt_3", item: "itm_rt_kettle", title: "The best electric kettles, tested", url: "https://www.seriouseats.com/best-electric-kettles", image: null, kind: "guide" },
+    {
+      id: "ent_rt_2",
+      item: "itm_rt_boots",
+      title: "Kids' Waterproof Insulated Snow Boots with Faux Fur Lining, Non-Slip Rubber Sole, for Toddler, Little Kid and Big Kid",
+      url: "https://www.target.com/p/kids-snow-boots/-/A-87654321",
+      image: null,
+    },
+  ];
+  for (const f of found) {
+    const guide = f.kind === "guide";
     s.entries.push({
-      id,
-      item_id: item,
+      id: f.id,
+      item_id: f.item,
       list_id: "lst_rt_kitchen",
       status: "suggested",
       author: routineAuthor,
-      title,
-      description: "From a search result, not checked on the store's page.",
-      product_url: url,
+      title: f.title,
+      description: guide ? "" : "From a search result, not checked on the store's page.",
+      product_url: guide ? null : f.url,
+      links: guide ? [f.url] : undefined,
+      kind: guide ? "guide" : undefined,
       buy_url: null,
-      image_url: null,
-      retailer: "shop.example.com",
+      image_url: f.image,
+      retailer: guide ? "" : new URL(f.url).hostname.replace(/^www\./, ""),
       coupon_code: null,
       deal_starts_at: null,
       deal_ends_at: null,
@@ -149,6 +161,95 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
       promoted_at: null,
     });
   }
+  // The kettle as the owner's test describes it (SPEC 20.14 item 13): two products, one held guide (above), one kept
+  // guide and two comments.
+  const kept = (id: string, title: string, url: string, guide: boolean, by: ActorRef, ago: number) =>
+    s.entries.push({
+      id,
+      item_id: "itm_rt_kettle",
+      list_id: "lst_rt_kitchen",
+      status: "listed",
+      author: guide ? routineAuthor : by,
+      title,
+      description: "",
+      product_url: guide ? null : url,
+      links: guide ? [url] : undefined,
+      kind: guide ? "guide" : undefined,
+      buy_url: null,
+      image_url: null,
+      retailer: guide ? "" : new URL(url).hostname.replace(/^www\./, ""),
+      coupon_code: null,
+      deal_starts_at: null,
+      deal_ends_at: null,
+      created_at: at(ago),
+      updated_at: at(ago),
+      promoted_by: guide ? sam : null,
+      promoted_at: guide ? at(ago - HOUR) : null,
+    });
+  kept("ent_rt_p1", "Fellow Corvo EKG electric kettle", "https://fellowproducts.com/products/corvo-ekg", false, claude, 4 * DAY);
+  kept("ent_rt_p2", "Cosori gooseneck electric kettle", "https://www.amazon.com/dp/B07T1CH2HH", false, claude, 4 * DAY);
+  kept("ent_rt_g1", "The 8 Best Electric Kettles of 2026", "https://www.seriouseats.com/best-electric-kettles-2026", true, sam, 3 * DAY);
+  s.comments.push(
+    { id: "cmt_rt_1", list_id: "lst_rt_kitchen", target_type: "item", target_id: "itm_rt_kettle", url: "https://wantmcp.com/l/lst_rt_kitchen#cmt_rt_1", author: sam, body: "The Corvo is lovely but loud.", created_at: at(2 * DAY) },
+    { id: "cmt_rt_2", list_id: "lst_rt_kitchen", target_type: "item", target_id: "itm_rt_kettle", url: "https://wantmcp.com/l/lst_rt_kitchen#cmt_rt_2", author: me, body: "Under $100 please.", created_at: at(DAY) },
+  );
+  // A public list for guides as notes, seen by a writer and by a visitor (SPEC 20.14 item 13): one want with two
+  // products, one held guide, one kept guide and two comments.
+  s.lists.push({ id: "lst_rt_coffee", title: "Coffee corner", description: "", owner_id: "usr_rt", allow_outside_suggestions: false, format: "shopping", visibility: "public", created_at: at(9 * DAY), updated_at: at(HOUR) });
+  s.members.push({ id: "mem_coffee_me", list_id: "lst_rt_coffee", user_id: "usr_rt", invited_email: null, role: "owner", status: "active", token: null, created_at: at(9 * DAY) });
+  s.items.push({ id: "itm_rt_grinder", list_id: "lst_rt_coffee", text: "A burr coffee grinder", created_by: me, created_at: at(8 * DAY), purchase: null });
+  const coffee = (id: string, title: string, url: string, guide: boolean, status: "listed" | "suggested", ago: number) =>
+    s.entries.push({
+      id,
+      item_id: "itm_rt_grinder",
+      list_id: "lst_rt_coffee",
+      status,
+      author: guide ? routineAuthor : claude,
+      title,
+      description: "",
+      product_url: guide ? null : url,
+      links: guide ? [url] : undefined,
+      kind: guide ? "guide" : undefined,
+      buy_url: null,
+      image_url: null,
+      retailer: guide ? "" : new URL(url).hostname.replace(/^www\./, ""),
+      coupon_code: null,
+      deal_starts_at: null,
+      deal_ends_at: null,
+      created_at: at(ago),
+      updated_at: at(ago),
+      promoted_by: guide && status === "listed" ? sam : null,
+      promoted_at: guide && status === "listed" ? at(ago - HOUR) : null,
+    });
+  coffee("ent_cf_p1", "Baratza Encore ESP burr grinder", "https://www.baratza.com/encore-esp", false, "listed", 5 * DAY);
+  coffee("ent_cf_p2", "Fellow Opus conical burr grinder", "https://fellowproducts.com/products/opus", false, "listed", 5 * DAY);
+  coffee("ent_cf_g1", "The 6 Best Coffee Grinders of 2026", "https://www.seriouseats.com/best-coffee-grinders", true, "listed", 3 * DAY);
+  coffee("ent_cf_g2", "How to choose a burr grinder", "https://www.homegrounds.co/burr-grinder-guide", true, "suggested", DAY);
+  s.comments.push(
+    { id: "cmt_cf_1", list_id: "lst_rt_coffee", target_type: "item", target_id: "itm_rt_grinder", url: "https://wantmcp.com/l/lst_rt_coffee#cmt_cf_1", author: me, body: "Something quiet for mornings.", created_at: at(2 * DAY) },
+    { id: "cmt_cf_2", list_id: "lst_rt_coffee", target_type: "item", target_id: "itm_rt_grinder", url: "https://wantmcp.com/l/lst_rt_coffee#cmt_cf_2", author: claude, body: "Both grind fine enough for espresso.", created_at: at(DAY) },
+  );
+  // A stranger's suggestion on the same list, for the two treatments side by side: text only, link not clickable.
+  s.entries.push({
+    id: "ent_rt_stranger",
+    item_id: "itm_rt_kettle",
+    list_id: "lst_rt_kitchen",
+    status: "suggested",
+    author: { kind: "outside", name: "DealFinder" },
+    title: "Gooseneck kettle, 40% off today",
+    description: "Limited offer.",
+    product_url: "https://deals.example.net/kettle?aff=123",
+    buy_url: null,
+    image_url: "https://deals.example.net/kettle.jpg",
+    retailer: "deals.example.net",
+    coupon_code: null,
+    deal_starts_at: null,
+    deal_ends_at: null,
+    created_at: at(5 * DAY),
+    updated_at: at(5 * DAY),
+    promoted_by: null,
+    promoted_at: null,
+  });
   rs.changes.push(
     { id: "rch_kitchen_made", routine_id: "rtn_kitchen", at: at(14 * DAY), by: me, by_user_id: "usr_rt", change: "created", before: null, person_asked: null },
     { id: "rch_ana_made", routine_id: "rtn_ana", at: at(3 * DAY), by: sam, by_user_id: "usr_rt_sam", change: "created", before: null, person_asked: null },

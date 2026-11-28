@@ -72,11 +72,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const suggestions: Array<{ entry: Entry; item: Pick<Item, "id" | "text"> }> = [];
   const items: ItemWithEntries[] = list.items.map((it) => {
     const listed: Entry[] = [];
+    // SPEC 20.14 item 13: a held guide is a note under its want (writers only), never in the suggestions panel.
+    const heldGuides: Entry[] = [];
     for (const e of it.entries) {
       if (e.status === "listed") listed.push(e);
+      else if (isWriter && e.kind === "guide") heldGuides.push(e);
       else if (isWriter) suggestions.push({ entry: e, item: { id: it.id, text: it.text } });
     }
-    return { ...it, entries: listed };
+    return { ...it, entries: listed, ...(heldGuides.length ? { heldGuides } : {}) };
   });
 
   const listedIds = new Set(items.flatMap((it) => it.entries.map((e) => e.id)));

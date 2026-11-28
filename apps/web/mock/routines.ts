@@ -364,24 +364,36 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const shopping = (list?.format ?? "shopping") === "shopping";
     const at = h.nowIso();
     let posted = 0;
-    for (const w of plan.wants) {
+    for (const [wi, w] of plan.wants.entries()) {
       if (!r || posted >= 10) break;
       if (key) key.used++;
       const n = h.entries().filter((e: any) => e.author?.routine?.id === r.id).length + 1;
+      const author = { kind: "outside", name: r.name, routine: { id: r.id, kind: r.kind, key_holder: holder?.handle ?? "", name_by: r.name_by } };
+      // Shopping: a guide for the first want (product pages first on the real server, at most one guide per want).
+      if (shopping && wi === 0) {
+        h.entries().push({
+          id: h.newId("ent"), item_id: w.item_id, list_id: r.list_id, status: "suggested", author,
+          title: `How to choose: ${w.text}`, description: "", product_url: null, links: [`https://www.seriouseats.com/guide-${n}`], kind: "guide",
+          buy_url: null, image_url: null, retailer: "", coupon_code: null, deal_starts_at: null, deal_ends_at: null,
+          created_at: at, updated_at: at, promoted_by: null, promoted_at: null,
+        });
+        posted++;
+      }
       h.entries().push({
         id: h.newId("ent"),
         item_id: w.item_id,
         list_id: r.list_id,
         status: "suggested",
-        author: { kind: "outside", name: r.name, routine: { id: r.id, kind: r.kind, key_holder: holder?.handle ?? "" } },
+        author,
         title: `${w.text}: a search result ${n}`,
         description: shopping ? "From a search result, not checked on the store's page." : `A page about ${w.text}.`,
-        product_url: shopping ? `https://shop.example.com/p/result-${n}` : null,
+        product_url: shopping ? `https://www.amazon.com/dp/MOCK${n}` : null,
         links: shopping ? undefined : [`https://example.org/read/result-${n}`],
         kind: shopping ? undefined : "update",
         buy_url: null,
-        image_url: null,
-        retailer: shopping ? "shop.example.com" : "",
+        // Some with a picture, most without, as on a real list.
+        image_url: shopping && n % 2 === 1 ? "/mock-images/grinder.svg" : null,
+        retailer: shopping ? "amazon.com" : "",
         coupon_code: null,
         deal_starts_at: null,
         deal_ends_at: null,

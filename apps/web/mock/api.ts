@@ -1688,7 +1688,8 @@ route("PATCH", "/entries/{id}", ({ caller, params, body }) => {
 route("DELETE", "/entries/{id}", ({ caller, params }) => {
   const e = getEntry(params[0]);
   const c = requireWriter(caller, e.list_id);
-  requireAuthorOrOwner(e.author, c, e.list_id, "product");
+  // SPEC 20.14 item 13: what a person's own routine found (a kept guide) any writer can remove, like a comment.
+  if (!(e.author.kind === "outside" && e.author.routine)) requireAuthorOrOwner(e.author, c, e.list_id, "product");
   store.entries = store.entries.filter((x) => x !== e);
   return entryOut(e);
 });

@@ -20,7 +20,7 @@ export type ActorRef =
   | { kind: "user"; handle: string }
   | { kind: "agent"; agent_id: string; name: string; owner_handle: string }
   // anonymous outside agent, name is self-reported and unverified; or (SPEC 20.10) a routine, named by its name
-  | { kind: "outside"; name: string | null; routine?: { id: string; kind: RoutineKind; key_holder: string } };
+  | { kind: "outside"; name: string | null; routine?: { id: string; kind: RoutineKind; key_holder: string; name_by?: RoutineNameBy } };
 
 /** POST /auth/verify. updates_opt_in applies only when this call creates the account (`created`). */
 export interface VerifyResult {
@@ -64,7 +64,8 @@ export type ItemStatus = "open" | "in_progress" | "waiting_on_owner" | "done";
 /** Statuses a caller can set directly; `waiting_on_owner` comes from asking a question. */
 export type SettableItemStatus = "open" | "in_progress" | "done";
 export type PriceSource = "retailer_page" | "aggregator" | "search" | "user" | "unknown";
-export type EntryKind = "product" | "update" | "answer";
+/** "guide" (SPEC 20.14 item 12): a page about how to choose, on a shopping list: links: [url], no product_url, no price. */
+export type EntryKind = "product" | "update" | "answer" | "guide";
 
 export interface ListSummary {
   id: string;

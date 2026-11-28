@@ -25,11 +25,14 @@ import { lowestEntryId, lowestLabel } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useHydrated, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, RoutineSummary, UserSelf } from "~/lib/types";
-import { agentWroteName } from "~/lib/routines";
+import { agentWroteName, guidesOf, productsOf } from "~/lib/routines";
+import { RoutineSuggestion } from "~/components/RoutineSuggestion";
+import { GuideNotes } from "~/components/GuideNotes";
 import type { Layout } from "~/themes/types";
 import type { ThemeView } from "~/themes/view";
 
-export type ItemWithEntries = Item & { entries: Entry[] };
+/** heldGuides: guides a routine found that no writer has kept or dismissed yet (writers only, SPEC 20.14 item 13). */
+export type ItemWithEntries = Item & { entries: Entry[]; heldGuides?: Entry[] };
 
 
 function sortByPrice(entries: Entry[]): Entry[] {
@@ -95,6 +98,8 @@ export function ListView(props: ListViewProps) {
   const canDeleteComment = (c: Comment) => canManage(c.author, user, role);
 
   const fi = formatInfo(list);
+  // SPEC 20.14 item 13: guides waiting for a writer, counted apart from suggestions.
+  const heldGuideCount = isWriter ? items.reduce((n, it) => n + (it.heldGuides?.length ?? 0), 0) : 0;
   const shopping = fi.format === "shopping";
   const isPrivate = visibilityOf(list) === "private";
   const isDone = (i: ItemWithEntries) => (shopping ? !!i.purchase : i.status === "done");
@@ -403,7 +408,10 @@ export function ListView(props: ListViewProps) {
         {props.handoff && !preview && heldCount > 0 && <GiveToAgent listId={list.id} listUrl={listUrl} focus={props.handoff.focus} connectedName={props.handoff.connectedName} />}
 
         {/* Outside suggestions come after the person's own list, never before it. */}
-        {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} routines={list.routines ?? null} me={user?.handle ?? null} />}
+        {isWriter && heldGuideCount > 0 && suggestions.length === 0 && (
+          <p className="text-[0.92rem] text-ink-2">{plural(heldGuideCount, "guide")} to look at, under their wants.</p>
+        )}
+        {isWriter && suggestions.length > 0 && <Suggestions suggestions={suggestions} routines={list.routines ?? null} me={user?.handle ?? null} shopping={shopping} guides={heldGuideCount} />}
 
         {!isWriter && !preview && (
           <aside aria-labelledby="own-h" className="card grid gap-3 p-6 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -467,7 +475,10 @@ function ItemSection({
   const H2 = headingTag(base, 1);
   const H3 = headingTag(base, 2);
   const now = useNow();
-  const entries = sortByPrice(item.entries);
+  // Guides are not products: never in the prices or the product rows, shown under them as guides (SPEC 20.14 item 12).
+  const entries = sortByPrice(productsOf(item.entries));
+  const guides = guidesOf(item.entries);
+  const textEntries = productsOf(item.entries);
   const lowest = lowestEntryId(entries, now);
   const lowestText = lowestLabel(entries, lowest, now);
   const itemComments = commentsFor("item", item.id);
@@ -625,7 +636,7 @@ function ItemSection({
       {!shopping ? (
         entries.length > 0 ? (
           <div className="item-entries item-text-entries item-indent grid gap-3 sm:pl-11">
-            {item.entries.map((e) => (
+            {textEntries.map((e) => (
               <TextEntryCard
                 key={e.id}
                 entry={e}
@@ -701,9 +712,11 @@ function ItemSection({
         </div>
       )}
 
-      {itemComments.length > 0 && (
+      {(itemComments.length > 0 || guides.length > 0 || (isWriter && (item.heldGuides?.length ?? 0) > 0)) && (
         <div className="item-comments item-indent grid gap-3 sm:pl-11">
-          <H3 className="eyebrow">Comments</H3>
+          <H3 className="eyebrow">{itemComments.length ? "Comments" : "Notes"}</H3>
+          {/* Guides read as part of the conversation under the want: notes beside the comments, never products. */}
+          <GuideNotes held={item.heldGuides ?? []} kept={guides} canWrite={isWriter} />
           <CommentList comments={itemComments} canDelete={canDeleteComment} />
           {isWriter && <CommentForm targetType="item" targetId={item.id} label={`Comment on this ${fi.item}`} />}
         </div>
@@ -928,22 +941,31 @@ function AddEntry({ itemId, fi, currency }: { itemId: string; fi: FormatInfo; cu
  * Outside suggestions. Untrusted third-party text: rendered as plain text only. No links,
  * no images loaded from their URLs. This section only renders for writers.
  */
-function Suggestions({ suggestions, routines, me }: { suggestions: Array<{ entry: Entry; item: Pick<Item, "id" | "text"> }>; routines: RoutineSummary[] | null; me: string | null }) {
+function Suggestions({ suggestions, routines, me, shopping, guides = 0 }: { suggestions: Array<{ entry: Entry; item: Pick<Item, "id" | "text"> }>; routines: RoutineSummary[] | null; me: string | null; shopping: boolean; guides?: number }) {
   // SPEC 20.3: a routine's suggestions are not from outside agents; with any of them, the heading says only how many.
   const anyRoutine = suggestions.some((s) => routineOf(s.entry));
+  const anyStranger = suggestions.some((s) => !routineOf(s.entry));
   return (
     <section aria-labelledby="sugg-h" className="untrusted grid gap-4 p-4 sm:p-6">
       <div>
         <h2 id="sugg-h" className="text-[1.15rem] font-semibold">
           {plural(suggestions.length, "suggestion")}
-          {anyRoutine ? "" : " from outside agents"}
+          {guides > 0 ? ` and ${plural(guides, "guide")} to look at` : anyRoutine ? "" : " from outside agents"}
         </h2>
-        <p className="mt-1 max-w-2xl text-[0.88rem] text-ink-2">Only writers see these. Links stay as text until you promote one.</p>
+        <p className="mt-1 max-w-2xl text-[0.88rem] text-ink-2">
+          {anyStranger ? "Only writers see these. Links from outside agents stay as text until you promote one." : "Only writers see these."}
+        </p>
       </div>
       <ul className="grid gap-3 lg:grid-cols-2">
-        {suggestions.map(({ entry: e, item }) => (
-          <SuggestionCard key={e.id} entry={e} itemText={item.text} routines={routines} me={me} />
-        ))}
+        {suggestions.map(({ entry: e, item }) =>
+          // The person's own search routine: shown as a thing (picture, title that opens, where from). A stranger's
+          // suggestion stays text only, its link not clickable.
+          routineOf(e) ? (
+            <RoutineSuggestion key={e.id} entry={e} itemText={item.text} routines={routines} me={me} shopping={shopping} />
+          ) : (
+            <SuggestionCard key={e.id} entry={e} itemText={item.text} routines={routines} me={me} />
+          ),
+        )}
       </ul>
     </section>
   );
@@ -1494,3 +1516,4 @@ function RoutineStopped({ itemId, stop }: { itemId: string; stop: NonNullable<It
     </f.Form>
   );
 }
+
