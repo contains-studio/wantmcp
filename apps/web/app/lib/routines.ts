@@ -139,10 +139,13 @@ export function kindFlag(flags: Partial<Record<string, boolean>> | undefined, ki
 }
 
 /**
- * SPEC 26.4: what "email me at once" is held to (email.routine_at_once_per_recipient_per_week, 5). The server sends no
- * sentence for it, so this one is ours, from the SPEC's rule.
+ * SPEC 26.4: what "email me at once" is held to, with the number from the server (routines.about.target_price
+ * .at_once_per_week); without it, no number.
  */
-export const AT_ONCE_HINT = "Up to 5 a week. Any more come in your daily email.";
+export function atOnceHint(sw: RoutinesSwitch | null | undefined): string {
+  const n = sw?.about?.target_price?.at_once_per_week;
+  return typeof n === "number" ? `Up to ${n} a week. Any more come in your daily email.` : "A few a week. Any more come in your daily email.";
+}
 
 /** "about 8:00" for an hour of the day (0-23), as the server writes its own times. */
 export function aboutHour(h: number): string {

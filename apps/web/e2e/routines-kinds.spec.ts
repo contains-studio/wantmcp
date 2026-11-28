@@ -29,8 +29,10 @@ test("the chooser offers exactly the launched kinds, each saying what it does an
   await expect(page.getByText("Countdown and order-by dates")).toBeVisible();
   await expect(page.getByText("Remind me before things are due")).toBeVisible();
   await expect(page.getByText("No key needed")).toHaveCount(2);
-  // Not launched: never offered.
+  // Never on a list: the weekly summary is made on the Routines tab.
   await expect(page.getByText("A weekly summary")).toHaveCount(0);
+  // Launched on the server (kinds_visible) but not known to this page: never offered.
+  await expect(page.locator("input[name=kind][value=list_changes]")).toHaveCount(0);
 });
 
 test("from a want: “Tell me when it's at my price”, the follow choice required, then a card with Check now", async ({ page }) => {

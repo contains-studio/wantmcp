@@ -101,11 +101,12 @@ export function routinesFor(email: string): UserSelf["routines"] | undefined {
   if (!email.includes("routines")) return undefined;
   const running = !email.includes("paused");
   // SPEC 26.14: kinds_visible says which kinds are launched (server c6278c7: these four for preview accounts).
-  const all = ["exa_search", "due_reminders", "countdown", "target_price", "restock", "weekly_summary", "agent_check"] as const;
-  const built = new Set<string>(["exa_search", "target_price", "countdown", "due_reminders", "restock", "weekly_summary", "agent_check"]);
+  const all = ["exa_search", "due_reminders", "countdown", "target_price", "restock", "weekly_summary", "agent_check", "list_changes"] as const;
+  // list_changes (26.21) is launched on the server before this web build knows it: the chooser must not offer it.
+  const built = new Set<string>(["exa_search", "target_price", "countdown", "due_reminders", "restock", "weekly_summary", "agent_check", "list_changes"]);
   const kinds = Object.fromEntries(all.map((k) => [k, running])) as Record<(typeof all)[number], boolean>;
   const kinds_visible = Object.fromEntries(all.map((k) => [k, built.has(k)])) as Record<(typeof all)[number], boolean>;
-  return { visible: true, running, kinds, kinds_visible, about: { exa_search: { cost_per_search_usd: { shopping: 0.017, tasks: 0.012, research: 0.012 }, key_check_usd: 0.007 } } };
+  return { visible: true, running, kinds, kinds_visible, about: { exa_search: { cost_per_search_usd: { shopping: 0.017, tasks: 0.012, research: 0.012 }, key_check_usd: 0.007 }, target_price: { at_once_per_week: 5 } } };
 }
 
 // ---------- stand-in wording (the server's in real life)

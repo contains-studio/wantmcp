@@ -780,6 +780,7 @@ export type RoutineKind =
   | "restock"
   | "weekly_summary"
   | "agent_check"
+  | "list_changes"
   | "chase_claims";
 /**
  * The kinds that can exist (SPEC 26.20 item 3: `chase_claims` is reserved, never built: no routine nudges another
@@ -831,7 +832,12 @@ export type RoutineNameBy = NoteAuthor | "server";
  * itself when that is undone), `agent_gone` (the agent an agent_check leaves notes for no longer writes the list),
  * `agent_not_looking` (that agent hasn't looked for 3 notes; lifts the next time it looks).
  */
-export type BlockReason = "key_missing" | "key_refused" | "out_of_credit" | "key_holder_left" | "all_rejected" | "unattended" | "by_admin" | "finished" | "agent_gone" | "agent_not_looking";
+/**
+ * SPEC 26.21.6 adds: `url_failing` (its URL stopped answering: 5 failed calls in a row, or a 410; lifts when the
+ * endpoint answers the handshake again), `url_removed` (its endpoint was removed; lifts when the holder points it at
+ * another), `url_holder_left` (the URL holder no longer writes the list; doesn't lift).
+ */
+export type BlockReason = "key_missing" | "key_refused" | "out_of_credit" | "key_holder_left" | "all_rejected" | "unattended" | "by_admin" | "finished" | "agent_gone" | "agent_not_looking" | "url_failing" | "url_removed" | "url_holder_left";
 
 export type RoutineRunState = "queued" | "running" | "ok" | "partial" | "skipped" | "blocked" | "failed";
 
@@ -915,6 +921,122 @@ export interface Routine {
    * the request the next time it looks, and `last_seen_at` is the last time it called us at all.
    */
   agent_reach?: { agent: { id: string; name: string }; listening: boolean; last_seen_at: Timestamp | null };
+  /**
+   * list_changes only (SPEC 26.21.4), the same for every reader: whose URL it calls (never the URL, its host or the
+   * endpoint's name), ids only or in full, and which changes. Absent for every other kind.
+   */
+  calls_url?: { holder: { handle: string }; content: ListChangesContent; types: ListChangeType[] } | null;
+}
+
+// ---------- SPEC 26.21: routines that call a URL ----------
+
+/** The changes a list_changes routine can send (SPEC 26.21.4); never routine.* or access.removed. */
+export type ListChangeType =
+  | "item.created"
+  | "entry.listed"
+  | "entry.suggested"
+  | "price.posted"
+  | "item.status_changed"
+  | "item.purchased"
+  | "question.asked"
+  | "question.answered"
+  | "comment.created"
+  | "list.claimed";
+
+/** "ids": only which things changed (built). "full": what changed, in full (26.21.7: not built yet; refused). */
+export type ListChangesContent = "ids" | "full";
+
+/**
+ * SPEC 26.21.4: `settings` of a list_changes routine. `endpoint_id` is the URL holder's own endpoint; only the holder
+ * sees it (everyone else gets `{ types, content }`). Default types: item.created, entry.listed, price.posted,
+ * item.status_changed, item.purchased.
+ */
+export interface ListChangesSettings {
+  endpoint_id: string;
+  types: ListChangeType[];
+  content: ListChangesContent;
+}
+
+export type RoutineEndpointState = "unverified" | "ok" | "failing";
+
+/** SPEC 26.21.2: a person's saved URL, to its owner only (web). Never the URL itself after it is saved; never the secret. */
+export interface RoutineEndpoint {
+  id: string;
+  /** The person's own label, 1-40 characters ("My n8n"). */
+  name: string;
+  /** The URL's host ("hooks.n8n.cloud"): its owner only. */
+  host: string;
+  state: RoutineEndpointState;
+  verified_at: Timestamp | null;
+  last_ok_at: Timestamp | null;
+  last_fail_at: Timestamp | null;
+  used_by: Array<{ routine: { id: string; name: string }; list: { id: string; title: string } | null; as: "follow" | "list_changes" }>;
+}
+
+/** POST /v1/me/endpoints. */
+export interface RoutineEndpointInput {
+  name: string;
+  url: string;
+}
+
+/** PATCH /v1/me/endpoints/{id}: a new URL keeps the secret, and needs the handshake again. */
+export interface RoutineEndpointPatch {
+  name?: string;
+  url?: string;
+}
+
+/** POST /v1/me/endpoints answers with the secret once (`whsec_` + base64 of 32 bytes); never shown again. */
+export interface RoutineEndpointCreated {
+  endpoint: RoutineEndpoint;
+  secret: string;
+}
+
+/** One call to an endpoint (SPEC 26.21.11): an endpoint's history, and a list_changes routine's. Kept 30 days. */
+export interface RoutineUrlCall {
+  id: string;
+  endpoint_id: string;
+  routine_id: string | null;
+  what: "notice" | "changes" | "verify" | "test" | "gap";
+  queued_at: Timestamp;
+  sent_at: Timestamp | null;
+  /** The HTTP status; null when nothing was sent or it timed out. */
+  status: number | null;
+  /** How long the answer took. */
+  ms: number | null;
+  /** How many changes it carried (0 for verify and test). */
+  changes: number;
+  /**
+   * ok (a 2xx; for verify, the challenge echoed); failed (no 2xx); timeout; redirect (a 3xx: give the final address);
+   * refused (the address is not public, or breaks the address rules: nothing was sent); gone (a 410).
+   */
+  outcome: "ok" | "failed" | "timeout" | "redirect" | "refused" | "gone";
+}
+
+/** The bodies we post (SPEC 26.21.7, 26.21.2). Each carries `type`. */
+export interface ListChangesBody {
+  type: "list.changes";
+  routine_id: string;
+  list_id: string;
+  changes: Array<{ event_id: string; type: ListChangeType; at: Timestamp; item_id?: string; entry_id?: string; comment_id?: string; question_id?: string }>;
+  cursor: string;
+  more: boolean;
+  /** Where to read them, with the receiver's own credential (a write key or account key for the list). */
+  fetch: string;
+}
+export interface ListChangesGapBody {
+  type: "gap";
+  routine_id: string;
+  list_id: string;
+  from_cursor: string;
+  to_cursor: string;
+  fetch: string;
+}
+export interface EndpointVerificationBody {
+  type: "verification";
+  challenge: string;
+}
+export interface EndpointTestBody {
+  type: "test";
 }
 
 /**
@@ -1019,7 +1141,8 @@ export interface RoutineFollow {
   at_once: boolean;
 }
 
-export type RoutineNoticeWhat = "due_soon" | "overdue" | "countdown" | "order_by" | "at_price" | "summary" | "agent_looked" | "agent_not_looking" | "chase";
+/** `url_failing` (SPEC 26.21.6): the person's own URL stopped answering; in the app only, to its owner. */
+export type RoutineNoticeWhat = "due_soon" | "overdue" | "countdown" | "order_by" | "at_price" | "summary" | "agent_looked" | "agent_not_looking" | "chase" | "url_failing";
 
 /**
  * SPEC 26.3: one thing a routine tells one person, in the app ("For you"). The text is ours, with only the list's own
@@ -1086,7 +1209,14 @@ export interface RoutineSwitches {
    */
   kinds_visible: Record<OfferedRoutineKind, boolean>;
   /** What each kind is, for the web's wording (SPEC 20.14 item 12): the numbers are written once, on the server. */
-  about: { exa_search: RoutineKindAbout };
+  about: {
+    exa_search: RoutineKindAbout;
+    /**
+     * SPEC 26.4: how many at-once target-price emails one person may get a week
+     * (`email.routine_at_once_per_recipient_per_week`), for "Up to 5 a week. Any more come in your daily email."
+     */
+    target_price: { at_once_per_week: number };
+  };
 }
 
 /** SPEC 20.14 item 12: roughly what a routine kind costs on the person's own key, in US dollars. */
@@ -1110,6 +1240,8 @@ export interface RoutineChangedPayload {
     paused: boolean;
     blocked_reason: BlockReason | null;
     key_holder_handle: string | null;
+    /** list_changes (SPEC 26.21.11): whose URL and ids or in full; the same for every reader. Absent for other kinds. */
+    calls_url?: { holder_handle: string; content: ListChangesContent } | null;
   };
   change: RoutineChangeKind;
   key_holder_changed: boolean;

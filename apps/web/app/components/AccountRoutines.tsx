@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { RemoveInTwoSteps } from "./AccessRow";
 import { Time } from "./Time";
-import { aboutHour, AT_ONCE_HINT, browserTimeZone, keyCheckCost, routinesOn } from "~/lib/routines";
+import { aboutHour, atOnceHint, browserTimeZone, keyCheckCost, routinesOn } from "~/lib/routines";
 import { useRootData } from "~/lib/hooks";
 import type { AccountRoutineResult } from "~/lib/routines.server";
 import type { EmailPrefs, ServiceKey } from "~/lib/types";
@@ -181,6 +181,7 @@ function KeyForm({ f, busy, replacing = false }: { f: ReturnType<typeof useFetch
 
 export function Notifications({ prefs }: { prefs: EmailPrefs }) {
   const f = useFetcher<AccountRoutineResult>({ key: "email-prefs" });
+  const sw = routinesOn(useRootData().user);
   // One fetcher for Save and "Stop all", so only the latest answer shows; a fresh form after each, so the switches
   // show what the server now has.
   const round = `${f.data?.intent ?? ""}${f.data?.message ?? ""}`;
@@ -256,7 +257,7 @@ export function Notifications({ prefs }: { prefs: EmailPrefs }) {
           <input type="checkbox" name="routine_at_once" defaultChecked={prefs.kinds.routine_at_once} />
           <span>
             <span className="block">At-once emails for target prices</span>
-            <span className="hint">{AT_ONCE_HINT}</span>
+            <span className="hint">{atOnceHint(sw)}</span>
           </span>
         </label>
         <label className="check rt-check">

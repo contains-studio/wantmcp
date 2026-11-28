@@ -13,7 +13,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { ScheduleFields } from "./RoutineCard";
 import type { RoutineResult } from "~/lib/routines.server";
-import { AT_ONCE_HINT, browserTimeZone, EXA_NOTICE, EXA_NOTICE_COUNTRY, kindFlag, PAUSED_FOR_EVERYONE, type RoutinesSwitch } from "~/lib/routines";
+import { atOnceHint, browserTimeZone, EXA_NOTICE, EXA_NOTICE_COUNTRY, kindFlag, PAUSED_FOR_EVERYONE, type RoutinesSwitch } from "~/lib/routines";
 import type { ListFormat, Occasion, RoutineKind } from "~/lib/types";
 
 type Want = { id: string; text: string };
@@ -304,7 +304,7 @@ export function NewRoutine({
                 <input type="checkbox" name="at_once" />
                 <span>
                   <span className="block">{live ? "Email me at once when it reaches my price" : "Target price: email me at once when it reaches my price"}</span>
-                  <span className="hint">{AT_ONCE_HINT}</span>
+                  <span className="hint">{atOnceHint(sw)}</span>
                 </span>
               </label>
             )}
