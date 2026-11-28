@@ -247,10 +247,42 @@ off. Live updates announce themselves in a polite live region, not with animatio
 
 ## Themes
 
-A list's look is a layout (Sheet, Checklist, Doc, Board, Sections, Heat, Tracker) and an
-optional occasion. Every layout shares this system's type, controls and spacing. A theme may
-change colours, fonts, radius, card style, page layout and decoration. It may not
-change control heights, spacing rhythm, label placement, the focus ring or contrast, and it
+A list's look is a layout and an optional occasion. There are eight layouts: Sheet, Checklist, Doc,
+Board, Sections, Heat, Tracker and Gallery. Every layout shares this system's type, controls and
+spacing. A theme may change colours, fonts, radius, card style, page layout and decoration. It may
+not change control heights, spacing rhythm, label placement, the focus ring or contrast, and it
 keeps the heading order and the item and entry anchors (`#itm_`, `#ent_` on the web). The contrast
 check tests every theme's text, controls and focus colours in light and dark, including text over
 gradients and bands.
+
+**Each look must be unmistakably its own at a glance**, and the glance is the top of the page: the
+header. A look may lend a page its type, its density and one move of its own. It may not supply
+decoration, or print anything that is not real (no drawn grid, no made-up issue numbers, no
+monospace for show).
+
+Six layouts were redrawn in November 2026 and share one small stylesheet (`/theme-css/common.css`,
+loaded only where one of them is used): a fixed type scale in rem, no counter beside a title,
+tabular figures wherever numbers are compared, store names in sentence case that break only
+between words, and an occasion's art in its own band above the title. What makes each its own:
+
+| Layout | Its header | Its body |
+| --- | --- | --- |
+| Sheet | A band of the sheet's own surface, the counts in ruled cells | One card per want on a quiet ground; products in ruled rows; every price ends at the same edge |
+| Checklist | The title beside a pie that fills as tasks get done | Round ticks (24px drawn, 44px to touch), a hairline between tasks, updates under their task without a box |
+| Board | One solid navy band (an occasion's own band colour when dressed) | Columns as quiet wells with a count; white cards; a mark before each column's name draws its status |
+| Sections | The title with the counts, over a rule that fills as items move to Done | Groups that fold; one dense row per item; agent and due date in columns while the table is wide (from 721px), stacked under the title when it is narrow |
+| Tracker | A compact title bar on the panel's own surface | Always dark; one panel of rows, each led by a status light; activity down a rail, led by who and when |
+| Gallery | A small centred title | A masonry of photos at their natural heights; the price on its own line and the store, in full, on the next |
+
+Board's band is the one place a layout carries a colour of its own beside the site's accent.
+
+**Doc and Heat are deliberately unchanged.** Both were redrawn with the other six and the owner
+kept the old ones: "doc and heat i like the old ways better. so only make subtle changes on those."
+Doc keeps its numbered headings, the rule beside each answer and its serif; Heat stays always dark,
+with its blocks and its header. A change to either that can be seen at arm's length is not subtle,
+and is the owner's to approve.
+
+How the redesign was made, reviewed and decided, with every layout before and after, is at
+[/explorations/redesigning-the-looks](https://wantmcp.com/explorations/redesigning-the-looks). The
+old versions live on only as that essay's exhibits (`app/explorations/looks-before`,
+`public/theme-css/explorations`), never in the app.

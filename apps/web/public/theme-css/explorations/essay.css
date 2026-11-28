@@ -94,7 +94,14 @@ html:has(.ex-frame.is-head) { overflow: hidden; }
 .ex-device { container-type: inline-size; width: 100%; aspect-ratio: var(--ratio); overflow: hidden; border-radius: 1.25rem; background: var(--sunk); box-shadow: 0 0 0 1px var(--line); }
 .ex.is-desktop .ex-device { border-radius: 0.75rem; }
 .ex.is-grid .ex-device { border-radius: 0.5rem; }
-.ex-iframe { display: block; width: var(--w); height: var(--h); border: 0; transform-origin: 0 0; scale: min(1, tan(atan2(100cqw, var(--w)))); }
+.ex-device { position: relative; }
+.ex-iframe { position: relative; display: block; width: var(--w); height: var(--h); border: 0; transform-origin: 0 0; scale: min(1, tan(atan2(100cqw, var(--w)))); }
+/* A frame that has not drawn yet says so in its box, in words; nothing moves. The frame itself stays out of sight
+   until its page has drawn (once scripts can tell), so a half-loaded page never flashes over the words. */
+.ex-wait { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 0.5rem; margin: 0; padding: 1rem; text-align: center; font-size: 0.9375rem; line-height: 1.4; color: var(--ink-2); }
+.ex.is-grid .ex-wait { padding: 0.5rem; font-size: 0.8125rem; }
+.ex-wait .link { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--ink); }
+.ex-iframe[data-drawing] { visibility: hidden; }
 .ex-note { font-size: 0.8125rem; color: var(--ink-3); }
 /* A wide screen has room for both sides of a phone-width pair: no switch, the two beside each other. */
 @media (min-width: 1240px) {

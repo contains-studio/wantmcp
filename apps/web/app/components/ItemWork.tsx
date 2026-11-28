@@ -149,7 +149,8 @@ export function ItemStatusBar({
           trigger={
             <>
               {text}
-              <span className="sr-only">. Change status</span>
+              {/* "2 hr." already ends in a full stop: one is enough before the next sentence. */}
+              <span className="sr-only">{status === "in_progress" && claimedBy && age?.endsWith(".") ? " Change status" : ". Change status"}</span>
               <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="ml-0.5 shrink-0">
                 <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>

@@ -126,6 +126,42 @@ test("the reader can test the claims: the eight tops in view at once, and the bu
   expect(await share("after")).toBeGreaterThan(0.6);
 });
 
+test("a frame that has not drawn says so in words, offers a link after eight seconds, and names sit above their frames", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Hold back one example's page, as a slow phone would.
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  await page.route(`**${FRAME}/after/sheet?format=shopping`, async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto(ESSAY);
+  // In the grid of eight tops, each name is above its frame, so it cannot read as the heading of the frame below.
+  const glance = page.locator("#ex-glance-after").locator("xpath=..");
+  const order = await glance.locator(".ex-side:visible .ex-figure").evaluateAll((figs) => figs.map((f) => f.querySelector(".ex-caption")!.getBoundingClientRect().bottom <= f.querySelector(".ex-device")!.getBoundingClientRect().top + 1));
+  expect(order).toEqual(Array(8).fill(true));
+
+  const box = page.locator("#look-sheet .ex-side:visible .ex-device");
+  await box.scrollIntoViewIfNeeded();
+  const wait = box.locator("[data-wait]");
+  // Words in the box, the half-loaded frame out of sight, no link yet; nothing animates.
+  await expect(wait).toHaveText("Loading the example…");
+  await expect(wait).toBeVisible();
+  await expect(box.locator("iframe")).toBeHidden();
+  await expect(wait.getByRole("link")).toHaveCount(0);
+  expect(await wait.evaluate((el) => getComputedStyle(el).animationName)).toBe("none");
+  // Still nothing after eight seconds: a plain link to the example on its own, a full touch target.
+  const link = wait.getByRole("link", { name: /^Open it on its own/ });
+  await expect(link).toBeVisible({ timeout: 10_000 });
+  await expect(link).toHaveAttribute("href", `${FRAME}/after/sheet?format=shopping`);
+  expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  // Once the page has drawn, the words go and the example shows.
+  release();
+  await expect(box.locator("iframe")).toBeVisible();
+  await expect(wait).toHaveCount(0);
+  await expect(shown(page, "sheet").contentFrame().locator(".themed.tpl-sheet")).toBeVisible();
+});
+
 test("the exhibits behave: a tick ticks, a product row opens, the board scrolls sideways; nothing is saved", async ({ page }) => {
   // 440 wide, so the 390px frame is drawn at full size: Playwright cannot aim a click inside a frame that CSS has scaled.
   await page.setViewportSize({ width: 440, height: 844 });

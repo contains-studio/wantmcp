@@ -445,10 +445,11 @@ function Exhibit({ id, label, sides, width, pick, grid = false, note, extra }: {
             <div className={grid ? "ex-grid" : "ex-single"}>
               {s.frames.map((f) => (
                 <figure key={f.src} className="ex-figure">
+                  {/* The name over its frame: under it, a name read as the heading of the frame below. */}
+                  {f.caption && <figcaption className="ex-caption">{f.caption}</figcaption>}
                   <div className="ex-device">
                     <LiveFrame src={f.src} title={f.title} still={grid} />
                   </div>
-                  {f.caption && <figcaption className="ex-caption">{f.caption}</figcaption>}
                 </figure>
               ))}
             </div>
@@ -477,14 +478,24 @@ function Exhibit({ id, label, sides, width, pick, grid = false, note, extra }: {
   );
 }
 
+/** How long a frame may stay undrawn before the reader is offered a plain link to it. */
+const SLOW_MS = 8000;
+
 /**
  * One frame. The server sends its address and the browser's own lazy loading waits until it is near. Once scripts run,
  * a frame far from the screen (or on the side not showing) is let go, and comes back when the reader does, so a phone
  * holds a few live pages at a time, not thirty.
+ *
+ * Until a frame has drawn, its box says so in words (no spinner: nothing moves on this page), and if it still has not
+ * after eight seconds it offers a plain link to the example on its own. Without scripts the words sit behind the frame
+ * and the page it loads covers them.
  */
 function LiveFrame({ src, title, still }: { src: string; title: string; still: boolean }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [near, setNear] = useState(true);
+  // null until scripts run (the server cannot know); then whether the page in the frame has drawn.
+  const [drawn, setDrawn] = useState<boolean | null>(null);
+  const [slow, setSlow] = useState(false);
   useEffect(() => {
     const box = ref.current?.parentElement;
     if (!box || !("IntersectionObserver" in window)) return;
@@ -492,5 +503,47 @@ function LiveFrame({ src, title, still }: { src: string; title: string; still: b
     io.observe(box);
     return () => io.disconnect();
   }, []);
-  return <iframe ref={ref} src={near ? src : "about:blank"} title={title} loading="lazy" className="ex-iframe" data-live={near ? "" : undefined} scrolling={still ? "no" : undefined} inert={still} />;
+  useEffect(() => {
+    // A frame the server sent may have loaded before scripts ran, so its load event is gone: look at the frame itself.
+    const frame = ref.current;
+    let done = false;
+    try {
+      const doc = frame?.contentDocument;
+      done = !!near && !!doc && doc.readyState === "complete" && doc.location.href !== "about:blank";
+    } catch {
+      // Not ours to read: wait for its load event.
+    }
+    setDrawn(done);
+    setSlow(false);
+    if (!near || done) return;
+    const t = setTimeout(() => setSlow(true), SLOW_MS);
+    return () => clearTimeout(t);
+  }, [near, src]);
+  return (
+    <>
+      {drawn !== true && (
+        <p className="ex-wait" data-wait>
+          <span>Loading the example…</span>
+          {slow && !still && (
+            <a href={src} className="link">
+              Open it on its own
+              <span className="sr-only"> ({title})</span>
+            </a>
+          )}
+        </p>
+      )}
+      <iframe
+        ref={ref}
+        src={near ? src : "about:blank"}
+        title={title}
+        loading="lazy"
+        className="ex-iframe"
+        data-live={near ? "" : undefined}
+        data-drawing={drawn === false ? "" : undefined}
+        onLoad={() => near && setDrawn(true)}
+        scrolling={still ? "no" : undefined}
+        inert={still}
+      />
+    </>
+  );
 }
