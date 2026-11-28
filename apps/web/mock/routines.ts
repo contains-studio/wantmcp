@@ -150,8 +150,19 @@ export const emptyRoutineStore = (): RoutineStore => ({
 
 // ---------- the launch switch (mock rule)
 
+/**
+ * SPEC 20.14's `routine.visible`, as the mock sees it for the request being answered: off (only accounts whose email
+ * says "routines" see them, as the preview list does), or on for everyone when a test sends `x-wantmcp-routines:
+ * launched` (the web forwards it to the mock only).
+ */
+let launchedForAll = false;
+export function setMockRoutinesLaunched(on: boolean) {
+  launchedForAll = on;
+}
+export const mockRoutinesLaunched = () => launchedForAll;
+
 export function routinesFor(email: string): UserSelf["routines"] | undefined {
-  if (!email.includes("routines")) return undefined;
+  if (!launchedForAll && !email.includes("routines")) return undefined;
   const running = !email.includes("paused");
   // SPEC 26.14: kinds_visible says which kinds are launched (server c6278c7: these four for preview accounts).
   const all = ["exa_search", "due_reminders", "countdown", "target_price", "restock", "weekly_summary", "agent_check", "list_changes"] as const;
@@ -227,9 +238,14 @@ export function normaliseSchedule(input: ScheduleInput | undefined, tz: string, 
   const time = input?.time ?? "09:00";
   if (!/^([01]\d|2[0-3]):00$/.test(time)) return "time must be a whole hour, 00:00 to 23:00";
   const out: Schedule = { every, interval, time, time_zone: input?.time_zone || tz, anchor: now.toISOString().slice(0, 10) };
+  // As strict as the server's buildSchedule (lib/schedule.ts): days only for weeks, and not an empty list;
+  // day_of_month only for months. A mock more forgiving than the server is how a refused schedule got through.
+  if (every !== "week" && input?.days !== undefined) return "schedule.days is only for every week";
+  if (every !== "month" && input?.day_of_month !== undefined) return "schedule.day_of_month is only for every month";
   if (every === "week") {
+    if (input?.days !== undefined && input.days.length === 0) return "schedule.days must be one or more of mon, tue, wed, thu, fri, sat, sun";
     const days = input?.days?.length ? input.days : [DAYS[now.getUTCDay()]];
-    if (days.some((d) => !DAYS.includes(d))) return "days must be mon to sun";
+    if (days.some((d) => !DAYS.includes(d))) return "schedule.days must be one or more of mon, tue, wed, thu, fri, sat, sun";
     out.days = DAYS.filter((d) => days.includes(d)).sort((a, b) => ((DAYS.indexOf(a) + 6) % 7) - ((DAYS.indexOf(b) + 6) % 7));
   }
   if (every === "month") {
@@ -287,6 +303,7 @@ export interface RoutineCtx {
     emit: (type: any, listId: string, actor: ActorRef, url: string, extra?: any) => void;
     webUrl: string;
     notFound: (what?: string) => Error;
+    unauthorized: () => Error;
     forbidden: (what?: string) => Error;
     invalid: (what: string) => Error;
     conflict: (what: string, details?: unknown) => Error;
@@ -669,8 +686,9 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       if (typeof sched === "string") throw h.invalid(sched);
       schedule = sched;
       start = "schedule";
-      const every = sched.every === "week" && sched.days?.length === 1 ? DAY_NAME[sched.days[0]] : sched.every === "day" ? "day" : "week";
-      name = `Ask ${a.name} to check every ${every}`.slice(0, 60);
+      // As the server names it: "Ask Claude to check" and its schedule's words without the time.
+      const words = scheduleText(sched).replace(/ at \d.*$/, "");
+      name = `Ask ${a.name} to check ${words[0].toLowerCase()}${words.slice(1)}`.slice(0, 60);
     } else {
       const dup = rs().routines.find((r) => r.kind === kind && r.list_id === listId && !r.deleted_at);
       if (dup) throw h.conflict(`This list already has one: "${dup.name}"`, { routine: { id: dup.id, name: dup.name } });
@@ -763,6 +781,8 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   });
 
   route("GET", "/routine-occasions", ({ caller }) => {
+    // Signed out: an unknown path while routines are dark, "Sign in first" once launched (as the server answers).
+    if (!caller) throw launchedForAll ? h.unauthorized() : h.notFound();
     visibleFor(caller);
     return { data: OCCASIONS.map(({ slug, year, date, date_end, label }) => ({ slug, year, date, date_end, label })) };
   });

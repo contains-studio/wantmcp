@@ -1262,7 +1262,12 @@ export interface RoutineChangedPayload {
 export interface RoutineInput {
   kind: RoutineKind;
   name?: string;
-  /** Kinds that start by a schedule only. */
+  /**
+   * Kinds that start by a schedule only. Parts left out take the kind's defaults (agent_check: every Friday at 9:00;
+   * weekly_summary: every Sunday at the email hour); a weekly default's days never come along to "every day" or
+   * "every month". On PATCH, parts left out keep the routine's own (its time and interval; its days or day of the
+   * month only while `every` stays the same).
+   */
   schedule?: ScheduleInput;
   /** target_price and restock: the want (SPEC 26.2 item 4). */
   item_id?: string;

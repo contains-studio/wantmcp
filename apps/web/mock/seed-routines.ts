@@ -25,6 +25,11 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     { id: "usr_rt_sam", email: "routines-sam@example.com", handle: "sam", updates_opt_in: false, created_at: at(30 * DAY) },
   );
   s.agents.push({ id: "agt_rt_claude", name: "Claude", kind: "oauth", key: null, list_ids: ["lst_rt_kitchen", "lst_rt_garden"], owner_id: "usr_rt", created_at: at(10 * DAY), last_used_at: at(HOUR) });
+  // Two more of mine on Kitchen with no "Ask my agent to check" yet, for a daily and a monthly one.
+  s.agents.push(
+    { id: "agt_rt_gemini", name: "Gemini", kind: "oauth", key: null, list_ids: ["lst_rt_kitchen"], owner_id: "usr_rt", created_at: at(4 * DAY), last_used_at: at(2 * HOUR) },
+    { id: "agt_rt_codex", name: "Codex", kind: "oauth", key: null, list_ids: ["lst_rt_kitchen"], owner_id: "usr_rt", created_at: at(4 * DAY), last_used_at: at(3 * HOUR) },
+  );
   // An agent that runs on its own (mock rule: an account key listens for events), for "Ask my agent to check" (26.20 item 5).
   s.agents.push({ id: "agt_rt_hermes", name: "Hermes", kind: "account", key: "ak_mock_rt_hermes", list_ids: ["lst_rt_garden"], owner_id: "usr_rt", created_at: at(3 * DAY), last_used_at: at(HOUR) });
   s.lists.push(

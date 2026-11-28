@@ -144,8 +144,12 @@ test("New routine: the Exa notice before confirming; without a key, the way to a
   await page.locator("#routines").locator("xpath=ancestor::details[1]").locator("summary", { hasText: "New routine" }).click();
   await page.getByRole("radio", { name: /Search the web for these wants/ }).check();
   await expect(page.getByText("The text of every open want on this list, including other people's, goes to your Exa account each time it runs.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Make this routine" })).toHaveCount(0);
+  // Said first, before the schedule (a new account has no key), and Make waits for one.
+  await expect(page.getByText("It runs on your own Exa key, and you haven't saved one yet.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Add your Exa key" })).toHaveAttribute("href", "/app/account#keys");
+  const notice = (await page.getByText("It runs on your own Exa key").boundingBox())!.y;
+  expect(notice).toBeLessThan((await page.getByText("Every", { exact: true }).first().boundingBox())!.y);
+  await expect(page.getByRole("button", { name: "Make this routine" })).toBeDisabled();
 });
 
 test("privacy, once routines are visible: email, other people's addresses, URLs and the Exa key, with their numbers", async ({ page }) => {
@@ -286,4 +290,31 @@ test.describe("without JavaScript, New routine from the Routines tab", () => {
     await expect(page.getByRole("group", { name: "What should it do?" })).toBeVisible();
     await expect(page.locator("input[name=kind]:checked")).toHaveCount(0);
   });
+});
+
+test.describe("launched for everyone (the switch on, as after the flip)", () => {
+  // Tests only: the mock's routine.visible for everyone (forwarded to the mock, never to the real API).
+  test.use({ extraHTTPHeaders: { "x-wantmcp-check": "1", "x-wantmcp-routines": "launched" } });
+
+  test("a signed-out reader gets /privacy's routines part, dated the day it was written", async ({ page }) => {
+    await page.goto("/privacy");
+    await expect(page.getByText("Effective 24 November 2026 · updated 28 November 2026")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Routines" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("They come from reminders@wantmcp.com");
+  });
+
+  test("any new account has the Routines tab, and a new list's settings offer New routine", async ({ page }) => {
+    await signIn(page, freshEmail("launch-newbie"));
+    await page.goto("/app/routines");
+    await expect(page.getByRole("heading", { level: 1, name: "Routines" })).toBeVisible();
+    const id = await createList(page, { format: "Shopping", title: "First list" });
+    await page.goto(`/app/lists/${id}/settings?new=1#routines`);
+    await expect(page.getByRole("group", { name: "What should it do?" })).toBeVisible();
+  });
+});
+
+test("before the flip, a signed-out reader's /privacy is today's: no routines part, the old date", async ({ page }) => {
+  await page.goto("/privacy");
+  await expect(page.getByText("Effective 24 November 2026 · updated 25 November 2026")).toBeVisible();
+  await expect(page.locator("#routines")).toHaveCount(0);
 });

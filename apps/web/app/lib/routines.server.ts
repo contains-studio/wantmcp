@@ -4,7 +4,8 @@
  * its sentences (the key rule's "Add it at …" included).
  */
 import { data } from "react-router";
-import { api, apiOptional, formError } from "./api.server";
+import { api, ApiError, apiOptional, formError } from "./api.server";
+import { apiBaseUrl } from "./config.server";
 import type { EmailPrefs, Routine, RoutineEndpoint, RoutineEndpointCreated, ScheduleInput, ServiceKey, UserSelf, Weekday } from "./types";
 import { routinesOn } from "./routines";
 
@@ -306,4 +307,25 @@ export function kindSettings(kind: string, form: FormData): Record<string, unkno
     return { lead_days: nums("lead_days"), overdue: ["off", "once", "daily"].includes(overdue) ? overdue : "once" };
   }
   return {};
+}
+
+let launchedSeen: { at: number; on: boolean } | null = null;
+/**
+ * SPEC 20.14: whether routines are launched for everyone, for a reader who isn't signed in (a signed-in reader has
+ * GET /me's `routines`). The server has no public flag, so this reads how it answers a signed-out GET
+ * /routine-occasions: an unknown path (404) while routines are dark, "Sign in first" (401) once launched. Remembered
+ * for a minute per isolate against the real API; never against the mock, whose switch tests set per request.
+ */
+export async function routinesLaunched(request: Request): Promise<boolean> {
+  const mock = apiBaseUrl() === "mock";
+  if (!mock && launchedSeen && Date.now() - launchedSeen.at < 60_000) return launchedSeen.on;
+  let on = false;
+  try {
+    await api(request, "/routine-occasions", { anonymous: true });
+    on = true;
+  } catch (err) {
+    on = err instanceof ApiError && err.status === 401;
+  }
+  if (!mock) launchedSeen = { at: Date.now(), on };
+  return on;
 }

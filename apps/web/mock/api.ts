@@ -15,7 +15,7 @@ import type {
 } from "../app/lib/types.ts";
 import { HANDOVER_TTL_DAYS, UNCLAIMED_TTL_HOURS } from "../app/lib/claims.ts";
 import { seedStore } from "./seed.ts";
-import { emptyRoutineStore, registerRoutineRoutes, routinesFor, scheduleText, type RoutineStore } from "./routines.ts";
+import { emptyRoutineStore, registerRoutineRoutes, routinesFor, scheduleText, setMockRoutinesLaunched, type RoutineStore } from "./routines.ts";
 import { seedRoutines } from "./seed-routines.ts";
 import { newId, randomToken, type AgentRow, type ClaimRow, type SkillRow, type EntryRow, type ItemRow, type ListRow, type Store, type UserRow } from "./store.ts";
 
@@ -1918,6 +1918,7 @@ const routineApi = registerRoutineRoutes({
     unclaimed: (listId: string) => store.claims.some((x) => x.list_id === listId && x.kind === "unclaimed" && !x.used_by),
     emit: emit as never,
     webUrl: WEB,
+    unauthorized: () => unauthorized(),
     notFound,
     forbidden,
     invalid,
@@ -1932,6 +1933,8 @@ const routineOut = (r: Parameters<typeof routineApi.out>[0]) => routineApi.out(r
 
 export async function handleMockRequest(req: Request): Promise<Response> {
   if (!store) seedAll();
+  // Tests only: the routines launch switch for this request (forwarded by the web, against the mock only).
+  setMockRoutinesLaunched(req.headers.get("x-wantmcp-routines") === "launched");
   const url = new URL(req.url);
   const path = url.pathname.replace(/^\/v1/, "").replace(/\/$/, "") || "/";
   try {

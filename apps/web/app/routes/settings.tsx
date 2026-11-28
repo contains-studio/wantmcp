@@ -121,6 +121,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
             timeZone: me.time_zone ?? null,
             currency: me.currency ?? null,
             occasions,
+            // Due reminders on a list where nothing has a due date yet: the form says when it will start.
+            anyDue: list.items.some((i) => !i.pending_review && !!i.due_at),
             // Only URLs that answered the handshake can be sent to.
             urls: urls.filter((u) => u.state === "ok").map((u) => ({ id: u.id, name: u.name, host: u.host })),
             // Open wants without a target price yet (one per want, SPEC 26.2 item 13).
@@ -882,6 +884,7 @@ function RoutinesSection({
   myAgents,
   listPrivate,
   urls,
+  anyDue,
   preset,
   open,
 }: {
@@ -899,6 +902,7 @@ function RoutinesSection({
   myAgents: Array<{ id: string; name: string }>;
   listPrivate: boolean;
   urls: Array<{ id: string; name: string; host: string }>;
+  anyDue: boolean;
   preset: { kind: RoutineKind | null; item: string | null; open?: boolean };
   open: boolean;
 }) {
@@ -924,6 +928,7 @@ function RoutinesSection({
         taken={taken}
         myAgents={myAgents}
         urls={urls}
+        anyDue={anyDue}
         listPrivate={listPrivate}
         preset={preset}
       />

@@ -57,6 +57,8 @@ export async function api<T>(request: Request, path: string, init: ApiInit = {})
     if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
   }
   const headers = new Headers({ accept: "application/json" });
+  // Tests only: the mock's routines launch switch (mock/routines.ts). Never sent to the real API.
+  if (base === "mock" && request.headers.get("x-wantmcp-routines")) headers.set("x-wantmcp-routines", request.headers.get("x-wantmcp-routines")!);
   const token = init.anonymous ? null : init.token !== undefined ? init.token : getSessionToken(request);
   if (token) headers.set("authorization", `Bearer ${token}`);
   if (init.body !== undefined) headers.set("content-type", "application/json");

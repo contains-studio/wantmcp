@@ -25,11 +25,12 @@ test("the chooser offers exactly the launched kinds, each saying what it does an
   // A fresh list has no wants yet, so "at my price" has nothing to watch.
   await expect(kinds).toHaveCount(4);
   await expect(page.getByText("Search the web for these wants")).toBeVisible();
-  await expect(page.getByText("Uses your Exa key, about 2 cents a search")).toBeVisible();
+  // A new account has no key and no URL yet: the options say what they need.
+  await expect(page.getByText("Needs an Exa key of your own, about 2 cents a search")).toBeVisible();
   await expect(page.getByText("Countdown and order-by dates")).toBeVisible();
   await expect(page.getByText("Remind me before things are due")).toBeVisible();
   await expect(page.getByText("No key needed")).toHaveCount(2);
-  await expect(page.getByText("Uses a URL of yours")).toBeVisible();
+  await expect(page.getByText("Needs a URL of yours")).toBeVisible();
   // Never on a list: the weekly summary is made on the Routines tab.
   await expect(page.getByText("A weekly summary")).toHaveCount(0);
   // Launched on the server (kinds_visible) but not known to this page: never offered.
@@ -83,6 +84,8 @@ test("a countdown to an occasion and due-date reminders, each with its own setti
   // The countdown is one per list: not offered again.
   await expect(page.getByRole("radio", { name: /Countdown and order-by dates/ })).toHaveCount(0);
   await page.getByRole("radio", { name: /Remind me before things are due/ }).check();
+  // An empty list: it says when it will have something to tell.
+  await expect(page.getByText("No want on this list has a due date yet. It starts telling you once one does.")).toBeVisible();
   await expect(page.getByRole("checkbox", { name: "1 day" })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: "7 days" })).toBeChecked();
   await expect(page.getByRole("radio", { name: "Tell me once" })).toBeChecked();
@@ -173,6 +176,26 @@ test("ask my agent to check: one of my own agents, what to check, and whether it
   await expect(hermes).toContainText("Hermes is listening: it is told the moment this is due.");
   await expect(hermes.getByRole("region", { name: "Instruction for a scheduled run" })).toHaveCount(0);
 });
+
+// The server refused `every: "day"` for an agent check until fc8084e; the mock now refuses what the server refuses.
+for (const [agentName, every, named] of [
+  ["Gemini", "day", /^Ask Gemini to check every day/],
+  ["Codex", "month", /^Ask Codex to check .*every month/],
+] as const) {
+  test(`ask my agent to check every ${every}: made, and named by its schedule`, async ({ page }) => {
+    await signIn(page, RT);
+    await page.goto("/app/lists/lst_rt_kitchen/settings#routines");
+    await page.locator("summary", { hasText: "New routine" }).click();
+    await page.getByRole("radio", { name: /Ask my agent to check/ }).check();
+    await page.getByLabel("Which agent").selectOption({ label: agentName });
+    await page.locator("form").filter({ has: page.getByRole("group", { name: "What should it do?" }) }).locator("select[name=every]").selectOption(every);
+    await page.getByRole("radio", { name: "In the app, under For you" }).check();
+    await page.getByRole("button", { name: "Make this routine" }).click();
+    const card = page.locator("article").filter({ has: page.getByRole("heading", { name: named }) });
+    await expect(card).toBeVisible();
+    await expect(card).toContainText(every === "day" ? "Every day at 9:00" : /every month at 9:00/i);
+  });
+}
 
 test("ask my agent to check: not offered without an agent of my own on the list", async ({ page }) => {
   await signIn(page, RT);

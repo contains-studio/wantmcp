@@ -65,6 +65,7 @@ export function NewRoutine({
   myAgents,
   urls,
   listPrivate,
+  anyDue = true,
   preset,
 }: {
   listId: string;
@@ -86,6 +87,8 @@ export function NewRoutine({
   /** The person's own URLs that answered the handshake (SPEC 26.21.4). */
   urls: Array<{ id: string; name: string; host: string }>;
   listPrivate: boolean;
+  /** Some want on the list has a due date (due reminders has something to tell). */
+  anyDue?: boolean;
   /** ?new=<kind>&item=<id>: opened from a want ("Tell me when it's at my price"). */
   preset: { kind: RoutineKind | null; item: string | null; /** ?new=…: open the chooser, with or without a kind. */ open?: boolean };
 }) {
@@ -124,6 +127,16 @@ export function NewRoutine({
   const parts: Partial<Record<RoutineKind, React.ReactNode>> = {
     exa_search: (
           <KindPart>
+            {/* Said first, not after the schedule: a new account has no key yet. */}
+            {!keyOk && (
+              <p className="text-[0.9rem] text-ink-2">
+                It runs on your own Exa key, and you haven't saved one yet.{" "}
+                <Link to="/app/account#keys" className="link">
+                  Add your Exa key
+                </Link>
+                , then come back to make it.
+              </p>
+            )}
             <ScheduleFields initial={{ every: "week", interval: 1, days: [today], time: "09:00" }} idPrefix={`new-${listId}`} />
             <div className="grid gap-1 rounded-[10px] bg-sunk p-3 text-[0.88rem] text-ink-2">
               <p>{EXA_NOTICE}</p>
@@ -176,6 +189,7 @@ export function NewRoutine({
     ),
     due_reminders: (
           <KindPart>
+            {!anyDue && <p className="text-[0.9rem] text-ink-2">No want on this list has a due date yet. It starts telling you once one does.</p>}
             <Chips name="lead_days" legend="How long before" options={[[0, "On the day"], [1, "1 day"], [3, "3 days"], [7, "7 days"], [14, "14 days"]]} initial={[1, 7]} />
             <fieldset className="grid gap-1.5">
               <legend className="label mb-1">If it's overdue</legend>
@@ -331,7 +345,17 @@ export function NewRoutine({
                     <span className="grid gap-0.5">
                       <span className="font-semibold">{k.name}</span>
                       <span className="text-[0.88rem] text-ink-2">{k.line}</span>
-                      <span className="text-[0.82rem] text-ink-3">{k.kind === "exa_search" ? exaCost(sw, format) : k.kind === "list_changes" ? "Uses a URL of yours" : "No key needed"}</span>
+                      <span className="text-[0.82rem] text-ink-3">
+                        {k.kind === "exa_search"
+                          ? keyOk
+                            ? exaCost(sw, format)
+                            : exaCost(sw, format).replace("Uses your Exa key", "Needs an Exa key of your own")
+                          : k.kind === "list_changes"
+                            ? urls.length
+                              ? "Uses a URL of yours"
+                              : "Needs a URL of yours"
+                            : "No key needed"}
+                      </span>
                     </span>
                   </label>
                   {live && kind === k.kind && offered.length > 1 && (
@@ -374,18 +398,10 @@ export function NewRoutine({
         )}
 
         {paused && <p className="text-[0.88rem] font-medium text-warn">{PAUSED_FOR_EVERYONE}.</p>}
-        {needsKey ? (
-          <p className="text-[0.9rem] text-ink-2">
-            It runs on your own Exa key, and you haven't saved one.{" "}
-            <Link to="/app/account#keys" className="link">
-              Add your Exa key
-            </Link>
-          </p>
-        ) : (
-          <button className="btn btn-want w-full sm:w-fit" disabled={f.state !== "idle" || (live && !kind) || needsUrl}>
-            {f.state !== "idle" ? "Making…" : "Make this routine"}
-          </button>
-        )}
+        {/* Without a key, the search's part says so first (with the way to add one), and Make waits for it. */}
+        <button className="btn btn-want w-full sm:w-fit" disabled={f.state !== "idle" || (live && !kind) || needsUrl || needsKey}>
+          {f.state !== "idle" ? "Making…" : "Make this routine"}
+        </button>
         {f.data?.intent === "routine-create" && f.data.error && (
           <p className="form-error" role="alert">
             {f.data.error}

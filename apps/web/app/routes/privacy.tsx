@@ -1,13 +1,16 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/privacy";
-import { ContactLink, LegalPage } from "~/components/Legal";
+import { ContactLink, LegalPage, ROUTINES_UPDATED_DATE } from "~/components/Legal";
 import { siteOrigin } from "~/lib/config.server";
 import { getUser } from "~/lib/auth.server";
 import { routinesOn } from "~/lib/routines";
+import { routinesLaunched } from "~/lib/routines.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  // SPEC 20.10: the routines paragraph, only once routines are launched for this reader (20.14).
-  return { origin: siteOrigin(request), routines: !!routinesOn(await getUser(request).catch(() => null)) };
+  // SPEC 20.10: the routines paragraph, only once routines are launched for this reader (20.14): a signed-in reader
+  // from GET /me, anyone else from whether they are launched for everyone. The page's "updated" date follows it.
+  const user = await getUser(request).catch(() => null);
+  return { origin: siteOrigin(request), routines: user ? !!routinesOn(user) : await routinesLaunched(request) };
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -20,7 +23,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export default function Privacy({ loaderData }: Route.ComponentProps) {
   return (
-    <LegalPage title="Privacy">
+    <LegalPage title="Privacy" updated={loaderData.routines ? ROUTINES_UPDATED_DATE : undefined}>
       <p>
         The Want MCP (wantmcp.com) is run by Contains Studio. This page explains, in plain language, what we collect, what is public and
         what you can do about it. Questions: <ContactLink />.
