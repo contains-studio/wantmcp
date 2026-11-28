@@ -17,7 +17,7 @@ import { AccessRow, AgentMark, Email, PersonMark, RemoveInTwoSteps } from "~/com
 import { KeyDone, ShareWithAgent } from "~/components/ShareWithAgent";
 import { RoutineCard } from "~/components/RoutineCard";
 import { NewRoutine } from "~/components/NewRoutine";
-import { routinesOn, type RoutinesSwitch } from "~/lib/routines";
+import { kindFlag, routinesOn, type RoutinesSwitch } from "~/lib/routines";
 import { myExaKey, routineAction, ROUTINE_INTENTS } from "~/lib/routines.server";
 import { AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
@@ -60,7 +60,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
         api<{ data: Routine[] }>(request, `/lists/${id}/routines`).then((r) => r.data).catch(() => [] as Routine[]),
         myExaKey(request, me),
         // SPEC 26.7: the days a countdown can start from, only when countdowns are launched for this person.
-        sw.kinds_visible?.countdown ? api<{ data: Occasion[] }>(request, "/routine-occasions").then((r) => r.data).catch(() => [] as Occasion[]) : Promise.resolve([] as Occasion[]),
+        kindFlag(sw.kinds_visible, "countdown") ? api<{ data: Occasion[] }>(request, "/routine-occasions").then((r) => r.data).catch(() => [] as Occasion[]) : Promise.resolve([] as Occasion[]),
       ])
     : [null, null, [] as Occasion[]];
   const { items: _items, ...summary } = list;

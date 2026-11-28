@@ -15,7 +15,7 @@ export function routinesOn(user: Pick<UserSelf, "routines"> | null | undefined):
 
 /** "Routines are paused for everyone for now" applies to this routine (all of them, or its kind). */
 export function pausedForEveryone(sw: RoutinesSwitch, r: Pick<Routine, "kind">): boolean {
-  return !sw.running || !sw.kinds[r.kind];
+  return !sw.running || !kindFlag(sw.kinds, r.kind);
 }
 
 export const PAUSED_FOR_EVERYONE = "Routines are paused for everyone for now";
@@ -131,4 +131,20 @@ export function noticePath(to: string | null): string {
   } catch {
     return "/app";
   }
+}
+
+/** A kind's switch in one of GET /me's per-kind records (only offered kinds have one; any other is off). */
+export function kindFlag(flags: Partial<Record<string, boolean>> | undefined, kind: string): boolean {
+  return !!flags?.[kind];
+}
+
+/**
+ * SPEC 26.4: what "email me at once" is held to (email.routine_at_once_per_recipient_per_week, 5). The server sends no
+ * sentence for it, so this one is ours, from the SPEC's rule.
+ */
+export const AT_ONCE_HINT = "Up to 5 a week. Any more come in your daily email.";
+
+/** "about 8:00" for an hour of the day (0-23), as the server writes its own times. */
+export function aboutHour(h: number): string {
+  return `about ${h}:00`;
 }

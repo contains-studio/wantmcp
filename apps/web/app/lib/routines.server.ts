@@ -52,7 +52,12 @@ export async function routineAction(request: Request, form: FormData): Promise<R
         await api(request, `/me/notices/${encodeURIComponent(String(form.get("notice_id") ?? ""))}/seen`, { method: "POST" });
         return done("Dismissed.");
       case "routine-follow":
-        await api(request, `/routines/${r}/follow`, { method: "PUT", body: { email: false } });
+        // The card's buttons: follow in the app, add email, or back to the app only. At once stays as it was, unless
+        // email goes (it has no meaning without it).
+        await api(request, `/routines/${r}/follow`, {
+          method: "PUT",
+          body: { email: form.get("email") === "on", ...(form.get("at_once") === "on" && form.get("email") === "on" ? { at_once: true } : {}) },
+        });
         return done("You'll see these in the app, under For you.");
       case "routine-unfollow":
         await api(request, `/routines/${r}/follow`, { method: "DELETE" });
@@ -64,8 +69,10 @@ export async function routineAction(request: Request, form: FormData): Promise<R
           const listId = String(form.get("list_id") ?? "");
           const follow = String(form.get("follow") ?? "");
           // Restock tells nobody anything (it brings the want back), so it has no follow choice (26.10).
-          if (kind !== "restock" && follow !== "app") return data<RoutineResult>({ intent, error: "Choose how you'll hear about it." }, 400);
-          const body: Record<string, unknown> = { kind, settings: kindSettings(kind, form), ...(kind !== "restock" ? { follow: { email: false } } : {}) };
+          if (kind !== "restock" && follow !== "app" && follow !== "email") return data<RoutineResult>({ intent, error: "Choose where you'll see it." }, 400);
+          // "Email me at once" is target_price's alone, and only with email.
+          const atOnce = kind === "target_price" && follow === "email" && form.get("at_once") === "on";
+          const body: Record<string, unknown> = { kind, settings: kindSettings(kind, form), ...(kind !== "restock" ? { follow: { email: follow === "email", ...(kind === "target_price" ? { at_once: atOnce } : {}) } } : {}) };
           if (kind === "target_price" || kind === "restock") body.item_id = String(form.get(kind === "restock" ? "restock_item_id" : "item_id") ?? "");
           const made = await api<Routine>(request, `/lists/${encodeURIComponent(listId)}/routines`, { method: "POST", body });
           return done(`Made “${made.name}”. ${made.schedule_text}.`, made.id);
@@ -128,7 +135,7 @@ export async function myExaKey(request: Request, user: UserSelf | null): Promise
 
 // ---------- the account page (SPEC 20.5, 20.8, 20.14 item 6): keys, how I hear, time zone. Web only.
 
-export const ACCOUNT_ROUTINE_INTENTS = new Set(["key-save", "key-cap", "key-check", "key-remove", "email-prefs", "time-zone"]);
+export const ACCOUNT_ROUTINE_INTENTS = new Set(["key-save", "key-cap", "key-check", "key-remove", "email-prefs", "email-stop-all", "time-zone"]);
 
 export type AccountRoutineResult = { ok?: boolean; intent: string; message?: string; error?: string };
 
@@ -161,10 +168,23 @@ export async function accountRoutineAction(request: Request, form: FormData) {
         await api(request, "/me/service-keys/exa", { method: "DELETE" });
         return done("Removed. The routines that used it are stopped until someone resumes them with their own key.");
       case "email-prefs": {
-        const kinds = { routine_key: form.get("routine_key") === "on", routine_unattended: form.get("routine_unattended") === "on" };
-        await api<EmailPrefs>(request, "/me/email-prefs", { method: "PATCH", body: { kinds } });
+        const on = (k: string) => form.get(k) === "on";
+        const kinds = { routine_key: on("routine_key"), routine_unattended: on("routine_unattended"), routine_digest: on("routine_digest"), routine_at_once: on("routine_at_once") };
+        const hour = Number(form.get("email_hour"));
+        await api<EmailPrefs>(request, "/me/email-prefs", { method: "PATCH", body: { kinds, ...(form.has("email_hour") && Number.isInteger(hour) ? { email_hour: hour } : {}) } });
+        // Each followed routine's own email choice: only the ones that changed are sent.
+        for (const id of form.getAll("follow_id").map(String)) {
+          const email = on(`follow_email:${id}`);
+          const atOnce = email && on(`follow_at_once:${id}`);
+          const was = String(form.get(`follow_was:${id}`) ?? "");
+          if (was === `${email ? 1 : 0}${atOnce ? 1 : 0}`) continue;
+          await api(request, `/routines/${encodeURIComponent(id)}/follow`, { method: "PUT", body: { email, ...(form.get(`follow_kind:${id}`) === "target_price" ? { at_once: atOnce } : {}) } });
+        }
         return done("Saved.");
       }
+      case "email-stop-all":
+        await api<EmailPrefs>(request, "/me/email-prefs", { method: "PATCH", body: { stop_all: true } });
+        return done("Stopped. No routine emails; your routines still show in the app.");
       case "time-zone": {
         const tz = String(form.get("time_zone") ?? "");
         await api(request, "/me", { method: "PATCH", body: { time_zone: tz } });

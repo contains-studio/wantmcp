@@ -13,7 +13,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { ScheduleFields } from "./RoutineCard";
 import type { RoutineResult } from "~/lib/routines.server";
-import { browserTimeZone, EXA_NOTICE, EXA_NOTICE_COUNTRY, PAUSED_FOR_EVERYONE, type RoutinesSwitch } from "~/lib/routines";
+import { AT_ONCE_HINT, browserTimeZone, EXA_NOTICE, EXA_NOTICE_COUNTRY, kindFlag, PAUSED_FOR_EVERYONE, type RoutinesSwitch } from "~/lib/routines";
 import type { ListFormat, Occasion, RoutineKind } from "~/lib/types";
 
 type Want = { id: string; text: string };
@@ -68,13 +68,14 @@ export function NewRoutine({
   const f = useFetcher<RoutineResult>({ key: `routine-new-${listId}` });
   const offered = KINDS.filter(
     (k) =>
-      sw.kinds_visible?.[k.kind] &&
+      kindFlag(sw.kinds_visible, k.kind) &&
       (!k.lists || k.lists.includes(format)) &&
       !(k.kind === "target_price" ? wants.length === 0 : k.kind === "restock" ? restockWants.length === 0 : taken.includes(k.kind)),
   );
   const [kind, setKind] = useState<RoutineKind | null>(preset.kind && offered.some((k) => k.kind === preset.kind) ? preset.kind : offered.length === 1 ? offered[0].kind : null);
   const [live, setLive] = useState(false);
   useEffect(() => setLive(true), []);
+  const [byEmail, setByEmail] = useState(false);
   // Opening "New routine", or picking a kind, brings the chooser's heading to the top of the screen.
   const legend = useRef<HTMLLegendElement>(null);
   const toTop = () => requestAnimationFrame(() => legend.current?.scrollIntoView({ block: "start" }));
@@ -196,7 +197,7 @@ export function NewRoutine({
     ),
   };
   const needsKey = kind === "exa_search" && !keyOk;
-  const paused = !sw.running || (kind !== null && sw.kinds?.[kind] === false);
+  const paused = !sw.running || (kind !== null && !kindFlag(sw.kinds, kind));
   return (
     <details className="rt-fold" open={!!preset.kind || (f.data?.intent === "routine-create" && !!f.data.error)} onToggle={(e) => e.currentTarget.open && toTop()}>
       <summary className="btn btn-sm w-fit">New routine</summary>
@@ -246,19 +247,31 @@ export function NewRoutine({
 
 
 
-        {/* How the maker hears (26.4): required, nothing preselected. Email is shown as coming, not hidden. Restock tells
-            nobody anything (it brings the want back), so it has no such choice. */}
+        {/* Where the maker sees it (26.4): required, nothing preselected. Restock tells nobody anything (it brings the
+            want back), so it has no such choice. */}
         {(!live || (kind && kind !== "exa_search" && kind !== "restock")) && (
           <fieldset className="grid gap-1.5">
-            <legend className="label mb-1">How you'll hear about it</legend>
+            <legend className="label mb-1">Where you'll see it</legend>
             <label className="check">
-              <input type="radio" name="follow" value="app" required={!!kind && kind !== "exa_search" && kind !== "restock"} />
+              <input type="radio" name="follow" value="app" required={!!kind && kind !== "exa_search" && kind !== "restock"} onChange={() => setByEmail(false)} />
               <span>In the app, under For you</span>
             </label>
-            <label className="check text-ink-3">
-              <input type="radio" name="follow" value="email" disabled />
-              <span>Email, coming soon</span>
+            <label className="check rt-check">
+              <input type="radio" name="follow" value="email" onChange={() => setByEmail(true)} />
+              <span>
+                <span className="block">In the app and by email</span>
+                <span className="hint">One email a day with all your routines. You can change it in Notifications.</span>
+              </span>
             </label>
+            {(!live || (kind === "target_price" && byEmail)) && (
+              <label className={`check rt-check ${live ? "pl-7" : "mt-1"}`}>
+                <input type="checkbox" name="at_once" />
+                <span>
+                  <span className="block">{live ? "Email me at once when it reaches my price" : "Target price: email me at once when it reaches my price"}</span>
+                  <span className="hint">{AT_ONCE_HINT}</span>
+                </span>
+              </label>
+            )}
           </fieldset>
         )}
 

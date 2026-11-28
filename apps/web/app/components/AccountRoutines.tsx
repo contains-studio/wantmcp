@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { RemoveInTwoSteps } from "./AccessRow";
 import { Time } from "./Time";
-import { browserTimeZone, keyCheckCost, routinesOn } from "~/lib/routines";
+import { aboutHour, AT_ONCE_HINT, browserTimeZone, keyCheckCost, routinesOn } from "~/lib/routines";
 import { useRootData } from "~/lib/hooks";
 import type { AccountRoutineResult } from "~/lib/routines.server";
 import type { EmailPrefs, ServiceKey } from "~/lib/types";
@@ -181,6 +181,11 @@ function KeyForm({ f, busy, replacing = false }: { f: ReturnType<typeof useFetch
 
 export function Notifications({ prefs }: { prefs: EmailPrefs }) {
   const f = useFetcher<AccountRoutineResult>({ key: "email-prefs" });
+  // One fetcher for Save and "Stop all", so only the latest answer shows; a fresh form after each, so the switches
+  // show what the server now has.
+  const round = `${f.data?.intent ?? ""}${f.data?.message ?? ""}`;
+  const byEmail = prefs.follows.filter((x) => x.email);
+  const anyEmail = byEmail.length > 0 || Object.values(prefs.kinds).some(Boolean);
   return (
     <section aria-labelledby="notifications-h" id="notifications" className="card grid scroll-mt-24 gap-4 p-5 sm:p-6">
       {/* id="email": the section's first name, so anything that linked to #email still lands here. */}
@@ -188,10 +193,72 @@ export function Notifications({ prefs }: { prefs: EmailPrefs }) {
         <h2 id="notifications-h" className="text-xl font-semibold">
           Notifications
         </h2>
-        <p className="text-[0.92rem] text-ink-2">Your routines always show on your lists and in the app. Email is for the two things that need you.</p>
+        <p className="text-[0.92rem] text-ink-2">Your routines always show on your lists and in the app. Here you choose what also comes by email.</p>
       </div>
-      <f.Form method="post" className="grid gap-3">
+      <f.Form method="post" className="grid gap-3" key={round}>
         <input type="hidden" name="intent" value="email-prefs" />
+        {prefs.follows.length > 0 && (
+          <fieldset className="grid gap-2">
+            <legend className="label mb-1">Email me about these routines</legend>
+            <ul className="grid gap-2">
+              {prefs.follows.map((x) => (
+                <li key={x.routine_id} className="grid gap-1">
+                  <input type="hidden" name="follow_id" value={x.routine_id} />
+                  <input type="hidden" name={`follow_kind:${x.routine_id}`} value={x.routine.kind} />
+                  <input type="hidden" name={`follow_was:${x.routine_id}`} value={`${x.email ? 1 : 0}${x.email && x.at_once ? 1 : 0}`} />
+                  <label className="check rt-check">
+                    <input type="checkbox" name={`follow_email:${x.routine_id}`} defaultChecked={x.email} />
+                    <span>
+                      <span className="block">{x.routine.name}</span>
+                      <span className="hint">
+                        {x.list ? (
+                          <Link to={`/app/lists/${x.list.id}/settings#routines`} className="link">
+                            {x.list.title}
+                          </Link>
+                        ) : (
+                          "Your lists"
+                        )}
+                      </span>
+                    </span>
+                  </label>
+                  {x.routine.kind === "target_price" && (
+                    <label className="check rt-check pl-7">
+                      <input type="checkbox" name={`follow_at_once:${x.routine_id}`} defaultChecked={x.email && x.at_once} />
+                      <span>
+                        <span className="block">At once when it reaches the price</span>
+                      </span>
+                    </label>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        )}
+        <label className="check rt-check">
+          <input type="checkbox" name="routine_digest" defaultChecked={prefs.kinds.routine_digest} />
+          <span>
+            <span className="block">A daily email with what my routines found</span>
+            <span className="hint">Only for the routines you follow by email.</span>
+          </span>
+        </label>
+        <label className="grid gap-1 pl-7">
+          <span className="text-[0.92rem]">It comes at</span>
+          <select name="email_hour" className="input w-fit" defaultValue={prefs.email_hour}>
+            {Array.from({ length: 24 }, (_, h) => (
+              <option key={h} value={h}>
+                {aboutHour(h)}
+              </option>
+            ))}
+          </select>
+          <span className="hint">In your time zone.</span>
+        </label>
+        <label className="check rt-check">
+          <input type="checkbox" name="routine_at_once" defaultChecked={prefs.kinds.routine_at_once} />
+          <span>
+            <span className="block">At-once emails for target prices</span>
+            <span className="hint">{AT_ONCE_HINT}</span>
+          </span>
+        </label>
         <label className="check rt-check">
           <input type="checkbox" name="routine_key" defaultChecked={prefs.kinds.routine_key} />
           <span>
@@ -211,6 +278,15 @@ export function Notifications({ prefs }: { prefs: EmailPrefs }) {
         </button>
         <Result f={f} intent="email-prefs" />
       </f.Form>
+      {anyEmail && (
+        <f.Form method="post" className="grid gap-1 border-t border-line pt-4">
+          <input type="hidden" name="intent" value="email-stop-all" />
+          <button className="btn btn-sm btn-ghost w-fit" disabled={f.state !== "idle"}>
+            Stop all routine emails
+          </button>
+        </f.Form>
+      )}
+      <Result f={f} intent="email-stop-all" />
     </section>
   );
 }

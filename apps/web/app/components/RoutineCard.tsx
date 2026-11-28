@@ -67,7 +67,7 @@ export function RoutineCard({ routine: r, sw, keyOk, inSettings = false }: { rou
         </p>
         {liveId ? (
           // SPEC 20.14 item 10: a live line in place of the status line while a run is on, and its outcome after.
-          <LiveRunLine key={liveId} routineId={r.id} listId={r.list_id} runId={liveId} initial={r.live_run?.id === liveId ? r.live_run : null} />
+          <LiveRunLine key={liveId} routineId={r.id} listId={r.list_id ?? ""} runId={liveId} initial={r.live_run?.id === liveId ? r.live_run : null} />
         ) : (
           // The server's sentence can carry three parts (last found · last check · next): one short line each on a phone.
           <p className="grid gap-0.5 text-[0.88rem] text-ink-3">
@@ -353,15 +353,31 @@ export function ScheduleFields({ initial, idPrefix, moving }: { initial?: Partia
 }
 
 /**
- * Who hears it (SPEC 26.3, 26.4): following is the app ("For you"); email comes later and is shown as coming. A routine
- * nobody follows tells nobody, and says so.
+ * Who sees it (SPEC 26.3, 26.4): following is the app ("For you"), and by email if the person chose it. A routine nobody
+ * follows tells nobody, and says so.
  */
 function Follow({ f, routine: r }: { f: F; routine: Routine }) {
+  const mine = r.my_follow;
+  const put = (email: boolean, label: string, sr: string, cls: string) => (
+    <f.Form method="post">
+      <input type="hidden" name="intent" value="routine-follow" />
+      <input type="hidden" name="routine_id" value={r.id} />
+      {email && <input type="hidden" name="email" value="on" />}
+      {email && mine?.at_once && <input type="hidden" name="at_once" value="on" />}
+      <button className={cls}>
+        {label}
+        <span className="sr-only"> {sr}</span>
+      </button>
+    </f.Form>
+  );
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.88rem]">
-      {r.my_follow ? (
+      {mine ? (
         <>
-          <span className="text-ink-2">You see these in the app</span>
+          <span className="text-ink-2">
+            {mine.email ? (mine.at_once ? "You get these in the app and by email, at once" : "You get these in the app and by email") : "You see these in the app"}
+          </span>
+          {mine.email ? put(false, "App only", `for ${r.name}`, "textlink-btn text-[0.88rem]") : put(true, "Email me too", `about ${r.name}`, "textlink-btn text-[0.88rem]")}
           <f.Form method="post">
             <input type="hidden" name="intent" value="routine-unfollow" />
             <input type="hidden" name="routine_id" value={r.id} />
@@ -373,13 +389,8 @@ function Follow({ f, routine: r }: { f: F; routine: Routine }) {
       ) : (
         <>
           <span className="text-ink-3">{r.followers === 0 ? "Nobody gets these yet" : `${r.followers} ${r.followers === 1 ? "person gets" : "people get"} these`}</span>
-          <f.Form method="post">
-            <input type="hidden" name="intent" value="routine-follow" />
-            <input type="hidden" name="routine_id" value={r.id} />
-            <button className="btn btn-sm btn-ghost">
-              Follow in the app<span className="sr-only"> {r.name}</span>
-            </button>
-          </f.Form>
+          {put(false, "Follow in the app", r.name, "btn btn-sm btn-ghost")}
+          {put(true, "And by email", `follow ${r.name} in the app and by email`, "btn btn-sm btn-ghost")}
         </>
       )}
     </div>

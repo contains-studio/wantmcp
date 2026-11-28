@@ -25,7 +25,7 @@ import { lowestEntryId, lowestLabel } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useHydrated, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, RoutineSummary, UserSelf } from "~/lib/types";
-import { agentWroteName, guidesOf, productsOf, routinesOn } from "~/lib/routines";
+import { agentWroteName, guidesOf, kindFlag, productsOf, routinesOn } from "~/lib/routines";
 import { RoutineSuggestion } from "~/components/RoutineSuggestion";
 import { GuideNotes } from "~/components/GuideNotes";
 import type { Layout } from "~/themes/types";
@@ -477,7 +477,7 @@ function ItemSection({
   const now = useNow();
   // Guides are not products: never in the prices or the product rows, shown under them as guides (SPEC 20.14 item 12).
   // Target price is offered on a want once that kind is launched for this person (routines.kinds_visible).
-  const targetPriceOn = !!routinesOn(useRootData().user)?.kinds_visible?.target_price;
+  const targetPriceOn = !!kindFlag(routinesOn(useRootData().user)?.kinds_visible, "target_price");
   const entries = sortByPrice(productsOf(item.entries));
   const guides = guidesOf(item.entries);
   const textEntries = productsOf(item.entries);

@@ -781,6 +781,12 @@ export type RoutineKind =
   | "weekly_summary"
   | "agent_check"
   | "chase_claims";
+/**
+ * The kinds that can exist (SPEC 26.20 item 3: `chase_claims` is reserved, never built: no routine nudges another
+ * member). Every kind list (switches, "New routine") uses these.
+ */
+export type OfferedRoutineKind = Exclude<RoutineKind, "chase_claims">;
+
 /** schedule: on a clock; date: from a date (a want's due date, the routine's date); event: when something happens. */
 export type RoutineStart = "schedule" | "date" | "event";
 export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -859,7 +865,8 @@ export interface RoutineRun {
 /** A routine as one reader sees it (SPEC 20.10). */
 export interface Routine {
   id: string;
-  list_id: string;
+  /** null for a person's own routine (`weekly_summary`, SPEC 26.12), which belongs to no list. */
+  list_id: string | null;
   /** The one want a target_price or restock routine is about (SPEC 26.2 item 4); null for the others. */
   item_id: string | null;
   kind: RoutineKind;
@@ -897,6 +904,46 @@ export interface Routine {
   /** SPEC 26.3 and 26.4: how many people follow it (nobody: it tells nobody), and this reader's own follow, or null. */
   followers: number;
   my_follow: RoutineFollow | null;
+  /**
+   * SPEC 26.20 item 4: the other addresses this reader added to this routine, with their state. Only for the person
+   * who added them, on the web; absent for everyone else and for every agent.
+   */
+  my_recipients?: RoutineRecipient[];
+  /**
+   * agent_check only (SPEC 26.20 item 5): what we can observe about reaching its agent. `listening`: a live
+   * `events/subscribe` webhook for that agent on this list (it is told the moment the check is due); otherwise it sees
+   * the request the next time it looks, and `last_seen_at` is the last time it called us at all.
+   */
+  agent_reach?: { agent: { id: string; name: string }; listening: boolean; last_seen_at: Timestamp | null };
+}
+
+/**
+ * SPEC 26.20 item 4: another address a follower asked to get this routine's email. `email` is shown only to the
+ * person who added it, and kept only while the ask or the Yes is live (null after a No, a stop or a removal).
+ */
+export interface RoutineRecipient {
+  id: string;
+  email: string | null;
+  state: "asked" | "yes" | "no" | "stopped" | "removed";
+  /** When it reached this state. */
+  since: Timestamp;
+}
+
+/** POST /v1/routines/{id}/recipients. `show_list_name`: name the list in the ask (always "a list on The Want MCP" otherwise for a private list). */
+export interface RoutineRecipientInput {
+  email: string;
+  show_list_name?: boolean;
+}
+
+/** What an ask link (or a "Stop these" link) shows the address: our words, the asker's handle, the list maybe. Never acts on open. */
+export interface RecipientAskView {
+  /** "@sam on The Want MCP" */
+  from: string;
+  /** The list's title as allowed in the message, or "a list on The Want MCP". */
+  list: string;
+  /** What these emails are, in our words ("reminders before things on it are due"). */
+  what: string;
+  state: "asked" | "yes" | "no" | "stopped";
 }
 
 /** SPEC 26.8: what a target_price routine watches for. */
@@ -928,6 +975,21 @@ export interface CountdownSettings {
   order_by: { on: boolean; delivery_days: number };
   /** An occasions slug ("christmas"), naming the day in its messages. */
   occasion?: string;
+}
+
+/** SPEC 26.9: which agent an agent_check asks (one of the person's own agents on the list), and what to check. */
+export interface AgentCheckSettings {
+  /** An agent id; "me" when an agent makes it for itself. */
+  agent_id: string;
+  /** Re-check prices last checked longer ago than this (1-30 days, default 3), or null not to. */
+  prices_older_than_days: number | null;
+  /** Wants with nothing posted for this long (1-60 days, default 7), or null not to. */
+  stuck_after_days: number | null;
+}
+
+/** SPEC 26.12: which of the person's lists a weekly summary covers ("all" they write when it runs, or chosen ones). */
+export interface WeeklySummarySettings {
+  lists: "all" | string[];
 }
 
 /** SPEC 26.10: when a restock routine brings a bought want back (always asking first, in this step). */
@@ -1017,12 +1079,12 @@ export interface RoutineSwitches {
   visible: boolean;
   running: boolean;
   /** Per kind: running for this reader (visible to them, and not paused by us). */
-  kinds: Record<RoutineKind, boolean>;
+  kinds: Record<OfferedRoutineKind, boolean>;
   /**
    * SPEC 26.14: per kind, whether it is launched for this reader (`routine.<kind>.visible`; preview accounts see every
    * kind). A kind not visible is not offered under "New routine" and its routines don't run.
    */
-  kinds_visible: Record<RoutineKind, boolean>;
+  kinds_visible: Record<OfferedRoutineKind, boolean>;
   /** What each kind is, for the web's wording (SPEC 20.14 item 12): the numbers are written once, on the server. */
   about: { exa_search: RoutineKindAbout };
 }
@@ -1151,13 +1213,31 @@ export interface ServiceKeyInput {
 }
 
 /** SPEC 20.8. */
+/**
+ * SPEC 20.8 and 26.4: the person's routine email kinds, their email hour, and every routine they follow.
+ * `routine_digest`: one email a day at `email_hour` with their followed-by-email routines' notices (default on; sent
+ * only while some followed routine has email ticked). `routine_at_once`: a target_price notice at once for those
+ * who ticked it (default on).
+ */
 export interface EmailPrefs {
-  kinds: { routine_key: boolean; routine_unattended: boolean };
+  kinds: { routine_key: boolean; routine_unattended: boolean; routine_digest: boolean; routine_at_once: boolean };
+  /** 0-23, the person's own time zone; default 8 ("Your daily routine email comes at about 8:00"). */
+  email_hour: number;
+  follows: Array<RoutineFollow & { routine: { id: string; name: string; name_by: RoutineNameBy; kind: RoutineKind }; list: { id: string; title: string } | null }>;
 }
 
-/** PATCH /me/email-prefs. */
+/** PATCH /me/email-prefs: any of the kinds, the email hour, or `stop_all` (every routine email off at once). */
 export interface EmailPrefsPatch {
-  kinds: Partial<EmailPrefs["kinds"]>;
+  kinds?: Partial<EmailPrefs["kinds"]>;
+  email_hour?: number;
+  stop_all?: true;
+}
+
+/** SPEC 26.4: what a "Stop emailing me about this routine" link shows; it never acts on open. */
+export interface RoutineEmailStopView {
+  routine: { name: string; list_title: string | null };
+  /** Its email is already off for this person. */
+  done: boolean;
 }
 
 /** The web's name for the change record (the server calls it RoutineChange). */

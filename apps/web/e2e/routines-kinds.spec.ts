@@ -42,16 +42,22 @@ test("from a want: “Tell me when it's at my price”, the follow choice requir
   await expect(page.getByRole("radio", { name: /Tell me when it's at my price/ })).toBeChecked();
   await expect(page.getByLabel("Which want")).toHaveValue("itm_rt_pan");
   await page.getByRole("textbox", { name: "At or under" }).fill("45");
-  // Email is shown as coming, not offered; nothing is preselected.
-  await expect(page.getByRole("radio", { name: "Email, coming soon" })).toBeDisabled();
+  // Two real choices, nothing preselected; "at once" only once email is chosen.
   const app = page.getByRole("radio", { name: "In the app, under For you" });
+  const email = page.getByRole("radio", { name: /^In the app and by email/ });
   await expect(app).not.toBeChecked();
+  await expect(email).not.toBeChecked();
   await expect(app).toHaveAttribute("required", "");
-  await app.check();
+  await expect(page.getByText(/coming soon/)).toHaveCount(0);
+  const atOnce = page.getByRole("checkbox", { name: /Email me at once when it reaches my price/ });
+  await expect(atOnce).toHaveCount(0);
+  await email.check();
+  await expect(page.getByText("Up to 5 a week. Any more come in your daily email.")).toBeVisible();
+  await atOnce.check();
   await page.getByRole("button", { name: "Make this routine" }).click();
   const card = page.locator("article").filter({ hasText: "Tell me when “A cast-iron pan, 10 inch” is at my price" });
   await expect(card).toContainText("Whenever a price is posted on “A cast-iron pan, 10 inch”");
-  await expect(card).toContainText("You see these in the app");
+  await expect(card).toContainText("You get these in the app and by email, at once");
   await expect(card).not.toContainText("Exa key");
   await card.getByRole("button", { name: /^Check now/ }).click();
   await expect(card.getByRole("status")).toHaveText("Checked.");
@@ -80,6 +86,51 @@ test("a countdown to an occasion and due-date reminders, each with its own setti
   await page.getByRole("radio", { name: "In the app, under For you" }).check();
   await page.getByRole("button", { name: "Make this routine" }).click();
   await expect(page.locator("article").filter({ hasText: "Remind me before things are due" })).toContainText("for wants with a due date");
+});
+
+test("email for a routine: chosen when making it, changed on its card and in Notifications, or stopped for all", async ({ page }) => {
+  await signIn(page, freshEmail("routines-email"));
+  const id = await createList(page, { format: "Shopping", title: "Gifts" });
+  await page.goto(`/app/lists/${id}/settings#routines`);
+  await page.locator("summary", { hasText: "New routine" }).click();
+  await page.getByRole("radio", { name: /Remind me before things are due/ }).check();
+  // Not a target price: no "at once".
+  await page.getByRole("radio", { name: /^In the app and by email/ }).check();
+  await expect(page.getByRole("checkbox", { name: /at once/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Make this routine" }).click();
+  const card = page.locator("article").filter({ hasText: "Remind me before things are due" });
+  await expect(card).toContainText("You get these in the app and by email");
+  await card.getByRole("button", { name: /^App only/ }).click();
+  await expect(card).toContainText("You see these in the app");
+  await card.getByRole("button", { name: /^Email me too/ }).click();
+  await expect(card).toContainText("You get these in the app and by email");
+
+  await page.goto("/app/account#notifications");
+  const n = page.getByRole("region", { name: "Notifications" });
+  const mine = n.getByRole("group", { name: "Email me about these routines" }).getByRole("checkbox", { name: /^Remind me before things are due/ });
+  await expect(mine).toBeChecked();
+  await expect(n.getByRole("link", { name: "Gifts" })).toHaveAttribute("href", `/app/lists/${id}/settings#routines`);
+  await expect(n.getByLabel("It comes at")).toHaveValue("8");
+  await expect(n.getByRole("option", { name: "about 8:00" })).toHaveCount(1);
+  await mine.uncheck();
+  await n.getByLabel("It comes at").selectOption("19");
+  await n.getByRole("button", { name: "Save" }).click();
+  await expect(n.getByRole("status")).toHaveText("Saved.");
+  await page.reload();
+  await expect(mine).not.toBeChecked();
+  await expect(n.getByLabel("It comes at")).toHaveValue("19");
+
+  await mine.check();
+  await n.getByRole("button", { name: "Save" }).click();
+  await expect(n.getByRole("status")).toHaveText("Saved.");
+  await n.getByRole("button", { name: "Stop all routine emails" }).click();
+  await expect(n.getByRole("status")).toHaveText("Stopped. No routine emails; your routines still show in the app.");
+  await page.reload();
+  await expect(mine).not.toBeChecked();
+  await expect(n.getByLabel(/A daily email with what my routines found/)).not.toBeChecked();
+  await expect(n.getByRole("button", { name: "Stop all routine emails" })).toHaveCount(0);
+  await page.goto(`/app/lists/${id}/settings#routines`);
+  await expect(card).toContainText("You see these in the app");
 });
 
 test("a kind this page doesn't know: its name and status, Pause and Delete only", async ({ page }) => {

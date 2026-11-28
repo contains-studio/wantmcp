@@ -81,7 +81,7 @@ export interface RoutineStore {
   runs: RunRow[];
   changes: ChangeRow[];
   keys: KeyRow[];
-  emailPrefs: Map<string, EmailPrefs["kinds"]>;
+  emailPrefs: Map<string, EmailPrefs["kinds"] & { email_hour?: number }>;
   views: Map<string, Timestamp>;
   asks: Map<string, { routine_id: string; used: "keep" | "pause" | null }>;
   /** SPEC 26.4: routine id -> user id -> that person's follow. */
@@ -98,10 +98,10 @@ export function routinesFor(email: string): UserSelf["routines"] | undefined {
   if (!email.includes("routines")) return undefined;
   const running = !email.includes("paused");
   // SPEC 26.14: kinds_visible says which kinds are launched (server c6278c7: these four for preview accounts).
-  const all: RoutineKind[] = ["exa_search", "due_reminders", "countdown", "target_price", "restock", "weekly_summary", "agent_check", "chase_claims"];
-  const built = new Set<RoutineKind>(["exa_search", "target_price", "countdown", "due_reminders", "restock"]);
-  const kinds = Object.fromEntries(all.map((k) => [k, running])) as Record<RoutineKind, boolean>;
-  const kinds_visible = Object.fromEntries(all.map((k) => [k, built.has(k)])) as Record<RoutineKind, boolean>;
+  const all = ["exa_search", "due_reminders", "countdown", "target_price", "restock", "weekly_summary", "agent_check"] as const;
+  const built = new Set<string>(["exa_search", "target_price", "countdown", "due_reminders", "restock"]);
+  const kinds = Object.fromEntries(all.map((k) => [k, running])) as Record<(typeof all)[number], boolean>;
+  const kinds_visible = Object.fromEntries(all.map((k) => [k, built.has(k)])) as Record<(typeof all)[number], boolean>;
   return { visible: true, running, kinds, kinds_visible, about: { exa_search: { cost_per_search_usd: { shopping: 0.017, tasks: 0.012, research: 0.012 }, key_check_usd: 0.007 } } };
 }
 
@@ -616,7 +616,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     if (h.unclaimed(list.id)) throw h.invalid("Unclaimed lists have no routines");
     const kind = body.kind as RoutineKind;
     const sw = routinesFor(userOf(c).email);
-    if (!sw?.kinds_visible[kind]) throw h.invalid(`kind must be one of ${Object.entries(sw?.kinds_visible ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ")}`);
+    if (!(sw?.kinds_visible as Record<string, boolean> | undefined)?.[kind]) throw h.invalid(`kind must be one of ${Object.entries(sw?.kinds_visible ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ")}`);
     // SPEC 26.4: a person on the web follows what they make, and says how (restock tells nobody anything).
     if (c.kind === "user" && kind !== "exa_search" && kind !== "restock" && (typeof body.follow !== "object" || body.follow === null)) throw h.invalid("Choose how you'll hear about it");
     if (kind !== "exa_search") return h.created(out(makeKind(c, params[0], kind, body), c));
@@ -907,17 +907,42 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   });
 
   // ---- how each person hears (20.8), web only
-  const prefs = (id: string) => rs().emailPrefs.get(id) ?? { routine_key: false, routine_unattended: true };
+  const prefs = (id: string) => ({ routine_key: false, routine_unattended: true, routine_digest: true, routine_at_once: true, email_hour: 8, ...(rs().emailPrefs.get(id) ?? {}) });
+  /** SPEC 26.4: everything the person gets, and every routine they follow. */
+  const prefsOut = (id: string): EmailPrefs => {
+    const { email_hour, ...kinds } = prefs(id);
+    const follows: EmailPrefs["follows"] = [];
+    for (const [routineId, m] of rs().follows) {
+      const f = m.get(id);
+      const r = rs().routines.find((x) => x.id === routineId && !x.deleted_at);
+      if (!f || !r) continue;
+      follows.push({ ...f, routine: { id: r.id, name: r.name, name_by: r.name_by, kind: r.kind }, list: r.list_id ? { id: r.list_id, title: h.getList(r.list_id).title } : null });
+    }
+    return { kinds, email_hour, follows };
+  };
   route("GET", "/me/email-prefs", ({ caller }) => {
     const c = keysCaller(caller);
-    return { kinds: prefs(c.user.id) };
+    return prefsOut(c.user.id);
   });
   route("PATCH", "/me/email-prefs", ({ caller, body }) => {
     const c = keysCaller(caller);
     const next = { ...prefs(c.user.id) };
-    for (const k of ["routine_key", "routine_unattended"] as const) if (typeof body.kinds?.[k] === "boolean") next[k] = body.kinds[k];
+    for (const k of ["routine_key", "routine_unattended", "routine_digest", "routine_at_once"] as const) if (typeof body.kinds?.[k] === "boolean") next[k] = body.kinds[k];
+    if (body.email_hour !== undefined) {
+      const hr = Number(body.email_hour);
+      if (!Number.isInteger(hr) || hr < 0 || hr > 23) throw h.invalid("email_hour: 0 to 23");
+      next.email_hour = hr;
+    }
+    // "Stop all routine emails": every kind off, and every follow back to the app only.
+    if (body.stop_all === true) {
+      next.routine_key = next.routine_unattended = next.routine_digest = next.routine_at_once = false;
+      for (const m of rs().follows.values()) {
+        const f = m.get(c.user.id);
+        if (f) (f.email = false), (f.at_once = false);
+      }
+    }
     rs().emailPrefs.set(c.user.id, next);
-    return { kinds: next };
+    return prefsOut(c.user.id);
   });
 
   // ---- list views (20.7): people only, at most one an hour on the server
