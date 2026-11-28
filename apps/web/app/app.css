@@ -844,33 +844,77 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
   .look-tile.look-captioned:hover .look-frame { border-color: var(--line-strong); }
 }
 
-/* List settings › Look: the gallery. Occasions in one swipeable row; layouts as miniatures, two across on a phone. */
-.look-occasions { display: flex; gap: 0.5rem; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; margin-inline: -1.25rem; padding: 0.15rem 1.25rem 0.35rem; scroll-padding-inline: 1.25rem; }
-.look-occasions::-webkit-scrollbar { display: none; }
-.look-occasions > * { scroll-snap-align: start; }
-.look-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 0.75rem; }
-/* One row at every width, as the logo row (owner, 25 Nov): it swipes or scrolls sideways when it doesn't fit. */
-@media (min-width: 640px) { .look-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } .look-occasions { margin-inline: -1.5rem; padding-inline: 1.5rem; scroll-padding-inline: 1.5rem; } }
-@media (min-width: 1024px) { .look-gallery { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-/* With a mouse there is no swipe: a thin scrollbar and a fade where the row is cut, so the rest can be found (review I4;
-   the owner keeps one row). */
-@media (pointer: fine) {
-  .look-occasions { scrollbar-width: thin; padding-bottom: 0.6rem; mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent); }
-  .look-occasions::-webkit-scrollbar { display: block; height: 6px; }
-  .look-occasions::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+/* List settings › Look. One picture of the list in the chosen look, large enough to read; the layouts as a small grid
+   of named swatches under it; the occasion as a menu; Save while there is something to save. One phone screen. */
+/* A layout's swatch: its structure, in the look's own colours (the --tl-* and --td-* the look sets, picked for light or
+   dark as .themed picks them). The eight then differ in drawing and in colour, and an occasion re-colours them all. */
+.look-glyph {
+  --g-paper: var(--tl-paper); --g-ink: var(--tl-ink); --g-want: var(--tl-want); --g-want-ink: var(--tl-want-ink);
+  --g-band: var(--tl-occ-band); --g-hot: var(--tl-occ-hot); --g-cool: var(--tl-occ-cool);
+  display: block; flex: none; width: 2.75rem; height: 1.890625rem; border-radius: 6px; overflow: hidden;
+  background: var(--g-paper); fill: var(--g-ink); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 22%, transparent);
 }
-.look-choice { display: grid; gap: 0.45rem; cursor: pointer; }
-.look-choice-frame { position: relative; display: block; border-radius: 18px; }
-/* Chosen: a ring and a check, never colour alone. */
-.look-choice.is-on .look-frame { border-color: transparent; box-shadow: 0 0 0 2px var(--want); }
-.look-choice:has(input:focus-visible) .look-frame { outline: 3px solid var(--focus); outline-offset: 2px; }
-.look-check { position: absolute; top: 0.4rem; right: 0.4rem; z-index: 2; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 999px; background: var(--want); color: var(--want-ink); font-size: 0.8rem; font-weight: 700; }
-.look-choice.is-on .look-name { color: var(--ink); }
-@media (hover: hover) { .look-choice:not(.is-on):hover .look-frame { border-color: var(--line-strong); } }
-/* The collapsed section's picture of the current look. */
-.look-mini { display: block; width: 7rem; height: 4.25rem; flex: none; }
-.look-mini .look-frame { height: 100%; border-radius: 10px; }
-.look-mini .theme-thumb-inner { --z: 0.2; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .look-glyph {
+    --g-paper: var(--td-paper); --g-ink: var(--td-ink); --g-want: var(--td-want); --g-want-ink: var(--td-want-ink);
+    --g-band: var(--td-occ-band); --g-hot: var(--td-occ-hot); --g-cool: var(--td-occ-cool);
+  }
+}
+:root[data-theme="dark"] .look-glyph {
+  --g-paper: var(--td-paper); --g-ink: var(--td-ink); --g-want: var(--td-want); --g-want-ink: var(--td-want-ink);
+  --g-band: var(--td-occ-band); --g-hot: var(--td-occ-hot); --g-cool: var(--td-occ-cool);
+}
+.look-glyph .g-want { fill: var(--g-want); }
+.look-glyph .g-band { fill: var(--g-band); }
+.look-glyph .g-box { fill: none; stroke: var(--g-ink); stroke-width: 1; opacity: 0.7; }
+.look-glyph .g-rule { fill: none; stroke: var(--g-ink); stroke-width: 0.7; opacity: 0.35; }
+.look-glyph .g-tick { fill: none; stroke: var(--g-want-ink); stroke-width: 0.9; stroke-linecap: round; stroke-linejoin: round; }
+.look-glyph .g-tick.g-ink { stroke: var(--g-ink); }
+.look-glyph .g-hot { stop-color: var(--g-hot); }
+.look-glyph .g-cool { stop-color: var(--g-cool); }
+.look-glyph-sm { width: 1.75rem; height: 1.203125rem; border-radius: 4px; }
+/* The picture: this list in the look, drawn at about three fifths on a phone, so the frame holds what makes the look
+   itself (Heat's run of colours from hot to cool, the Sheet's rows of prices, the Board's columns), not one corner of
+   its first item, and its words can still be read. (Owner, 27 Nov 2026: "heat needs to show the color gradient", and
+   the same for the other looks; at four fifths a phone's picture held one Heat bar, all one colour.) On a tablet and a
+   desktop it is the wider page at about two thirds. A picture in a hairline frame, not a card: its corners sit inside the section's.
+   Its height follows the screen (under a third of what the browser shows), so the choices and Save stay in view
+   under it; it fades out at the bottom, because it is the top of a longer page and a hard edge cut lines in half. */
+.look-stage { display: grid; gap: 0.6rem; min-width: 0; margin: 0; }
+.look-stage .look-frame { border-radius: 12px; background: none; }
+.look-stage-pic { height: 14rem; height: clamp(11rem, 28svh, 16.5rem); mask-image: linear-gradient(to bottom, #000 calc(100% - 1.75rem), transparent); }
+.look-stage .theme-thumb-inner { --z: 0.6; }
+@media (min-width: 640px) { .look-stage-pic { height: 18rem; } .look-stage .theme-thumb-inner { --z: 0.72; } }
+@media (min-width: 1024px) { .look-stage .theme-thumb-inner { --z: 0.66; } }
+/* Two lines on a phone whatever the names' lengths (the look's name, then what kind of page it is and, while it is
+   being tried, "Preview, not saved"), so the controls under the picture never move; one line from a tablet up. */
+.look-cap { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0.1rem 0.75rem; }
+.look-cap .look-name { grid-column: 1 / -1; grid-row: 1; }
+.look-cap .look-note { grid-column: 1; grid-row: 2; }
+.look-cap .look-state { grid-column: 2; grid-row: 2; font-size: 0.84rem; line-height: 1.3; font-weight: 600; }
+@media (min-width: 640px) { .look-cap { grid-template-columns: auto minmax(0, 1fr) auto; } .look-cap .look-name { grid-column: 1; } .look-cap .look-note { grid-column: 2; grid-row: 1; } .look-cap .look-state { grid-column: 3; grid-row: 1; } }
+/* The layouts: four across on a phone (two rows), one row from a tablet up. */
+.look-opts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+@media (max-width: 339px) { .look-opts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 640px) { .look-opts { grid-template-columns: repeat(var(--n, 8), minmax(0, 1fr)); } }
+.look-opt {
+  position: relative; display: grid; justify-items: center; align-content: center; gap: 0.4rem; min-height: 4.25rem; padding: 0.5rem 0.15rem 0.45rem;
+  border: 1px solid var(--line-strong); border-radius: 11px; color: var(--ink-2); cursor: pointer;
+  font-size: 0.8125rem; font-weight: 500; line-height: 1.2; text-align: center; transition: border-color 120ms ease, background 120ms ease;
+}
+/* Chosen: a heavier ink border, a faint fill and bolder type (the accent stays with Save and the focus ring). From the
+   radio itself, so it is right before JavaScript runs too. */
+.look-opt:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); font-weight: 600; }
+/* And a tick in its corner, so the heavier border is never taken for the keyboard's focus ring. */
+.look-opt:has(input:checked)::after { content: ""; position: absolute; top: 0.3rem; right: 0.42rem; width: 0.27rem; height: 0.5rem; border: solid var(--ink); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.look-opt:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* Safari stops matching :focus-visible on a radio once the arrow keys move between them, so the ring vanished as soon
+   as a keyboard was used. There a radio is only ever focused from the keyboard (a click or a tap does not focus it),
+   so plain :focus is the same thing. (The @supports test is true in Safari alone.) */
+@supports (font: -apple-system-body) and (-webkit-appearance: none) { .look-opt:has(input:focus) { outline: 3px solid var(--focus); outline-offset: 2px; } }
+@media (hover: hover) { .look-opt:not(:has(input:checked)):hover { border-color: var(--ink-3); color: var(--ink); } }
+/* The occasion's menu is as wide as it needs on a desktop, not the card's width. */
+@media (min-width: 640px) { .look-picker .select { max-width: 16rem; } }
 
 /* Theme gallery thumbnails: a whole list page, scaled down. */
 .theme-thumb-fade { position: absolute; inset: auto 0 0; z-index: 1; height: 2.25rem; pointer-events: none; background: linear-gradient(to bottom, transparent, var(--card)); }
@@ -915,7 +959,7 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
   padding: 0 0.6rem; border-radius: 4px; color: var(--ink); text-decoration: none;
 }
 .brand-tile:hover { background: var(--sunk); }
-/* List settings' look picker: small chips that wrap (no inner scrolling). */
+/* Small chips that wrap (no inner scrolling): the agents to name, a routine's days. */
 .swatch-option {
   display: inline-flex; align-items: center; gap: 0.5rem; min-height: var(--ctl-sm, 2.5rem); padding: 0.25rem 0.75rem 0.25rem 0.3rem;
   border: 1px solid var(--line-strong); border-radius: 999px; font-size: 0.9rem; cursor: pointer; background: var(--card);
@@ -924,8 +968,6 @@ button.stretched-link { background: none; border: 0; padding: 0; font: inherit; 
 .swatch-input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .swatch-option.is-on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-weight: 600; }
 .swatch-option:has(:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
-.swatch-chip { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; border: 1px solid var(--line); background: var(--sunk); }
-.swatch-chip > span { width: 0.85rem; height: 0.85rem; border-radius: 999px; }
 .brand-tile.is-on { background: var(--sunk); box-shadow: inset 0 0 0 2px var(--ink); }
 
 /* Claim page: "Keep this list" stays in reach on a phone however long the list is; after the list on wider screens.

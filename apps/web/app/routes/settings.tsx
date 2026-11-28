@@ -11,6 +11,8 @@ import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin, flashCookie } from "~/lib/session.server";
 import type { Routine, ActorRef, AgentInfo, HandoverResult, ListAccess, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { LookFrame } from "~/components/LookFrame";
+import { LookGlyph } from "~/components/LookGlyph";
+import { BUILD_ID } from "~/lib/build";
 import { AccessRow, AgentMark, Email, PersonMark, RemoveInTwoSteps } from "~/components/AccessRow";
 import { KeyDone, ShareWithAgent } from "~/components/ShareWithAgent";
 import { RoutineCard, ScheduleFields } from "~/components/RoutineCard";
@@ -279,12 +281,12 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
   const canChangeFormat = list.item_count === 0;
   const currentView = loaderData.looks?.views[loaderData.currentTheme];
   const currentLookName = currentView?.name ?? "";
-  // Closed, the section shows the current look itself, small, with its name.
+  // Closed, the row says which look the list has, as its siblings say what they hold: the look's swatch (its layout,
+  // in its colours) and its name. (A miniature of the page at this size was a smudge, and made this row half as tall
+  // again as the rest.)
   const lookDesc = currentView ? (
-    <span className="mt-1.5 flex items-center gap-3">
-      <span className="look-mini" aria-hidden="true">
-        <LookFrame view={currentView} sample={loaderData.sample!} origin={rootOrigin} className="h-full" />
-      </span>
+    <span className="flex items-center gap-2">
+      <LookGlyph view={currentView} className="look-glyph-sm" />
       <span>{currentLookName}</span>
     </span>
   ) : null;
@@ -601,9 +603,12 @@ function AgentRow({ agent: a, own }: { agent: AgentInfo; own: boolean }) {
 type LookGallery = NonNullable<Route.ComponentProps["loaderData"]["looks"]>;
 
 /**
- * The look gallery (owner, 25 Nov 2026: "completely visual"): one row of occasion chips, then every layout as a
- * miniature of this list, all drawn in the chosen occasion. A tap selects; Save commits, so trying looks never changes
- * what everyone else sees. Radios underneath: works without JavaScript, arrow keys move within each group.
+ * The look picker. One large picture of this list in the chosen look (LookFrame, at a size you can read), the layouts
+ * as a small grid of named swatches under it (each layout's structure in its own colours, wearing the chosen
+ * occasion), the occasion as a menu, and Save: everything in one screen on a phone, so the picture changes under your
+ * eyes as you tap. A tap only previews; Save commits, so trying looks never changes what everyone else sees, and
+ * "Keep …" goes back. Save shows only while there is something to save. Radios and a select underneath: without
+ * JavaScript the picture stays on the list's own look, Save is always there, and choosing and saving still work.
  */
 function ThemePicker({
   looks,
@@ -627,77 +632,89 @@ function ThemePicker({
   const { origin } = useRootData();
   const [template, setTemplate] = useState(currentTemplate);
   const [occasion, setOccasion] = useState<string | null>(currentOccasion);
-  // The chip answers the tap at once; the seven miniatures re-dress as deferred work, so a tap never waits on them.
-  const shown = useDeferredValue(occasion);
+  // Before JavaScript runs, Save has to be on the page: it is how the choices are saved without it.
+  const [live, setLive] = useState(false);
+  useEffect(() => setLive(true), []);
   const slugFor = (t: string, o: string | null) => (o ? `${t}--${o}` : t);
   const slug = slugFor(template, occasion);
+  // The control answers the tap at once; the picture follows as deferred work.
+  const shownSlug = useDeferredValue(slug);
+  const shown = looks.views[shownSlug] ?? looks.views[current];
+  const layout = looks.templates.find((t) => t.template === shown.template);
   const saving = fetcher.state !== "idle";
-  const saved = fetcher.state === "idle" && fetcher.data?.ok && slug === current;
   const changed = currentTemplate !== template || currentOccasion !== occasion;
+  const saved = fetcher.state === "idle" && fetcher.data?.ok && !changed;
+  const keep = () => {
+    setTemplate(currentTemplate);
+    setOccasion(currentOccasion);
+  };
 
   return (
-    <fetcher.Form method="post" className="grid gap-4">
+    <fetcher.Form method="post" className="look-picker grid gap-4">
       <input type="hidden" name="intent" value="theme" />
+      {/* Every layout's stylesheet is ready before its first tap (each is small, and loaded once). */}
+      {looks.templates.flatMap((t) => t.stylesheets).map((href) => (
+        <link key={href} rel="stylesheet" href={`${href}?v=${BUILD_ID}`} precedence="theme" />
+      ))}
+      <figure className="look-stage" data-look={shown.template}>
+        <LookFrame view={shown} sample={sample} origin={origin} className="look-stage-pic" items={4} />
+        {/* What the picture shows, and, while a look is being tried, that it is not the list's yet. */}
+        <figcaption className="look-cap" aria-live="polite">
+          <span className="look-name">{shown.name}</span>
+          <span className="look-note">{layout?.caption}</span>
+          {changed && <span className="look-state">Preview, not saved</span>}
+        </figcaption>
+        {/* A list with fewer than two things on it is drawn with the sample, and says so. */}
+        {sample.list.id !== listId && <p className="hint">Shown on a sample list until yours has two {fi.items}.</p>}
+        <noscript>
+          <p className="hint">The picture changes when you save.</p>
+        </noscript>
+      </figure>
       <fieldset className="grid min-w-0 gap-2">
-        <legend className="label mb-1">Occasion</legend>
-        {/* One row: it swipes sideways on a phone rather than wrapping into a wall of chips. */}
-        <div className="look-occasions">
-          {[{ slug: null, name: "None", swatch: null, offered: true }, ...looks.occasions].map((o) => (
-            <label key={o.slug ?? "none"} className={`swatch-option flex-none ${occasion === o.slug ? "is-on" : ""}`}>
-              <input type="radio" name="occasion" value={o.slug ?? ""} checked={occasion === o.slug} onChange={() => setOccasion(o.slug)} className="swatch-input" />
-              <span className="swatch-chip" aria-hidden="true" style={o.swatch ? { background: o.swatch.paper } : undefined}>
-                {o.swatch && <span style={{ background: o.swatch.want }} />}
-              </span>
-              {o.name}
-              {!o.offered && <span className="sr-only"> (not offered right now)</span>}
+        <legend className="label mb-2">Layout</legend>
+        <div className="look-opts" style={{ "--n": looks.templates.length } as React.CSSProperties}>
+          {looks.templates.map((t) => (
+            <label key={t.slug} className="look-opt">
+              <input type="radio" name="template" value={t.template} checked={template === t.template} onChange={() => setTemplate(t.template)} className="sr-only" />
+              <LookGlyph view={looks.views[slugFor(t.template, occasion)] ?? t} />
+              <span>{t.name}</span>
             </label>
           ))}
         </div>
       </fieldset>
-      <fieldset className="grid min-w-0 gap-2">
-        <legend className="label mb-1">Layout</legend>
-        <div className="look-gallery">
-          {looks.templates.map((t) => {
-            const view = looks.views[slugFor(t.template, shown)] ?? t;
-            const on = template === t.template;
-            return (
-              <label key={t.slug} className={`look-choice ${on ? "is-on" : ""}`}>
-                <input type="radio" name="template" value={t.template} checked={on} onChange={() => setTemplate(t.template)} className="sr-only" />
-                <span className="look-choice-frame">
-                  <LookFrame view={view} sample={sample} origin={origin} className="h-36 sm:h-40" />
-                  {on && (
-                    <span className="look-check" aria-hidden="true">
-                      ✓
-                    </span>
-                  )}
-                </span>
-                <span className="grid gap-0.5 px-0.5">
-                  <span className="look-name">{t.name}</span>
-                  <span className="look-note">{t.template === fi.defaultTheme ? `${t.caption} · default` : t.caption}</span>
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </fieldset>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
-        {/* Never disabled before JavaScript runs: without it, this button is how the radios are saved. */}
-        <button className="btn btn-want" disabled={saving}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        {changed ? <span className="text-[0.85rem] text-ink-3">Not saved yet.</span> : null}
-        {saved && <span className="text-[0.85rem] text-deal">Saved. Your list now uses this look.</span>}
+      <label className="field">
+        <span className="label">Occasion</span>
+        <select name="occasion" className="select" value={occasion ?? ""} onChange={(e) => setOccasion(e.target.value || null)}>
+          <option value="">None</option>
+          {looks.occasions.map((o) => (
+            <option key={o.slug} value={o.slug}>
+              {o.offered ? o.name : `${o.name} (not offered right now)`}
+            </option>
+          ))}
+        </select>
+      </label>
+      {/* Empty while there is nothing to save or say, and then it takes no room (the live region itself stays). */}
+      <div className="contents" aria-live="polite">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 empty:hidden">
+        {(!live || changed || saving) && (
+          <button className="btn btn-want" disabled={saving}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+        )}
+        {changed && !saving && (
+          <button type="button" className="textlink-btn inline-flex min-h-11 items-center text-[0.9rem] text-ink-2" onClick={keep}>
+            Keep {looks.views[current]?.name ?? "the look it has"}
+          </button>
+        )}
+        {saved && <span className="text-[0.9rem] text-deal">Saved.</span>}
         {/* Once saved, the next step is the list itself, not a demo of the look (review I5). */}
-        {saved ? (
-          <Link to={`/l/${listId}`} className="link text-[0.85rem] font-medium text-ink">
+        {saved && (
+          <Link to={`/l/${listId}`} className="link inline-flex min-h-11 items-center text-[0.9rem] font-medium text-ink">
             View your list
-          </Link>
-        ) : (
-          <Link to={`/themes/${slug}`} className="link text-[0.85rem] text-ink-2">
-            See it full size
           </Link>
         )}
         {fetcher.data?.error && <span className="form-error">{fetcher.data.error}</span>}
+      </div>
       </div>
     </fetcher.Form>
   );
@@ -802,7 +819,10 @@ function Handover({ result, busy }: { result: ActionData | undefined; busy: bool
 
 /** Without JavaScript, a change that worked is answered with a redirect back here (prg.server.ts), never re-posted. */
 export async function action(args: Route.ActionArgs) {
-  return afterChange(args.request, await act(args));
+  const result = await act(args);
+  // A look saved without JavaScript lands back on the Look row, which names the look the list now has.
+  const lookSaved = !!result && typeof result === "object" && "intent" in result && result.intent === "theme";
+  return afterChange(args.request, result, lookSaved ? "theme-h" : null);
 }
 
 /**
