@@ -107,7 +107,52 @@ export default function Privacy({ loaderData }: Route.ComponentProps) {
 
       {loaderData.routines && (
         <>
-          <h2 id="routines-exa">Routines and your Exa key</h2>
+          {/* SPEC 20.10, 26.14, 26.20 item 4, 26.21: what routines do with your data. #routines-exa stays on the Exa part. */}
+          <h2 id="routines">Routines</h2>
+          <p>
+            <strong>Email.</strong>
+          </p>
+          <ul>
+            <li>Routines can remind you and tell you things by email, if you choose. They use only what is on your lists.</li>
+            <li>
+              They come from reminders@wantmcp.com: a daily email with what your routines found, an email at once when something you are waiting
+              for reaches your price, the weekly summary, and two about a routine itself (when your Exa key stops working, and when its
+              suggestions go unlooked at).
+            </li>
+            <li>
+              You can stop each one from the email itself. The rest of your choices are in{" "}
+              <Link to="/app/account#notifications" className="link">
+                Notifications
+              </Link>{" "}
+              on your account page.
+            </li>
+          </ul>
+          <p className="mt-5">
+            <strong>Other people's addresses.</strong>
+          </p>
+          <ul>
+            <li>
+              If you add someone's address to a routine, we send them one email asking. Nothing more goes to them unless they say yes. They need no
+              account.
+            </li>
+            <li>They see the names of the wants the routine is about, and the list's name only if the list is public or you chose to show it.</li>
+            <li>
+              We keep their address only while the ask is open or they have said yes. After a no, a stop or a removal we erase it. After a no or a
+              stop we keep only a fingerprint of it (a hash, not the address) for 90 days, so nobody can ask them again in that time.
+            </li>
+          </ul>
+          <p className="mt-5">
+            <strong>Your URLs.</strong>
+          </p>
+          <ul>
+            <li>If you save a URL, we keep it, and its signing secret encrypted.</li>
+            <li>A routine sends it only which things changed on the list: ids and times, never their text.</li>
+            <li>We keep a record of each call for 30 days: when it was and whether the URL answered, not the address or what was sent.</li>
+            <li>Removing a URL erases it and its secret.</li>
+          </ul>
+          <p id="routines-exa" className="mt-5 scroll-mt-24">
+            <strong>Your Exa key.</strong>
+          </p>
           <ul>
             <li>
               If you add an Exa key, we keep it encrypted and use it only for routines that search the web, on lists where you (or your agent,
@@ -124,16 +169,8 @@ export default function Privacy({ loaderData }: Route.ComponentProps) {
             <li>
               You can remove the key at any time, on your <Link to="/app/account#keys" className="link">account page</Link>.
             </li>
-            <li>Everyone on a list can see its routines and whose key each uses.</li>
-            <li>
-              We email you about your own routines only: when your Exa key stops working (off unless you turn it on), and when a routine's
-              suggestions go unlooked at for two rounds (on; you can turn it off in{" "}
-              <Link to="/app/account#notifications" className="link">
-                Notifications
-              </Link>
-              ).
-            </li>
           </ul>
+          <p className="mt-5">Everyone on a list can see its routines, whose key a search runs on and whose URL its changes go to, but never the URL itself.</p>
         </>
       )}
 

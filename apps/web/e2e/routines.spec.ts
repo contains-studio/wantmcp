@@ -148,11 +148,29 @@ test("New routine: the Exa notice before confirming; without a key, the way to a
   await expect(page.getByRole("link", { name: "Add your Exa key" })).toHaveAttribute("href", "/app/account#keys");
 });
 
-test("privacy: what saving an Exa key means, once routines are visible", async ({ page }) => {
+test("privacy, once routines are visible: email, other people's addresses, URLs and the Exa key, with their numbers", async ({ page }) => {
   await signIn(page, freshEmail("routines-privacy"));
   await page.goto("/privacy");
-  await expect(page.getByRole("heading", { name: "Routines and your Exa key" })).toBeVisible();
-  await expect(page.locator("main")).toContainText("Encryption protects your key if our database is copied, not if our hosting account is taken over.");
+  const main = page.locator("main");
+  await expect(page.getByRole("heading", { level: 2, name: "Routines" })).toBeVisible();
+  await expect(main).toContainText("They come from reminders@wantmcp.com");
+  await expect(main).toContainText("(a hash, not the address) for 90 days");
+  await expect(main).toContainText("We keep a record of each call for 30 days");
+  await expect(main).toContainText("Encryption protects your key if our database is copied, not if our hosting account is taken over.");
+  // The account page's "How we keep it" lands on the Exa part.
+  await expect(page.locator("#routines-exa")).toContainText("Your Exa key.");
+  // Step 1's sentence is gone: routines email more than the two things that need you.
+  await expect(main).not.toContainText("We email you about your own routines only");
+});
+
+test("privacy without routines: the same page for a signed-in reader as for a stranger, with nothing about routines", async ({ page }) => {
+  await page.goto("/privacy");
+  const stranger = await page.locator("main").innerHTML();
+  await signIn(page, DEMO);
+  await page.goto("/privacy");
+  expect(await page.locator("main").innerHTML()).toBe(stranger);
+  await expect(page.locator("#routines")).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("reminders@wantmcp.com");
 });
 
 test("paused for everyone: the page says so", async ({ page }) => {
