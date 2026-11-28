@@ -13,6 +13,9 @@ type Sort = SheetSort;
 
 const priceOf = (e: Entry) => (e.current_price ? Number(e.current_price.price) : Number.POSITIVE_INFINITY);
 const discountOf = (e: Entry) => discountPercent(e.current_price) ?? -1;
+/** "Fri 27 Nov": the day a routine found it. */
+const foundOn = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }).replace(",", "");
+
 const updatedOf = (e: Entry) => Date.parse(e.current_price ? checkedAt(e.current_price) : e.updated_at) || 0;
 
 /** From this many products a want gets a sort control; below it the list is already in price order, cheapest first. */
@@ -157,13 +160,24 @@ export function EntrySheet({
                       <span key="who">
                         <ActorTag actor={e.author} compact />
                       </span>,
-                      <span key="when">
-                        checked{" "}
-                        <time dateTime={updated} title={formatDateTime(updated)}>
-                          {timeAgo(updated, now)}
-                        </time>
-                        {stale && ", not today"}
-                      </span>,
+                      // "checked …" only for a price with a checked time; without one, what is true (owner, 28 Nov 2026).
+                      p ? (
+                        <span key="when">
+                          checked{" "}
+                          <time dateTime={updated} title={formatDateTime(updated)}>
+                            {timeAgo(updated, now)}
+                          </time>
+                          {stale && ", not today"}
+                        </span>
+                      ) : (
+                        <span key="when">
+                          {e.author.kind === "outside" && e.author.routine ? "found " : "added "}
+                          {/* The reader's own day and zone, worked out again in the browser (as Time does). */}
+                          <time dateTime={e.created_at} title={formatDateTime(e.created_at)} suppressHydrationWarning>
+                            {e.author.kind === "outside" && e.author.routine ? foundOn(e.created_at) : timeAgo(e.created_at, now)}
+                          </time>
+                        </span>
+                      ),
                       p && <span key="src">{SHEET_SOURCE[p.source ?? "unknown"] ?? SOURCE_LABEL[p.source ?? "unknown"]}</span>,
                       p?.in_stock === false && (
                         <span key="stock" className="text-warn">
@@ -190,7 +204,7 @@ export function EntrySheet({
                 </div>
                 {/* The answer: the price, with where it is sold right under it. */}
                 <div className="sheet-price">
-                  {p ? <span className="price">{formatMoney(p.price, p.currency)}</span> : <span className="text-ink-3">No price</span>}
+                  {p ? <span className="price">{formatMoney(p.price, p.currency)}</span> : <span className="text-ink-3">No price yet</span>}
                   <span className="sheet-price-sub">
                     {pct !== null && <span className="save">−{pct}%</span>}
                     {pct !== null && p?.original_price && <span className="price-was max-sm:hidden">{formatMoney(p.original_price, p.currency)}</span>}

@@ -63,6 +63,14 @@ export async function handleWriterIntent(request: Request, form: FormData, listI
       case "reject":
         await api(request, `/entries/${encodeURIComponent(str(form, "entry_id"))}/reject`, { method: "POST" });
         return { ok: true, intent };
+      case "reject-entries": {
+        // Several suggestions in one tap (a want's, or the panel's): the same reject, once each, a few at a time.
+        const ids = form.getAll("entry_id").map(String).filter(Boolean).slice(0, 60);
+        for (let i = 0; i < ids.length; i += 6) {
+          await Promise.all(ids.slice(i, i + 6).map((id) => api(request, `/entries/${encodeURIComponent(id)}/reject`, { method: "POST" })));
+        }
+        return { ok: true, intent };
+      }
       case "add-entry": {
         const price = optional(form, "price");
         const body: Record<string, unknown> = { ...entryFields(form, false) };

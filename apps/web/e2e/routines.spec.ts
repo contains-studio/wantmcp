@@ -105,7 +105,8 @@ test.describe.serial("on: the Routines tab and cards", () => {
     await signIn(page, RT);
     await page.goto("/l/lst_rt_kitchen");
     await expect(page.locator(".list-hero, main").first()).toContainText(/ · your Exa key/);
-    const sugg = page.getByRole("listitem", { name: /^Suggestion: Kids' Waterproof Insulated Snow Boots/ });
+    // Any of the routine's suggestions (earlier specs promote or reject some fixtures).
+    const sugg = page.locator("li.rt-sugg").first();
     await expect(sugg).toContainText("Exa search");
     await expect(sugg).toContainText("your routine");
     await expect(sugg).toContainText("not checked on the store's page");
@@ -115,7 +116,9 @@ test.describe.serial("on: the Routines tab and cards", () => {
     await knife.getByRole("button", { name: /^Search again/ }).click();
     // The stop is lifted: the line goes.
     await expect(knife).not.toContainText("This routine stopped looking for this");
-    await sugg.getByRole("button", { name: "Pause this routine" }).click();
+    // Once, at the foot of the panel.
+    await expect(page.getByRole("button", { name: "Pause this routine" })).toHaveCount(1);
+    await page.getByRole("button", { name: "Pause this routine" }).click();
     // Paused: the offer goes from every one of its suggestions.
     await expect(page.getByRole("button", { name: "Pause this routine" })).toHaveCount(0);
     await page.goto("/app/routines");

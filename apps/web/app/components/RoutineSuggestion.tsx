@@ -43,9 +43,8 @@ export function ExaSearchTag({ mine, keyHolder }: { mine: boolean; keyHolder: st
   );
 }
 
-export function RoutineSuggestion({ entry: e, itemText, routines, me, shopping }: { entry: Entry; itemText: string; routines: RoutineSummary[] | null; me: string | null; shopping: boolean }) {
+export function RoutineSuggestion({ entry: e, routines, me, shopping }: { entry: Entry; routines: RoutineSummary[] | null; me: string | null; shopping: boolean }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
-  const pause = useFetcher<{ ok?: boolean; error?: string }>();
   const pendingIntent = fetcher.formData?.get("intent");
   if (fetcher.state === "idle" && fetcher.data?.ok) return null;
   const author = e.author.kind === "outside" ? e.author : null;
@@ -58,10 +57,8 @@ export function RoutineSuggestion({ entry: e, itemText, routines, me, shopping }
   const url = e.product_url ?? e.links?.[0] ?? null;
   const from = sourceLabel(e);
   return (
-    <li className="card rt-sugg grid gap-3 p-4" aria-label={`Suggestion: ${e.title}`}>
-      <p className="text-[0.78rem] text-ink-3">
-        For <span className="font-semibold text-ink-2">“{itemText}”</span>
-      </p>
+    // Picture, title, where from, the Exa line, Promote and Reject: three to a phone screen.
+    <li className="card rt-sugg grid gap-2 p-3 sm:p-4" aria-label={`Suggestion: ${e.title}`}>
       <div className="rt-sugg-main">
         <div className="rt-sugg-img">
           <ProductImage src={e.image_url} alt="" />
@@ -75,24 +72,13 @@ export function RoutineSuggestion({ entry: e, itemText, routines, me, shopping }
           ) : (
             <p className="rt-sugg-title break-words font-semibold">{e.title}</p>
           )}
-          {from && <p className="text-[0.85rem] text-ink-3">{from}</p>}
+          {from && <p className="text-[0.82rem] text-ink-3">{from}</p>}
+          <RoutineLine e={e} rt={rt} mine={mine} named={named} shopping={shopping} />
         </div>
       </div>
       {/* Tasks and research: the page's own highlight, a few lines of plain text. */}
       {!shopping && e.description && <p className="rt-sugg-desc whitespace-pre-line break-words text-[0.88rem] text-ink-2">{e.description}</p>}
-      {/* One line that says what it is; it wraps as whole items, never starting a line with a dot (MetaLine). */}
-      <MetaLine
-        as="p"
-        className="text-[0.8rem] text-ink-3"
-        items={[
-          <ExaSearchTag key="tag" mine={mine} keyHolder={rt.key_holder} />,
-          named && `“${named}”`,
-          mine ? "your routine" : `@${rt.key_holder}'s routine`,
-          // A guide is a page about choosing: there is no store page to check.
-          e.kind !== "guide" && (shopping ? "not checked on the store's page" : "not checked"),
-        ]}
-      />
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pl-[calc(4.5rem+0.75rem)]">
         <fetcher.Form method="post" className="flex gap-2">
           <input type="hidden" name="entry_id" value={e.id} />
           <button name="intent" value="promote" className="btn btn-ghost btn-sm" disabled={fetcher.state !== "idle"}>
@@ -102,21 +88,28 @@ export function RoutineSuggestion({ entry: e, itemText, routines, me, shopping }
             {pendingIntent === "reject" ? "Rejecting…" : "Reject"}
           </button>
         </fetcher.Form>
-        {summary && !summary.paused && !summary.blocked_reason && (
-          <pause.Form method="post">
-            <input type="hidden" name="intent" value="routine-pause" />
-            <input type="hidden" name="routine_id" value={rt.id} />
-            <button className="textlink-btn text-[0.85rem]" disabled={pause.state !== "idle"}>
-              {pause.state !== "idle" ? "Pausing…" : "Pause this routine"}
-            </button>
-          </pause.Form>
-        )}
       </div>
-      {(fetcher.data?.error || pause.data?.error) && (
+      {fetcher.data?.error && (
         <p className="form-error" role="alert">
-          {fetcher.data?.error ?? pause.data?.error}
+          {fetcher.data.error}
         </p>
       )}
     </li>
+  );
+}
+
+/** "Exa search · your routine · not checked on the store's page": whole items, never a line starting with a dot. */
+function RoutineLine({ e, rt, mine, named, shopping }: { e: Entry; rt: { key_holder: string }; mine: boolean; named: string | null; shopping: boolean }) {
+  return (
+    <MetaLine
+      as="p"
+      className="text-[0.78rem] text-ink-3"
+      items={[
+        <ExaSearchTag key="tag" mine={mine} keyHolder={rt.key_holder} />,
+        named && `“${named}”`,
+        mine ? "your routine" : `@${rt.key_holder}'s routine`,
+        e.kind !== "guide" && (shopping ? "not checked on the store's page" : "not checked"),
+      ]}
+    />
   );
 }
