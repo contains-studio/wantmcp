@@ -27,9 +27,16 @@ jobs:
       - name: Build the web app
         run: pnpm build
 
+  # The suite in 4 shards, each on its own runner with its own dev server and fresh mock (Playwright splits by file;
+  # desktop and phone tests are spread over all four). Run whole, it passed 350 tests and hit 15 minutes on 28 Nov
+  # 2026; a shard has a limit that still catches a hang.
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 # the suite passed 350 tests on two screens and hit 15 minutes (cancelled, not failed) on 28 Nov 2026
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     defaults:
       run:
         working-directory: apps/web
@@ -45,11 +52,11 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       # The suite starts the dev server against the in-process mock API (.dev.vars.example).
       - name: End-to-end tests, desktop and phone, with an axe pass
-        run: pnpm test:e2e
+        run: pnpm test:e2e --shard=${{ matrix.shard }}/4
       - name: Keep traces of failures
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.shard }}
           path: apps/web/test-results
           retention-days: 7
