@@ -397,6 +397,8 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     }),
   );
   for (const id of ["rtn_seed_price", "rtn_ana_countdown", "rtn_seed_weekly", "rtn_seed_check"]) rs.follows.set(id, new Map([["usr_rt", { routine_id: id, email: false, at_once: false }]]));
+  // Sam (a handle he chose) follows the countdown on his own list too.
+  rs.follows.get("rtn_ana_countdown")!.set("usr_rt_sam", { routine_id: "rtn_ana_countdown", email: true, at_once: false });
   const ran = (id: string, routine_id: string, trigger: "schedule" | "event", counts: Record<string, number>, note: string, ago: number) => ({
     id, routine_id, trigger, run_by: null, state: "ok" as const, attempts: 1, queued_at: at(ago), started_at: at(ago), finished_at: at(ago - 1000),
     wants_searched: 0, suggestions_posted: 0, searches_used: 0, note, wants_total: null, current: null, counts,

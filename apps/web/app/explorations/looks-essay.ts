@@ -83,7 +83,7 @@ export const CHAPTERS: LookChapter[] = [
     lead: "Gallery is a pin board: photos at their natural heights. Tap a card to open the want.",
     paras: [
       "This is the smallest change of the six. Under each photo the price now has its own line and the store the next one, in full. Before, a long store name broke across two lines.",
-      "The title is small and centred, as on an album, so the photos start higher on the page.",
+      "The title is small and centered, as on an album, so the photos start higher on the page.",
     ],
     tryView: { format: "tasks" },
     tryLabel: "Show a task list",

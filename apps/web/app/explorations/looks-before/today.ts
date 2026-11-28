@@ -1,6 +1,6 @@
 import type { Theme } from "../../themes/types.ts";
 
-/** A calm to-do list: lots of air, a big title with a coloured round mark, soft square ticks and a round add button. */
+/** A calm to-do list: lots of air, a big title with a colored round mark, soft square ticks and a round add button. */
 export const today: Theme = {
   slug: "today",
   aliases: ["checklist"],
@@ -9,7 +9,7 @@ export const today: Theme = {
   group: "workspace",
   natural: "tasks",
   stylesheet: true,
-  idea: "A calm to-do list: lots of air, a big bold title with a coloured round mark, soft ticks, notes under each item and a round add button.",
+  idea: "A calm to-do list: lots of air, a big bold title with a colored round mark, soft ticks, notes under each item and a round add button.",
   light: {
     paper: "#ffffff", card: "#ffffff", sunk: "#f4f5f7", ink: "#1d1d1f", ink2: "#45474b", ink3: "#6b6e73",
     line: "#eceef1", lineStrong: "#b9bdc4", want: "#1b66d6", wantInk: "#ffffff", wantSoft: "#e6effc",

@@ -169,3 +169,6 @@ export function aboutHour(h: number): string {
  * want wait for them; a URL routine only sends).
  */
 export const ROUTINES_INTRO = "Things your lists do by themselves: search the web, remind you, tell you when a price is right. A routine never changes a list without asking.";
+
+/** A handle the server made for a new account (adjective-noun-four digits, e.g. sunny-lemur-3636): nobody would know it. */
+export const generatedHandle = (h: string) => /^[a-z]+-[a-z]+-\d{4}$/.test(h);

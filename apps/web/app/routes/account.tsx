@@ -123,7 +123,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
           <input type="hidden" name="intent" value="profile" />
           <label className="field">
             <span className="label">Handle</span>
-            <input name="handle" required minLength={3} maxLength={40} pattern="[a-zA-Z0-9][a-zA-Z0-9\-]{2,39}" defaultValue={user.handle} className="input font-mono" />
+            <input id="handle" name="handle" required minLength={3} maxLength={40} pattern="[a-zA-Z0-9][a-zA-Z0-9\-]{2,39}" defaultValue={user.handle} className="input scroll-mt-28 font-mono" />
             <span className="hint">Shown on your lists and comments.</span>
           </label>
           <div id="bio" className="grid scroll-mt-24 gap-4 border-t border-line pt-4">

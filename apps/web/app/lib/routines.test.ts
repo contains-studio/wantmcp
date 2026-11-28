@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { agentWroteName, runsPer28 } from "./routines.ts";
+import { agentWroteName, generatedHandle, runsPer28 } from "./routines.ts";
 
 test("a name is shown as an agent's only when the server says an agent wrote it (the default is the server's)", () => {
   assert.equal(agentWroteName({ name_by: "agent" }), true);
@@ -12,4 +12,11 @@ test("runs in 28 days, to tell when a schedule runs more often", () => {
   assert.equal(runsPer28({ every: "day" }), 28);
   assert.equal(runsPer28({ every: "week", days: ["mon", "thu"] }), 8);
   assert.ok(runsPer28({ every: "week", interval: 2, days: ["mon"] }) < runsPer28({ every: "week", days: ["mon"] }));
+});
+
+test("a handle the server made up (adjective-noun-four digits) is told apart from one a person chose", () => {
+  assert.equal(generatedHandle("sunny-lemur-3636"), true);
+  assert.equal(generatedHandle("sam"), false);
+  assert.equal(generatedHandle("sam-smith"), false);
+  assert.equal(generatedHandle("sunny-lemur-36"), false);
 });

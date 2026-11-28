@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 import { test } from "node:test";
+import { UK_SPELLINGS } from "./spelling.ts";
 import type { Persona } from "./personas.ts";
 import type { SampleListSpec } from "./samples.ts";
 
@@ -20,11 +21,12 @@ const DENY = [
   "staples", "office depot", "rei", "nordstrom", "zara", "h&m", "uniqlo", "nike", "adidas", "lego", "vitamix", "instant pot",
   "roomba", "peloton",
 ].map((w) => new RegExp(`(^|[^a-z])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`, "i"));
-/** UK-only words and spellings ("flat" only in its apartment sense). */
+/** UK-only words ("flat" only in its apartment sense), and the site's list of British spellings (spelling.ts). */
 const UK = [
   /£/, /\bGBP\b/, /\bflatmates?\b/i, /\b(new|small|rented|shared|moving|one-bed|two-bed|student) flat\b/i, /\b3-bed\b/i, /\bsemi-detached\b/i,
-  /removal (firm|compan)/i, /\bpostcode/i, /\bcolour/i, /\bfavourite/i, /\borganis/i, /\bcentre\b/i, /\bnappies\b/i, /\btrainers\b/i,
+  /removal (firm|compan)/i, /\bpostcode/i, /\borganis/i, /\bnappies\b/i, /\btrainers\b/i,
   /\bmum\b/i, /\bholiday let/i, /\bcouncil tax/i, /\bjumper\b/i, /\bfortnight/i, /\bhoover\b/i,
+  ...UK_SPELLINGS.map(([re]) => re),
 ];
 
 const texts = (l: SampleListSpec): string[] => [

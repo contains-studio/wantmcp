@@ -81,13 +81,15 @@ export default function RecipientAsk({ loaderData, params }: Route.ComponentProp
     );
   }
   return (
-    <TokenShell title={offer.length === 1 ? (offer[0] === "yes" ? "Get these emails?" : "Say no to these emails?") : "Get these emails?"}>
+    <TokenShell title={offer.length === 1 && offer[0] === "no" ? "Say no to these emails?" : "Get these emails?"}>
       {intro}
       <p className="text-ink-2">You need no account. Until you say yes, nothing else is sent to you.</p>
+      {/* What No does, before it is pressed: the same sentence as the ask email (server 48811ac). */}
+      {offer.includes("no") && <p className="text-ink-2">If you say no, nobody on The Want MCP can ask this address again for 90 days.</p>}
       <Form method="post" className="flex flex-wrap items-center gap-3">
         {offer.map((a, i) => (
           <button key={a} name="answer" value={a} className={`btn ${i === 0 && a === "yes" ? "btn-want" : ""} w-full sm:w-fit`} disabled={nav.state !== "idle"}>
-            {a === "yes" ? "Yes, send me these" : "No"}
+            {a === "yes" ? "Yes, send me these" : "No thanks"}
           </button>
         ))}
       </Form>

@@ -1,6 +1,6 @@
 import type { Theme } from "../../themes/types.ts";
 
-/** Kanban: a saturated backdrop, grey columns with counts, white cards with label chips and avatars. */
+/** Kanban: a saturated backdrop, gray columns with counts, white cards with label chips and avatars. */
 export const board: Theme = {
   slug: "board",
   name: "Board",
@@ -8,7 +8,7 @@ export const board: Theme = {
   group: "workspace",
   natural: "tasks",
   stylesheet: true,
-  idea: "Kanban on a saturated backdrop: grey columns with counts, white cards with label chips and avatars.",
+  idea: "Kanban on a saturated backdrop: gray columns with counts, white cards with label chips and avatars.",
   light: {
     paper: "#f1f2f4", card: "#ffffff", sunk: "#e3e5e9", ink: "#172b4d", ink2: "#33415c", ink3: "#505f79",
     line: "#dcdfe4", lineStrong: "#a5adba", want: "#0c66e4", wantInk: "#ffffff", wantSoft: "#e2ecfd",

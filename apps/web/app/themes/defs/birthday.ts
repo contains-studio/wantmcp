@@ -9,7 +9,7 @@ export const birthday: Theme = {
   group: "occasion",
   stylesheet: true,
   art: ART.birthday,
-  idea: "Bunting across the top, sprinkles on the page, bubbly rounded cards with candy-coloured tops.",
+  idea: "Bunting across the top, sprinkles on the page, bubbly rounded cards with candy-colored tops.",
   accents: {
     light: { band: "#6b2bd9", bandAlt: "#b8215a", bandInk: "#ffffff", hot: "#b8215a", cool: "#5b23c4", barInk: "#ffffff" },
     dark: { band: "#3a1f7a", bandAlt: "#7a1640", bandInk: "#fbf6ff", hot: "#b8215a", cool: "#5b23c4", barInk: "#ffffff" },

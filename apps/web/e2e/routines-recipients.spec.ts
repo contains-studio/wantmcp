@@ -50,8 +50,10 @@ test.describe.serial("other addresses", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Say no to these emails?");
     await expect(page.locator("main")).toContainText('@bright-wren-2207 on The Want MCP would like to send you reminders before things on it are due for "Garden jobs".');
     await expect(page.locator("main")).not.toContainText("routines@example.com");
-    await expect(page.getByRole("button")).toHaveText(["No"]);
-    await page.getByRole("button", { name: "No" }).click();
+    // What No does, said before the button, in the email's words; the button as the email's link.
+    await expect(page.locator("main")).toContainText("If you say no, nobody on The Want MCP can ask this address again for 90 days.");
+    await expect(page.getByRole("button")).toHaveText(["No thanks"]);
+    await page.getByRole("button", { name: "No thanks" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("You said no");
     await expect(page.getByRole("status")).toContainText("nobody can ask this address again for 90 days");
   });
@@ -94,4 +96,23 @@ test("a link that no longer works says so, and is a 404", async ({ page, request
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("This link no longer works");
   }
+});
+
+test("the form says how they'll see who's asking; a handle we made up comes with a way to change it", async ({ page }) => {
+  await signIn(page, RT);
+  await page.goto("/app/lists/lst_rt_garden/settings#routines");
+  const also = page.locator("#routine-rtn_garden_due details", { has: page.locator("summary", { hasText: "Also send to…" }) });
+  const line = also.getByText("They'll see it's from @bright-wren-2207.");
+  await expect(line).toBeVisible();
+  await expect(also.getByRole("link", { name: "Change your handle" })).toHaveAttribute("href", "/app/account#handle");
+  // It sits above the button that sends the ask.
+  expect((await line.boundingBox())!.y).toBeLessThan((await also.getByRole("button", { name: "Ask them" }).boundingBox())!.y);
+
+  await page.context().clearCookies();
+  await signIn(page, "routines-sam@example.com");
+  await page.goto("/app/lists/lst_rt_ana/settings#routines");
+  const sams = page.locator("#routine-rtn_ana_countdown details", { has: page.locator("summary", { hasText: "Also send to…" }) });
+  await sams.locator("summary").click();
+  await expect(sams.getByText("They'll see it's from @sam.")).toBeVisible();
+  await expect(sams.getByRole("link", { name: "Change your handle" })).toHaveCount(0);
 });

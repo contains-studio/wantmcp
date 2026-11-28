@@ -165,7 +165,7 @@ export default function LooksEssay({ loaderData }: Route.ComponentProps) {
               some avatars.
             </li>
             <li>
-              <strong>Its critique, which we ran blind.</strong> A second AI agent, started fresh, was given screenshots labelled only A and B, or P and Q. It was not told
+              <strong>Its critique, which we ran blind.</strong> A second AI agent, started fresh, was given screenshots labeled only A and B, or P and Q. It was not told
               which was new. It scored each on six questions about ease of use, 0 to 4, so 24 at most.
             </li>
           </ul>

@@ -20,6 +20,7 @@ import { useRootData } from "~/lib/hooks";
 import {
   MOVES_TO_YOUR_KEY,
   agentWroteName,
+  generatedHandle,
   PAUSED_FOR_EVERYONE,
   WEEKDAYS,
   namedBy,
@@ -224,6 +225,8 @@ const RECIPIENT_STATE: Record<NonNullable<Routine["my_recipients"]>[number]["sta
  * them; an address is never shown after a No or a stop (the server keeps none).
  */
 function Recipients({ f, routine: r, listPrivate, result }: { f: F; routine: Routine; listPrivate: boolean; result?: RoutineResult }) {
+  // How they'll see who's asking: the ask names the person by handle only (never their email).
+  const me = useRootData().user?.handle ?? null;
   const answer = result?.error ? (
     <p className="form-error" role="alert">
       {result.error}
@@ -282,6 +285,19 @@ function Recipients({ f, routine: r, listPrivate, result }: { f: F; routine: Rou
               </label>
             )}
             <p className="hint">We email them once to ask. Nothing else goes to them unless they say yes, and every email lets them stop.</p>
+            {me && (
+              <p className="text-ink-3">
+                They'll see it's from @{me}.
+                {generatedHandle(me) && (
+                  <>
+                    {" "}
+                    <Link to="/app/account#handle" className="link">
+                      Change your handle
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
             <button className="btn btn-sm w-fit" disabled={adding}>
               {adding ? "Asking…" : "Ask them"}
             </button>
