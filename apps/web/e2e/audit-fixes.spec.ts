@@ -18,7 +18,8 @@ test("the invite form says the same when the server turns an address down", asyn
   const id = await createList(page, { format: "Shopping", title: "Invite check" });
   await page.goto(`/app/lists/${id}/settings#sharing-h`);
   const sharing = page.locator("#sharing-h").locator("xpath=ancestor::details[1]");
-  if (!(await sharing.evaluate((d: HTMLDetailsElement) => d.open))) await page.locator("#sharing-h").click();
+  // The address points at Sharing, so the page opens it itself. (Reading "is it open?" and then clicking raced that.)
+  await expect(sharing).toHaveAttribute("open", "");
   const box = page.getByLabel("Invite by email");
   await box.evaluate((el: HTMLInputElement) => (el.form!.noValidate = true));
   await box.fill("not-an-email@");

@@ -5,9 +5,12 @@ import { addItem, createList, freshEmail, signIn } from "./helpers";
 
 async function useLook(page: Page, id: string, template: string) {
   await page.goto(`/app/lists/${id}/settings#theme-h`);
-  await page.locator(`label:has(input[name=template][value=${template}])`).first().click();
-  await page.locator("#theme-h").locator("xpath=ancestor::details[1]").getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Saved. Your list now uses this look.")).toBeVisible();
+  // Nothing to choose or save when the list already has this look (a tasks list starts as a Checklist).
+  if (!(await page.locator(`input[name=template][value=${template}]`).isChecked())) {
+    await page.locator(`label:has(input[name=template][value=${template}])`).first().click();
+    await page.locator("#theme-h").locator("xpath=ancestor::details[1]").getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+  }
   await page.goto(`/l/${id}`);
 }
 

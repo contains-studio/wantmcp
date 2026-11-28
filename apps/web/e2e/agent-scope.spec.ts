@@ -4,9 +4,11 @@ import { DEMO, signIn } from "./helpers";
 /** SPEC 22: an agent connected with "All my lists, including new ones". */
 test("an all-lists agent says so; removing it here keeps the others, with a quieter way to disconnect it everywhere", async ({ page }) => {
   await signIn(page, DEMO);
-  await page.goto("/app/lists/lst_desk2026/settings");
+  // The address points at the section, so the page opens it itself. (Reading "is it open?" and then clicking raced the
+  // page opening its sections on a desktop: the click could close what had just opened.)
+  await page.goto("/app/lists/lst_desk2026/settings#keys-h");
   const agents = page.locator("#keys-h").locator("xpath=ancestor::details[1]");
-  if (!(await agents.evaluate((d: HTMLDetailsElement) => d.open))) await page.locator("#keys-h").click();
+  await expect(agents).toHaveAttribute("open", "");
   const claude = agents.locator(".access-row", { hasText: "Claude" }).first();
   await expect(claude).toContainText(/Signed in through its app · All your lists · (active|never)/);
   // A list-only agent doesn't say it.
