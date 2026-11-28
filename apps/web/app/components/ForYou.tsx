@@ -10,7 +10,7 @@ import { Link, useFetcher } from "react-router";
 import { Time } from "./Time";
 import { actorName } from "~/lib/routines";
 import type { RoutineResult } from "~/lib/routines.server";
-import type { BlockReason, Routine, RoutineChange, RoutineChangeRecord } from "~/lib/types";
+import type { BlockReason, Routine, RoutineChangeKind, RoutineChangeRecord } from "~/lib/types";
 
 export type ForYouData = {
   changes: RoutineChangeRecord[];
@@ -18,7 +18,7 @@ export type ForYouData = {
   keyOk: boolean;
 };
 
-const DID: Record<RoutineChange, string> = {
+const DID: Record<RoutineChangeKind, string> = {
   created: "made",
   renamed: "renamed",
   rescheduled: "changed the schedule of",
@@ -27,6 +27,7 @@ const DID: Record<RoutineChange, string> = {
   deleted: "deleted",
   restored: "brought back",
   run_now: "ran",
+  settings: "changed the settings of",
 };
 
 const KEY_WORDS: Partial<Record<BlockReason, string>> = {

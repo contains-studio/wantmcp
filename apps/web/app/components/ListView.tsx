@@ -25,7 +25,7 @@ import { lowestEntryId, lowestLabel } from "~/lib/prices";
 import { moneyPlaceholder, useCurrency, useHydrated, useNow } from "~/lib/hooks";
 import { useRootData } from "~/lib/hooks";
 import type { Comment, Entry, Item, ListAccess, ListSummary, Page, PriceObservation, RoutineSummary, UserSelf } from "~/lib/types";
-import { agentWroteName, guidesOf, productsOf } from "~/lib/routines";
+import { agentWroteName, guidesOf, productsOf, routinesOn } from "~/lib/routines";
 import { RoutineSuggestion } from "~/components/RoutineSuggestion";
 import { GuideNotes } from "~/components/GuideNotes";
 import type { Layout } from "~/themes/types";
@@ -476,6 +476,8 @@ function ItemSection({
   const H3 = headingTag(base, 2);
   const now = useNow();
   // Guides are not products: never in the prices or the product rows, shown under them as guides (SPEC 20.14 item 12).
+  // Target price is offered on a want once that kind is launched for this person (routines.kinds_visible).
+  const targetPriceOn = !!routinesOn(useRootData().user)?.kinds_visible?.target_price;
   const entries = sortByPrice(productsOf(item.entries));
   const guides = guidesOf(item.entries);
   const textEntries = productsOf(item.entries);
@@ -577,6 +579,12 @@ function ItemSection({
                   <EditItem item={item} onDone={() => closeMenuOf(document.getElementById(headingId)?.closest("section")?.querySelector(":popover-open"))} label={`Edit ${fi.item}`} />
                 </MenuSub>
               )}
+              {/* SPEC 26.8: the most natural place to set a target price is the want itself. */}
+              {isWriter && shopping && !p && targetPriceOn && (
+                <Link to={`/app/lists/${encodeURIComponent(item.list_id)}/settings?new=target_price&item=${encodeURIComponent(item.id)}#routines`} className="menu-item">
+                  Tell me when it's at my price
+                </Link>
+              )}
               <ReportMenuItem type="item" id={item.id} author={item.created_by} />
               {canEditItem && (
                 <MenuRemove intent="delete-item" fields={{ item_id: item.id }} label="Remove" confirmText={`Remove “${item.text.slice(0, 80)}” and everything on it?`} />
@@ -589,7 +597,10 @@ function ItemSection({
           {/* Who added it, only when that tells the owner something: an agent or another person. Once a person rewrites an
               agent's want (text_by "person"), the words are theirs and the line goes. An outsider's item (SPEC 16.2, a
               feedback task) always says so, and while it is held, that readers can't see it yet and how to let them. */}
-          {outsider ? (
+          {isWriter && item.proposed_by ? (
+            // SPEC 26.10: a restock routine brought it back; held until a writer adds it back.
+            <RestockProposal itemId={item.id} itemText={item.text} proposal={item.proposed_by} />
+          ) : outsider ? (
             <OutsiderLine held={held && isWriter} itemId={item.id} itemText={item.text} headingId={headingId} />
           ) : !(item.created_by.kind === "user" && item.created_by.handle === ownerHandle) && !(item.text_by === "person" && item.created_by.kind === "agent") && (
             <span className="inline-flex items-center gap-1.5">
@@ -945,6 +956,15 @@ function Suggestions({ suggestions, routines, me, shopping, guides = 0 }: { sugg
   // SPEC 20.3: a routine's suggestions are not from outside agents; with any of them, the heading says only how many.
   const anyRoutine = suggestions.some((s) => routineOf(s.entry));
   const anyStranger = suggestions.some((s) => !routineOf(s.entry));
+  const groups: Array<{ item: Pick<Item, "id" | "text">; entries: Entry[] }> = [];
+  for (const s of suggestions) {
+    const g = groups.find((x) => x.item.id === s.item.id);
+    if (g) g.entries.push(s.entry);
+    else groups.push({ item: s.item, entries: [s.entry] });
+  }
+  // The routines whose suggestions are here and that are running: "Pause this routine" once, at the foot.
+  const ids = new Set(suggestions.map((s) => routineOf(s.entry)?.id).filter(Boolean));
+  const active = (routines ?? []).filter((r) => ids.has(r.id) && !r.paused && !r.blocked_reason);
   return (
     <section aria-labelledby="sugg-h" className="untrusted grid gap-4 p-4 sm:p-6">
       <div>
@@ -956,22 +976,86 @@ function Suggestions({ suggestions, routines, me, shopping, guides = 0 }: { sugg
           {anyStranger ? "Only writers see these. Links from outside agents stay as text until you promote one." : "Only writers see these."}
         </p>
       </div>
-      <ul className="grid gap-3 lg:grid-cols-2">
-        {suggestions.map(({ entry: e, item }) =>
-          // The person's own search routine: shown as a thing (picture, title that opens, where from). A stranger's
-          // suggestion stays text only, its link not clickable.
-          routineOf(e) ? (
-            <RoutineSuggestion key={e.id} entry={e} itemText={item.text} routines={routines} me={me} shopping={shopping} />
-          ) : (
-            <SuggestionCard key={e.id} entry={e} itemText={item.text} routines={routines} me={me} />
-          ),
-        )}
-      </ul>
+      {/* Grouped under their want once (owner's real list, 28 Nov 2026: nine cards each said "For …"). */}
+      {groups.map((g) => (
+        <section key={g.item.id} aria-labelledby={`sugg-${g.item.id}`} className="grid gap-2">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h3 id={`sugg-${g.item.id}`} className="min-w-0 break-words text-[0.95rem] font-semibold">
+              “{g.item.text}”
+            </h3>
+            <span className="text-[0.82rem] text-ink-3">{plural(g.entries.length, "suggestion")}</span>
+          </div>
+          <ul className="grid gap-2 lg:grid-cols-2">
+            {g.entries.map((e) =>
+              // The person's own search routine: shown as a thing (picture, title that opens, where from). A stranger's
+              // suggestion stays text only, its link not clickable.
+              routineOf(e) ? (
+                <RoutineSuggestion key={e.id} entry={e} routines={routines} me={me} shopping={shopping} />
+              ) : (
+                <SuggestionCard key={e.id} entry={e} />
+              ),
+            )}
+          </ul>
+          {/* One tap clears a want's suggestions: also how a routine learns to stop looking for it. */}
+          {g.entries.length > 1 && <RejectMany ids={g.entries.map((e) => e.id)} label={`Reject these ${g.entries.length}`} what={`the suggestions for “${g.item.text}”`} />}
+        </section>
+      ))}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-3">
+        {active.map((r) => (
+          <PauseRoutine key={r.id} routine={r} named={active.length > 1} />
+        ))}
+        {suggestions.length > 1 && groups.length > 1 && <RejectMany ids={suggestions.map((s) => s.entry.id)} label={`Reject all ${suggestions.length}`} what="every suggestion here" confirm />}
+      </div>
     </section>
   );
 }
 
-function SuggestionCard({ entry: e, itemText, routines, me }: { entry: Entry; itemText: string; routines: RoutineSummary[] | null; me: string | null }) {
+/** "Pause this routine", once at the foot of the panel (per routine, named, when there are several). */
+function PauseRoutine({ routine: r, named }: { routine: RoutineSummary; named: boolean }) {
+  const f = useFetcher<{ ok?: boolean; error?: string }>();
+  return (
+    <f.Form method="post">
+      <input type="hidden" name="intent" value="routine-pause" />
+      <input type="hidden" name="routine_id" value={r.id} />
+      <button className="textlink-btn text-[0.88rem]" disabled={f.state !== "idle"}>
+        {f.state !== "idle" ? "Pausing…" : named ? `Pause “${r.name}”` : "Pause this routine"}
+      </button>
+      {f.data?.error && <span className="form-error ml-2">{f.data.error}</span>}
+    </f.Form>
+  );
+}
+
+/** Reject several suggestions in one tap (the existing reject, once each). The whole panel asks first. */
+function RejectMany({ ids, label, what, confirm = false }: { ids: string[]; label: string; what: string; confirm?: boolean }) {
+  const f = useFetcher<{ ok?: boolean; error?: string }>();
+  const form = (text: string) => (
+    <f.Form method="post" className="inline-flex">
+      <input type="hidden" name="intent" value="reject-entries" />
+      {ids.map((id) => (
+        <input key={id} type="hidden" name="entry_id" value={id} />
+      ))}
+      <button className="btn-quiet" disabled={f.state !== "idle"}>
+        {f.state !== "idle" ? "Rejecting…" : text}
+        <span className="sr-only">: {what}</span>
+      </button>
+    </f.Form>
+  );
+  if (!confirm) return <div className="flex">{form(label)}{f.data?.error && <span className="form-error ml-2">{f.data.error}</span>}</div>;
+  return (
+    <details className="row-remove">
+      <summary className="hit textlink-btn text-[0.88rem]">
+        <span className="rr-closed">{label}</span>
+        <span className="rr-open text-ink-2">Cancel</span>
+      </summary>
+      <div className="row-remove-body">
+        <span className="text-[0.85rem] text-ink-2">Reject {what}?</span>
+        {form("Yes, reject them")}
+      </div>
+    </details>
+  );
+}
+
+function SuggestionCard({ entry: e }: { entry: Entry }) {
   const fetcher = useFetcher<{ ok?: boolean; error?: string }>();
   const pendingIntent = fetcher.formData?.get("intent");
   const doneIntent = fetcher.state === "idle" && fetcher.data?.ok ? "done" : null;
@@ -979,9 +1063,6 @@ function SuggestionCard({ entry: e, itemText, routines, me }: { entry: Entry; it
   const p = e.current_price;
   return (
     <li className="card grid gap-2 p-4" aria-label={`Suggestion: ${e.title}`}>
-      <p className="text-[0.78rem] text-ink-3">
-        For <span className="font-semibold text-ink-2">“{itemText}”</span>
-      </p>
       <p className="whitespace-pre-line break-words font-semibold">{e.title}</p>
       {p && (
         <p className="price text-[1.4rem]">
@@ -990,7 +1071,7 @@ function SuggestionCard({ entry: e, itemText, routines, me }: { entry: Entry; it
         </p>
       )}
       {/* A routine's own "not checked" line is in its byline below: not said twice. */}
-      {e.description && !(routineOf(e) && e.description === ROUTINE_NOTE) && <p className="whitespace-pre-line break-words text-[0.88rem] text-ink-2">{e.description}</p>}
+      {e.description && <p className="whitespace-pre-line break-words text-[0.88rem] text-ink-2">{e.description}</p>}
       <dl className="grid gap-1 text-[0.8rem]">
         {e.retailer && (
           <div className="flex gap-2">
@@ -1015,13 +1096,9 @@ function SuggestionCard({ entry: e, itemText, routines, me }: { entry: Entry; it
           </div>
         )}
       </dl>
-      {routineOf(e) ? (
-        <RoutineByline entry={e} routines={routines} me={me} />
-      ) : (
-        <div className="flex flex-wrap items-center gap-2 text-[0.8rem] text-ink-3">
-          <ActorTag actor={e.author} /> <Time ts={e.created_at} />
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-2 text-[0.8rem] text-ink-3">
+        <ActorTag actor={e.author} /> <Time ts={e.created_at} />
+      </div>
       <fetcher.Form method="post" className="mt-1 flex gap-2">
         <input type="hidden" name="entry_id" value={e.id} />
         <button name="intent" value="promote" className="btn btn-ghost btn-sm" disabled={fetcher.state !== "idle"}>
@@ -1444,8 +1521,6 @@ export function PrivateBadge({ bare = false }: { bare?: boolean }) {
 
 /* ---------------------------------------------------------------- Routines (SPEC 20.3) */
 
-/** What a search routine says on every shopping suggestion (20.6). */
-const ROUTINE_NOTE = "From a search result, not checked on the store's page.";
 
 /** The routine that posted a suggestion, when one did. */
 function routineOf(e: Entry) {
@@ -1473,31 +1548,6 @@ function RoutineLine({ list, me }: { list: ListSummary; me: string | null }) {
   );
 }
 
-/** "Suggested by “Search the web for these wants” (@sam's routine) · from a search result, not checked on the store's page · Pause this routine". */
-function RoutineByline({ entry: e, routines, me }: { entry: Entry; routines: RoutineSummary[] | null; me: string | null }) {
-  const rt = routineOf(e)!;
-  const name = e.author.kind === "outside" ? (e.author.name ?? "a routine") : "a routine";
-  const summary = routines?.find((r) => r.id === rt.id);
-  const f = useFetcher<{ ok?: boolean; error?: string }>();
-  const whose = rt.key_holder === me ? "your routine" : `@${rt.key_holder}'s routine`;
-  return (
-    <div className="grid gap-1 text-[0.8rem] text-ink-3">
-      <p>
-        Suggested by “{name}” ({whose}) · from a search result, not checked on the store's page
-      </p>
-      {summary && !summary.paused && !summary.blocked_reason && (
-        <f.Form method="post">
-          <input type="hidden" name="intent" value="routine-pause" />
-          <input type="hidden" name="routine_id" value={rt.id} />
-          <button className="textlink-btn text-[0.8rem]" disabled={f.state !== "idle"}>
-            {f.state !== "idle" ? "Pausing…" : "Pause this routine"}
-          </button>
-        </f.Form>
-      )}
-      {f.data?.error && <p className="form-error" role="alert">{f.data.error}</p>}
-    </div>
-  );
-}
 
 /** SPEC 20.6: a routine stopped looking for this want after two rejected rounds; any writer can ask it to look again. */
 function RoutineStopped({ itemId, stop }: { itemId: string; stop: NonNullable<Item["routine_stops"]>[number] }) {
@@ -1517,3 +1567,30 @@ function RoutineStopped({ itemId, stop }: { itemId: string; stop: NonNullable<It
   );
 }
 
+
+/** "Add it back" (the existing accept) or "Not this time" (the held want deleted); two of those stop the routine. */
+function RestockProposal({ itemId, itemText, proposal }: { itemId: string; itemText: string; proposal: NonNullable<Item["proposed_by"]> }) {
+  const f = useFetcher<{ ok?: boolean; error?: string }>();
+  const pending = f.formData?.get("intent");
+  return (
+    <div className="grid w-full gap-1.5">
+      {/* The server's note ("Bought on … · brought back by your routine"): whole parts, never a line starting with a dot. */}
+      <MetaLine as="p" className="text-ink-2" items={proposal.note.split(" · ")} />
+      <f.Form method="post" className="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="item_id" value={itemId} />
+        <button name="intent" value="accept-item" className="btn btn-sm" disabled={f.state !== "idle"}>
+          {pending === "accept-item" ? "Adding…" : "Add it back"}
+          <span className="sr-only"> “{itemText.slice(0, 60)}”</span>
+        </button>
+        <button name="intent" value="delete-item" className="btn-quiet" disabled={f.state !== "idle"}>
+          {pending === "delete-item" ? "…" : "Not this time"}
+        </button>
+      </f.Form>
+      {f.data?.error && (
+        <p className="form-error" role="alert">
+          {f.data.error}
+        </p>
+      )}
+    </div>
+  );
+}

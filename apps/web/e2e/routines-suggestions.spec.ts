@@ -28,6 +28,13 @@ test("one list, two treatments: the routine's as things, a stranger's as text", 
   await expect(boots.locator(".product-img .fallback")).toBeVisible();
   await expect(boots).toContainText("From target.com");
 
+  // Grouped under their want once, each with its count; "For …" and "Pause this routine" are not repeated per card.
+  const kettle = page.getByRole("region", { name: "“A good kettle”" });
+  await expect(kettle).toContainText("2 suggestions");
+  await expect(mine).not.toContainText("For “");
+  await expect(mine.getByRole("button", { name: "Pause this routine" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Pause this routine" })).toHaveCount(1);
+
   // A guide is not a suggestion card; the panel counts it apart.
   await expect(page.getByRole("listitem", { name: /^Suggestion: The best electric kettles/ })).toHaveCount(0);
   await expect(page.locator("#sugg-h")).toHaveText("3 suggestions and 1 guide to look at");
@@ -84,4 +91,31 @@ test.describe("without JavaScript", () => {
     await held.getByRole("button", { name: /^Dismiss/ }).click();
     await expect(page.locator("section#itm_rt_kettle")).not.toContainText("Found a guide");
   });
+});
+
+test("Reject these N clears one want's suggestions in one tap", async ({ page }) => {
+  await signIn(page, "routines@example.com");
+  await page.goto("/l/lst_rt_kitchen");
+  const kettle = page.getByRole("region", { name: "“A good kettle”" });
+  const n = await kettle.getByRole("listitem").count();
+  await kettle.getByRole("button", { name: new RegExp(`^Reject these ${n}`) }).click();
+  await expect(page.getByRole("region", { name: "“A good kettle”" })).toHaveCount(0);
+  // The other want's are still there.
+  await expect(page.getByRole("listitem", { name: /^Suggestion: Kids' Waterproof Insulated Snow Boots/ })).toBeVisible();
+});
+
+test("no price, no “checked”: a promoted find says when it was found, others when they were added", async ({ page }) => {
+  await signIn(page, "routines@example.com");
+  await page.goto("/l/lst_rt_kitchen");
+  await page.getByRole("listitem", { name: /^Suggestion: Kids' Waterproof Insulated Snow Boots/ }).getByRole("button", { name: "Promote to list" }).click();
+  await page.reload();
+  const row = page.locator("section#itm_rt_boots .sheet-group").filter({ hasText: "Kids' Waterproof Insulated Snow Boots" });
+  await expect(row).toContainText(/found \w{3} \d{1,2} \w{3}/);
+  await expect(row).toContainText("Exa search");
+  await expect(row).toContainText("No price yet");
+  // No price, so no "checked …" time (its description's "not checked on the store's page" is a different thing).
+  await expect(row).not.toContainText(/checked (just now|yesterday|an? |\d)/);
+  const claude = page.locator("section#itm_rt_kettle .sheet-group").filter({ hasText: "Fellow Corvo EKG electric kettle" });
+  await expect(claude).toContainText(/added /);
+  await expect(claude).not.toContainText(/checked (just now|yesterday|an? |\d)/);
 });

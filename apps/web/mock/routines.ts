@@ -12,7 +12,10 @@ import type {
   EmailPrefs,
   RoutineNameBy,
   Routine,
-  RoutineChange,
+  RoutineFollow,
+  RoutineKind,
+  RoutineStart,
+  RoutineChangeKind,
   RoutineChangeRecord,
   RoutineRun,
   Schedule,
@@ -26,10 +29,15 @@ import type {
 export interface RoutineRow {
   id: string;
   list_id: string;
-  kind: "exa_search";
+  kind: RoutineKind;
+  /** target_price and restock: the one want (SPEC 26.2 item 4). */
+  item_id?: string | null;
+  settings?: Record<string, unknown>;
+  start?: RoutineStart;
   name: string;
   name_by: RoutineNameBy;
-  schedule: Schedule;
+  /** null for date and event routines (SPEC 26.2 item 3). */
+  schedule: Schedule | null;
   paused: { by: ActorRef; at: Timestamp } | null;
   blocked: { reason: BlockReason; at: Timestamp } | null;
   key_user_id: string | null;
@@ -53,7 +61,7 @@ export interface ChangeRow {
   at: Timestamp;
   by: ActorRef;
   by_user_id: string;
-  change: RoutineChange;
+  change: RoutineChangeKind;
   before: RoutineRow | null;
   person_asked: string | null;
 }
@@ -75,16 +83,23 @@ export interface RoutineStore {
   emailPrefs: Map<string, EmailPrefs["kinds"]>;
   views: Map<string, Timestamp>;
   asks: Map<string, { routine_id: string; used: "keep" | "pause" | null }>;
+  /** SPEC 26.4: routine id -> user id -> that person's follow. */
+  follows: Map<string, Map<string, RoutineFollow>>;
 }
 
-export const emptyRoutineStore = (): RoutineStore => ({ routines: [], runs: [], changes: [], keys: [], emailPrefs: new Map(), views: new Map(), asks: new Map() });
+export const emptyRoutineStore = (): RoutineStore => ({ routines: [], runs: [], changes: [], keys: [], emailPrefs: new Map(), views: new Map(), asks: new Map(), follows: new Map() });
 
 // ---------- the launch switch (mock rule)
 
 export function routinesFor(email: string): UserSelf["routines"] | undefined {
   if (!email.includes("routines")) return undefined;
   const running = !email.includes("paused");
-  return { visible: true, running, kinds: { exa_search: running }, about: { exa_search: { cost_per_search_usd: { shopping: 0.017, tasks: 0.012, research: 0.012 }, key_check_usd: 0.007 } } };
+  // SPEC 26.14: kinds_visible says which kinds are launched (server c6278c7: these four for preview accounts).
+  const all: RoutineKind[] = ["exa_search", "due_reminders", "countdown", "target_price", "restock", "weekly_summary", "agent_check", "chase_claims"];
+  const built = new Set<RoutineKind>(["exa_search", "target_price", "countdown", "due_reminders", "restock"]);
+  const kinds = Object.fromEntries(all.map((k) => [k, running])) as Record<RoutineKind, boolean>;
+  const kinds_visible = Object.fromEntries(all.map((k) => [k, built.has(k)])) as Record<RoutineKind, boolean>;
+  return { visible: true, running, kinds, kinds_visible, about: { exa_search: { cost_per_search_usd: { shopping: 0.017, tasks: 0.012, research: 0.012 }, key_check_usd: 0.007 } } };
 }
 
 // ---------- stand-in wording (the server's in real life)
@@ -218,6 +233,12 @@ export interface RoutineCtx {
 }
 
 const RUN_NOW_PER_DAY = 3;
+/** SPEC 26.7: the occasions table (the admin's), as the server would answer GET /routine-occasions. */
+const OCCASIONS = [
+  { slug: "chanukah", year: 2026, date: "2026-12-04", date_end: "2026-12-12", label: "Chanukah" },
+  { slug: "christmas", year: 2026, date: "2026-12-25", date_end: null, label: "Christmas" },
+  { slug: "new-year", year: 2027, date: "2027-01-01", date_end: null, label: "New Year" },
+];
 const NO_KEY = "This would run on your own Exa key, and you haven't saved one. Add it at https://wantmcp.com/app/account#keys.";
 
 export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
@@ -238,23 +259,26 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const mine = !!holder && c && holder.id === c.user.id;
     const left = r.run_now_day === today() ? Math.max(0, RUN_NOW_PER_DAY - r.run_now_count) : RUN_NOW_PER_DAY;
     const latest = rs().changes.filter((x) => x.routine_id === r.id).sort((a, b) => b.at.localeCompare(a.at))[0];
+    const follow = c ? (rs().follows.get(r.id)?.get(c.user.id) ?? null) : null;
     const routine: Routine = {
       id: r.id,
       list_id: r.list_id,
-      item_id: null,
+      item_id: r.item_id ?? null,
       kind: r.kind,
-      settings: {},
-      start: "schedule",
+      settings: r.settings ?? {},
+      start: r.start ?? "schedule",
       name: r.name,
       name_by: r.name_by,
       schedule: r.schedule,
-      schedule_text: scheduleText(r.schedule),
+      schedule_text: r.schedule ? scheduleText(r.schedule) : startText(r),
+      followers: rs().follows.get(r.id)?.size ?? 0,
+      my_follow: follow ? { ...follow } : null,
       paused: r.paused,
       blocked: r.blocked,
       next_run_at: r.paused || r.blocked ? null : r.next_run_at,
       last_run: lastRun(r.id),
       live_run: live ? strip(live) : null,
-      status_text: statusText(r, lastRun(r.id), mine, holder?.handle ?? null),
+      status_text: r.kind === "exa_search" ? statusText(r, lastRun(r.id), mine, holder?.handle ?? null) : kindStatus(r, lastRun(r.id)),
       key_holder: holder ? { handle: holder.handle } : null,
       created: r.created,
       changed: r.changed,
@@ -264,6 +288,33 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     // The person's own agent's words, to that person on the web only.
     if (c?.kind === "user" && latest?.person_asked && latest.by_user_id === c.user.id) routine.reported_words = latest.person_asked;
     return routine;
+  }
+  /** Stand-ins for the server's sentences for kinds that don't run on a clock (26.6-26.8). */
+  function startText(r: RoutineRow): string {
+    const st = (r.settings ?? {}) as any;
+    if (r.kind === "target_price") {
+      const item = h.items().find((i: any) => i.id === r.item_id);
+      return `Whenever a price is posted on “${item?.text ?? "this want"}”`;
+    }
+    if (r.kind === "countdown") return `Counting down to ${st.occasion_label ?? new Date(`${st.date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;
+    if (r.kind === "due_reminders") return "Every day at about 7:00, for wants with a due date";
+    if (r.kind === "restock") {
+      const item = h.items().find((i: any) => i.id === r.item_id);
+      const a = st.after ?? { unit: "week", count: 4 };
+      return `When “${item?.text ?? "this want"}” is bought, it comes back after ${a.count} ${a.unit}${a.count === 1 ? "" : "s"}`;
+    }
+    return "On its own schedule";
+  }
+  function kindStatus(r: RoutineRow, last: RunRow | null): string {
+    if (r.paused) return `Paused by ${r.paused.by.kind === "user" ? `@${r.paused.by.handle}` : "someone"}`;
+    if (r.blocked) return r.blocked.reason === "finished" ? "Finished: its job is done" : "Stopped";
+    const st = (r.settings ?? {}) as any;
+    const told = last?.finished_at ? `Last checked ${new Date(last.finished_at).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}: ${last.note ?? "nothing to tell"}` : "Not checked yet";
+    if (r.kind === "target_price") return `${told} · Watching for ${st.currency ?? ""} ${st.target ?? ""} or less`.replace("  ", " ");
+    if (r.kind === "countdown") return `${told} · Next message: ${(st.milestones ?? [14])[0]} days before`;
+    if (r.kind === "due_reminders") return `${told} · Next check: tomorrow at about 7:00`;
+    if (r.kind === "restock") return "Not bought yet";
+    return told;
   }
   const strip = ({ routine_id: _r, ...run }: RunRow): RoutineRun => run;
   const live = (id: string) => {
@@ -288,7 +339,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     if (!k || k.status !== "ok") throw h.invalid(NO_KEY);
     r.key_user_id = c.user.id;
   };
-  const record = (c: any, r: RoutineRow, change: RoutineChange, before: RoutineRow | null, personAsked: string | null, keyChanged: boolean) => {
+  const record = (c: any, r: RoutineRow, change: RoutineChangeKind, before: RoutineRow | null, personAsked: string | null, keyChanged: boolean) => {
     const at = h.nowIso();
     const by = h.actorRef(c);
     r.changed = { by, at };
@@ -330,6 +381,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       note: null,
       wants_total: null,
       current: null,
+      counts: {},
     };
     plans.set(run.id, { wants, t0: Date.now() });
     rs().runs.push(run);
@@ -338,6 +390,18 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   const plans = new Map<string, { wants: Array<{ item_id: string; text: string }>; t0: number }>();
   const QUEUED_MS = 800;
   const WANT_MS = 900;
+
+  /** Check now (SPEC 26.2 item 7): works out what the routine would say now; the mock has nothing to tell. */
+  function checkOnce(r: RoutineRow, c: any): RunRow {
+    const at = h.nowIso();
+    const run: RunRow = {
+      id: h.newId("run"), routine_id: r.id, trigger: "run_now", run_by: h.actorRef(c), state: "ok", attempts: 1,
+      queued_at: at, started_at: at, finished_at: at, wants_searched: 0, suggestions_posted: 0, searches_used: 0,
+      note: r.kind === "target_price" ? "nothing at your price yet" : "nothing to tell today", wants_total: null, current: null, counts: { notices: 0 },
+    };
+    rs().runs.push(run);
+    return run;
+  }
 
   /** Bring a mock run up to now; posts its suggestions once, when it ends. */
   function advance(run: RunRow): RunRow {
@@ -418,6 +482,99 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     return rs().runs.find((x) => x.routine_id === id && !x.finished_at) ?? null;
   };
 
+  /** SPEC 26.6-26.8: target_price, countdown, due_reminders. No key; one per want or per list. */
+  const NAMES: Partial<Record<RoutineKind, string>> = { due_reminders: "Remind me before things are due" };
+  // restock is launched too (server 365c811).
+  function makeKind(c: any, listId: string, kind: RoutineKind, body: any): RoutineRow {
+    const st = { ...(body.settings ?? {}) } as Record<string, unknown>;
+    let item_id: string | null = null;
+    let name = NAMES[kind] ?? kind;
+    let start: RoutineStart = "date";
+    if (kind === "restock") {
+      item_id = String(body.item_id ?? "");
+      const item = h.items().find((i: any) => i.id === item_id && i.list_id === listId);
+      if (!item) throw h.invalid("item_id: pick a want on this list");
+      const dup = rs().routines.find((r) => r.kind === kind && r.item_id === item_id && !r.deleted_at);
+      if (dup) throw h.conflict(`This want already has one: "${dup.name}"`, { routine: { id: dup.id, name: dup.name } });
+      const after = (st.after ?? {}) as { unit?: string; count?: number };
+      const unit = after.unit === "month" ? "month" : "week";
+      const n = Number(after.count ?? 4);
+      if (!Number.isInteger(n) || n < 1 || n > (unit === "week" ? 52 : 12)) throw h.invalid("after: 1 to 52 weeks, or 1 to 12 months");
+      st.after = { unit, count: n };
+      name = `Bring back “${item.text}”`;
+      start = "event";
+    } else if (kind === "target_price") {
+      item_id = String(body.item_id ?? "");
+      const item = h.items().find((i: any) => i.id === item_id && i.list_id === listId);
+      if (!item) throw h.invalid("item_id: pick a want on this list");
+      if (!/^\d+(\.\d{1,2})?$/.test(String(st.target ?? ""))) throw h.invalid("target: an amount like 120 or 119.99");
+      const dup = rs().routines.find((r) => r.kind === kind && r.item_id === item_id && !r.deleted_at);
+      if (dup) throw h.conflict(`This want already has one: "${dup.name}"`, { routine: { id: dup.id, name: dup.name } });
+      st.unverified = st.unverified !== false;
+      name = `Tell me when “${item.text}” is at my price`;
+      start = "event";
+    } else {
+      const dup = rs().routines.find((r) => r.kind === kind && r.list_id === listId && !r.deleted_at);
+      if (dup) throw h.conflict(`This list already has one: "${dup.name}"`, { routine: { id: dup.id, name: dup.name } });
+    }
+    if (kind === "countdown") {
+      const occ = OCCASIONS.find((o) => o.slug === st.occasion);
+      if (!st.date && occ) st.date = occ.date;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(st.date ?? ""))) throw h.invalid("date: the day to count down to");
+      if (occ) st.occasion_label = occ.label;
+      name = `Countdown to ${occ?.label ?? new Date(`${st.date}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}`;
+    }
+    const at = h.nowIso();
+    const by = h.actorRef(c);
+    const r: RoutineRow = {
+      id: h.newId("rtn"),
+      list_id: listId,
+      kind,
+      item_id,
+      settings: st,
+      start,
+      name,
+      name_by: "server",
+      schedule: null,
+      paused: null,
+      blocked: null,
+      key_user_id: null,
+      next_run_at: null,
+      created: { by, at },
+      changed: { by, at },
+      run_now_day: "",
+      run_now_count: 0,
+      deleted_at: null,
+      stopped_items: [],
+    };
+    rs().routines.push(r);
+    if (c.kind === "user" && kind !== "restock") rs().follows.set(r.id, new Map([[c.user.id, { routine_id: r.id, email: !!body.follow?.email, at_once: !!body.follow?.at_once }]]));
+    record(c, r, "created", null, askedBy(c, body), false);
+    return r;
+  }
+
+  route("GET", "/routine-occasions", ({ caller }) => {
+    visibleFor(caller);
+    return { data: OCCASIONS.map(({ slug, year, date, date_end, label }) => ({ slug, year, date, date_end, label })) };
+  });
+
+  route("PUT", "/routines/{id}/follow", ({ caller, params, body }) => {
+    const r = live(params[0]);
+    const c = writerOf(caller, r);
+    if (c.kind !== "user") throw h.forbidden("Only a person, on the web, chooses how they hear");
+    const f: RoutineFollow = { routine_id: r.id, email: !!body.email, at_once: !!body.at_once };
+    const m = rs().follows.get(r.id) ?? new Map();
+    m.set(c.user.id, f);
+    rs().follows.set(r.id, m);
+    return f;
+  });
+  route("DELETE", "/routines/{id}/follow", ({ caller, params }) => {
+    const r = live(params[0]);
+    const c = writerOf(caller, r);
+    rs().follows.get(r.id)?.delete(c.user.id);
+    return h.noContent;
+  });
+
   route("GET", "/lists/{id}/routines", ({ caller, params }) => {
     visibleFor(caller);
     h.requireWriter(caller, params[0]);
@@ -429,7 +586,12 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const c = h.requireWriter(caller, params[0]);
     const list = h.getList(params[0]);
     if (h.unclaimed(list.id)) throw h.invalid("Unclaimed lists have no routines");
-    if (body.kind !== "exa_search") throw h.invalid("kind must be exa_search");
+    const kind = body.kind as RoutineKind;
+    const sw = routinesFor(userOf(c).email);
+    if (!sw?.kinds_visible[kind]) throw h.invalid(`kind must be one of ${Object.entries(sw?.kinds_visible ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ")}`);
+    // SPEC 26.4: a person on the web follows what they make, and says how (restock tells nobody anything).
+    if (c.kind === "user" && kind !== "exa_search" && kind !== "restock" && (typeof body.follow !== "object" || body.follow === null)) throw h.invalid("Choose how you'll hear about it");
+    if (kind !== "exa_search") return h.created(out(makeKind(c, params[0], kind, body), c));
     const existing = rs().routines.find((r) => r.list_id === params[0] && r.kind === "exa_search" && !r.deleted_at && r.blocked?.reason !== "by_admin");
     if (existing) throw h.conflict(`This list already has a search routine: "${existing.name}"`, { routine: { id: existing.id, name: existing.name } });
     const personAsked = askedBy(c, body);
@@ -472,7 +634,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const personAsked = askedBy(c, body);
     const before = snapshot(r);
     const holderBefore = r.key_user_id;
-    let change: RoutineChange | null = null;
+    let change: RoutineChangeKind | null = null;
     if (typeof body.name === "string") {
       const name = body.name.trim();
       if (!name || name.length > 60 || /[\r\n]/.test(name)) throw h.invalid("name: 1 to 60 characters, one line");
@@ -482,11 +644,15 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
         change = "renamed";
       }
     }
-    if (body.schedule) {
+    if (body.settings && typeof body.settings === "object" && r.kind !== "exa_search") {
+      r.settings = { ...(r.settings ?? {}), ...body.settings };
+      change = "settings";
+    }
+    if (body.schedule && r.schedule) {
       const sched = normaliseSchedule({ ...body.schedule, time_zone: body.schedule.time_zone ?? r.schedule.time_zone }, r.schedule.time_zone);
       if (typeof sched === "string") throw h.invalid(sched);
       if (scheduleText(sched) !== scheduleText(r.schedule)) {
-        if (runsPer28(sched) > runsPer28(r.schedule)) takeKey(c, r);
+        if (runsPer28(sched) > runsPer28(r.schedule) && r.kind === "exa_search") takeKey(c, r);
         r.schedule = sched;
         r.next_run_at = nextRun(sched);
         change = "rescheduled";
@@ -498,10 +664,10 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     }
     if (body.resume === true && (r.paused || (r.blocked && r.blocked.reason !== "by_admin"))) {
       if (r.blocked?.reason === "by_admin") throw h.forbidden("Only The Want MCP can resume this routine");
-      takeKey(c, r);
+      if (r.kind === "exa_search") takeKey(c, r);
       r.paused = null;
       if (r.blocked && ["key_holder_left", "all_rejected", "unattended", "key_missing", "key_refused", "out_of_credit"].includes(r.blocked.reason)) r.blocked = null;
-      r.next_run_at = nextRun(r.schedule);
+      r.next_run_at = r.schedule ? nextRun(r.schedule) : null;
       change = "resumed";
     }
     if (change) record(c, r, change, before, personAsked, holderBefore !== r.key_user_id);
@@ -533,9 +699,10 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     if (r.run_now_count >= RUN_NOW_PER_DAY) throw h.conflict(`It has run ${RUN_NOW_PER_DAY} times today already; it runs again on its schedule.`);
     const before = snapshot(r);
     const holderBefore = r.key_user_id;
-    takeKey(c, r);
+    // Only kinds that spend money need a key (SPEC 26.2 item 6).
+    if (r.kind === "exa_search") takeKey(c, r);
     r.run_now_count++;
-    const run = runOnce(r, c, "run_now");
+    const run = r.kind === "exa_search" ? runOnce(r, c, "run_now") : checkOnce(r, c);
     record(c, r, "run_now", before, personAsked, holderBefore !== r.key_user_id);
     return { queued: true, run_id: run.id };
   });

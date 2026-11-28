@@ -288,7 +288,7 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
     out.routines = canWrite(c, l.id)
       ? routineStore.routines
           .filter((r) => r.list_id === l.id && !r.deleted_at)
-          .map((r) => ({ id: r.id, name: r.name, name_by: r.name_by, kind: r.kind, schedule_text: scheduleText(r.schedule), paused: !!r.paused, blocked_reason: r.blocked?.reason ?? null, key_holder: r.key_user_id ? { handle: userById(r.key_user_id).handle } : null }))
+          .map((r) => ({ id: r.id, name: r.name, name_by: r.name_by, kind: r.kind, schedule_text: r.schedule ? scheduleText(r.schedule) : routineOut(r).schedule_text, paused: !!r.paused, blocked_reason: r.blocked?.reason ?? null, key_holder: r.key_user_id ? { handle: userById(r.key_user_id).handle } : null }))
       : null;
   }
   return out;
@@ -415,6 +415,8 @@ function itemOut(i: ItemRow, c: Caller): Item {
       suggested: writer ? entries.filter((e) => e.status === "suggested").length : 0,
     },
     comment_count: store.comments.filter((x) => x.target_type === "item" && x.target_id === i.id).length,
+    // SPEC 26.10: a held want a restock routine brought back, for writers.
+    ...(writer && i.proposed_by ? { proposed_by: i.proposed_by } : {}),
     // SPEC 20.14: routines that stopped looking for this want, for writers who can see routines.
     ...(writer && c && routinesFor(c.user.email)?.visible
       ? { routine_stops: routineStore.routines.filter((r) => !r.deleted_at && r.stopped_items.includes(i.id)).map((r) => ({ routine_id: r.id, routine_name: r.name, name_by: r.name_by })) }
@@ -1369,6 +1371,7 @@ route("POST", "/items/{id}/accept", ({ caller, params }) => {
   if (c.kind !== "user") throw new HttpError(403, "forbidden", "Only a person, signed in on the web, can accept an outsider's item.");
   if (i.pending_review) {
     i.pending_review = false;
+    i.proposed_by = null; // SPEC 26.10: added back
     touch(i.list_id);
     emit("item.created", i.list_id, i.created_by, `${WEB}/l/${i.list_id}#${i.id}`, { item: { id: i.id, url: `${WEB}/l/${i.list_id}#${i.id}`, text: i.text } });
   }
@@ -1895,7 +1898,7 @@ route("POST", "/__reset", () => {
  * `new Request("http://mock/v1/lists/lst_desk2026")`.
  */
 // SPEC 20: routines (mock/routines.ts).
-registerRoutineRoutes({
+const routineApi = registerRoutineRoutes({
   rs: () => routineStore,
   route: route as never,
   helpers: {
@@ -1922,6 +1925,9 @@ registerRoutineRoutes({
     noContent: NO_CONTENT,
   },
 });
+
+/** A routine as nobody in particular sees it (for list summaries' sentences). */
+const routineOut = (r: Parameters<typeof routineApi.out>[0]) => routineApi.out(r, null);
 
 export async function handleMockRequest(req: Request): Promise<Response> {
   if (!store) seedAll();

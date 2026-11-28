@@ -9,15 +9,16 @@ import { api, ApiError, apiOptional, formError, toRouteError } from "~/lib/api.s
 import { requireUser } from "~/lib/auth.server";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin, flashCookie } from "~/lib/session.server";
-import type { Routine, ActorRef, AgentInfo, HandoverResult, ListAccess, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
+import type { Occasion, RoutineKind, Routine, ActorRef, AgentInfo, HandoverResult, ListAccess, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { LookFrame } from "~/components/LookFrame";
 import { LookGlyph } from "~/components/LookGlyph";
 import { BUILD_ID } from "~/lib/build";
 import { AccessRow, AgentMark, Email, PersonMark, RemoveInTwoSteps } from "~/components/AccessRow";
 import { KeyDone, ShareWithAgent } from "~/components/ShareWithAgent";
-import { RoutineCard, ScheduleFields } from "~/components/RoutineCard";
-import { browserTimeZone, EXA_NOTICE, EXA_NOTICE_COUNTRY, PAUSED_FOR_EVERYONE, pausedForEveryone, routinesOn, type RoutinesSwitch } from "~/lib/routines";
-import { myExaKey, routineAction, ROUTINE_INTENTS, type RoutineResult } from "~/lib/routines.server";
+import { RoutineCard } from "~/components/RoutineCard";
+import { NewRoutine } from "~/components/NewRoutine";
+import { routinesOn, type RoutinesSwitch } from "~/lib/routines";
+import { myExaKey, routineAction, ROUTINE_INTENTS } from "~/lib/routines.server";
 import { AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
@@ -54,9 +55,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   ]);
   // SPEC 20.3: the list's routines and the viewer's key, once routines are launched for this person (20.14).
   const sw = routinesOn(me);
-  const [routines, exaKey] = sw
-    ? await Promise.all([api<{ data: Routine[] }>(request, `/lists/${id}/routines`).then((r) => r.data).catch(() => [] as Routine[]), myExaKey(request, me)])
-    : [null, null];
+  const [routines, exaKey, occasions] = sw
+    ? await Promise.all([
+        api<{ data: Routine[] }>(request, `/lists/${id}/routines`).then((r) => r.data).catch(() => [] as Routine[]),
+        myExaKey(request, me),
+        // SPEC 26.7: the days a countdown can start from, only when countdowns are launched for this person.
+        sw.kinds_visible?.countdown ? api<{ data: Occasion[] }>(request, "/routine-occasions").then((r) => r.data).catch(() => [] as Occasion[]) : Promise.resolve([] as Occasion[]),
+      ])
+    : [null, null, [] as Occasion[]];
   const { items: _items, ...summary } = list;
   // The owner's look gallery: every layout this format offers, each drawn in every offered occasion (plus the list's
   // own occasion if it is no longer offered), so tapping an occasion re-dresses all of them at once. Views are custom
@@ -104,7 +110,23 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       currentTheme: current.slug,
       currentTemplate: current.template.slug,
       currentOccasion: current.occasion?.slug ?? null,
-      routines: sw ? { sw, list: routines!, keyOk: exaKey?.status === "ok", country: me.country, timeZone: me.time_zone ?? null } : null,
+      routines: sw
+        ? {
+            sw,
+            list: routines!,
+            keyOk: exaKey?.status === "ok",
+            country: me.country,
+            timeZone: me.time_zone ?? null,
+            currency: me.currency ?? null,
+            occasions,
+            // Open wants without a target price yet (one per want, SPEC 26.2 item 13).
+            wants: list.items
+              .filter((i) => !i.pending_review && !i.purchase && (i.status ?? "open") !== "done" && !routines!.some((r) => r.kind === "target_price" && r.item_id === i.id))
+              .map((i) => ({ id: i.id, text: i.text })),
+            // Restock: any want without one yet, bought or not (it acts when the want is bought).
+            restockWants: list.items.filter((i) => !i.pending_review && !routines!.some((r) => r.kind === "restock" && r.item_id === i.id)).map((i) => ({ id: i.id, text: i.text })),
+          }
+        : null,
     },
     { headers: { "Cache-Control": "private, no-store" } },
   );
@@ -471,7 +493,15 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
         </Link>
       </Section>
 
-      {loaderData.routines && <RoutinesSection listId={list.id} {...loaderData.routines} open={!!result?.intent?.startsWith("routine-")} />}
+      {loaderData.routines && (
+        <RoutinesSection
+          listId={list.id}
+          format={formatOf(list)}
+          {...loaderData.routines}
+          preset={{ kind: (searchParams.get("new") as RoutineKind | null) ?? null, item: searchParams.get("item") }}
+          open={!!result?.intent?.startsWith("routine-") || !!searchParams.get("new")}
+        />
+      )}
 
       {isOwner && (
         <>
@@ -831,75 +861,55 @@ export async function action(args: Route.ActionArgs) {
  */
 function RoutinesSection({
   listId,
+  format,
   sw,
   list: routines,
   keyOk,
   country,
   timeZone,
+  currency,
+  occasions,
+  wants,
+  restockWants,
+  preset,
   open,
 }: {
   listId: string;
+  format: ListFormat;
   sw: RoutinesSwitch;
   list: Routine[];
   keyOk: boolean;
   country: string | null;
   timeZone: string | null;
+  currency: string | null;
+  occasions: Occasion[];
+  wants: Array<{ id: string; text: string }>;
+  restockWants: Array<{ id: string; text: string }>;
+  preset: { kind: RoutineKind | null; item: string | null };
   open: boolean;
 }) {
-  const hasSearch = routines.some((r) => r.kind === "exa_search");
-  const desc = routines.length ? `${routines.length} routine${routines.length === 1 ? "" : "s"}` : "Things this list does on a schedule";
+  // One of these per list (SPEC 26.2 item 13); target_price is one per want, handled by `wants`.
+  const taken = routines.map((r) => r.kind).filter((k) => k === "exa_search" || k === "countdown" || k === "due_reminders");
+  const desc = routines.length ? `${routines.length} routine${routines.length === 1 ? "" : "s"}` : "Things this list does for you";
   return (
     <Section id="routines" title="Routines" desc={desc} open={open}>
       {routines.map((r) => (
         <RoutineCard key={r.id} routine={r} sw={sw} keyOk={keyOk} inSettings />
       ))}
-      {!hasSearch && <NewRoutine listId={listId} keyOk={keyOk} country={country} timeZone={timeZone} paused={pausedForEveryone(sw, { kind: "exa_search" })} />}
+      <NewRoutine
+        listId={listId}
+        format={format}
+        sw={sw}
+        keyOk={keyOk}
+        country={country}
+        timeZone={timeZone}
+        currency={currency}
+        wants={wants}
+        restockWants={restockWants}
+        occasions={occasions}
+        taken={taken}
+        preset={preset}
+      />
     </Section>
-  );
-}
-
-function NewRoutine({ listId, keyOk, country, timeZone, paused }: { listId: string; keyOk: boolean; country: string | null; timeZone: string | null; paused: boolean }) {
-  const f = useFetcher<RoutineResult>({ key: `routine-new-${listId}` });
-  // The first routine carries the browser's zone when none is saved (20.14 item 6); never written on opening a page.
-  const [tz, setTz] = useState("");
-  useEffect(() => {
-    if (!timeZone) setTz(browserTimeZone() ?? "");
-  }, [timeZone]);
-  const today = (["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const)[new Date().getDay()];
-  return (
-    <details className="rt-fold" open={f.data?.intent === "routine-create" && !!f.data.error}>
-      <summary className="btn btn-sm w-fit">New routine</summary>
-      <f.Form method="post" className="rt-fold-body grid gap-4">
-        <input type="hidden" name="intent" value="routine-create" />
-        {tz && <input type="hidden" name="time_zone" value={tz} />}
-        <div className="grid gap-1">
-          <h3 className="font-semibold">Search the web for these wants</h3>
-          <p className="text-[0.9rem] text-ink-2">It looks for each open want on its schedule and suggests what it finds. You decide what stays.</p>
-        </div>
-        <ScheduleFields initial={{ every: "week", interval: 1, days: [today], time: "09:00" }} idPrefix={`new-${listId}`} />
-        <div className="grid gap-1 rounded-[10px] bg-sunk p-3 text-[0.88rem] text-ink-2">
-          <p>{EXA_NOTICE}</p>
-          {country && <p>{EXA_NOTICE_COUNTRY}</p>}
-        </div>
-        {paused && <p className="text-[0.88rem] font-medium text-warn">{PAUSED_FOR_EVERYONE}.</p>}
-        {keyOk ? (
-          <button className="btn btn-want w-full sm:w-fit" disabled={f.state !== "idle"}>
-            {f.state !== "idle" ? "Making…" : "Make this routine"}
-          </button>
-        ) : (
-          <p className="text-[0.9rem] text-ink-2">
-            It runs on your own Exa key, and you haven't saved one.{" "}
-            <Link to="/app/account#keys" className="link">
-              Add your Exa key
-            </Link>
-          </p>
-        )}
-        {f.data?.intent === "routine-create" && f.data.error && (
-          <p className="form-error" role="alert">
-            {f.data.error}
-          </p>
-        )}
-      </f.Form>
-    </details>
   );
 }

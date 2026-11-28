@@ -283,7 +283,8 @@ function Links({ links }: { links: string[] | undefined }) {
       {links.map((u) => (
         <li key={u} className="flex min-w-0 items-start gap-1.5">
           <span aria-hidden="true" className="text-ink-3">↗</span>
-          <ExtLink href={u} className="link min-w-0 break-all">
+          {/* At least 24px to tap even when two sit close together (WCAG 2.2 target size). */}
+          <ExtLink href={u} className="link inline-block min-w-0 break-all py-0.5">
             {u.replace(/^https:\/\/(www\.)?/, "")}
             <span className="sr-only"> (opens in a new tab)</span>
           </ExtLink>
