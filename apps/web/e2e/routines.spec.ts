@@ -181,7 +181,7 @@ test("paused for everyone: the page says so", async ({ page }) => {
   await signIn(page, freshEmail("routines-paused"));
   await page.goto("/app/routines");
   await expect(page.getByText("Routines are paused for everyone for now.")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "No routines on your lists yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No routines yet" })).toBeVisible();
 });
 
 test.describe("without JavaScript", () => {
@@ -225,4 +225,65 @@ test("Delete asks once", async ({ page }) => {
   await card.locator("summary", { hasText: /^Delete/ }).click();
   await card.getByRole("button", { name: "Yes, delete" }).click();
   await expect(page.locator("#routine-rtn_kitchen")).toHaveCount(0);
+});
+
+test.describe("the Routines tab with no routine on a list", () => {
+  const intro = "Things your lists do by themselves: search the web, remind you, tell you when a price is right. A routine never changes a list without asking.";
+
+  test("no lists: one way on, to start a list", async ({ page }) => {
+    await signIn(page, freshEmail("routines-empty0"));
+    await page.goto("/app/routines");
+    await expect(page.locator("header p").filter({ hasText: "Things your lists do" })).toHaveText(intro);
+    const none = page.getByRole("region", { name: "No routines yet" });
+    await expect(none.getByRole("link")).toHaveText(["Start a list"]);
+    await expect(none.getByRole("link", { name: "Start a list" })).toHaveAttribute("href", "/app/new");
+  });
+
+  test("two lists: each a row straight to its New routine, newest first, with its private marker", async ({ page }) => {
+    await signIn(page, freshEmail("routines-empty2"));
+    const older = await createList(page, { format: "Shopping", title: "Older list" });
+    // The mock's times are whole seconds: a second apart, so "newest first" has an order to keep.
+    await page.waitForTimeout(1100);
+    const newer = await createList(page, { format: "Tasks", title: "Newer list" });
+    await page.goto("/app/routines");
+    const none = page.getByRole("region", { name: "No routines on your lists yet" });
+    await expect(none).toContainText("Pick a list to add one:");
+    const rows = none.getByRole("listitem");
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toContainText("Newer list");
+    await expect(rows.nth(0)).toContainText("Private");
+    await expect(rows.nth(0).getByRole("link")).toHaveAttribute("href", `/app/lists/${newer}/settings?new=1#routines`);
+    await expect(rows.nth(1).getByRole("link")).toHaveAttribute("href", `/app/lists/${older}/settings?new=1#routines`);
+    // A full-width row, at least 44px tall.
+    const box = (await rows.nth(0).getByRole("link").boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.width).toBeGreaterThan((await none.boundingBox())!.width * 0.8);
+    await expect(none.getByRole("link", { name: "All your lists" })).toHaveCount(0);
+    // It lands on the chooser, open.
+    await rows.nth(0).getByRole("link").click();
+    await expect(page.getByRole("group", { name: "What should it do?" })).toBeVisible();
+  });
+
+  test("seven lists: the five most recent, then All your lists", async ({ page }) => {
+    await signIn(page, freshEmail("routines-empty7"));
+    for (let i = 1; i <= 7; i++) {
+      await createList(page, { format: "Shopping", title: `List ${i}` });
+      await page.waitForTimeout(1100);
+    }
+    await page.goto("/app/routines");
+    const none = page.getByRole("region", { name: "No routines on your lists yet" });
+    await expect(none.getByRole("listitem")).toHaveText([/List 7/, /List 6/, /List 5/, /List 4/, /List 3/]);
+    await expect(none.getByRole("link", { name: "All your lists" })).toHaveAttribute("href", "/app");
+  });
+});
+
+test.describe("without JavaScript, New routine from the Routines tab", () => {
+  test.use({ javaScriptEnabled: false });
+  test("?new=1 opens the chooser with nothing chosen", async ({ page }) => {
+    await signIn(page, freshEmail("routines-empty-nojs"));
+    const id = await createList(page, { format: "Shopping", title: "No script" });
+    await page.goto(`/app/lists/${id}/settings?new=1#routines`);
+    await expect(page.getByRole("group", { name: "What should it do?" })).toBeVisible();
+    await expect(page.locator("input[name=kind]:checked")).toHaveCount(0);
+  });
 });

@@ -162,3 +162,10 @@ export function atOnceHint(sw: RoutinesSwitch | null | undefined): string {
 export function aboutHour(h: number): string {
   return `about ${h}:00`;
 }
+
+/**
+ * What routines are, in one line true of every kind (SPEC 26): they search, remind, watch prices, summarise, ask an
+ * agent, bring wants back and send changes on; none changes a list without the person (suggestions and a restock's
+ * want wait for them; a URL routine only sends).
+ */
+export const ROUTINES_INTRO = "Things your lists do by themselves: search the web, remind you, tell you when a price is right. A routine never changes a list without asking.";

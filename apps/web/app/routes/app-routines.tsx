@@ -8,10 +8,11 @@ import { data, Link } from "react-router";
 import type { Route } from "./+types/app-routines";
 import { NewWeeklySummary } from "~/components/NewWeeklySummary";
 import { RoutineCard } from "~/components/RoutineCard";
+import { PrivateBadge } from "~/components/ListView";
 import { api } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
 import { afterChange } from "~/lib/prg.server";
-import { kindFlag, PAUSED_FOR_EVERYONE, routinesOn } from "~/lib/routines";
+import { kindFlag, PAUSED_FOR_EVERYONE, ROUTINES_INTRO, routinesOn } from "~/lib/routines";
 import { myEmailPrefs, myExaKey, routineAction, ROUTINE_INTENTS } from "~/lib/routines.server";
 import { assertSameOrigin } from "~/lib/session.server";
 import type { ListSummary, Routine } from "~/lib/types";
@@ -43,6 +44,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   // The person's lists: for the weekly summary's choice, and which are private (adding an address says so).
   const [lists, prefs] = await Promise.all([api<ListSummary[]>(request, "/me/lists").catch(() => [] as ListSummary[]), offerWeekly ? myEmailPrefs(request) : null]);
   const privateLists = lists.filter((l) => l.visibility === "private").map((l) => l.id);
+  // With no routine on a list yet: the person's lists, newest activity first, each a way straight to New routine.
+  const recent = [...lists].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  const pick = { lists: recent.slice(0, 5).map((l) => ({ id: l.id, title: l.title, private: l.visibility === "private" })), more: recent.length > 5, none: recent.length === 0 };
   return data(
     {
       sw,
@@ -50,6 +54,7 @@ export async function loader({ request }: Route.LoaderArgs) {
       groups: [...groups.values()],
       keyOk: key?.status === "ok",
       privateLists,
+      pick,
       weekly: offerWeekly ? { lists: lists.map((l) => ({ id: l.id, title: l.title })), emailHour: prefs?.email_hour ?? 8 } : null,
     },
     { headers: { "Cache-Control": "private, no-store" } },
@@ -66,14 +71,14 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Routines({ loaderData }: Route.ComponentProps) {
-  const { sw, own, groups, keyOk, weekly, privateLists } = loaderData;
+  const { sw, own, groups, keyOk, weekly, privateLists, pick } = loaderData;
   return (
     <div className="bg-sunk">
       <div className="mx-auto grid w-full max-w-[47.5rem] gap-6 px-4 pt-8 pb-16 sm:pt-10">
         <header className="grid gap-5">
           <h1 className="text-[2rem] leading-tight font-semibold tracking-[-0.02em] sm:text-[2.4rem]">Routines</h1>
           <ViewSwitch current="routines" />
-          <p className="text-[0.95rem] text-ink-2">Things your lists do on a schedule. A routine only suggests; you decide.</p>
+          <p className="text-[0.95rem] text-ink-2">{ROUTINES_INTRO}</p>
           {!sw.running && <p className="font-medium text-warn">{PAUSED_FOR_EVERYONE}.</p>}
         </header>
 
@@ -98,12 +103,45 @@ export default function Routines({ loaderData }: Route.ComponentProps) {
         )}
 
         {groups.length === 0 ? (
-          <section className="card grid gap-2 p-5">
-            <h2 className="text-[1.05rem] font-semibold">{own.length || weekly ? "No routines on your lists yet" : "No routines yet"}</h2>
-            <p className="text-ink-2">Open a list's settings and choose New routine, for example to search the web for its wants every week.</p>
-            <Link to="/app" className="link w-fit">
-              Your lists
-            </Link>
+          // Uses what the page knows: the person's own lists, each a row straight to its New routine (open without
+          // JavaScript too: ?new=1 opens the chooser with nothing chosen).
+          <section aria-labelledby="rl-none" className="card grid gap-3 p-5">
+            <h2 id="rl-none" className="text-[1.05rem] font-semibold">
+              {pick.none ? "No routines yet" : "No routines on your lists yet"}
+            </h2>
+            {pick.none ? (
+              <Link to="/app/new" className="btn btn-want w-full sm:w-fit">
+                Start a list
+              </Link>
+            ) : (
+              <>
+                <p className="text-ink-2">Pick a list to add one:</p>
+                <ul className="grid border-t border-line">
+                  {pick.lists.map((l) => (
+                    <li key={l.id} className="border-b border-line">
+                      <Link
+                        to={`/app/lists/${l.id}/settings?new=1#routines`}
+                        className="flex min-h-11 items-center justify-between gap-3 py-2 hover:text-ink"
+                        aria-label={`${l.title}${l.private ? " (private)" : ""}: add a routine`}
+                      >
+                        <span className="min-w-0 break-words font-medium">{l.title}</span>
+                        <span className="flex flex-none items-center gap-3 text-[0.88rem]">
+                          {l.private && <PrivateBadge bare />}
+                          <span aria-hidden="true" className="text-ink-3">
+                            ›
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                {pick.more && (
+                  <Link to="/app" className="link w-fit">
+                    All your lists
+                  </Link>
+                )}
+              </>
+            )}
           </section>
         ) : (
           groups.map((g) => (

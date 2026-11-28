@@ -87,7 +87,7 @@ export function NewRoutine({
   urls: Array<{ id: string; name: string; host: string }>;
   listPrivate: boolean;
   /** ?new=<kind>&item=<id>: opened from a want ("Tell me when it's at my price"). */
-  preset: { kind: RoutineKind | null; item: string | null };
+  preset: { kind: RoutineKind | null; item: string | null; /** ?new=…: open the chooser, with or without a kind. */ open?: boolean };
 }) {
   const f = useFetcher<RoutineResult>({ key: `routine-new-${listId}` });
   const offered = KINDS.filter(
@@ -302,7 +302,7 @@ export function NewRoutine({
   const needsUrl = kind === "list_changes" && urls.length === 0;
   const paused = !sw.running || (kind !== null && !kindFlag(sw.kinds, kind));
   return (
-    <details className="rt-fold" open={!!preset.kind || (f.data?.intent === "routine-create" && !!f.data.error)} onToggle={(e) => e.currentTarget.open && toTop()}>
+    <details className="rt-fold" open={!!preset.kind || !!preset.open || (f.data?.intent === "routine-create" && !!f.data.error)} onToggle={(e) => e.currentTarget.open && toTop()}>
       <summary className="btn btn-sm w-fit">New routine</summary>
       <f.Form method="post" className="rt-fold-body grid gap-5">
         <input type="hidden" name="intent" value="routine-create" />

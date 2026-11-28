@@ -506,7 +506,7 @@ export default function Settings({ loaderData }: Route.ComponentProps) {
             .filter((a) => a.owner_handle === user?.handle && !loaderData.routines!.list.some((r) => r.kind === "agent_check" && r.settings.agent_id === a.id))
             .map((a) => ({ id: a.id, name: a.name }))}
           listPrivate={list.visibility === "private"}
-          preset={{ kind: (searchParams.get("new") as RoutineKind | null) ?? null, item: searchParams.get("item") }}
+          preset={{ kind: (searchParams.get("new") as RoutineKind | null) ?? null, item: searchParams.get("item"), open: !!searchParams.get("new") }}
           open={!!result?.intent?.startsWith("routine-") || !!result?.intent?.startsWith("recipient-") || !!searchParams.get("new")}
         />
       )}
@@ -899,7 +899,7 @@ function RoutinesSection({
   myAgents: Array<{ id: string; name: string }>;
   listPrivate: boolean;
   urls: Array<{ id: string; name: string; host: string }>;
-  preset: { kind: RoutineKind | null; item: string | null };
+  preset: { kind: RoutineKind | null; item: string | null; open?: boolean };
   open: boolean;
 }) {
   // One of these per list (SPEC 26.2 item 13); target_price is one per want, handled by `wants`.
