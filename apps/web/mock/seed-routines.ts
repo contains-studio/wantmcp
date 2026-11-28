@@ -363,6 +363,18 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     { id: "rcp_seed_neighbour", routine_id: "rtn_garden_due", added_by: "usr_rt", email: "neighbour@example.com", key: "neighbour@example.com", show_list: true, state: "asked", since: at(DAY), asked_on: at(DAY).slice(0, 10), token: "rcpmockasked00000000000000" },
   );
   rs.emailStops.set("resmockgarden0000000000000", { routine_id: "rtn_garden_due", user_id: "usr_rt" });
+  // SPEC 26.21: two saved URLs, one working and one that stopped answering, used by a routine on Kitchen it blocked.
+  rs.endpoints.push(
+    { id: "rep_seed_n8n", user_id: "usr_rt", name: "My n8n", url: "https://hooks.n8n.example/webhook/abc", state: "ok", verified_at: at(3 * DAY), last_ok_at: at(2 * HOUR), last_fail_at: null, last_problem: null, deleted_at: null },
+    { id: "rep_seed_old", user_id: "usr_rt", name: "Old server", url: "https://old.example.net/hook", state: "failing", verified_at: at(9 * DAY), last_ok_at: at(4 * DAY), last_fail_at: at(DAY), last_problem: "The URL did not answer within 10 seconds.", deleted_at: null },
+  );
+  rs.routines.push({
+    id: "rtn_kitchen_url", list_id: "lst_rt_kitchen", kind: "list_changes", item_id: null,
+    settings: { endpoint_id: "rep_seed_old", types: ["item.created", "price.posted"], content: "ids" }, start: "event",
+    name: "Send this list's changes to a URL", name_by: "server", schedule: null, paused: null, blocked: { reason: "url_failing", at: at(DAY) },
+    key_user_id: "usr_rt", next_run_at: null, created: { by: me, at: at(8 * DAY) }, changed: { by: me, at: at(8 * DAY) },
+    run_now_day: "", run_now_count: 0, deleted_at: null, stopped_items: [],
+  });
   rs.asks.set("ask_seed_kitchen", { routine_id: "rtn_kitchen", used: null });
   rs.asks.set("ask_seed_garden", { routine_id: "rtn_garden", used: null });
 }

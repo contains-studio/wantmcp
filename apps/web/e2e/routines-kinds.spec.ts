@@ -23,16 +23,17 @@ test("the chooser offers exactly the launched kinds, each saying what it does an
   await page.locator("summary", { hasText: "New routine" }).click();
   const kinds = page.getByRole("group", { name: "What should it do?" }).getByRole("radio");
   // A fresh list has no wants yet, so "at my price" has nothing to watch.
-  await expect(kinds).toHaveCount(3);
+  await expect(kinds).toHaveCount(4);
   await expect(page.getByText("Search the web for these wants")).toBeVisible();
   await expect(page.getByText("Uses your Exa key, about 2 cents a search")).toBeVisible();
   await expect(page.getByText("Countdown and order-by dates")).toBeVisible();
   await expect(page.getByText("Remind me before things are due")).toBeVisible();
   await expect(page.getByText("No key needed")).toHaveCount(2);
+  await expect(page.getByText("Uses a URL of yours")).toBeVisible();
   // Never on a list: the weekly summary is made on the Routines tab.
   await expect(page.getByText("A weekly summary")).toHaveCount(0);
   // Launched on the server (kinds_visible) but not known to this page: never offered.
-  await expect(page.locator("input[name=kind][value=list_changes]")).toHaveCount(0);
+  await expect(page.locator("input[name=kind][value=future_kind]")).toHaveCount(0);
 });
 
 test("from a want: “Tell me when it's at my price”, the follow choice required, then a card with Check now", async ({ page }) => {
@@ -254,7 +255,7 @@ test.describe("phone", () => {
     await page.goto(`/app/lists/${id}/settings#routines`);
     await page.locator("summary", { hasText: "New routine" }).click();
     const options = page.locator("input[name=kind]");
-    await expect(options).toHaveCount(3);
+    await expect(options).toHaveCount(4);
     for (const name of [/Countdown and order-by dates/, /Remind me before things are due/, /Search the web for these wants/]) {
       await page.getByRole("radio", { name }).check();
       await expect(options).toHaveCount(1);
@@ -270,7 +271,7 @@ test.describe("phone", () => {
       // The chosen kind and the way to make it fit one 844px screen.
       expect(end!.y + end!.height - top!.y).toBeLessThan(844 - 64);
       await page.getByRole("button", { name: /^Change/ }).click();
-      await expect(options).toHaveCount(3);
+      await expect(options).toHaveCount(4);
     }
   });
 });

@@ -5,7 +5,7 @@
  */
 import { data } from "react-router";
 import { api, apiOptional, formError } from "./api.server";
-import type { EmailPrefs, Routine, ScheduleInput, ServiceKey, UserSelf, Weekday } from "./types";
+import type { EmailPrefs, Routine, RoutineEndpoint, RoutineEndpointCreated, ScheduleInput, ServiceKey, UserSelf, Weekday } from "./types";
 import { routinesOn } from "./routines";
 
 export const ROUTINE_INTENTS = new Set([
@@ -81,11 +81,12 @@ export async function routineAction(request: Request, form: FormData): Promise<R
           const listId = String(form.get("list_id") ?? "");
           const tz = String(form.get("time_zone") ?? "");
           const follow = String(form.get("follow") ?? "");
-          // Restock tells nobody anything (it brings the want back), so it has no follow choice (26.10).
-          if (kind !== "restock" && follow !== "app" && follow !== "email") return data<RoutineResult>({ intent, error: "Choose where you'll see it." }, 400);
+          // Restock and list_changes tell nobody anything (26.10, 26.21.4), so they have no follow choice.
+          const tells = kind !== "restock" && kind !== "list_changes";
+          if (tells && follow !== "app" && follow !== "email") return data<RoutineResult>({ intent, error: "Choose where you'll see it." }, 400);
           // "Email me at once" is target_price's alone, and only with email.
           const atOnce = kind === "target_price" && follow === "email" && form.get("at_once") === "on";
-          const body: Record<string, unknown> = { kind, settings: kindSettings(kind, form), ...(kind !== "restock" ? { follow: { email: follow === "email", ...(kind === "target_price" ? { at_once: atOnce } : {}) } } : {}) };
+          const body: Record<string, unknown> = { kind, settings: kindSettings(kind, form), ...(tells ? { follow: { email: follow === "email", ...(kind === "target_price" ? { at_once: atOnce } : {}) } } : {}) };
           if (kind === "target_price" || kind === "restock") body.item_id = String(form.get(kind === "restock" ? "restock_item_id" : "item_id") ?? "");
           // agent_check runs on a schedule: the one the form shows (with JavaScript), else the server's default.
           if (kind === "agent_check" && form.get("ac_schedule")) body.schedule = { ...scheduleFromForm(form), ...(tz ? { time_zone: tz } : {}) };
@@ -158,9 +159,13 @@ export async function myExaKey(request: Request, user: UserSelf | null): Promise
 
 // ---------- the account page (SPEC 20.5, 20.8, 20.14 item 6): keys, notifications, time zone. Web only.
 
-export const ACCOUNT_ROUTINE_INTENTS = new Set(["key-save", "key-cap", "key-check", "key-remove", "email-prefs", "email-stop-all", "time-zone"]);
+export const ACCOUNT_ROUTINE_INTENTS = new Set(["key-save", "key-cap", "key-check", "key-remove", "email-prefs", "email-stop-all", "time-zone", "url-add", "url-verify", "url-test", "url-rotate", "url-remove"]);
 
-export type AccountRoutineResult = { ok?: boolean; intent: string; message?: string; error?: string };
+/**
+ * `secret`: a URL's signing secret, in the answer to the one action that made it (add, or New secret), shown once and
+ * never again; never in an address, a log or storage. `endpointId`: which URL an answer is about.
+ */
+export type AccountRoutineResult = { ok?: boolean; intent: string; message?: string; error?: string; secret?: string; endpointId?: string };
 
 /**
  * The key is read from the form and passed to the API once; it is never put in an answer, an address or a log. With
@@ -208,6 +213,34 @@ export async function accountRoutineAction(request: Request, form: FormData) {
       case "email-stop-all":
         await api<EmailPrefs>(request, "/me/email-prefs", { method: "PATCH", body: { stop_all: true } });
         return done("Stopped. No routine emails; your routines still show in the app.");
+      // SPEC 26.21.2: saved URLs. The server checks the address and runs the handshake before answering.
+      case "url-add": {
+        const made = await api<RoutineEndpointCreated>(request, "/me/endpoints", { method: "POST", body: { name: String(form.get("name") ?? "").trim(), url: String(form.get("url") ?? "").trim() } });
+        const ok = made.endpoint.state === "ok";
+        return data<AccountRoutineResult>({
+          ok: true,
+          intent,
+          endpointId: made.endpoint.id,
+          secret: made.secret,
+          message: ok ? `Saved. “${made.endpoint.name}” answered the handshake.` : `Saved, but “${made.endpoint.name}” hasn't answered the handshake yet; nothing else is sent to it until it does.`,
+        });
+      }
+      case "url-verify": {
+        const e = await api<RoutineEndpoint>(request, `/me/endpoints/${encodeURIComponent(String(form.get("endpoint_id") ?? ""))}/verify`, { method: "POST" });
+        return data<AccountRoutineResult>({ ok: true, intent, endpointId: e.id, message: e.state === "ok" ? "It answered the handshake." : (e.last_problem ?? "It hasn't answered the handshake.") });
+      }
+      case "url-test": {
+        const e = await api<RoutineEndpoint>(request, `/me/endpoints/${encodeURIComponent(String(form.get("endpoint_id") ?? ""))}/test`, { method: "POST" });
+        return data<AccountRoutineResult>({ ok: true, intent, endpointId: e.id, message: e.last_problem ?? "Sent a test, and it answered." });
+      }
+      case "url-rotate": {
+        const id = String(form.get("endpoint_id") ?? "");
+        const { secret } = await api<{ secret: string }>(request, `/me/endpoints/${encodeURIComponent(id)}/rotate-secret`, { method: "POST" });
+        return data<AccountRoutineResult>({ ok: true, intent, endpointId: id, secret, message: "A new secret. The old one keeps working for 24 hours, so you can switch over." });
+      }
+      case "url-remove":
+        await api(request, `/me/endpoints/${encodeURIComponent(String(form.get("endpoint_id") ?? ""))}`, { method: "DELETE" });
+        return done("Removed. Whatever used it has stopped.");
       case "time-zone": {
         const tz = String(form.get("time_zone") ?? "");
         await api(request, "/me", { method: "PATCH", body: { time_zone: tz } });
@@ -219,6 +252,13 @@ export async function accountRoutineAction(request: Request, form: FormData) {
   } catch (err) {
     return data<AccountRoutineResult>({ intent, ...formError(err) }, 400);
   }
+}
+
+/** SPEC 26.21.2: the person's saved URLs (their own; web only). */
+export async function myEndpoints(request: Request): Promise<RoutineEndpoint[]> {
+  return apiOptional<{ data: RoutineEndpoint[] }>(request, "/me/endpoints")
+    .then((r) => r?.data ?? [])
+    .catch(() => []);
 }
 
 export async function myEmailPrefs(request: Request): Promise<EmailPrefs | null> {
@@ -247,6 +287,10 @@ export function kindSettings(kind: string, form: FormData): Record<string, unkno
   if (kind === "restock") {
     const unit = form.get("after_unit") === "month" ? "month" : "week";
     return { after: { unit, count: Number(form.get("after_count") ?? 4) || 4 } };
+  }
+  if (kind === "list_changes") {
+    // Ids only for now ("in full" isn't offered yet, 26.21.7).
+    return { endpoint_id: String(form.get("endpoint_id") ?? ""), types: form.getAll("change_types").map(String), content: "ids" };
   }
   if (kind === "agent_check") {
     // Each check is on only with its tick; its days otherwise null (SPEC 26.9).

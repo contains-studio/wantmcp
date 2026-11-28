@@ -36,7 +36,9 @@ test.describe.serial("other addresses", () => {
     // Once per address per routine, in the server's words.
     await also.getByRole("textbox", { name: "Their email address" }).fill("neighbour@example.com");
     await also.getByRole("button", { name: "Ask them" }).click();
-    await expect(card.getByRole("alert")).toContainText("Already asked on");
+    // Right under the button that caused it, inside its form.
+    await expect(also.locator("form").filter({ has: page.getByRole("button", { name: "Ask them" }) }).getByRole("alert")).toContainText("Already asked on");
+    await expect(card.getByRole("alert")).toHaveCount(1);
   });
 
   test("the ask: opening never acts; one button for the link's answer; says who and what, never the asker's email", async ({ page, request }) => {

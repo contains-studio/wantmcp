@@ -25,6 +25,21 @@ const KINDS: Array<{ kind: RoutineKind; name: string; line: string; lists?: List
   { kind: "due_reminders", name: "Remind me before things are due", line: "Tells you a few days before a want's due date, and when it's overdue." },
   { kind: "restock", name: "Bring it back after I buy it", line: "When a want is bought, puts it back on the list after a while, for you to confirm.", lists: ["shopping", "tasks"] },
   { kind: "agent_check", name: "Ask my agent to check", line: "On a schedule, leaves one of your agents a note to re-check old prices and wants that are stuck." },
+  { kind: "list_changes", name: "Send this list's changes to a URL", line: "As things change, tells a URL of yours which things changed. Only which, not their text." },
+];
+
+/** SPEC 26.21.4: the changes it can send, in the server's words, and the ones ticked to start with. */
+const CHANGE_TYPES: Array<[type: string, words: string, on: boolean]> = [
+  ["item.created", "New wants", true],
+  ["entry.listed", "New options", true],
+  ["entry.suggested", "Suggestions from outside", false],
+  ["price.posted", "Prices", true],
+  ["item.status_changed", "Status changes", true],
+  ["item.purchased", "Bought or done", true],
+  ["question.asked", "Questions asked", false],
+  ["question.answered", "Questions answered", false],
+  ["comment.created", "Comments", false],
+  ["list.claimed", "The list kept", false],
 ];
 
 /** "about 2 cents a search", from the server's figure for this list's format. */
@@ -48,6 +63,8 @@ export function NewRoutine({
   occasions,
   taken,
   myAgents,
+  urls,
+  listPrivate,
   preset,
 }: {
   listId: string;
@@ -66,6 +83,9 @@ export function NewRoutine({
   taken: RoutineKind[];
   /** The person's own agents that write this list and have no "Ask my agent to check" here yet (one per agent). */
   myAgents: Array<{ id: string; name: string }>;
+  /** The person's own URLs that answered the handshake (SPEC 26.21.4). */
+  urls: Array<{ id: string; name: string; host: string }>;
+  listPrivate: boolean;
   /** ?new=<kind>&item=<id>: opened from a want ("Tell me when it's at my price"). */
   preset: { kind: RoutineKind | null; item: string | null };
 }) {
@@ -205,6 +225,47 @@ export function NewRoutine({
             <p className="hint">It comes back as a want waiting for you: add it back, or not this time.</p>
           </KindPart>
     ),
+    list_changes: (
+      <KindPart>
+        {urls.length ? (
+          <>
+            <label className="field">
+              <span className="label">Send to</span>
+              <select name="endpoint_id" className="input" defaultValue={urls.length === 1 ? urls[0].id : ""} required={kind === "list_changes"}>
+                <option value="" disabled>
+                  Choose one of your URLs
+                </option>
+                {urls.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.host})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <fieldset className="grid gap-1.5">
+              <legend className="label mb-1">Which changes</legend>
+              {CHANGE_TYPES.map(([t, words, on]) => (
+                <label key={t} className="check">
+                  <input type="checkbox" name="change_types" value={t} defaultChecked={on} />
+                  <span>{words}</span>
+                </label>
+              ))}
+            </fieldset>
+            <div className="grid gap-1 rounded-[10px] bg-sunk p-3 text-[0.88rem] text-ink-2">
+              <p>Only which things changed is sent: ids and times, not their text. Whoever gets it reads the list with its own key{listPrivate ? ", so this private list stays private" : ""}.</p>
+              <p>Everyone on the list sees that its changes go to your URL, but never the URL.</p>
+            </div>
+          </>
+        ) : (
+          <p className="text-[0.9rem] text-ink-2">
+            It needs a URL of yours that has answered the handshake.{" "}
+            <Link to="/app/account#urls" className="link">
+              Add a URL
+            </Link>
+          </p>
+        )}
+      </KindPart>
+    ),
     agent_check: (
       <KindPart>
         <label className="field">
@@ -238,6 +299,7 @@ export function NewRoutine({
     ),
   };
   const needsKey = kind === "exa_search" && !keyOk;
+  const needsUrl = kind === "list_changes" && urls.length === 0;
   const paused = !sw.running || (kind !== null && !kindFlag(sw.kinds, kind));
   return (
     <details className="rt-fold" open={!!preset.kind || (f.data?.intent === "routine-create" && !!f.data.error)} onToggle={(e) => e.currentTarget.open && toTop()}>
@@ -269,7 +331,7 @@ export function NewRoutine({
                     <span className="grid gap-0.5">
                       <span className="font-semibold">{k.name}</span>
                       <span className="text-[0.88rem] text-ink-2">{k.line}</span>
-                      <span className="text-[0.82rem] text-ink-3">{k.kind === "exa_search" ? exaCost(sw, format) : "No key needed"}</span>
+                      <span className="text-[0.82rem] text-ink-3">{k.kind === "exa_search" ? exaCost(sw, format) : k.kind === "list_changes" ? "Uses a URL of yours" : "No key needed"}</span>
                     </span>
                   </label>
                   {live && kind === k.kind && offered.length > 1 && (
@@ -285,11 +347,11 @@ export function NewRoutine({
 
         {/* Where the maker sees it (26.4): required, nothing preselected. Restock tells nobody anything (it brings the
             want back), so it has no such choice. */}
-        {(!live || (kind && kind !== "exa_search" && kind !== "restock")) && (
+        {(!live || (kind && kind !== "exa_search" && kind !== "restock" && kind !== "list_changes")) && (
           <fieldset className="grid gap-1.5">
             <legend className="label mb-1">Where you'll see it</legend>
             <label className="check">
-              <input type="radio" name="follow" value="app" required={!!kind && kind !== "exa_search" && kind !== "restock"} onChange={() => setByEmail(false)} />
+              <input type="radio" name="follow" value="app" required={!!kind && kind !== "exa_search" && kind !== "restock" && kind !== "list_changes"} onChange={() => setByEmail(false)} />
               <span>In the app, under For you</span>
             </label>
             <label className="check rt-check">
@@ -320,7 +382,7 @@ export function NewRoutine({
             </Link>
           </p>
         ) : (
-          <button className="btn btn-want w-full sm:w-fit" disabled={f.state !== "idle" || (live && !kind)}>
+          <button className="btn btn-want w-full sm:w-fit" disabled={f.state !== "idle" || (live && !kind) || needsUrl}>
             {f.state !== "idle" ? "Making…" : "Make this routine"}
           </button>
         )}

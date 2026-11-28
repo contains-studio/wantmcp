@@ -9,7 +9,7 @@ export function isDocumentPost(request: Request): boolean {
 }
 
 /** Results that carry something shown only once (a new key, a hand-over link): answered with the page, never redirected. */
-const ONE_TIME = ["key", "handover", "devInvite"];
+const ONE_TIME = ["key", "handover", "devInvite", "secret"];
 
 function okData(result: unknown): Record<string, unknown> | null {
   if (!result || typeof result !== "object" || result instanceof Response) return null;

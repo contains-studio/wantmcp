@@ -1539,7 +1539,7 @@ function RoutineLine({ list, me }: { list: ListSummary; me: string | null }) {
       {active.map((r) => (
         <li key={r.id}>
           <Link to={`/app/lists/${list.id}/settings#routines`} className="hover:text-ink hover:underline">
-            {agentWroteName(r) ? `“${r.name}”` : r.name} · {r.schedule_text}
+            {r.kind === "list_changes" ? r.schedule_text : <>{agentWroteName(r) ? `“${r.name}”` : r.name} · {r.schedule_text}</>}
             {r.key_holder && <> · {r.key_holder.handle === me ? "your" : `@${r.key_holder.handle}'s`} Exa key</>}
           </Link>
         </li>

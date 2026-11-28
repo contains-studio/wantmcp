@@ -10,9 +10,9 @@ import type { AgentInfo } from "~/lib/types";
 import { Time } from "~/components/Time";
 import { requireUser } from "~/lib/auth.server";
 import { assertSameOrigin, clearSessionCookie } from "~/lib/session.server";
-import { ExaKeySection, Notifications, TimeZoneSection } from "~/components/AccountRoutines";
-import { routinesOn } from "~/lib/routines";
-import { ACCOUNT_ROUTINE_INTENTS, accountRoutineAction, myEmailPrefs, myExaKey } from "~/lib/routines.server";
+import { ExaKeySection, Notifications, TimeZoneSection, UrlsSection } from "~/components/AccountRoutines";
+import { kindFlag, routinesOn } from "~/lib/routines";
+import { ACCOUNT_ROUTINE_INTENTS, accountRoutineAction, myEmailPrefs, myEndpoints, myExaKey } from "~/lib/routines.server";
 
 export function meta() {
   return [{ title: "Account · The Want MCP" }, { name: "robots", content: "noindex" }];
@@ -34,7 +34,16 @@ export async function loader({ request }: Route.LoaderArgs) {
   const agentKeys = (await apiOptional<AgentInfo[]>(request, "/me/agent-keys").catch(() => null)) ?? [];
   // SPEC 20: keys, notifications and time zone, only once routines are launched for this person (20.14).
   const routines = routinesOn(me)
-    ? await Promise.all([myExaKey(request, me), myEmailPrefs(request)]).then(([exaKey, prefs]) => ({ exaKey, prefs: prefs ?? { kinds: { routine_key: false, routine_unattended: true, routine_digest: true, routine_at_once: true }, email_hour: 8, follows: [] } }))
+    ? await Promise.all([
+        myExaKey(request, me),
+        myEmailPrefs(request),
+        // SPEC 26.21.2: saved URLs, while sending a list's changes to a URL is launched for this person.
+        kindFlag(routinesOn(me)?.kinds_visible, "list_changes") ? myEndpoints(request) : null,
+      ]).then(([exaKey, prefs, urls]) => ({
+        exaKey,
+        prefs: prefs ?? { kinds: { routine_key: false, routine_unattended: true, routine_digest: true, routine_at_once: true }, email_hour: 8, follows: [] },
+        urls,
+      }))
     : null;
   return data({ user, agentKeys, routines }, { headers: { "Cache-Control": "private, no-store" } });
 }
@@ -167,6 +176,7 @@ export default function Account({ loaderData }: Route.ComponentProps) {
         <>
           <ExaKeySection exaKey={routines.exaKey} />
           <Notifications prefs={routines.prefs} />
+          {routines.urls && <UrlsSection urls={routines.urls} />}
           <TimeZoneSection saved={user.time_zone ?? null} />
         </>
       )}

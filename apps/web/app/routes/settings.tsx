@@ -9,7 +9,7 @@ import { api, ApiError, apiOptional, formError, toRouteError } from "~/lib/api.s
 import { requireUser } from "~/lib/auth.server";
 import { moneyPlaceholder, useCurrency, useRootData } from "~/lib/hooks";
 import { assertSameOrigin, flashCookie } from "~/lib/session.server";
-import type { Occasion, RoutineKind, Routine, ActorRef, AgentInfo, HandoverResult, ListAccess, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
+import type { Occasion, RoutineKind, Routine, RoutineEndpoint, ActorRef, AgentInfo, HandoverResult, ListAccess, ListDetail, ListFormat, ListSummary, ListVisibility, Member, ShareListResult } from "~/lib/types";
 import { LookFrame } from "~/components/LookFrame";
 import { LookGlyph } from "~/components/LookGlyph";
 import { BUILD_ID } from "~/lib/build";
@@ -18,7 +18,7 @@ import { KeyDone, ShareWithAgent } from "~/components/ShareWithAgent";
 import { RoutineCard } from "~/components/RoutineCard";
 import { NewRoutine } from "~/components/NewRoutine";
 import { kindFlag, routinesOn, type RoutinesSwitch } from "~/lib/routines";
-import { myExaKey, routineAction, ROUTINE_INTENTS } from "~/lib/routines.server";
+import { myEndpoints, myExaKey, routineAction, ROUTINE_INTENTS } from "~/lib/routines.server";
 import { AGENT_PROMPT_WITH_KEY, fillPrompt } from "~/lib/agent-prompt";
 import { occasionViews, resolveLook, templateViews } from "~/themes/catalogue.server";
 import { sampleList } from "~/themes/sample.server";
@@ -55,14 +55,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   ]);
   // SPEC 20.3: the list's routines and the viewer's key, once routines are launched for this person (20.14).
   const sw = routinesOn(me);
-  const [routines, exaKey, occasions] = sw
+  const [routines, exaKey, occasions, urls] = sw
     ? await Promise.all([
         api<{ data: Routine[] }>(request, `/lists/${id}/routines`).then((r) => r.data).catch(() => [] as Routine[]),
         myExaKey(request, me),
         // SPEC 26.7: the days a countdown can start from, only when countdowns are launched for this person.
         kindFlag(sw.kinds_visible, "countdown") ? api<{ data: Occasion[] }>(request, "/routine-occasions").then((r) => r.data).catch(() => [] as Occasion[]) : Promise.resolve([] as Occasion[]),
+        // SPEC 26.21.4: the person's own URLs, for "Send this list's changes to a URL" (only while it is launched for them).
+        kindFlag(sw.kinds_visible, "list_changes") ? myEndpoints(request) : Promise.resolve([] as RoutineEndpoint[]),
       ])
-    : [null, null, [] as Occasion[]];
+    : [null, null, [] as Occasion[], [] as RoutineEndpoint[]];
   const { items: _items, ...summary } = list;
   // The owner's look gallery: every layout this format offers, each drawn in every offered occasion (plus the list's
   // own occasion if it is no longer offered), so tapping an occasion re-dresses all of them at once. Views are custom
@@ -119,6 +121,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
             timeZone: me.time_zone ?? null,
             currency: me.currency ?? null,
             occasions,
+            // Only URLs that answered the handshake can be sent to.
+            urls: urls.filter((u) => u.state === "ok").map((u) => ({ id: u.id, name: u.name, host: u.host })),
             // Open wants without a target price yet (one per want, SPEC 26.2 item 13).
             wants: list.items
               .filter((i) => !i.pending_review && !i.purchase && (i.status ?? "open") !== "done" && !routines!.some((r) => r.kind === "target_price" && r.item_id === i.id))
@@ -877,6 +881,7 @@ function RoutinesSection({
   restockWants,
   myAgents,
   listPrivate,
+  urls,
   preset,
   open,
 }: {
@@ -893,6 +898,7 @@ function RoutinesSection({
   restockWants: Array<{ id: string; text: string }>;
   myAgents: Array<{ id: string; name: string }>;
   listPrivate: boolean;
+  urls: Array<{ id: string; name: string; host: string }>;
   preset: { kind: RoutineKind | null; item: string | null };
   open: boolean;
 }) {
@@ -917,6 +923,8 @@ function RoutinesSection({
         occasions={occasions}
         taken={taken}
         myAgents={myAgents}
+        urls={urls}
+        listPrivate={listPrivate}
         preset={preset}
       />
     </Section>

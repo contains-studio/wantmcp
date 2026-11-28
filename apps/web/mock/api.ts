@@ -288,7 +288,7 @@ function listSummary(l: ListRow, c: Caller): ListSummary {
     out.routines = canWrite(c, l.id)
       ? routineStore.routines
           .filter((r) => r.list_id === l.id && !r.deleted_at)
-          .map((r) => ({ id: r.id, name: r.name, name_by: r.name_by, kind: r.kind, schedule_text: r.schedule ? scheduleText(r.schedule) : routineOut(r).schedule_text, paused: !!r.paused, blocked_reason: r.blocked?.reason ?? null, key_holder: r.key_user_id ? { handle: userById(r.key_user_id).handle } : null }))
+          .map((r) => ({ id: r.id, name: r.name, name_by: r.name_by, kind: r.kind, schedule_text: r.schedule ? scheduleText(r.schedule) : routineOut(r).schedule_text, paused: !!r.paused, blocked_reason: r.blocked?.reason ?? null, key_holder: r.key_user_id && r.kind !== "list_changes" ? { handle: userById(r.key_user_id).handle } : null }))
       : null;
   }
   return out;

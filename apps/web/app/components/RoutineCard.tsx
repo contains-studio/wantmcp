@@ -16,6 +16,7 @@ import { CopyButton } from "./CopyButton";
 import { Time } from "./Time";
 import { AWAY_PROMPT, SCHEDULERS } from "~/lib/schedulers";
 import type { RoutineResult } from "~/lib/routines.server";
+import { useRootData } from "~/lib/hooks";
 import {
   MOVES_TO_YOUR_KEY,
   agentWroteName,
@@ -31,7 +32,7 @@ import {
 import type { Routine, Schedule } from "~/lib/types";
 
 /** The kinds this page knows how to show in full; any other is shown with its name and status (SPEC 26.2). */
-export const KNOWN_KINDS = new Set(["exa_search", "target_price", "countdown", "due_reminders", "restock", "weekly_summary", "agent_check"]);
+export const KNOWN_KINDS = new Set(["exa_search", "target_price", "countdown", "due_reminders", "restock", "weekly_summary", "agent_check", "list_changes"]);
 
 /** Blocks a person can lift by resuming (20.10); key blocks lift when the key holder fixes their key. */
 const RESUMABLE = new Set(["key_holder_left", "all_rejected", "unattended"]);
@@ -66,7 +67,13 @@ export function RoutineCard({
   const key = whoseKey(r);
   const blockedReason = r.blocked?.reason ?? null;
   const fixMyKey = !!blockedReason && KEY_BLOCKS.has(blockedReason) && r.uses_my_key;
-  const canResume = !!r.paused || (!!blockedReason && (RESUMABLE.has(blockedReason) || (KEY_BLOCKS.has(blockedReason) && !r.uses_my_key)));
+  // SPEC 26.21.9: a routine that calls a URL is resumed only by its URL holder; a stopped URL is asked again first.
+  const me = useRootData().user?.handle ?? null;
+  const urlHolder = r.kind === "list_changes" && !!r.calls_url && r.calls_url.holder.handle === me;
+  const canResume =
+    r.kind === "list_changes"
+      ? urlHolder && (!!r.paused || blockedReason === "url_failing")
+      : !!r.paused || (!!blockedReason && (RESUMABLE.has(blockedReason) || (KEY_BLOCKS.has(blockedReason) && !r.uses_my_key)));
   const runs = !r.paused && !r.blocked;
   const titleId = `rt-${r.id}-h`;
   return (
@@ -114,7 +121,7 @@ export function RoutineCard({
           />
         )}
         {/* Kinds without a key: one press. "Check now" for those that start from a date or an event (26.2 item 7). */}
-        {known && !exa && runs && !stopped && (
+        {known && !exa && r.kind !== "list_changes" && runs && !stopped && (
           <f.Form method="post" className="flex items-center gap-2">
             <input type="hidden" name="intent" value="routine-run" />
             <input type="hidden" name="routine_id" value={r.id} />
@@ -147,6 +154,11 @@ export function RoutineCard({
               </button>
             </f.Form>
           ))}
+        {urlHolder && (blockedReason === "url_failing" || blockedReason === "url_removed") && (
+          <Link to="/app/account#urls" className="btn btn-sm btn-ghost">
+            Your URLs
+          </Link>
+        )}
         {fixMyKey && (
           <Link to="/app/account#keys" className="btn btn-sm btn-want">
             Change key
@@ -162,8 +174,8 @@ export function RoutineCard({
       </div>
 
       {/* Kinds that tell people things (26.3, 26.4): who sees it, and this person's own choice. */}
-      {known && !exa && r.kind !== "restock" && <Follow f={f} routine={r} />}
-      {RECIPIENT_KINDS.has(r.kind) && r.my_follow && r.my_recipients && <Recipients f={f} routine={r} listPrivate={listPrivate} />}
+      {known && !exa && r.kind !== "restock" && r.kind !== "list_changes" && <Follow f={f} routine={r} />}
+      {RECIPIENT_KINDS.has(r.kind) && r.my_follow && r.my_recipients && <Recipients f={f} routine={r} listPrivate={listPrivate} result={result?.intent.startsWith("recipient-") ? result : undefined} />}
 
       {known && (
       <div className="flex flex-wrap gap-x-4 gap-y-1">
@@ -180,7 +192,8 @@ export function RoutineCard({
       </div>
       )}
 
-      {result?.error ? (
+      {/* "Also send to…" answers its own forms, under its button. */}
+      {result && result.intent.startsWith("recipient-") ? null : result?.error ? (
         <p className="form-error" role="alert">
           {result.error}
         </p>
@@ -210,7 +223,16 @@ const RECIPIENT_STATE: Record<NonNullable<Routine["my_recipients"]>[number]["sta
  * Their states (asked, yes since, no, stopped), with Remove for the live ones. Only the person who added them sees
  * them; an address is never shown after a No or a stop (the server keeps none).
  */
-function Recipients({ f, routine: r, listPrivate }: { f: F; routine: Routine; listPrivate: boolean }) {
+function Recipients({ f, routine: r, listPrivate, result }: { f: F; routine: Routine; listPrivate: boolean; result?: RoutineResult }) {
+  const answer = result?.error ? (
+    <p className="form-error" role="alert">
+      {result.error}
+    </p>
+  ) : result?.message ? (
+    <p className="text-ink-2" role="status">
+      {result.message}
+    </p>
+  ) : null;
   const all = (r.my_recipients ?? []).filter((x) => x.state !== "removed");
   const live = all.filter((x) => x.state === "asked" || x.state === "yes");
   const adding = f.state !== "idle" && f.formData?.get("intent") === "recipient-add";
@@ -263,9 +285,13 @@ function Recipients({ f, routine: r, listPrivate }: { f: F; routine: Routine; li
             <button className="btn btn-sm w-fit" disabled={adding}>
               {adding ? "Asking…" : "Ask them"}
             </button>
+            {answer}
           </f.Form>
         ) : (
-          <p className="text-ink-3">That's 3, the most for one routine.</p>
+          <>
+            <p className="text-ink-3">That's 3, the most for one routine.</p>
+            {answer}
+          </>
         )}
       </div>
     </details>

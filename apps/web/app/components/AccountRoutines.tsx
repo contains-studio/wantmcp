@@ -7,13 +7,14 @@
  * address), and afterwards only its last 4 characters and status appear.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link, useFetcher } from "react-router";
+import { Link, useActionData, useFetcher } from "react-router";
 import { RemoveInTwoSteps } from "./AccessRow";
 import { Time } from "./Time";
 import { aboutHour, atOnceHint, browserTimeZone, keyCheckCost, routinesOn } from "~/lib/routines";
 import { useRootData } from "~/lib/hooks";
 import type { AccountRoutineResult } from "~/lib/routines.server";
-import type { EmailPrefs, ServiceKey } from "~/lib/types";
+import type { EmailPrefs, RoutineEndpoint, ServiceKey } from "~/lib/types";
+import { CopyButton } from "./CopyButton";
 
 function Result({ f, intent }: { f: ReturnType<typeof useFetcher<AccountRoutineResult>>; intent: string }) {
   const r = f.data?.intent === intent ? f.data : undefined;
@@ -335,5 +336,162 @@ export function TimeZoneSection({ saved }: { saved: string | null }) {
       {!saved && <p className="hint">Not saved yet: this is your browser's.</p>}
       <Result f={f} intent="time-zone" />
     </section>
+  );
+}
+
+const URL_STATE: Record<RoutineEndpoint["state"], string> = {
+  ok: "Working",
+  unverified: "Hasn't answered the handshake yet",
+  failing: "Stopped answering",
+};
+
+/**
+ * SPEC 26.21.2: the person's saved URLs (#urls, a part of Notifications), which a routine can send a list's changes to.
+ * Web only. Adding one runs the handshake before the answer; its secret is shown once, with Copy, and never again
+ * (not in an address, a log or storage). Each URL: its name and host (its owner only), its state and the server's
+ * sentence for the last problem, what uses it, and Verify again, Send a test, New secret, Remove.
+ */
+export function UrlsSection({ urls }: { urls: RoutineEndpoint[] }) {
+  const f = useFetcher<AccountRoutineResult>({ key: "urls" });
+  // Without JavaScript the answer comes as the page's own action data.
+  const page = useActionData() as AccountRoutineResult | undefined;
+  const result = f.data ?? (page?.intent?.startsWith("url-") ? page : undefined);
+  const busy = f.state !== "idle";
+  const max = 5;
+  return (
+    <section aria-labelledby="urls-h" id="urls" className="card grid scroll-mt-24 gap-4 p-5 sm:p-6">
+      <div className="grid gap-1">
+        <h2 id="urls-h" className="text-xl font-semibold">
+          URLs
+        </h2>
+        <p className="text-[0.92rem] text-ink-2">
+          A routine can send a list's changes to a URL of yours: an automation tool, or your own server. Only which things changed is sent, not their
+          text. Your URL must answer with the challenge it receives.{" "}
+          <Link to="/developers" className="link">
+            See the developer page
+          </Link>
+        </p>
+      </div>
+
+      {result?.secret && (
+        <div className="grid gap-2 rounded-[10px] bg-sunk p-3">
+          <p className="font-medium" role="status">
+            {result.message}
+          </p>
+          <p className="text-[0.9rem] text-ink-2">Its signing secret. We won't show it again:</p>
+          <pre className="codeblock break-all whitespace-pre-wrap text-[0.85rem]" tabIndex={0} aria-label="Signing secret">
+            {result.secret}
+          </pre>
+          <CopyButton text={result.secret} label="Copy" className="btn btn-sm w-fit" />
+        </div>
+      )}
+
+      {urls.length > 0 && (
+        <ul className="grid gap-4">
+          {urls.map((u) => {
+            const mine = result && !result.secret && result.endpointId === u.id ? result : undefined;
+            return (
+              <li key={u.id} className="grid gap-2 border-t border-line pt-3 first:border-t-0 first:pt-0">
+                <div className="grid gap-0.5">
+                  <p className="font-medium break-words">{u.name}</p>
+                  <p className="font-mono text-[0.85rem] break-all text-ink-2">{u.host}</p>
+                  <p className={`text-[0.9rem] ${u.state === "ok" ? "text-ink-2" : "font-medium text-warn"}`}>
+                    {URL_STATE[u.state]}
+                    {u.last_ok_at && (
+                      <span className="font-normal text-ink-3">
+                        {" "}
+                        · last answered <Time ts={u.last_ok_at} />
+                      </span>
+                    )}
+                  </p>
+                  {u.last_problem && <p className="text-[0.88rem] text-ink-2">{u.last_problem}</p>}
+                  {u.used_by.length > 0 && (
+                    <p className="text-[0.88rem] text-ink-3">
+                      Used by{" "}
+                      {u.used_by.map((x, i) => (
+                        <span key={x.routine.id}>
+                          {i > 0 && ", "}
+                          {x.list ? (
+                            <Link to={`/app/lists/${x.list.id}/settings#routines`} className="link">
+                              {x.list.title}
+                            </Link>
+                          ) : (
+                            x.routine.name
+                          )}
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {u.state !== "ok" && <UrlButton f={f} intent="url-verify" id={u.id} label="Verify again" name={u.name} primary />}
+                  {u.state !== "unverified" && <UrlButton f={f} intent="url-test" id={u.id} label="Send a test" name={u.name} />}
+                  <UrlButton f={f} intent="url-rotate" id={u.id} label="New secret" name={u.name} />
+                  <RemoveInTwoSteps
+                    question={u.used_by.length ? `Remove “${u.name}”? Everything that uses it stops.` : `Remove “${u.name}”?`}
+                    who={u.name}
+                    fields={{ intent: "url-remove", endpoint_id: u.id }}
+                  />
+                </div>
+                {busy && f.formData?.get("endpoint_id") === u.id && <p className="text-[0.88rem] text-ink-3">Calling it…</p>}
+                {mine?.error ? (
+                  <p className="form-error" role="alert">
+                    {mine.error}
+                  </p>
+                ) : (
+                  mine?.message && (
+                    <p className="text-[0.9rem] text-ink-2" role="status">
+                      {mine.message}
+                    </p>
+                  )
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {urls.length < max ? (
+        <details className="rt-fold" open={urls.length === 0 || (result?.intent === "url-add" && !!result.error) || undefined}>
+          <summary className="btn btn-sm w-fit">Add a URL</summary>
+          <f.Form method="post" className="rt-fold-body grid gap-3" key={urls.length}>
+            <input type="hidden" name="intent" value="url-add" />
+            <label className="field">
+              <span className="label">Name</span>
+              <input name="name" className="input" maxLength={40} required autoComplete="off" placeholder="My n8n" />
+              <span className="hint">Your own label. Only you see it.</span>
+            </label>
+            <label className="field">
+              <span className="label">URL</span>
+              <input name="url" type="url" className="input" required autoComplete="off" inputMode="url" placeholder="https://" pattern="https://.+" />
+              <span className="hint">https, with no user name, password or port. We call it once now with a challenge to check it.</span>
+            </label>
+            <button className="btn btn-want w-fit" disabled={busy}>
+              {busy && f.formData?.get("intent") === "url-add" ? "Checking it…" : "Add and check it"}
+            </button>
+            {result?.intent === "url-add" && result.error && (
+              <p className="form-error" role="alert">
+                {result.error}
+              </p>
+            )}
+          </f.Form>
+        </details>
+      ) : (
+        <p className="text-[0.9rem] text-ink-3">That's {max}, the most you can keep. Remove one to add another.</p>
+      )}
+    </section>
+  );
+}
+
+function UrlButton({ f, intent, id, label, name, primary = false }: { f: ReturnType<typeof useFetcher<AccountRoutineResult>>; intent: string; id: string; label: string; name: string; primary?: boolean }) {
+  return (
+    <f.Form method="post">
+      <input type="hidden" name="intent" value={intent} />
+      <input type="hidden" name="endpoint_id" value={id} />
+      <button className={primary ? "btn btn-sm btn-want" : "btn-quiet"} disabled={f.state !== "idle"}>
+        {label}
+        <span className="sr-only"> {name}</span>
+      </button>
+    </f.Form>
   );
 }

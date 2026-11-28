@@ -19,6 +19,7 @@ import type {
   RoutineChangeKind,
   RoutineChangeRecord,
   RecipientAskView,
+  RoutineEndpoint,
   RoutineEmailStopView,
   RoutineRun,
   Schedule,
@@ -99,6 +100,21 @@ export interface RoutineStore {
   doNotAsk: Set<string>;
   /** SPEC 26.4: "Stop emailing me about this routine" tokens -> the routine and the person. */
   emailStops: Map<string, { routine_id: string; user_id: string }>;
+  /** SPEC 26.21.2: people's saved URLs. */
+  endpoints: EndpointRow[];
+}
+
+export interface EndpointRow {
+  id: string;
+  user_id: string;
+  name: string;
+  url: string;
+  state: "unverified" | "ok" | "failing";
+  verified_at: Timestamp | null;
+  last_ok_at: Timestamp | null;
+  last_fail_at: Timestamp | null;
+  last_problem: string | null;
+  deleted_at: Timestamp | null;
 }
 
 export interface RecipientRow {
@@ -129,6 +145,7 @@ export const emptyRoutineStore = (): RoutineStore => ({
   recipients: [],
   doNotAsk: new Set(),
   emailStops: new Map(),
+  endpoints: [],
 });
 
 // ---------- the launch switch (mock rule)
@@ -138,10 +155,11 @@ export function routinesFor(email: string): UserSelf["routines"] | undefined {
   const running = !email.includes("paused");
   // SPEC 26.14: kinds_visible says which kinds are launched (server c6278c7: these four for preview accounts).
   const all = ["exa_search", "due_reminders", "countdown", "target_price", "restock", "weekly_summary", "agent_check", "list_changes"] as const;
-  // list_changes (26.21) is launched on the server before this web build knows it: the chooser must not offer it.
   const built = new Set<string>(["exa_search", "target_price", "countdown", "due_reminders", "restock", "weekly_summary", "agent_check", "list_changes"]);
   const kinds = Object.fromEntries(all.map((k) => [k, running])) as Record<(typeof all)[number], boolean>;
   const kinds_visible = Object.fromEntries(all.map((k) => [k, built.has(k)])) as Record<(typeof all)[number], boolean>;
+  // A kind a later server launches before this web build knows it: the chooser must not offer it.
+  Object.assign(kinds_visible, { future_kind: true });
   return { visible: true, running, kinds, kinds_visible, about: { exa_search: { cost_per_search_usd: { shopping: 0.017, tasks: 0.012, research: 0.012 }, key_check_usd: 0.007 }, target_price: { at_once_per_week: 5 } } };
 }
 
@@ -278,6 +296,26 @@ export interface RoutineCtx {
 }
 
 const RUN_NOW_PER_DAY = 3;
+/** SPEC 26.21.4: the changes a list_changes routine can send, and our words for them (the server's). */
+const LIST_CHANGE_TYPES = ["item.created", "entry.listed", "entry.suggested", "price.posted", "item.status_changed", "item.purchased", "question.asked", "question.answered", "comment.created", "list.claimed"];
+const DEFAULT_CHANGE_TYPES = ["item.created", "entry.listed", "price.posted", "item.status_changed", "item.purchased"];
+const TYPE_WORDS: Record<string, string> = {
+  "item.created": "new wants",
+  "entry.listed": "new options",
+  "entry.suggested": "suggestions from outside",
+  "price.posted": "prices",
+  "item.status_changed": "status changes",
+  "item.purchased": "bought or done",
+  "question.asked": "questions asked",
+  "question.answered": "questions answered",
+  "comment.created": "comments",
+  "list.claimed": "the list kept",
+};
+function sendsText(s: { types?: string[]; content?: string }, handle: string): string {
+  const w = (s.types ?? []).map((t) => TYPE_WORDS[t]);
+  const types = w.length <= 1 ? (w[0] ?? "nothing") : `${w.slice(0, -1).join(", ")} and ${w[w.length - 1]}`;
+  return `Sends ${types} to @${handle}'s URL (${s.content === "full" ? "in full" : "only which things changed"})`;
+}
 /** SPEC 26.20 item 4: the kinds whose email another address may get. */
 const RECIPIENT_KINDS: RoutineKind[] = ["due_reminders", "countdown", "target_price", "weekly_summary"];
 const RECIPIENT_WHAT: Partial<Record<RoutineKind, string>> = {
@@ -332,10 +370,10 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       last_run: lastRun(r.id),
       live_run: live ? strip(live) : null,
       status_text: r.kind === "exa_search" ? statusText(r, lastRun(r.id), mine, holder?.handle ?? null) : kindStatus(r, lastRun(r.id)),
-      key_holder: holder ? { handle: holder.handle } : null,
+      key_holder: holder && r.kind !== "list_changes" ? { handle: holder.handle } : null,
       created: r.created,
       changed: r.changed,
-      uses_my_key: mine,
+      uses_my_key: mine && r.kind !== "list_changes",
       run_now_left_today: left,
     };
     // agent_check (26.20 item 5): what we can observe about reaching its agent. Mock rule: an account key (an agent that
@@ -351,6 +389,12 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
           : `${a.name} sees this the next time it looks (${seen}). To make it look on a schedule, set up a scheduled task in ${a.name} with the instruction on the Connect page.`;
         routine.agent_reach = { agent: { id: a.id, name: a.name }, listening, last_seen_at: a.last_used_at ?? null, text };
       }
+    }
+    // SPEC 26.21.4: whose URL it calls, the same for every reader; the endpoint only to its holder.
+    if (r.kind === "list_changes") {
+      const st = (r.settings ?? {}) as { endpoint_id?: string; types?: string[]; content?: "ids" | "full" };
+      routine.calls_url = { holder: { handle: holder?.handle ?? "deleted-user" }, content: st.content ?? "ids", types: (st.types ?? []) as never };
+      if (!mine) routine.settings = { types: st.types, content: st.content };
     }
     // SPEC 26.20 item 4: the addresses this reader added, on the web only.
     if (c?.kind === "user" && RECIPIENT_KINDS.includes(r.kind)) {
@@ -371,6 +415,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     }
     if (r.kind === "countdown") return `Counting down to ${st.occasion_label ?? new Date(`${st.date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`;
     if (r.kind === "due_reminders") return "Every day at about 7:00, for wants with a due date";
+    if (r.kind === "list_changes") return sendsText(st, r.key_user_id ? h.userById(r.key_user_id).handle : "someone");
     if (r.kind === "restock") {
       const item = h.items().find((i: any) => i.id === r.item_id);
       const a = st.after ?? { unit: "week", count: 4 };
@@ -380,13 +425,18 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
   }
   function kindStatus(r: RoutineRow, last: RunRow | null): string {
     if (r.paused) return `Paused by ${r.paused.by.kind === "user" ? `@${r.paused.by.handle}` : "someone"}`;
-    if (r.blocked) return r.blocked.reason === "finished" ? "Finished: its job is done" : "Stopped";
+    if (r.blocked && r.kind !== "list_changes") return r.blocked.reason === "finished" ? "Finished: its job is done" : "Stopped";
     const st = (r.settings ?? {}) as any;
     const told = last?.finished_at ? `Last checked ${new Date(last.finished_at).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}: ${last.note ?? "nothing to tell"}` : "Not checked yet";
     if (r.kind === "target_price") return `${told} · Watching for ${st.currency ?? ""} ${st.target ?? ""} or less`.replace("  ", " ");
     if (r.kind === "countdown") return `${told} · Next message: ${(st.milestones ?? [14])[0]} days before`;
     if (r.kind === "due_reminders") return `${told} · Next check: tomorrow at about 7:00`;
     if (r.kind === "restock") return "Not bought yet";
+    if (r.kind === "list_changes") {
+      if (r.blocked?.reason === "url_failing") return `Stopped: its URL stopped answering on ${new Date(r.blocked.at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })}`;
+      if (r.blocked?.reason === "url_removed") return "Stopped: its URL was removed";
+      return "No calls yet: it calls when something changes";
+    }
     if (r.kind === "agent_check") {
       const a = h.agents().find((x: any) => x.id === st.agent_id);
       return last?.finished_at ? `Waiting for ${a?.name ?? "your agent"} to look (asked ${new Date(last.finished_at).toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" })})` : "Nothing asked yet";
@@ -661,6 +711,32 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     return r;
   }
 
+  /** SPEC 26.21.4: a person who writes the list, on the web, with their own verified URL. */
+  function makeListChanges(c: any, listId: string, body: any): RoutineRow {
+    if (c.kind !== "user") throw h.forbidden("Only your person, on the web, can send a list to a URL.");
+    const st = (body.settings ?? {}) as Record<string, unknown>;
+    const ep = rs().endpoints.find((e) => e.id === st.endpoint_id && e.user_id === c.user.id && !e.deleted_at);
+    if (!ep) throw h.invalid("settings.endpoint_id is required: one of your saved URLs");
+    if (ep.state !== "ok") throw h.conflict("This URL hasn't answered the handshake yet: verify it first.");
+    const types = st.types === undefined ? DEFAULT_CHANGE_TYPES : st.types;
+    if (!Array.isArray(types) || types.length === 0 || types.some((t) => !LIST_CHANGE_TYPES.includes(String(t)))) throw h.invalid(`settings.types must be one or more of ${LIST_CHANGE_TYPES.join(", ")}`);
+    if ((st.content ?? "ids") !== "ids") throw h.invalid('settings.content "full" is not offered yet: only which things changed ("ids")');
+    const onList = rs().routines.filter((r) => r.list_id === listId && r.kind === "list_changes" && !r.deleted_at).length;
+    if (onList >= 3) throw h.invalid(`This list already sends its changes to ${onList} URLs, the most it may (routine.url.list_changes_per_list)`);
+    const at = h.nowIso();
+    const by = h.actorRef(c);
+    const r: RoutineRow = {
+      id: h.newId("rtn"), list_id: listId, kind: "list_changes", item_id: null,
+      settings: { endpoint_id: ep.id, types: LIST_CHANGE_TYPES.filter((t) => (types as string[]).includes(t)), content: "ids" }, start: "event",
+      name: typeof body.name === "string" && body.name.trim() ? body.name.trim().slice(0, 60) : "Send this list's changes to a URL", name_by: typeof body.name === "string" && body.name.trim() ? "person" : "server",
+      schedule: null, paused: null, blocked: null, key_user_id: c.user.id, next_run_at: null, created: { by, at }, changed: { by, at },
+      run_now_day: "", run_now_count: 0, deleted_at: null, stopped_items: [],
+    };
+    rs().routines.push(r);
+    record(c, r, "created", null, null, false);
+    return r;
+  }
+
   // ---- notices (26.3), a person's web session
   route("GET", "/me/notices", ({ caller, url }) => {
     visibleFor(caller);
@@ -723,8 +799,9 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const sw = routinesFor(userOf(c).email);
     if (!(sw?.kinds_visible as Record<string, boolean> | undefined)?.[kind]) throw h.invalid(`kind must be one of ${Object.entries(sw?.kinds_visible ?? {}).filter(([, v]) => v).map(([k]) => k).join(", ")}`);
     // SPEC 26.4: a person on the web follows what they make, and says how (restock tells nobody anything).
-    if (c.kind === "user" && kind !== "exa_search" && kind !== "restock" && (typeof body.follow !== "object" || body.follow === null)) throw h.invalid("Choose where you'll see it");
+    if (c.kind === "user" && !["exa_search", "restock", "list_changes"].includes(kind) && (typeof body.follow !== "object" || body.follow === null)) throw h.invalid("Choose where you'll see it");
     if (kind === "weekly_summary") throw h.invalid("A weekly summary belongs to no list: make it on the Routines tab");
+    if (kind === "list_changes") return h.created(out(makeListChanges(c, params[0], body), c));
     if (kind !== "exa_search") return h.created(out(makeKind(c, params[0], kind, body), c));
     const existing = rs().routines.find((r) => r.list_id === params[0] && r.kind === "exa_search" && !r.deleted_at && r.blocked?.reason !== "by_admin");
     if (existing) throw h.conflict(`This list already has a search routine: "${existing.name}"`, { routine: { id: existing.id, name: existing.name } });
@@ -799,6 +876,16 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     if (body.resume === true && (r.paused || (r.blocked && r.blocked.reason !== "by_admin"))) {
       if (r.blocked?.reason === "by_admin") throw h.forbidden("Only The Want MCP can resume this routine");
       if (r.kind === "exa_search") takeKey(c, r);
+      // SPEC 26.21.9: only its URL holder resumes a list_changes routine; a stopped URL is asked again first.
+      if (r.kind === "list_changes") {
+        if (c.kind !== "user" || c.user.id !== r.key_user_id) throw h.forbidden("Only the person whose URL it calls can resume it.");
+        if (r.blocked?.reason === "url_failing") {
+          const e = rs().endpoints.find((x) => x.id === (r.settings as any)?.endpoint_id && !x.deleted_at);
+          if (e) handshake(e);
+          if (r.blocked) throw h.conflict(e?.last_problem ?? "Its URL still doesn't answer.");
+        }
+        if (r.blocked?.reason === "url_removed") throw h.conflict("Its URL was removed; make a new routine with another of your URLs.");
+      }
       r.paused = null;
       if (r.blocked && ["key_holder_left", "all_rejected", "unattended", "key_missing", "key_refused", "out_of_credit"].includes(r.blocked.reason)) r.blocked = null;
       r.next_run_at = r.schedule ? nextRun(r.schedule) : null;
@@ -824,6 +911,7 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     const personAsked = askedBy(c, body ?? {});
     const sw = routinesFor(userOf(c).email);
     if (!sw?.running) throw h.conflict("Routines are paused for everyone for now");
+    if (r.kind === "list_changes") throw h.invalid("It sends changes as they happen; to try the URL, use Send a test on the account page.");
     if (r.paused || r.blocked) throw h.conflict("It's paused or stopped: resume it first.");
     if (liveRun(r.id)) throw h.conflict("It's running now; its results will be in its history shortly.");
     if (r.run_now_day !== today()) {
@@ -1116,6 +1204,110 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
       r.paused = { by: { kind: "user", handle: holder?.handle ?? "" }, at: h.nowIso() };
     }
     return { routine: { name: r.name, list_title: r.list_id ? h.getList(r.list_id).title : "" }, done: true, answered: a.used };
+  });
+
+  // ---- saved URLs (26.21.2): a person on the web only, while list_changes is visible to them
+  const urlPerson = (caller: any) => {
+    visibleFor(caller);
+    if (!routinesFor(userOf(caller).email)?.kinds_visible.list_changes) throw h.notFound();
+    if (caller.kind !== "user") throw h.forbidden("Only your person, signed in on the web, can add or change a URL.");
+    return caller;
+  };
+  const endpointOut = (e: EndpointRow): RoutineEndpoint => ({
+    id: e.id, name: e.name, host: new URL(e.url).hostname, state: e.state, verified_at: e.verified_at, last_ok_at: e.last_ok_at, last_fail_at: e.last_fail_at,
+    last_problem: e.last_problem,
+    used_by: rs()
+      .routines.filter((r) => !r.deleted_at && r.kind === "list_changes" && (r.settings as any)?.endpoint_id === e.id)
+      .map((r) => ({ routine: { id: r.id, name: r.name }, list: r.list_id ? { id: r.list_id, title: h.getList(r.list_id).title } : null, as: "list_changes" as const })),
+  });
+  const ownEndpoint = (c: any, id: string) => {
+    const e = rs().endpoints.find((x) => x.id === id && x.user_id === c.user.id && !x.deleted_at);
+    if (!e) throw h.notFound("URL not found");
+    return e;
+  };
+  /** The address rules (mock): https, a DNS name, not ours; "private" in the name stands for one that resolves privately. */
+  const checkAddress = (raw: unknown): string => {
+    let u: URL;
+    try {
+      u = new URL(String(raw ?? ""));
+    } catch {
+      throw h.invalid("url must be an https address");
+    }
+    if (u.protocol !== "https:") throw h.invalid("url must be an https address");
+    if (/^[\d.]+$|^\[/.test(u.hostname) || u.username || u.password || u.port || u.hash) throw h.invalid("url must be https, a name (not an IP address), with no user, password, port or #fragment");
+    if (/(^|\.)wantmcp\.com$/.test(u.hostname)) throw h.invalid("url can't be The Want MCP itself");
+    if (u.hostname.includes("private")) throw h.invalid("url must point to a public address (its name resolves to a private or reserved one, or to nothing)");
+    return u.toString();
+  };
+  /** The handshake (mock rule): a name with "nope" in it never echoes the challenge. */
+  const handshake = (e: EndpointRow) => {
+    const at = h.nowIso();
+    if (new URL(e.url).hostname.includes("nope")) {
+      e.last_fail_at = at;
+      e.last_problem = "The URL did not answer the handshake: it answered 404.";
+      if (e.state !== "failing") e.state = "unverified";
+      return;
+    }
+    e.state = "ok";
+    e.verified_at = e.last_ok_at = at;
+    e.last_problem = null;
+    // A URL that answers again lifts what its failing blocked.
+    for (const r of rs().routines) if (r.kind === "list_changes" && (r.settings as any)?.endpoint_id === e.id && r.blocked?.reason === "url_failing") r.blocked = null;
+  };
+  const newSecret = () => `whsec_${h.randomToken(43)}`;
+  route("GET", "/me/endpoints", ({ caller }) => {
+    const c = urlPerson(caller);
+    return { data: rs().endpoints.filter((e) => e.user_id === c.user.id && !e.deleted_at).map(endpointOut) };
+  });
+  route("POST", "/me/endpoints", ({ caller, body }) => {
+    const c = urlPerson(caller);
+    for (const k of Object.keys(body ?? {})) if (k !== "name" && k !== "url") throw h.invalid(`takes name and url; not ${k}`);
+    const name = String(body.name ?? "").trim();
+    if (!name || name.length > 40) throw h.invalid("name must be 1 to 40 characters, one line");
+    const live = rs().endpoints.filter((e) => e.user_id === c.user.id && !e.deleted_at).length;
+    if (live >= 5) throw h.invalid(`You have ${live} URLs, the most you may keep (routine.url.endpoints_per_person); remove one first`);
+    const e: EndpointRow = { id: h.newId("rep"), user_id: c.user.id, name, url: checkAddress(body.url), state: "unverified", verified_at: null, last_ok_at: null, last_fail_at: null, last_problem: null, deleted_at: null };
+    rs().endpoints.push(e);
+    handshake(e);
+    return h.created({ endpoint: endpointOut(e), secret: newSecret() });
+  });
+  route("PATCH", "/me/endpoints/{id}", ({ caller, params, body }) => {
+    const c = urlPerson(caller);
+    const e = ownEndpoint(c, params[0]);
+    if (body.name !== undefined) e.name = String(body.name).trim().slice(0, 40);
+    if (body.url !== undefined) {
+      const url = checkAddress(body.url);
+      if (url !== e.url) {
+        e.url = url;
+        e.state = "unverified";
+        e.verified_at = null;
+        handshake(e);
+      }
+    }
+    return endpointOut(e);
+  });
+  route("POST", "/me/endpoints/{id}/verify", ({ caller, params }) => {
+    const e = ownEndpoint(urlPerson(caller), params[0]);
+    handshake(e);
+    return endpointOut(e);
+  });
+  route("POST", "/me/endpoints/{id}/test", ({ caller, params }) => {
+    const e = ownEndpoint(urlPerson(caller), params[0]);
+    if (e.state === "unverified") throw h.conflict("This URL hasn't answered the handshake yet: verify it first.");
+    e.last_ok_at = h.nowIso();
+    e.last_problem = null;
+    return endpointOut(e);
+  });
+  route("POST", "/me/endpoints/{id}/rotate-secret", ({ caller, params }) => {
+    ownEndpoint(urlPerson(caller), params[0]);
+    return { secret: newSecret() };
+  });
+  route("DELETE", "/me/endpoints/{id}", ({ caller, params }) => {
+    const e = ownEndpoint(urlPerson(caller), params[0]);
+    e.deleted_at = h.nowIso();
+    e.url = "https://removed.invalid/";
+    for (const r of rs().routines) if (r.kind === "list_changes" && !r.deleted_at && !r.blocked && (r.settings as any)?.endpoint_id === e.id) r.blocked = { reason: "url_removed", at: h.nowIso() };
+    return { deleted: true };
   });
 
   // ---- other addresses (26.20 item 4): the follower's, on the web; and the address's own links
