@@ -9,7 +9,7 @@
  *
  * One form: without JavaScript every kind's settings show, each under its name, and the server uses the chosen kind's.
  */
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { ScheduleFields } from "./RoutineCard";
 import type { RoutineResult } from "~/lib/routines.server";
@@ -75,48 +75,33 @@ export function NewRoutine({
   const [kind, setKind] = useState<RoutineKind | null>(preset.kind && offered.some((k) => k.kind === preset.kind) ? preset.kind : offered.length === 1 ? offered[0].kind : null);
   const [live, setLive] = useState(false);
   useEffect(() => setLive(true), []);
+  // Opening "New routine", or picking a kind, brings the chooser's heading to the top of the screen.
+  const legend = useRef<HTMLLegendElement>(null);
+  const toTop = () => requestAnimationFrame(() => legend.current?.scrollIntoView({ block: "start" }));
+  const choose = (k: RoutineKind) => {
+    setKind(k);
+    toTop();
+  };
   // The first routine carries the browser's zone when none is saved (20.14 item 6); never written on opening a page.
   const [tz, setTz] = useState("");
   useEffect(() => {
     if (!timeZone) setTz(browserTimeZone() ?? "");
   }, [timeZone]);
   if (offered.length === 0) return null;
-  const show = (k: RoutineKind) => !live || kind === k;
   const today = (["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const)[new Date().getDay()];
-  const needsKey = kind === "exa_search" && !keyOk;
-  const paused = !sw.running || (kind !== null && sw.kinds?.[kind] === false);
-  return (
-    <details className="rt-fold" open={!!preset.kind || (f.data?.intent === "routine-create" && !!f.data.error)}>
-      <summary className="btn btn-sm w-fit">New routine</summary>
-      <f.Form method="post" className="rt-fold-body grid gap-5">
-        <input type="hidden" name="intent" value="routine-create" />
-        {tz && <input type="hidden" name="time_zone" value={tz} />}
-        <fieldset className="grid gap-2">
-          <legend className="label mb-1">What should it do?</legend>
-          {offered.map((k) => (
-            <label key={k.kind} className={`rt-kind ${kind === k.kind ? "is-on" : ""}`}>
-              <input type="radio" name="kind" value={k.kind} checked={kind === k.kind} onChange={() => setKind(k.kind)} required className="rt-kind-radio" />
-              <span className="grid gap-0.5">
-                <span className="font-semibold">{k.name}</span>
-                <span className="text-[0.88rem] text-ink-2">{k.line}</span>
-                <span className="text-[0.82rem] text-ink-3">{k.kind === "exa_search" ? exaCost(sw, format) : "No key needed"}</span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-
-        {offered.some((k) => k.kind === "exa_search") && show("exa_search") && (
-          <KindPart title={live ? null : "Search the web for these wants"}>
+  // Each kind's own settings, shown right under its option.
+  const parts: Partial<Record<RoutineKind, React.ReactNode>> = {
+    exa_search: (
+          <KindPart>
             <ScheduleFields initial={{ every: "week", interval: 1, days: [today], time: "09:00" }} idPrefix={`new-${listId}`} />
             <div className="grid gap-1 rounded-[10px] bg-sunk p-3 text-[0.88rem] text-ink-2">
               <p>{EXA_NOTICE}</p>
               {country && <p>{EXA_NOTICE_COUNTRY}</p>}
             </div>
           </KindPart>
-        )}
-
-        {offered.some((k) => k.kind === "target_price") && show("target_price") && (
-          <KindPart title={live ? null : "Tell me when it's at my price"}>
+    ),
+    target_price: (
+          <KindPart>
             <label className="field">
               <span className="label">Which want</span>
               <select name="item_id" className="input" defaultValue={preset.item ?? ""} required={kind === "target_price"}>
@@ -152,16 +137,14 @@ export function NewRoutine({
             </label>
             <p className="hint">It uses prices your agents post on that want. It doesn't check shops itself.</p>
           </KindPart>
-        )}
-
-        {offered.some((k) => k.kind === "countdown") && show("countdown") && (
-          <KindPart title={live ? null : "Countdown and order-by dates"}>
+    ),
+    countdown: (
+          <KindPart>
             <CountdownFields occasions={occasions} shopping={format === "shopping"} required={kind === "countdown"} />
           </KindPart>
-        )}
-
-        {offered.some((k) => k.kind === "due_reminders") && show("due_reminders") && (
-          <KindPart title={live ? null : "Remind me before things are due"}>
+    ),
+    due_reminders: (
+          <KindPart>
             <Chips name="lead_days" legend="How long before" options={[[0, "On the day"], [1, "1 day"], [3, "3 days"], [7, "7 days"], [14, "14 days"]]} initial={[1, 7]} />
             <fieldset className="grid gap-1.5">
               <legend className="label mb-1">If it's overdue</legend>
@@ -179,10 +162,9 @@ export function NewRoutine({
               ))}
             </fieldset>
           </KindPart>
-        )}
-
-        {offered.some((k) => k.kind === "restock") && show("restock") && (
-          <KindPart title={live ? null : "Bring it back after I buy it"}>
+    ),
+    restock: (
+          <KindPart>
             <label className="field">
               <span className="label">Which want</span>
               <select name="restock_item_id" className="input" defaultValue={preset.kind === "restock" ? (preset.item ?? "") : ""} required={kind === "restock"}>
@@ -211,7 +193,58 @@ export function NewRoutine({
             </div>
             <p className="hint">It comes back as a want waiting for you: add it back, or not this time.</p>
           </KindPart>
-        )}
+    ),
+  };
+  const needsKey = kind === "exa_search" && !keyOk;
+  const paused = !sw.running || (kind !== null && sw.kinds?.[kind] === false);
+  return (
+    <details className="rt-fold" open={!!preset.kind || (f.data?.intent === "routine-create" && !!f.data.error)} onToggle={(e) => e.currentTarget.open && toTop()}>
+      <summary className="btn btn-sm w-fit">New routine</summary>
+      <f.Form method="post" className="rt-fold-body grid gap-5">
+        <input type="hidden" name="intent" value="routine-create" />
+        {tz && <input type="hidden" name="time_zone" value={tz} />}
+        <fieldset className="grid gap-2">
+          <legend ref={legend} className="label mb-1 scroll-mt-24">
+            What should it do?
+          </legend>
+          {/* Once a kind is chosen, only it shows, with its settings right under it and "Change" to see the others.
+              Without JavaScript every option shows, each with its own settings under it. */}
+          {offered
+            .filter((k) => !live || !kind || kind === k.kind)
+            .map((k) => (
+              <Fragment key={k.kind}>
+                <div className="flex items-start gap-2">
+                  <label className={`rt-kind min-w-0 flex-1 ${kind === k.kind ? "is-on" : ""}`}>
+                    <input
+                      type="radio"
+                      name="kind"
+                      value={k.kind}
+                      checked={kind === k.kind}
+                      onChange={() => choose(k.kind)}
+                      required
+                      className="rt-kind-radio"
+                    />
+                    <span className="grid gap-0.5">
+                      <span className="font-semibold">{k.name}</span>
+                      <span className="text-[0.88rem] text-ink-2">{k.line}</span>
+                      <span className="text-[0.82rem] text-ink-3">{k.kind === "exa_search" ? exaCost(sw, format) : "No key needed"}</span>
+                    </span>
+                  </label>
+                  {live && kind === k.kind && offered.length > 1 && (
+                    <button type="button" className="textlink-btn flex-none text-[0.88rem]" onClick={() => setKind(null)}>
+                      Change<span className="sr-only"> what it should do</span>
+                    </button>
+                  )}
+                </div>
+                {(!live || kind === k.kind) && <div className="grid gap-3 pb-2">{parts[k.kind]}</div>}
+              </Fragment>
+            ))}
+        </fieldset>
+
+
+
+
+
 
         {/* How the maker hears (26.4): required, nothing preselected. Email is shown as coming, not hidden. Restock tells
             nobody anything (it brings the want back), so it has no such choice. */}
@@ -252,13 +285,8 @@ export function NewRoutine({
   );
 }
 
-function KindPart({ title, children }: { title: string | null; children: React.ReactNode }) {
-  return (
-    <div className="grid gap-3">
-      {title && <h3 className="font-semibold">{title}</h3>}
-      {children}
-    </div>
-  );
+function KindPart({ children }: { children: React.ReactNode }) {
+  return <div className="grid gap-3 pl-1">{children}</div>;
 }
 
 function Chips({ name, legend, options, initial }: { name: string; legend: string; options: Array<[number, string]>; initial: number[] }) {

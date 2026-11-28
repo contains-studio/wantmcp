@@ -35,7 +35,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 
 export const handle = { analytics: true };
 
-/** Code nobody here has run yet says so beside it, until someone has. */
+/** Code that has been type-checked but not run end to end says so beside it, as the guide does. */
 const UNRUN = new Set(["Swift"]);
 
 export default function Developers({ loaderData }: Route.ComponentProps) {
@@ -227,7 +227,8 @@ function CodeSection({ heading, groups }: { heading: { id: string; text: string 
                 {(v.detail || UNRUN.has(v.lang)) && (
                   <p className="flex flex-wrap items-center gap-2 text-[0.88rem] text-ink-3">
                     {v.detail && <span>{v.detail}</span>}
-                    {UNRUN.has(v.lang) && <span className="chip chip-warn">Not yet run by us</span>}
+                    {/* The guide's own words (server 7f3473c): type-checked under Swift 6, the sign-in sheet not run end to end. */}
+                  {UNRUN.has(v.lang) && <span className="chip chip-warn">Type-checked; not run end to end</span>}
                   </p>
                 )}
                 {/* The first example stays open; the rest fold on a phone. */}

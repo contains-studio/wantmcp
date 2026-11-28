@@ -406,18 +406,44 @@ export async function startSignIn(clientId: string, redirectUri: string) {
 
 type Tokens = { access_token: string; refresh_token?: string; expires_in: number; scope: string };
 
-async function token(form: Record<string, string>): Promise<Tokens> {
-  const res = await fetch(`${AUTH}/oauth/token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(form) });
-  const json = await res.json();
-  if (!res.ok) throw new Error(`${json.error}: ${json.error_description ?? ""}`);
-  return json as Tokens;
+// What went wrong, so your app can do the right thing: only "sign_in_again" means start sign-in again.
+export class SignInError extends Error {
+  kind: "bad_callback" | "denied" | "sign_in_again" | "try_later" | "refused";
+  retryAfter?: number; // seconds, with "try_later"
+  constructor(kind: SignInError["kind"], message: string, retryAfter?: number) {
+    super(message);
+    this.kind = kind;
+    this.retryAfter = retryAfter;
+  }
 }
 
-// When the browser comes back to redirectUri?code=…&state=…
+// A 429 or a 5xx decided nothing: keep the code or refresh token and send the same request again after the wait.
+const tryLater = (res: Response) => new SignInError("try_later", `The server answered ${res.status}`, Number(res.headers.get("retry-after")) || 5);
+
+async function token(form: Record<string, string>): Promise<Tokens> {
+  const res = await fetch(`${AUTH}/oauth/token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(form) });
+  if (res.status === 429 || res.status >= 500) throw tryLater(res);
+  const json = (await res.json().catch(() => ({}))) as Partial<Tokens> & { error?: string; error_description?: string };
+  if (res.ok && json.access_token) return json as Tokens;
+  // invalid_grant: the code or refresh token is no longer good (used, expired, or the person disconnected your app).
+  if (json.error === "invalid_grant") throw new SignInError("sign_in_again", json.error_description ?? "invalid_grant");
+  throw new SignInError("refused", `${json.error ?? res.status}: ${json.error_description ?? ""}`);
+}
+
+// When the browser comes back to redirectUri?code=…&state=…&iss=…
 export async function finishSignIn(clientId: string, redirectUri: string, back: URL, verifier: string, state: string): Promise<Tokens> {
-  if (back.searchParams.get("state") !== state) throw new Error("state does not match");
-  if (back.searchParams.get("error")) throw new Error(back.searchParams.get("error")!); // access_denied: the person said no
-  return token({ grant_type: "authorization_code", code: back.searchParams.get("code")!, redirect_uri: redirectUri, client_id: clientId, code_verifier: verifier, resource: RESOURCE });
+  // Use nothing from the address until all three match: your exact return address, the issuer and the state you sent.
+  const address = new URL(back);
+  address.search = "";
+  address.hash = "";
+  const q = back.searchParams;
+  if (address.href !== new URL(redirectUri).href || q.get("iss") !== AUTH || q.get("state") !== state) {
+    throw new SignInError("bad_callback", "The address that came back is not ours to trust");
+  }
+  if (q.get("error")) throw new SignInError("denied", String(q.get("error"))); // access_denied: the person said no
+  const code = q.get("code");
+  if (!code) throw new SignInError("bad_callback", "No code came back");
+  return token({ grant_type: "authorization_code", code, redirect_uri: redirectUri, client_id: clientId, code_verifier: verifier, resource: RESOURCE });
 }
 
 export const refresh = (clientId: string, refreshToken: string) =>
@@ -430,8 +456,9 @@ export async function api<T>(accessToken: string, method: string, path: string, 
     headers: { authorization: `Bearer ${accessToken}`, ...(body ? { "content-type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const json = await res.json();
   if (res.status === 401) throw new Error("Signed out: refresh, or sign in again"); // expired or disconnected
+  if (res.status === 429 || res.status === 503) throw tryLater(res); // not signed out: the same call again after the wait
+  const json = await res.json();
   if (!res.ok) throw new Error(`${json.error?.code}: ${json.error?.message}`);
   return json as T;
 }
@@ -445,6 +472,7 @@ export async function tool(accessToken: string, name: string, args: Record<strin
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
   });
   if (res.status === 401) throw new Error("Signed out: refresh, or sign in again"); // revoked or expired
+  if (res.status === 429 || res.status === 503) throw tryLater(res);
   const json = await res.json();
   return json.result as { structuredContent?: Record<string, unknown>; content: { text: string }[]; isError?: boolean };
 }
@@ -452,7 +480,11 @@ export async function tool(accessToken: string, name: string, args: Record<strin
 
 In Node, listen on a loopback port for the return address (`http://127.0.0.1:47321/callback`) and open `url` in
 the person's browser. On the web, redirect to `url` and handle the code on your callback page (keep `verifier` and
-`state` in the session, not in the URL).
+`state` in the session, not in the URL). `finishSignIn` uses nothing from the address that came back until the
+return address, `iss` and `state` all match. A `SignInError` of kind `try_later` (a `429`, or a `5xx` such as a `503`
+with `Retry-After`) decided nothing: keep the refresh token and send the same request again after `retryAfter`
+seconds. Only `sign_in_again` (`invalid_grant`) means the person has to sign in again. This sample is type-checked by
+us; it has not been run end to end against a browser.
 
 ### Swift: sign in on iPhone, iPad and Mac
 
@@ -463,12 +495,21 @@ import Foundation
 
 struct WantTokens: Decodable { let access_token: String; let refresh_token: String?; let expires_in: Int; let scope: String }
 
+enum WantSignInError: Error {
+    case couldNotStart                          // the sign-in sheet did not open: offer "Try again"
+    case denied                                 // the person chose "Deny" (error=access_denied)
+    case badCallback                            // wrong return address, issuer or state: use nothing from it
+    case signInAgain                            // invalid_grant: the code or refresh token is no longer good
+    case tryLater(seconds: Int)                 // 429 or 5xx: nothing was decided, send the same request again later
+    case refused(status: Int, code: String?)    // any other answer from the token endpoint
+}
+
 @MainActor
 final class WantSignIn: NSObject, ASWebAuthenticationPresentationContextProviding {
-    static let auth = URL(string: "https://mcp.wantmcp.com")!
+    static let issuer = "https://mcp.wantmcp.com"
     static let resource = "https://mcp.wantmcp.com/mcp"
     let clientID: String           // from /oauth/register, stored with the tokens
-    let redirect = "com.example.myapp:/oauth"   // registered; its scheme is the callbackURLScheme below
+    let redirect = "com.example.myapp:/oauth"   // the return address you registered, exactly
     let anchor: ASPresentationAnchor
     init(clientID: String, anchor: ASPresentationAnchor) { self.clientID = clientID; self.anchor = anchor }
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor { anchor }
@@ -477,26 +518,40 @@ final class WantSignIn: NSObject, ASWebAuthenticationPresentationContextProvidin
         let verifier = Self.random(32)
         let challenge = Self.base64url(Data(SHA256.hash(data: Data(verifier.utf8))))
         let state = Self.random(16)
-        var c = URLComponents(url: Self.auth.appendingPathComponent("authorize"), resolvingAgainstBaseURL: false)!
-        c.queryItems = [
+        var c = URLComponents(string: Self.issuer + "/authorize")
+        c?.queryItems = [
             .init(name: "response_type", value: "code"), .init(name: "client_id", value: clientID),
             .init(name: "redirect_uri", value: redirect), .init(name: "scope", value: "lists:write offline_access"),
             .init(name: "state", value: state), .init(name: "code_challenge", value: challenge),
             .init(name: "code_challenge_method", value: "S256"), .init(name: "resource", value: Self.resource),
         ]
+        guard let url = c?.url, let scheme = URLComponents(string: redirect)?.scheme else { throw WantSignInError.couldNotStart }
         let back: URL = try await withCheckedThrowingContinuation { cont in
-            let session = ASWebAuthenticationSession(url: c.url!, callbackURLScheme: "com.example.myapp") { url, error in
-                if let url { cont.resume(returning: url) } else { cont.resume(throwing: error ?? URLError(.cancelled)) }
+            // Closing the sheet throws ASWebAuthenticationSessionError.canceledLogin: the person changed their mind.
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: scheme) { url, error in
+                if let url { cont.resume(returning: url) } else { cont.resume(throwing: error ?? WantSignInError.couldNotStart) }
             }
             session.presentationContextProvider = self
             session.prefersEphemeralWebBrowserSession = true   // email, code and consent in one sheet, every time
-            session.start()
+            // If the sheet cannot open, the handler above is never called: finish here, or signIn() waits for ever.
+            if !session.start() { cont.resume(throwing: WantSignInError.couldNotStart) }
         }
-        let items = URLComponents(url: back, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        guard items.first(where: { $0.name == "state" })?.value == state else { throw URLError(.badServerResponse) }
-        guard let code = items.first(where: { $0.name == "code" })?.value else { throw URLError(.userCancelledAuthentication) }
+        let code = try Self.code(from: back, redirect: redirect, state: state)
         return try await token(["grant_type": "authorization_code", "code": code, "redirect_uri": redirect,
                                 "client_id": clientID, "code_verifier": verifier, "resource": Self.resource])
+    }
+
+    /// Use nothing from the address that came back until all three match: your exact return address, the issuer
+    /// and the state you sent. "Deny" comes back with the same three and `error=access_denied`.
+    static func code(from back: URL, redirect: String, state: String) throws -> String {
+        guard var parts = URLComponents(url: back, resolvingAgainstBaseURL: false) else { throw WantSignInError.badCallback }
+        let items = parts.queryItems ?? []
+        func value(_ name: String) -> String? { items.first { $0.name == name }?.value }
+        parts.query = nil; parts.fragment = nil
+        guard parts.string == redirect, value("iss") == issuer, value("state") == state else { throw WantSignInError.badCallback }
+        if value("error") != nil { throw WantSignInError.denied }
+        guard let code = value("code"), !code.isEmpty else { throw WantSignInError.badCallback }
+        return code
     }
 
     func refresh(_ refreshToken: String) async throws -> WantTokens {
@@ -504,14 +559,26 @@ final class WantSignIn: NSObject, ASWebAuthenticationPresentationContextProvidin
     }
 
     private func token(_ form: [String: String]) async throws -> WantTokens {
-        var req = URLRequest(url: Self.auth.appendingPathComponent("oauth/token"))
+        guard let url = URL(string: Self.issuer + "/oauth/token") else { throw WantSignInError.couldNotStart }
+        var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         var body = URLComponents(); body.queryItems = form.map { URLQueryItem(name: $0.key, value: $0.value) }
         req.httpBody = body.percentEncodedQuery?.data(using: .utf8)
         let (data, res) = try await URLSession.shared.data(for: req)
-        guard (res as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.userAuthenticationRequired) }
-        return try JSONDecoder().decode(WantTokens.self, from: data)
+        return try Self.tokens(status: (res as? HTTPURLResponse)?.statusCode ?? 0,
+                               retryAfter: (res as? HTTPURLResponse)?.value(forHTTPHeaderField: "Retry-After"), body: data)
+    }
+
+    /// What a token answer means. Only `invalid_grant` means "sign in again"; a 429 or a 5xx (a 503 carries
+    /// `Retry-After`) decided nothing, so keep the refresh token and send the same request again after the wait.
+    static func tokens(status: Int, retryAfter: String?, body: Data) throws -> WantTokens {
+        struct Refusal: Decodable { let error: String? }
+        if status == 200 { return try JSONDecoder().decode(WantTokens.self, from: body) }
+        if status == 429 || status >= 500 { throw WantSignInError.tryLater(seconds: retryAfter.flatMap { Int($0) } ?? 5) }
+        let code = (try? JSONDecoder().decode(Refusal.self, from: body))?.error
+        if code == "invalid_grant" { throw WantSignInError.signInAgain }
+        throw WantSignInError.refused(status: status, code: code)
     }
 
     static func random(_ n: Int) -> String {
@@ -528,9 +595,28 @@ final class WantSignIn: NSObject, ASWebAuthenticationPresentationContextProvidin
 Store the tokens in the Keychain. Call the REST API or the MCP endpoint with `Authorization: Bearer <access_token>`,
 as in the TypeScript `api` and `tool` functions above.
 
+What the sample's errors mean for your app:
+
+- **`badCallback`**: the address that came back was not your exact return address, or its `iss` or `state` did not
+  match. Use nothing from it; start sign-in again if the person asks.
+- **`denied`**, and `ASWebAuthenticationSessionError.canceledLogin` when the person closes the sheet: they said no.
+  Do not ask again by yourself.
+- **`tryLater(seconds:)`**: the token endpoint answered `429` or a `5xx` (a `503` carries `Retry-After`). Nothing was
+  decided about your code or refresh token: keep it, wait that long and send the same request again. An authorization
+  code lasts a short time, so if it has run out by then the next answer is `invalid_grant`.
+- **`signInAgain`**: `invalid_grant`. The code or the refresh token is no longer good (used, expired, or the person
+  disconnected your app). Only this one means "start sign-in again".
+- **`couldNotStart`**: the sign-in sheet did not open (`start()` returned false). Offer "Try again".
+
+Both Swift samples on this page are type-checked together under Swift 6 for the iPhone simulator and for the Mac, and
+the sample's two deciding functions (`code(from:redirect:state:)` and `tokens(status:retryAfter:body:)`) are run on a
+Mac against good and bad callbacks and token answers. The sign-in sheet itself has not been run end to end by us.
+
 ### Swift: no account first
 
 ```swift
+import Foundation
+
 struct Started: Decodable { struct List: Decodable { let id: String; let title: String }; let list: List; let key: String; let claim_url: URL; let expires_at: String }
 
 func startList(title: String, wants: [String]) async throws -> Started {

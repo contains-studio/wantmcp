@@ -14,6 +14,7 @@ export default [
   route("app/routines", "routes/app-routines.tsx"),
   route("app/routines/:id/runs", "routes/app-routine-runs.tsx"),
   route("app/routines/:id/runs/:runId", "routes/app-routine-run.ts"),
+  route("app/notices/:id/open", "routes/app-notice-open.ts"),
   route("routine-asks/:token", "routes/routine-ask.tsx"),
   route("app/lists/:id/settings", "routes/settings.tsx"),
   route("invite/:token", "routes/invite.tsx"),

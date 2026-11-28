@@ -116,3 +116,32 @@ test("restock: made on a want with no follow choice; its proposal says what it w
   await page.getByRole("button", { name: "Make this routine" }).click();
   await expect(page.locator("article").filter({ hasText: "Bring back “A good kettle”" })).toContainText("it comes back after 2 months");
 });
+
+test.describe("phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test("picking a kind shows just it, its settings and the follow choice, with Make in view; Change brings the others back", async ({ page }) => {
+    await signIn(page, freshEmail("routines-pick"));
+    const id = await createList(page, { format: "Shopping", title: "Pick one" });
+    await page.goto(`/app/lists/${id}/settings#routines`);
+    await page.locator("summary", { hasText: "New routine" }).click();
+    const options = page.locator("input[name=kind]");
+    await expect(options).toHaveCount(3);
+    for (const name of [/Countdown and order-by dates/, /Remind me before things are due/, /Search the web for these wants/]) {
+      await page.getByRole("radio", { name }).check();
+      await expect(options).toHaveCount(1);
+      if (!/Search the web/.test(String(name))) {
+        // The follow choice comes before the button.
+        const follow = await page.getByRole("radio", { name: "In the app, under For you" }).boundingBox();
+        const make = await page.getByRole("button", { name: "Make this routine" }).boundingBox();
+        expect(follow!.y).toBeLessThan(make!.y);
+      }
+      await page.getByRole("button", { name: /^Make this routine|^Add your Exa key/ }).or(page.getByRole("link", { name: "Add your Exa key" })).first().scrollIntoViewIfNeeded();
+      const top = await page.getByRole("radio", { name }).boundingBox();
+      const end = await page.getByRole("button", { name: "Make this routine" }).or(page.getByRole("link", { name: "Add your Exa key" })).first().boundingBox();
+      // The chosen kind and the way to make it fit one 844px screen.
+      expect(end!.y + end!.height - top!.y).toBeLessThan(844 - 64);
+      await page.getByRole("button", { name: /^Change/ }).click();
+      await expect(options).toHaveCount(3);
+    }
+  });
+});

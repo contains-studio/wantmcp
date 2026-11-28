@@ -27,7 +27,7 @@ import { myExaKey, routineAction, ROUTINE_INTENTS } from "~/lib/routines.server"
 import { ForYou, hasForYou, type ForYouData } from "~/components/ForYou";
 import { handleWriterIntent } from "~/lib/intents.server";
 import { assertSameOrigin, clearFlashCookie, readFlash } from "~/lib/session.server";
-import type { AgentInfo, ListSummary, PendingInvite, RoutineChangeRecord } from "~/lib/types";
+import type { AgentInfo, ListSummary, Page, PendingInvite, RoutineChangeRecord, RoutineNotice } from "~/lib/types";
 import { waitingQuestions, type WaitingQuestion } from "~/lib/waiting.server";
 
 export function meta() {
@@ -66,7 +66,14 @@ export async function loader({ request }: Route.LoaderArgs) {
         api<{ data: RoutineChangeRecord[] }>(request, "/me/routine-changes").then((r) => r.data).catch(() => [] as RoutineChangeRecord[]),
         api<{ data: ForYouData["blocked"] }>(request, "/me/routines").then((r) => r.data).catch(() => [] as ForYouData["blocked"]),
         myExaKey(request, user),
-      ]).then(([changes, mine, key]) => ({ changes, blocked: mine.filter((r) => r.blocked && ["key_refused", "out_of_credit", "key_missing", "unattended"].includes(r.blocked.reason)), keyOk: key?.status === "ok" }))
+        // SPEC 26.3: what routines told this person, unseen ones only.
+        apiOptional<Page<RoutineNotice>>(request, "/me/notices").then((r) => (r?.data ?? []).filter((n) => !n.seen)).catch(() => [] as RoutineNotice[]),
+      ]).then(([changes, mine, key, notices]) => ({
+        changes,
+        blocked: mine.filter((r) => r.blocked && ["key_refused", "out_of_credit", "key_missing", "unattended"].includes(r.blocked.reason)),
+        keyOk: key?.status === "ok",
+        notices,
+      }))
     : null;
   return data(
     {

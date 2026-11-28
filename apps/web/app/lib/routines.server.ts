@@ -21,6 +21,7 @@ export const ROUTINE_INTENTS = new Set([
   "routine-item-resume",
   "routine-follow",
   "routine-unfollow",
+  "notice-seen",
 ]);
 
 export type RoutineResult = { ok?: boolean; intent: string; routineId?: string; message?: string; error?: string; runId?: string };
@@ -46,6 +47,10 @@ export async function routineAction(request: Request, form: FormData): Promise<R
   const done = (message: string | undefined, routineId = id) => data<RoutineResult>({ ok: true, intent, routineId, message });
   try {
     switch (intent) {
+      case "notice-seen":
+        // ✕ on a notice in "For you" (SPEC 26.3): seen, gone from the list.
+        await api(request, `/me/notices/${encodeURIComponent(String(form.get("notice_id") ?? ""))}/seen`, { method: "POST" });
+        return done("Dismissed.");
       case "routine-follow":
         await api(request, `/routines/${r}/follow`, { method: "PUT", body: { email: false } });
         return done("You'll see these in the app, under For you.");

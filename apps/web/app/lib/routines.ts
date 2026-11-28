@@ -119,3 +119,16 @@ export function productsOf<T extends { kind?: string }>(entries: T[]): T[] {
 export function guidesOf<T extends { kind?: string }>(entries: T[]): T[] {
   return entries.filter((e) => e.kind === "guide");
 }
+
+/** A path on this site from the notice's link (absolute on wantmcp.com, or already a path); else the app's home. */
+export function noticePath(to: string | null): string {
+  if (!to) return "/app";
+  try {
+    const u = new URL(to, "https://wantmcp.com");
+    if (u.hostname !== "wantmcp.com" && u.hostname !== "www.wantmcp.com") return "/app";
+    const path = `${u.pathname}${u.search}${u.hash}`;
+    return path.startsWith("/") && !path.startsWith("//") ? path : "/app";
+  } catch {
+    return "/app";
+  }
+}

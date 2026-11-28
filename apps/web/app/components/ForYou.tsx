@@ -10,9 +10,11 @@ import { Link, useFetcher } from "react-router";
 import { Time } from "./Time";
 import { actorName } from "~/lib/routines";
 import type { RoutineResult } from "~/lib/routines.server";
-import type { BlockReason, Routine, RoutineChangeKind, RoutineChangeRecord } from "~/lib/types";
+import type { BlockReason, Routine, RoutineChangeKind, RoutineChangeRecord, RoutineNotice } from "~/lib/types";
 
 export type ForYouData = {
+  /** SPEC 26.3: unseen notices, newest first. */
+  notices: RoutineNotice[];
   changes: RoutineChangeRecord[];
   blocked: Array<Routine & { list: { id: string; title: string } }>;
   keyOk: boolean;
@@ -37,7 +39,7 @@ const KEY_WORDS: Partial<Record<BlockReason, string>> = {
 };
 
 export function hasForYou(d: ForYouData | null): d is ForYouData {
-  return !!d && (d.changes.length > 0 || d.blocked.length > 0);
+  return !!d && (d.notices.length > 0 || d.changes.length > 0 || d.blocked.length > 0);
 }
 
 export function ForYou({ data: d }: { data: ForYouData }) {
@@ -45,11 +47,29 @@ export function ForYou({ data: d }: { data: ForYouData }) {
   const byKey = new Map<BlockReason, typeof d.blocked>();
   for (const r of d.blocked) if (r.blocked && KEY_WORDS[r.blocked.reason] && r.uses_my_key) byKey.set(r.blocked.reason, [...(byKey.get(r.blocked.reason) ?? []), r]);
   const unattended = d.blocked.filter((r) => r.blocked?.reason === "unattended");
+  const noticeGroups: Array<{ key: string; title: string | null; notices: RoutineNotice[] }> = [];
+  for (const n of d.notices) {
+    const key = n.list?.id ?? "-";
+    const g = noticeGroups.find((x) => x.key === key);
+    if (g) g.notices.push(n);
+    else noticeGroups.push({ key, title: n.list?.title ?? null, notices: [n] });
+  }
   return (
     <section aria-labelledby="for-you-h" className="grid gap-3">
       <h2 id="for-you-h" className="text-[0.95rem] font-semibold text-ink-2">
         For you
       </h2>
+      {/* What routines want to tell the person, grouped by list, above everything else here (26.3). */}
+      {noticeGroups.map((g) => (
+        <div key={g.key} className="grid gap-1.5">
+          {g.title && <h3 className="text-[0.82rem] font-medium text-ink-3">{g.title}</h3>}
+          <ul className="grid gap-2">
+            {g.notices.map((n) => (
+              <Notice key={n.id} notice={n} />
+            ))}
+          </ul>
+        </div>
+      ))}
       <ul className="grid gap-2">
         {[...byKey].map(([reason, rs]) => (
           <li key={reason} className="card flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
@@ -145,6 +165,41 @@ function AgentChange({ change: c }: { change: RoutineChangeRecord }) {
           {f.data.error}
         </p>
       )}
+    </li>
+  );
+}
+
+/**
+ * One notice: the server's sentence, "Open" (marks it seen, then goes to its link on this site) and ✕ (seen, gone).
+ */
+function Notice({ notice: n }: { notice: RoutineNotice }) {
+  const f = useFetcher<RoutineResult>({ key: `notice-${n.id}` });
+  if (f.state !== "idle" || f.data?.ok) return null;
+  const to = (() => {
+    try {
+      const u = new URL(n.link, "https://wantmcp.com");
+      return `${u.pathname}${u.search}${u.hash}`;
+    } catch {
+      return "/app";
+    }
+  })();
+  return (
+    <li className="card flex items-start gap-3 px-4 py-3">
+      <div className="grid min-w-0 flex-1 gap-1">
+        <p className="text-[0.95rem]">{n.text}</p>
+        <a href={`/app/notices/${encodeURIComponent(n.id)}/open?to=${encodeURIComponent(to)}`} className="link w-fit text-[0.88rem]">
+          Open<span className="sr-only">: {n.text}</span>
+        </a>
+      </div>
+      <f.Form method="post" className="flex-none">
+        <input type="hidden" name="intent" value="notice-seen" />
+        <input type="hidden" name="notice_id" value={n.id} />
+        <button className="notice-x" aria-label={`Dismiss: ${n.text}`} title="Dismiss">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        </button>
+      </f.Form>
     </li>
   );
 }

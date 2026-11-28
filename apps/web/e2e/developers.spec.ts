@@ -16,7 +16,7 @@ test("/developers: three ways in as cards, contents, code with a copy button and
   // One language at a time; the choice holds on the next card; Swift says it hasn't been run.
   const tabs = page.getByRole("tablist", { name: "no account first: language" });
   await tabs.getByRole("tab", { name: "Swift" }).click();
-  await expect(page.locator("section[aria-labelledby='code-no-account-first']").getByText("Not yet run by us")).toBeVisible();
+  await expect(page.locator("section[aria-labelledby='code-no-account-first']").getByText("Type-checked; not run end to end")).toBeVisible();
   await expect(page.locator("section[aria-labelledby='code-sign-in'] [role=tabpanel]:visible")).toContainText("ASWebAuthenticationSession");
 
   // Copy gives the code exactly as the guide has it.

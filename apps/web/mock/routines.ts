@@ -13,6 +13,7 @@ import type {
   RoutineNameBy,
   Routine,
   RoutineFollow,
+  RoutineNotice,
   RoutineKind,
   RoutineStart,
   RoutineChangeKind,
@@ -85,9 +86,11 @@ export interface RoutineStore {
   asks: Map<string, { routine_id: string; used: "keep" | "pause" | null }>;
   /** SPEC 26.4: routine id -> user id -> that person's follow. */
   follows: Map<string, Map<string, RoutineFollow>>;
+  /** SPEC 26.3: what routines tell each person (user_id on each). */
+  notices: Array<RoutineNotice & { user_id: string }>;
 }
 
-export const emptyRoutineStore = (): RoutineStore => ({ routines: [], runs: [], changes: [], keys: [], emailPrefs: new Map(), views: new Map(), asks: new Map(), follows: new Map() });
+export const emptyRoutineStore = (): RoutineStore => ({ routines: [], runs: [], changes: [], keys: [], emailPrefs: new Map(), views: new Map(), asks: new Map(), follows: new Map(), notices: [] });
 
 // ---------- the launch switch (mock rule)
 
@@ -552,6 +555,31 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     record(c, r, "created", null, askedBy(c, body), false);
     return r;
   }
+
+  // ---- notices (26.3), a person's web session
+  route("GET", "/me/notices", ({ caller, url }) => {
+    visibleFor(caller);
+    const c = h.requireSession(caller);
+    const mine = rs().notices.filter((n) => n.user_id === c.user.id).sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const from = Number(url.searchParams.get("cursor") ?? 0) || 0;
+    const page = mine.slice(from, from + 20).map(({ user_id: _u, ...n }) => n);
+    return { data: page, next_cursor: from + 20 < mine.length ? String(from + 20) : null };
+  });
+  const seen = (userId: string, ids: string[]) => {
+    let n = 0;
+    for (const x of rs().notices) if (x.user_id === userId && ids.includes(x.id) && !x.seen) (x.seen = true), n++;
+    return { seen: n };
+  };
+  route("POST", "/me/notices/seen", ({ caller, body }) => {
+    visibleFor(caller);
+    const c = h.requireSession(caller);
+    return seen(c.user.id, Array.isArray(body.ids) ? body.ids.map(String) : []);
+  });
+  route("POST", "/me/notices/{id}/seen", ({ caller, params }) => {
+    visibleFor(caller);
+    const c = h.requireSession(caller);
+    return seen(c.user.id, [params[0]]);
+  });
 
   route("GET", "/routine-occasions", ({ caller }) => {
     visibleFor(caller);

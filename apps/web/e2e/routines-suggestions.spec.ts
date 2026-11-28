@@ -108,6 +108,8 @@ test("no price, no “checked”: a promoted find says when it was found, others
   await signIn(page, "routines@example.com");
   await page.goto("/l/lst_rt_kitchen");
   await page.getByRole("listitem", { name: /^Suggestion: Kids' Waterproof Insulated Snow Boots/ }).getByRole("button", { name: "Promote to list" }).click();
+  // Promoted (it leaves the panel) before reading the list again.
+  await expect(page.getByRole("listitem", { name: /^Suggestion: Kids' Waterproof Insulated Snow Boots/ })).toHaveCount(0);
   await page.reload();
   const row = page.locator("section#itm_rt_boots .sheet-group").filter({ hasText: "Kids' Waterproof Insulated Snow Boots" });
   await expect(row).toContainText(/found \w{3} \d{1,2} \w{3}/);

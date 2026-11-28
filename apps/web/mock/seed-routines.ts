@@ -141,6 +141,36 @@ export function seedRoutines(s: Store, rs: RoutineStore, now = Date.now()) {
     stopped_items: [],
   });
 
+  // SPEC 26.3: two things routines told this person, waiting under "For you".
+  rs.notices.push(
+    {
+      id: "ntc_price",
+      user_id: "usr_rt",
+      routine: { id: "rtn_beans", name: "Tell me when “A cast-iron pan, 10 inch” is at my price", name_by: "server", kind: "target_price" },
+      list: { id: "lst_rt_kitchen", title: "Kitchen" },
+      item: { id: "itm_rt_pan", text: "A cast-iron pan, 10 inch" },
+      what: "at_price",
+      text: "At your price: $39.99 at Target for “A cast-iron pan, 10 inch”, seen 2 h ago by Claude, not checked on the store's page",
+      link: "https://wantmcp.com/l/lst_rt_kitchen#itm_rt_pan",
+      due_on: null,
+      created_at: at(2 * HOUR),
+      seen: false,
+    },
+    {
+      id: "ntc_countdown",
+      user_id: "usr_rt",
+      routine: { id: "rtn_weekly", name: "Countdown to Christmas", name_by: "server", kind: "countdown" },
+      list: { id: "lst_rt_ana", title: "Ana's birthday" },
+      item: null,
+      what: "countdown",
+      text: "28 days to Christmas on “Ana's birthday”: 1 want has nothing yet",
+      link: "https://wantmcp.com/l/lst_rt_ana",
+      due_on: null,
+      created_at: at(5 * HOUR),
+      seen: false,
+    },
+  );
+
   // A kind this web build doesn't know yet (26.2): its card shows its name and status, Pause and Delete only.
   rs.routines.push({
     id: "rtn_weekly",
