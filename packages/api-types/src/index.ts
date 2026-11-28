@@ -920,7 +920,13 @@ export interface Routine {
    * `events/subscribe` webhook for that agent on this list (it is told the moment the check is due); otherwise it sees
    * the request the next time it looks, and `last_seen_at` is the last time it called us at all.
    */
-  agent_reach?: { agent: { id: string; name: string }; listening: boolean; last_seen_at: Timestamp | null };
+  agent_reach?: {
+    agent: { id: string; name: string };
+    listening: boolean;
+    last_seen_at: Timestamp | null;
+    /** The card's sentence, written on the server: "Claude is listening: …" or "Claude sees this the next time it looks (last seen 1 hour ago). …". */
+    text: string;
+  };
   /**
    * list_changes only (SPEC 26.21.4), the same for every reader: whose URL it calls (never the URL, its host or the
    * endpoint's name), ids only or in full, and which changes. Absent for every other kind.
@@ -970,6 +976,11 @@ export interface RoutineEndpoint {
   verified_at: Timestamp | null;
   last_ok_at: Timestamp | null;
   last_fail_at: Timestamp | null;
+  /**
+   * When its last call didn't succeed: what happened, in our words, always about the URL ("The URL did not answer
+   * the handshake: it answered 530."), never as a fault of ours. Null after a success.
+   */
+  last_problem: string | null;
   used_by: Array<{ routine: { id: string; name: string }; list: { id: string; title: string } | null; as: "follow" | "list_changes" }>;
 }
 

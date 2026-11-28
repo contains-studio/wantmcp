@@ -342,7 +342,15 @@ export function registerRoutineRoutes({ rs, route, helpers: h }: RoutineCtx) {
     // runs on its own) listens; any other sees the note the next time it looks.
     if (r.kind === "agent_check") {
       const a = h.agents().find((x: any) => x.id === (r.settings as any)?.agent_id);
-      if (a) routine.agent_reach = { agent: { id: a.id, name: a.name }, listening: a.kind === "account", last_seen_at: a.last_used_at ?? null };
+      if (a) {
+        const listening = a.kind === "account";
+        const hours = a.last_used_at ? Math.max(1, Math.round((Date.now() - Date.parse(a.last_used_at)) / 3_600_000)) : null;
+        const seen = hours === null ? "it hasn't been in touch yet" : `last seen ${hours} hour${hours === 1 ? "" : "s"} ago`;
+        const text = listening
+          ? `${a.name} is listening: it is told the moment this is due.`
+          : `${a.name} sees this the next time it looks (${seen}). To make it look on a schedule, set up a scheduled task in ${a.name} with the instruction on the Connect page.`;
+        routine.agent_reach = { agent: { id: a.id, name: a.name }, listening, last_seen_at: a.last_used_at ?? null, text };
+      }
     }
     // SPEC 26.20 item 4: the addresses this reader added, on the web only.
     if (c?.kind === "user" && RECIPIENT_KINDS.includes(r.kind)) {

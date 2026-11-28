@@ -152,7 +152,8 @@ test("ask my agent to check: one of my own agents, what to check, and whether it
   await page.getByRole("radio", { name: "In the app, under For you" }).check();
   await page.getByRole("button", { name: "Make this routine" }).click();
   const card = page.locator("article").filter({ hasText: "Ask Claude to check every Friday" });
-  await expect(card).toContainText("Claude sees this the next time it looks (last seen");
+  // The server's sentence, as sent.
+  await expect(card).toContainText("Claude sees this the next time it looks (last seen 1 hour ago). To make it look on a schedule, set up a scheduled task in Claude with the instruction on the Connect page.");
   await expect(card.getByRole("region", { name: "Instruction for a scheduled run" })).toHaveText(
     "Every morning, call get_updates on my Want MCP lists, re-check the prices you posted, and answer what is new.",
   );

@@ -273,25 +273,31 @@ function Recipients({ f, routine: r, listPrivate }: { f: F; routine: Routine; li
 }
 
 /**
- * SPEC 26.20 item 5: whether the agent an "Ask my agent to check" leaves notes for can be told at once. Most agents
- * can't be woken by anyone: they see the note the next time they look, so the card gives /connect's instruction for a
- * scheduled run, and the apps that have one. The agent's name is its person's or app's words, shown as plain text.
+ * SPEC 26.20 item 5: whether the agent an "Ask my agent to check" leaves notes for can be told at once, in the
+ * server's sentence (agent_reach.text; ours only when it is absent). Most agents can't be woken by anyone: they see
+ * the note the next time they look, so the card also gives /connect's instruction for a scheduled run, and the apps
+ * that have one. The agent's name is its person's or app's words, shown as plain text.
  */
 function AgentReach({ reach }: { reach: NonNullable<Routine["agent_reach"]> }) {
   const name = reach.agent.name;
-  if (reach.listening) return <p className="text-[0.9rem] text-ink-2">{name} is listening: it is told the moment this is due.</p>;
+  const text = (reach as { text?: string }).text;
+  if (reach.listening) return <p className="text-[0.9rem] text-ink-2">{text || `${name} is listening: it is told the moment this is due.`}</p>;
   return (
     <div className="grid gap-2 rounded-[10px] bg-sunk p-3 text-[0.9rem]">
-      <p className="text-ink-2">
-        {name} sees this the next time it looks
-        {reach.last_seen_at ? (
-          <>
-            {" "}
-            (last seen <Time ts={reach.last_seen_at} />)
-          </>
-        ) : null}
-        . To make it look on a schedule, set up a scheduled run in its app with this instruction:
-      </p>
+      {text ? (
+        <p className="text-ink-2">{text}</p>
+      ) : (
+        <p className="text-ink-2">
+          {name} sees this the next time it looks
+          {reach.last_seen_at ? (
+            <>
+              {" "}
+              (last seen <Time ts={reach.last_seen_at} />)
+            </>
+          ) : null}
+          . To make it look on a schedule, set up a scheduled run in its app with this instruction:
+        </p>
+      )}
       <pre className="codeblock text-[0.85rem]" tabIndex={0} role="region" aria-label="Instruction for a scheduled run">
         {AWAY_PROMPT}
       </pre>
